@@ -1,0 +1,8 @@
+^/\* voc +
+Configuration_
+OPM_ResourceDir
+OPM_InstallDir
+__MOVE.* cmd,
+OPM_(IntSize|PointerSize|Alignment) =
+Strings_Append.+void\*\)(cmd|OPM_OBERON|extTools_comp)
+__COPY\("(gcc|clang|msc|i686-w64-mingw|x86_64-w64-mingw)

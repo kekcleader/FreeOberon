@@ -1,0 +1,14 @@
+--- Testing with Oberon 2 variable model ---
+chars:   Splurdle
+integer: 37
+string:  "Bert"
+line:    rest of line
+line:    another line
+
+
+--- Testing with Component Pascal variable model ---
+chars:   Splurdle
+integer: 37
+string:  "Bert"
+line:    rest of line
+line:    another line

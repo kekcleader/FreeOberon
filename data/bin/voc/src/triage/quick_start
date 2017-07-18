@@ -1,0 +1,45 @@
+
+
+   Firstly, make sure that voc binary is in your path.
+   You may need to issue
+   # PATH=/opt/voc/bin:$PATH
+   == Compiling a main module==
+   In order to compile a main module, and get it linked dynamically to libVishapOberon.so, issue
+   
+   # voc -m hello.Mod
+
+   If you want it to be linked statically, then
+
+   # voc -M hello.Mod
+
+   It is necessary to specify -m or -M key so that compiler generates _start entry point.
+   Otherwise the module will be generated as .o object file.
+
+   Currently, voc by default asks gcc to include debugging information (-g) so you may want to strip resulting binaries before distributing them
+
+   # strip hello
+
+   ==Creating shared object==
+
+   Compile several modules but not link resulting object files.
+   voc -s M0.Mod M1.Mod Mn.Mod
+
+   Then create a shared object with
+
+   # ld -shared -o libYouLib.so M0.o M1.o Mn.o
+
+   To create a static .a archive do
+
+   # ar rcs libYourLib.a M0.o M1.o Mn.o
+
+   == Sorting modules in different directories ==
+
+   By default voc looks for modules only in default path, where distributed libVishapOberon library symbol files are located, and in current directory. If you have many modules and want to sort them into different directories, then you need to tell compiler where to look for your modules.
+   For that we have introduced MODULES environment variable.
+   Lets assume, you have directories "logic", "graphics", "misc" in current directory, and you want compiler to search for your source modules there.
+
+   # export MODULES=".:logic:graphics:misc"
+
+   Directories will be searched in the same order as specified. In this example we specify current directory, which is not necessary, because it's already in a search path by default.
+
+

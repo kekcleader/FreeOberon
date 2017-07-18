@@ -1,0 +1,7 @@
+(use "git add <file>..." to include in what will be committed)
+FreeOberon
+FreeOberon.exe
+bin/*
+*.dll
+src/*.o
+src/*.sym

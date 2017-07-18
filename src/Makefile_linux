@@ -1,0 +1,53 @@
+PROG=FreeOberon
+OS=linux
+SDL2Opts=`sdl2-config --cflags --libs`
+
+all: $(PROG)
+
+$(PROG): $(PROG).sym
+	gcc -fPIC -g -I "/opt/voc/C/include" \
+	-o $(PROG) $(PROG).o Graph.o SDL2.o \
+	OV.o Editor.o Term.o Terminal.o \
+	EditorText.o Config.o term/term.o \
+	-L"/opt/voc/lib" -lvoc-OC \
+	$(SDL2Opts) -lSDL2_image \
+	&& mv $(PROG) ../$(PROG) && cd .. && ./$(PROG) && cd src
+
+$(PROG).sym: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
+		Editor.sym Term.sym Graph.sym SDL2.sym
+	voc -OC -cesF -m $(PROG).Mod
+
+OV.sym: OV.Mod Terminal.sym Graph.sym
+	voc -OC -cesF OV.Mod
+
+Editor.sym: Editor.Mod Terminal.sym EditorText.sym OV.sym Graph.sym
+	voc -OC -cesF Editor.Mod
+
+Term.sym: Term.Mod term/term.o
+	voc -OC -cesF Term.Mod
+
+Terminal.sym: Terminal.Mod Graph.sym
+	voc -OC -cesF Terminal.Mod
+
+EditorText.sym: EditorText.Mod Config.sym
+	voc -OC -cesF EditorText.Mod
+
+Config.sym: Config_$(OS).Mod
+	voc -OC -cesF Config_$(OS).Mod
+
+term/term.o: term/term_$(OS).c
+	gcc -c term/term_$(OS).c -o term/term.o
+
+Graph.sym: Graph.Mod SDL2.sym
+	voc -OC -cesF Graph.Mod
+
+SDL2.sym: SDL2.Mod
+	voc -OC -cesF SDL2.Mod
+
+.PHONY: clean install
+clean:
+	rm -f *.c *.h *.o *.sym term/term.o .tmp..* ../Programs/.tmp..* ../$(PROG) ../bin/*
+
+install:
+	cp Graph.sym SDL2.sym /opt/voc/C/sym
+	cp Graph.h SDL2.h SDL2.h0 /opt/voc/C/include

@@ -1,0 +1,39 @@
+==how to port to a new platform==
+0) generate voc.par file for the target platform(if it does not exist in src/par).
+   you can do it by compiling vocparam, and running it as "./vocparam > voc.par"
+1) generate voc, ocat, showdef source for target platform by running
+   make -f makefile.gcc.<arch> port0
+   (or copy corresponding voc.par to the source directory yourself, remove stage2 from port0 section of the makefile, and run make port0)
+2) transfer source to a target platform and write
+   make port1
+   (or use a crosscompiler)
+   now you have voc, showdef, and ocat binaries for your target platform
+3) cp voc vocstatic
+   make -f makefile for your target.
+that's how I've done x86 port.
+voc was originally run on x86_64.
+
+notes** in practice everything is not always simple, because you may need to edit Unix.Mod, Args.Mod and SYSTEM.h, and put them to src/lib/system/gcc/<yourtarget>, and create new makefile for your target.
+
+
+==how to add a new option==
+
+define it in OPM as a constant before defopt is defined.
+define a BOOLEAN variable in OPM which will describe if setting is set.
+add handling of a new option in OPM.ScanOptions
+set your BOOLEAN value in OPM.OpenPari (or in ScanOptions, after the CASE) so you can check it later.
+check your boolean when necessary, (see useParFile in OPM.GetOptions)
+add it in OPC.GenHeaderMsg function.
+
+==known bugs==
+
+when using SYSTEM.LSH(s, n) where s is SET,
+c compiler generates an error like
+"error: duplicate 'unsigned'",
+that's because SET is defined as unsigned in SYSTEM.h,
+while LSH is defined in SYSTEM.h as ((t)((unsigned t)(x)<<(n))),
+and it makes not possible to make SYSTEM.LSH with type SET.
+I don't want to prohibit it at the parser level
+because C backend is only one of possible backends.
+The solution currently is to cast set type to longint before lsh-ing it.
+And then casting it back to set if necessary.
