@@ -62,7 +62,7 @@ Website: [freeoberon.su](http://freeoberon.su)
 2. (optional) Create a shortcut "Free Oberon" on the desktop, which points to `FreeOberon.exe`.
 3. Run the FreeOberon.exe file (by shortcut or directly).
 
-Note. If you want to compile a version of Free Oberon under Windows from the source code yourself, refer to Appendix A of the documentation on <http://freeoberon.su>.
+Note. If you want to compile a version of Free Oberon under Windows from the source code yourself, refer to Appendix A of the documentation on [freeoberon.su](http://freeoberon.su).
 
 Note. On GNU/Linux it may be required to run `chmod +x data/bin/compile.sh`.
 
