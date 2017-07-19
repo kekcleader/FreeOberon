@@ -9,12 +9,13 @@ $(PROG): $(PROG).sym
 	-o $(PROG).exe $(PROG).o Graph.o SDL2.o \
 	OV.o Editor.o Term.o Terminal.o \
 	EditorText.o Config.o term/term.o \
+	resources.o \
 	-L"..\data\bin\voc\lib" -lvoc-OC \
 	$(SDL2Opts) -lSDL2_image && \
 	mv $(PROG).exe ..
 
 $(PROG).sym: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
-		Editor.sym Term.sym Graph.sym SDL2.sym
+		Editor.sym Term.sym Graph.sym SDL2.sym resources.o
 	voc -OC -cesF -m $(PROG).Mod
 
 OV.sym: OV.Mod Terminal.sym Graph.sym
@@ -43,6 +44,9 @@ Graph.sym: Graph.Mod SDL2.sym
 
 SDL2.sym: SDL2.Mod
 	voc -OC -cesF SDL2.Mod
+
+resources.o: resources.rc
+	windres resources.rc resources.o
 
 .PHONY: clean cleanall install
 

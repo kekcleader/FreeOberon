@@ -10,11 +10,14 @@
 ; The name of the installer
 Name "FreeOberon"
 
+;!include "MUI.nsh"
+;!define MUI_ICON "FreeOberon\data\images\icon.ico"
+
 ; The file to write
-OutFile "FreeOberon_Setup.exe"
+OutFile "FreeOberon_Setup_v0.1.0.exe"
 
 ; The default installation directory
-InstallDir $PROGRAMFILES\FreeOberon
+InstallDir C:\FreeOberon
 
 ; Registry key to check for directory (so if you install again, it will 
 ; overwrite the old one automatically)
@@ -30,7 +33,6 @@ RequestExecutionLevel admin
 Page components
 Page directory
 Page instfiles
-
 UninstPage uninstConfirm
 UninstPage instfiles
 
@@ -41,11 +43,10 @@ Section "FreeOberon (required)"
 
   SectionIn RO
   
-  ; Set output path to the installation directory.
+  ; Set output path to the installation directory
   SetOutPath $INSTDIR
   
-  ; Put file there
-  ; File "FreeOberon.exe"
+  ; Files to install
   File /r "FreeOberon\*"
   
   ; Write the installation path into the registry
