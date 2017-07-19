@@ -1,9 +1,9 @@
+![Free Oberon screenshot](http://freeoberon.su/images/freeoberon.png)
+
 # Free Oberon
-Version 0.1.0
-
-Riga, July 18, 2017
-
-Website: [freeoberon.su](http://freeoberon.su)
+* Version 0.1.0
+* Riga, July 19, 2017
+* Website: [freeoberon.su](http://freeoberon.su)
 
 # Installation
 

@@ -4,7 +4,10 @@ FreeOberon.exe
 bin/*
 *.dll
 src/*.o
+src/*.h
+src/*.c
 src/*.sym
+src/term/*.o
 data/bin/voc/C
 data/bin/voc/bin
 data/bin/voc/lib
