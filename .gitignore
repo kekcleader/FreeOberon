@@ -3,6 +3,7 @@ FreeOberon
 FreeOberon.exe
 bin/*
 *.dll
+src/Makefile
 src/*.o
 src/*.h
 src/*.c
