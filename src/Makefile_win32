@@ -44,9 +44,13 @@ Graph.sym: Graph.Mod SDL2.sym
 SDL2.sym: SDL2.Mod
 	voc -OC -cesF SDL2.Mod
 
-.PHONY: clean install
+.PHONY: clean cleanall install
+
 clean:
-	rm -f *.c *.h *.o *.sym term/term.o .tmp..* ../Programs/.tmp..* ../$(PROG).exe ../bin/*
+	rm -f *.c *.h *.o *.sym term/term.o .tmp..* ../Programs/.tmp..*
+
+cleanall: clean
+	rm -f ../$(PROG).exe ../bin/*
 
 install:
 	cp Graph.sym SDL2.sym ../data/bin/voc/C/sym

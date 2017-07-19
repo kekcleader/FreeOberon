@@ -5,3 +5,9 @@ bin/*
 *.dll
 src/*.o
 src/*.sym
+data/bin/voc/C
+data/bin/voc/bin
+data/bin/voc/lib
+data/bin/voc/src/Configuration.Make
+data/bin/voc/src/Configuration.Mod
+data/bin/voc/src/voc.exe
