@@ -6,12 +6,13 @@ all: $(PROG)
 
 $(PROG): $(PROG).sym
 	gcc -fPIC -g -I "/opt/voc/C/include" \
-	-o $(PROG) $(PROG).o Graph.o SDL2.o \
-	OV.o Editor.o Term.o Terminal.o \
-	EditorText.o Config.o term/term.o \
-	-L"/opt/voc/lib" -lvoc-OC \
-	$(SDL2Opts) -lSDL2_image \
-	&& mv $(PROG) ../$(PROG) && cd .. && ./$(PROG) && cd src
+		-o $(PROG) $(PROG).o Graph.o SDL2.o \
+		OV.o Editor.o Term.o Terminal.o \
+		EditorText.o Config.o term/term.o \
+		-L"/opt/voc/lib" -lvoc-OC \
+		$(SDL2Opts) -lSDL2_image \
+		&& mv $(PROG) ../$(PROG) && \
+		cd .. && ./$(PROG) && cd src
 
 $(PROG).sym: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
 		Editor.sym Term.sym Graph.sym SDL2.sym
@@ -44,13 +45,21 @@ Graph.sym: Graph.Mod SDL2.sym
 SDL2.sym: SDL2.Mod
 	voc -OC -cesF SDL2.Mod
 
-.PHONY: clean cleanall install
+.PHONY: clean cleanall preparelinux install
 
 clean:
 	rm -f *.c *.h *.o *.sym term/term.o .tmp..* ../Programs/.tmp..*
 
 cleanall: clean
 	rm -f ../$(PROG) ../bin/*
+
+preparelinux: clean
+	ln -s Makefile_linux Makefile
+	chmod +x ../data/bin/*.sh
+	rm -f ../*.exe ../*.dll \
+		../data/bin/voc/C ../data/bin/voc/bin \
+		../data/bin/voc/lib ../data/bin/voc/src/*.exe \
+		../data/bin/mingw32
 
 install:
 	cp Graph.sym SDL2.sym /opt/voc/C/sym
