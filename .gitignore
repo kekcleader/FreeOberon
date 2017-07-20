@@ -15,3 +15,4 @@ data/bin/voc/lib
 data/bin/voc/src/Configuration.Make
 data/bin/voc/src/Configuration.Mod
 data/bin/voc/src/voc.exe
+data/bin/voc/src/voc

@@ -13,7 +13,7 @@ $(PROG): $(PROG).sym
 		EditorText.o Config.o term/term.o \
 		../data/bin/voc/lib/libvoc-OC.a \
 		$(SDL2Opts) -lSDL2_image && \
-		&& mv $(PROG) ..
+		mv $(PROG) ..
 
 $(PROG).sym: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
 		Editor.sym Term.sym Graph.sym SDL2.sym
