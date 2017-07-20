@@ -335,7 +335,7 @@ BEGIN
   G.SetSizeStep(charW, charH);
   screen := G.Init();
   IF screen # NIL THEN
-    G.SetWindowTitle('FreeOberon');
+    G.SetWindowTitle('Free Oberon');
     G.ShowMouse(FALSE);
     charsX := screen.w DIV charW;
     charsY := screen.h DIV charH;
