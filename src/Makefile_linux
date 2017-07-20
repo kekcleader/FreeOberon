@@ -67,7 +67,10 @@ pack: clean prepare
 	$(eval TMPDIR := $(shell mktemp -d /tmp/FreeOberon_XXXXXX))
 	mkdir -p $(TMPDIR)/FreeOberon
 	cp -r ../* $(TMPDIR)/FreeOberon
-	rm -rf $(TMPDIR)/FreeOberon/data/bin/mingw32
+	rm -rf $(TMPDIR)/FreeOberon/data/bin/mingw32 \
+		$(TMPDIR)/FreeOberon/data/bin/voc/bin \
+		$(TMPDIR)/FreeOberon/data/bin/voc/C \
+		$(TMPDIR)/FreeOberon/data/bin/voc/lib
 	tar czf ../../FreeOberon_v0.1.0.tar.gz -C $(TMPDIR) FreeOberon
 	rm -rf $(TMPDIR)
 
