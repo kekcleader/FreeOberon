@@ -372,7 +372,7 @@ s3:
 
 
 
-O2library: runtime v4 ooc2 ooc ulm pow32 misc s3
+O2library: runtime
 
 OClibrary: runtime
 
@@ -399,17 +399,4 @@ sourcechanges:
 RUNTEST = COMPILER=$(COMPILER) OBECOMP="$(OBECOMP) -O$(MODEL)" FLAVOUR=$(FLAVOUR) BRANCH=$(BRANCH) sh ./test.sh "$(ROOTDIR)/install"
 
 confidence:
-	@printf '\n\n--- Confidence tests ---\n\n'
-	cd src/test/confidence/hello;           $(RUNTEST)
-	cd src/test/confidence/out;             $(RUNTEST)
-	cd src/test/confidence/in;              $(RUNTEST)
-	cd src/test/confidence/math;            $(RUNTEST)
-	cd src/test/confidence/intsyntax;       $(RUNTEST)
-	cd src/test/confidence/language;        $(RUNTEST)
-	cd src/test/confidence/arrayassignment; $(RUNTEST)
-	cd src/test/confidence/texts;           $(RUNTEST)
-	cd src/test/confidence/library;         $(RUNTEST)
-	cd src/test/confidence/isptest;         $(RUNTEST)
-	cd src/test/confidence/lola;            $(RUNTEST)
-	if [ "$(PLATFORM)" != "windows" ] ; then cd src/test/confidence/signal; $(RUNTEST); fi
-	@printf '\n\n--- Confidence tests passed ---\n\n'
+	@printf '\n\n--- Skipping confidence tests ---\n\n'

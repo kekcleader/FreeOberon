@@ -2,13 +2,13 @@
 
 # Free Oberon
 * Version 0.1.0
-* Riga, July 19, 2017
+* Riga, July 20, 2017
 * Website: [freeoberon.su](http://freeoberon.su)
 
 # Installation
 
 ## 1.1. Installation under OS GNU/Linux.
-1. Download Free Oberon source code from this repo or from [freeoberon.su](http://freeoberon.su). The archive with the version for Windows OS is suitable, because it also contains the source codes. Unzip the archive to your home directory or to another location on the disk.
+1. Download Free Oberon source code from [freeoberon.su](http://freeoberon.su) in tar.gz format or from the GitHub repo. Note that the archive with the version for Windows is also suitable, because it contains the source code. Extract the archive to your home directory or to another location on the disk. (This tutorial will assume the files are extracted to the home directory.)
 2. Using the terminal or in any other way, install the following software packages on your system:
   * libsdl2-dev
   * libsdl2-image-dev
@@ -17,54 +17,60 @@
   * make
   * git (optionally)
 
-  The names of the packages are given in accordance with their name in the Debian GNU/Linux operating system. They are suitable for users of Ubuntu, Linux Mint, Raspbian and some other distributions.
+  The names of the packages are given in accordance with their name in the Debian GNU/Linux operating system. They are suitable for users of Ubuntu, Linux Mint, Raspbian and other distributions.
   To install them, run the following command:
   ```
   apt-get install -y libsdl2-dev libsdl2-image-dev binutils gcc make git
   ```
-  (This command must be executed with superuser privileges, that is, you must first run su and enter the password.)
+  (This command must be executed with superuser privileges, that is, you must first run `su` and enter the password.)
   On OS Fedora, Red Hat, CentOS and others, the command and package names will differ:
   ```
   sudo yum install SDL2-devel SDL2_image-devel binutils gcc make git    (not tested!)
   ```
 3. Using the terminal, enter the following directory:
   ```
-  cd FreeOberon/data/bin/voc
+  cd ~/FreeOberon/data/bin/voc/src
   ```
-  Here is a modified version of the VOC compiler.
-4. Run the Vishap Oberon Compiler compilation:
+  where a modified version of Vishap Oberon Compiler is located.
+4. Compile Vishap Oberon Compiler:
   ```
   make full
   ```
-5. If the compilation was successful, get the superuser's rights (by the command `su` or by assigning `sudo`), and then run:
-  M ake install
-  The VOC compiler files will be installed in `/opt/voc`.
-6. Open the file `~/.bashrc` and add the following line to the end:
+5. If the compilation was successful, get the superuser's rights (by typing `su` or by prepending the following command with `sudo`), and run:
+  ```
+  make install
+  ```
+  VOC files will be installed in `/opt/voc`.
+6. Open file `~/.bashrc` and append the following line to the end:
   ```
   export PATH="/opt/voc/bin:$PATH"
   ```
-  This is necessary so that you can run "voc" from the command line (and that Free Oberon can do it).
+  This is necessary so that you can run `voc` from the command line (and so that Free Oberon could do it).
 7. In the terminal, go to the `FreeOberon/src` directory:
   ```
-  cd FreeOberon/src
+  cd ~/FreeOberon/src
   ```
 8. Compile Free Oberon:
   ```
   make -f Makefile_linux
   ```
-9. (optional) Add the line `~/.bashrc` to the end of the file:
+9. Run the following command to copy Graph and SDL2 modules to VOC:
   ```
-  alias fo='cd ~/FreeOberon;./ FreeOberon'
+  make -f Makefile_linux install
   ```
-  So that Free Oberon can be run with the `fo` command.
+10. (optional) Add this line to the end of file `~/.bashrc`:
+  ```
+  alias fo='cd ~/FreeOberon;./FreeOberon'
+  ```
+  so that Free Oberon could be executed with the `fo` command.
+
 ## 1.2. Installation under Windows.
-1. Download the ZIP-archive containing the version of Free Oberon for Windows, from the site freeoberon.su and unpack it somewhere on the disk.
-2. (optional) Create a shortcut "Free Oberon" on the desktop, which points to `FreeOberon.exe`.
-3. Run the FreeOberon.exe file (by shortcut or directly).
 
-Note. If you want to compile a version of Free Oberon under Windows from the source code yourself, refer to Appendix A of the documentation on [freeoberon.su](http://freeoberon.su).
+Download the setup porgram in EXE format from [freeoberon.su](http://freeoberon.su), run it and follow the instructions.
 
-Note. On GNU/Linux it may be required to run `chmod +x data/bin/compile.sh`.
+Alternatively, you can download a ZIP-archive, extract it to any place on disk and create a desktop shortcut.
+
+Note. If you want to recompile a version of Free Oberon under Windows from the source code yourself, refer to Appendix A of the Free Oberon documentation on [freeoberon.su](http://freeoberon.su).
 
 # Usage
 
