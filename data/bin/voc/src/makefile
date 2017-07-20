@@ -66,15 +66,15 @@
 
 
 
-# Default make target - explain usage
+all: cleanall full install
+
 usage:
 	@echo ""
 	@echo Usage:
 	@echo ""
-	@echo "  make full"
+	@echo "  make"
 	@echo ""
-	@echo "      Does a full, clean build, and runs confidence tests."
-	@echo "      An installation directory image is left in the local repository install directory."
+	@echo "      Does a full, clean build, and copies the resulting files to .."
 	@echo ""
 	@echo "Targets for building and installation:"
 	@echo "  make clean         - Clean out the build directory"
@@ -128,6 +128,9 @@ reportsizes: FORCE
 # clean - clean out the bulid directory
 clean: configuration
 	@make -f src/tools/make/oberon.mk -s clean
+
+cleanall: configuration
+	@make -f src/tools/make/oberon.mk -s cleanall
 
 
 
@@ -226,7 +229,7 @@ makeinstalldir:
 
 # install: Copy built files to install directory
 install: configuration
-	@make -f src/tools/make/oberon.mk -s install
+	./move_files.sh
 
 uninstall: configuration
 	@make -f src/tools/make/oberon.mk -s uninstall

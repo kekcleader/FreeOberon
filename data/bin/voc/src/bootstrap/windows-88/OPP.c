@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2017/06/21]. Bootstrapping compiler for address size 8, alignment 8. xtspaSF */
+/* voc 2.1.0 [2017/07/20]. Bootstrapping compiler for address size 8, alignment 8. xtspaSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -669,7 +669,7 @@ static void OPP_StandProcCall (OPT_Node *x)
 	} else {
 		OPP_err(30);
 	}
-	if ((OPP_level > 0 && (m == 1 || m == 30))) {
+	if ((OPP_level > 0 && (m == 1 || m == 31))) {
 		OPT_topScope->link->leaf = 0;
 	}
 }
@@ -1501,7 +1501,7 @@ static void OPP_StatSeq (OPT_Node *stat)
 				OPP_CheckSym(27);
 				OPP_StatSeq(&s);
 				y = OPB_NewLeaf(id);
-				OPB_StPar1(&y, z, 13);
+				OPB_StPar1(&y, z, 14);
 				SetPos__35(y);
 				if (s == NIL) {
 					s = y;

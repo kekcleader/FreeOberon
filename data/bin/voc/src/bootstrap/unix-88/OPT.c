@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2017/06/21]. Bootstrapping compiler for address size 8, alignment 8. xtspaSF */
+/* voc 2.1.0 [2017/07/20]. Bootstrapping compiler for address size 8, alignment 8. xtspaSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -2098,18 +2098,18 @@ export void *OPT__init(void)
 	OPT_EnterTyp((CHAR*)"INT64", 4, 8, &OPT_int64typ);
 	OPT_EnterTyp((CHAR*)"SET32", 7, 4, &OPT_set32typ);
 	OPT_EnterTyp((CHAR*)"SET64", 7, 8, &OPT_set64typ);
-	OPT_EnterProc((CHAR*)"ADR", 20);
-	OPT_EnterProc((CHAR*)"CC", 21);
-	OPT_EnterProc((CHAR*)"LSH", 22);
-	OPT_EnterProc((CHAR*)"ROT", 23);
-	OPT_EnterProc((CHAR*)"GET", 24);
-	OPT_EnterProc((CHAR*)"PUT", 25);
-	OPT_EnterProc((CHAR*)"GETREG", 26);
-	OPT_EnterProc((CHAR*)"PUTREG", 27);
-	OPT_EnterProc((CHAR*)"BIT", 28);
-	OPT_EnterProc((CHAR*)"VAL", 29);
-	OPT_EnterProc((CHAR*)"NEW", 30);
-	OPT_EnterProc((CHAR*)"MOVE", 31);
+	OPT_EnterProc((CHAR*)"ADR", 21);
+	OPT_EnterProc((CHAR*)"CC", 22);
+	OPT_EnterProc((CHAR*)"LSH", 23);
+	OPT_EnterProc((CHAR*)"ROT", 24);
+	OPT_EnterProc((CHAR*)"GET", 25);
+	OPT_EnterProc((CHAR*)"PUT", 26);
+	OPT_EnterProc((CHAR*)"GETREG", 27);
+	OPT_EnterProc((CHAR*)"PUTREG", 28);
+	OPT_EnterProc((CHAR*)"BIT", 29);
+	OPT_EnterProc((CHAR*)"VAL", 30);
+	OPT_EnterProc((CHAR*)"NEW", 31);
+	OPT_EnterProc((CHAR*)"MOVE", 32);
 	OPT_syslink = OPT_topScope->right;
 	OPT_universe = OPT_topScope;
 	OPT_topScope->right = NIL;
@@ -2131,21 +2131,22 @@ export void *OPT__init(void)
 	OPT_EnterProc((CHAR*)"CAP", 3);
 	OPT_EnterProc((CHAR*)"ORD", 4);
 	OPT_EnterProc((CHAR*)"ENTIER", 5);
+	OPT_EnterProc((CHAR*)"FLOOR", 12);
 	OPT_EnterProc((CHAR*)"ODD", 6);
 	OPT_EnterProc((CHAR*)"MIN", 7);
 	OPT_EnterProc((CHAR*)"MAX", 8);
 	OPT_EnterProc((CHAR*)"CHR", 9);
 	OPT_EnterProc((CHAR*)"SHORT", 10);
 	OPT_EnterProc((CHAR*)"LONG", 11);
-	OPT_EnterProc((CHAR*)"SIZE", 12);
-	OPT_EnterProc((CHAR*)"INC", 13);
-	OPT_EnterProc((CHAR*)"DEC", 14);
-	OPT_EnterProc((CHAR*)"INCL", 15);
-	OPT_EnterProc((CHAR*)"EXCL", 16);
-	OPT_EnterProc((CHAR*)"LEN", 17);
-	OPT_EnterProc((CHAR*)"COPY", 18);
-	OPT_EnterProc((CHAR*)"ASH", 19);
-	OPT_EnterProc((CHAR*)"ASSERT", 32);
+	OPT_EnterProc((CHAR*)"SIZE", 13);
+	OPT_EnterProc((CHAR*)"INC", 14);
+	OPT_EnterProc((CHAR*)"DEC", 15);
+	OPT_EnterProc((CHAR*)"INCL", 16);
+	OPT_EnterProc((CHAR*)"EXCL", 17);
+	OPT_EnterProc((CHAR*)"LEN", 18);
+	OPT_EnterProc((CHAR*)"COPY", 19);
+	OPT_EnterProc((CHAR*)"ASH", 20);
+	OPT_EnterProc((CHAR*)"ASSERT", 33);
 	OPT_impCtxt.ref[0] = OPT_undftyp;
 	OPT_impCtxt.ref[1] = OPT_bytetyp;
 	OPT_impCtxt.ref[2] = OPT_booltyp;

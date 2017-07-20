@@ -32,9 +32,11 @@ usage:
 
 
 clean:
-	@printf '\n\n--- Cleaning branch $(BRANCH) $(OS) $(COMPILER) $(DATAMODEL) ---\n\n'
 	rm -rf $(BUILDDIR) $(ROOTDIR)/install
 	rm -f $(OBECOMP)
+
+cleanall: clean
+	rm -rf $(ROOTDIR)/../bin $(ROOTDIR)/../lib $(ROOTDIR)/../C
 
 
 
@@ -372,6 +374,7 @@ s3:
 
 
 
+#O2library: runtime v4 ooc2 ooc ulm pow32 misc s3
 O2library: runtime
 
 OClibrary: runtime
@@ -399,4 +402,4 @@ sourcechanges:
 RUNTEST = COMPILER=$(COMPILER) OBECOMP="$(OBECOMP) -O$(MODEL)" FLAVOUR=$(FLAVOUR) BRANCH=$(BRANCH) sh ./test.sh "$(ROOTDIR)/install"
 
 confidence:
-	@printf '\n\n--- Skipping confidence tests ---\n\n'
+

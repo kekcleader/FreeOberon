@@ -4,16 +4,18 @@
 # FreeOberon executable is located.
 # This particular script is for graphical programs.
 cd bin
-voc -OC -cfFm ../Programs/$1
+VOCDIR=../data/bin/voc
+VOC=$VOCDIR/bin/voc
+CC=gcc
+$VOC -OC -cfFm ../Programs/$1
 retcode=$?
 if [ "$retcode" -eq "0" ]; then
-  thename="${1%.*}"
-  OBJPATH=../src
+  THENAME="${1%.*}"
   SDL2Opts=`sdl2-config --cflags --libs`
-  gcc -fPIC -g -I "/opt/voc/C/include" \
-    -o $thename $thename.o \
-    "$OBJPATH/Graph.o" "$OBJPATH/SDL2.o" \
-    -L"/opt/voc/lib" -lvoc-OC \
+  $CC -fPIC -g -I $VOCDIR/C/include \
+    -o $THENAME $THENAME.o \
+    $VOCDIR/lib/Graph.o $VOCDIR/lib/SDL2.o \
+    $VOCDIR/lib/libvoc-OC.a \
     $SDL2Opts -lSDL2_image
 fi
 cd ..

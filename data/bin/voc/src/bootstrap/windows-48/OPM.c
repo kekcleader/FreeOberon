@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2017/06/21]. Bootstrapping compiler for address size 8, alignment 8. xtspaSF */
+/* voc 2.1.0 [2017/07/20]. Bootstrapping compiler for address size 8, alignment 8. xtspaSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -1050,53 +1050,27 @@ static BOOLEAN OPM_IsProbablyInstallDir (CHAR *s, ADDRESS s__len)
 {
 	CHAR testpath[4096];
 	Platform_FileIdentity identity;
+	BOOLEAN result;
 	__DUP(s, s__len, CHAR);
 	__COPY(OPM_InstallDir, testpath, 4096);
-	Strings_Append((CHAR*)"/lib/lib", 9, (void*)testpath, 4096);
-	Strings_Append((CHAR*)"voc", 4, (void*)testpath, 4096);
-	Strings_Append((CHAR*)"-O2.a", 6, (void*)testpath, 4096);
-	if (Platform_IdentifyByName(testpath, 4096, &identity, Platform_FileIdentity__typ) != 0) {
-		__DEL(s);
-		return 0;
-	}
-	__COPY(OPM_InstallDir, testpath, 4096);
-	Strings_Append((CHAR*)"/2/include/Oberon.h", 20, (void*)testpath, 4096);
-	if (Platform_IdentifyByName(testpath, 4096, &identity, Platform_FileIdentity__typ) != 0) {
-		__DEL(s);
-		return 0;
-	}
-	__COPY(OPM_InstallDir, testpath, 4096);
-	Strings_Append((CHAR*)"/2/sym/Files.sym", 17, (void*)testpath, 4096);
-	if (Platform_IdentifyByName(testpath, 4096, &identity, Platform_FileIdentity__typ) != 0) {
-		__DEL(s);
-		return 0;
+	Strings_Append((CHAR*)"/voc.exe", 9, (void*)testpath, 4096);
+	result = Platform_IdentifyByName(testpath, 4096, &identity, Platform_FileIdentity__typ) != 0;
+	if (!result) {
+		__COPY(OPM_InstallDir, testpath, 4096);
+		Strings_Append((CHAR*)"/voc", 5, (void*)testpath, 4096);
+		result = Platform_IdentifyByName(testpath, 4096, &identity, Platform_FileIdentity__typ) != 0;
 	}
 	__DEL(s);
-	return 1;
+	return result;
 }
 
 static void OPM_FindInstallDir (void)
 {
-	INT16 i;
 	__COPY(Modules_BinaryDir, OPM_InstallDir, 1024);
-	Strings_Append((CHAR*)"/", 2, (void*)OPM_InstallDir, 1024);
-	Strings_Append((CHAR*)"voc", 4, (void*)OPM_InstallDir, 1024);
-	Strings_Append((CHAR*)".d", 3, (void*)OPM_InstallDir, 1024);
-	if (OPM_IsProbablyInstallDir(OPM_InstallDir, 1024)) {
-		return;
+	if (!OPM_IsProbablyInstallDir(OPM_InstallDir, 1024)) {
+		__COPY("../data/bin/voc", OPM_InstallDir, 1024);
 	}
-	__COPY(Modules_BinaryDir, OPM_InstallDir, 1024);
-	i = Strings_Length(OPM_InstallDir, 1024);
-	while ((i > 0 && OPM_InstallDir[__X(i - 1, 1024)] != '/')) {
-		i -= 1;
-	}
-	if ((i > 0 && OPM_InstallDir[__X(i - 1, 1024)] == '/')) {
-		OPM_InstallDir[__X(i - 1, 1024)] = 0x00;
-		if (OPM_IsProbablyInstallDir(OPM_InstallDir, 1024)) {
-			return;
-		}
-	}
-	__COPY("", OPM_InstallDir, 1024);
+	__COPY("../data/bin/voc", OPM_InstallDir, 1024);
 }
 
 static void EnumPtrs(void (*P)(void*))

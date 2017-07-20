@@ -4,14 +4,17 @@
 # FreeOberon executable is located.
 # This particular script is for console programs.
 cd bin
-voc -OC -cfFm ../Programs/$1
+VOCDIR=../data/bin/voc
+VOC=$VOCDIR/bin/voc
+CC=gcc
+$VOC -OC -cfFm ../Programs/$1
 retcode=$?
 if [ "$retcode" -eq "0" ]; then
-  thename="${1%.*}"
-  OBJPATH=../src
-  gcc -fPIC -g -I "/opt/voc/C/include" \
-    -o $thename $thename.o \
-    -L"/opt/voc/lib" -lvoc-OC
+  THENAME="${1%.*}"
+  $CC -fPIC -g -I $VOCDIR/C/include \
+    -o $THENAME $THENAME.o \
+    $VOCDIR/lib/Graph.o $VOCDIR/lib/SDL2.o \
+    $VOCDIR/lib/libvoc-OC.a
 fi
 cd ..
 exit $retcode

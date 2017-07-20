@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2017/06/21]. Bootstrapping compiler for address size 8, alignment 8. xtspaSF */
+/* voc 2.1.0 [2017/07/20]. Bootstrapping compiler for address size 8, alignment 8. xtspaSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -1738,6 +1738,16 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 			}
 			x->typ = OPT_linttyp;
 			break;
+		case 12: 
+			if (x->class == 8 || x->class == 9) {
+				OPB_err(126);
+			} else if (__IN(f, 0x60, 32)) {
+				OPB_Convert(&x, OPT_inttyp);
+			} else {
+				OPB_err(111);
+			}
+			x->typ = OPT_inttyp;
+			break;
 		case 6: 
 			OPB_MOp(23, &x);
 			break;
@@ -1847,7 +1857,7 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 				OPB_err(111);
 			}
 			break;
-		case 13: case 14: 
+		case 14: case 15: 
 			if (OPB_NotVar(x)) {
 				OPB_err(112);
 			} else if (f != 4) {
@@ -1856,7 +1866,7 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 				OPB_err(76);
 			}
 			break;
-		case 15: case 16: 
+		case 16: case 17: 
 			if (OPB_NotVar(x)) {
 				OPB_err(112);
 			} else if (x->typ->form != 7) {
@@ -1866,12 +1876,12 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 				OPB_err(76);
 			}
 			break;
-		case 17: 
+		case 18: 
 			if (!__IN(x->typ->comp, 0x0c, 32)) {
 				OPB_err(131);
 			}
 			break;
-		case 18: 
+		case 19: 
 			if ((x->class == 7 && f == 3)) {
 				OPB_CharToString(x);
 				f = 8;
@@ -1882,7 +1892,7 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 				OPB_err(111);
 			}
 			break;
-		case 19: 
+		case 20: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 			} else if (f == 4) {
@@ -1894,11 +1904,11 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 				x->typ = OPT_linttyp;
 			}
 			break;
-		case 20: 
+		case 21: 
 			OPB_CheckLeaf(x, 0);
 			OPB_MOp(24, &x);
 			break;
-		case 12: 
+		case 13: 
 			if (x->class != 8) {
 				OPB_err(110);
 				x = OPB_NewIntConst(1);
@@ -1911,17 +1921,17 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 				x = OPB_NewIntConst(1);
 			}
 			break;
-		case 21: 
+		case 22: 
 			OPB_MOp(25, &x);
 			break;
-		case 22: case 23: 
+		case 23: case 24: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 			} else if (!__IN(f, 0x9a, 32)) {
 				OPB_err(111);
 			}
 			break;
-		case 24: case 25: case 28: case 31: 
+		case 25: case 26: case 29: case 32: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 			} else if ((((x->class == 7 && f == 4)) && x->typ->size < OPT_adrtyp->size)) {
@@ -1931,7 +1941,7 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 				x->typ = OPT_adrtyp;
 			}
 			break;
-		case 26: case 27: 
+		case 27: case 28: 
 			if ((f == 4 && x->class == 7)) {
 				if (x->conval->intval < 0 || x->conval->intval > -1) {
 					OPB_err(220);
@@ -1940,14 +1950,14 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 				OPB_err(69);
 			}
 			break;
-		case 29: 
+		case 30: 
 			if (x->class != 8) {
 				OPB_err(110);
 			} else if (__IN(f, 0x0501, 32) || x->typ->comp == 3) {
 				OPB_err(111);
 			}
 			break;
-		case 30: 
+		case 31: 
 			if (OPB_NotVar(x)) {
 				OPB_err(112);
 			} else if (f == 11) {
@@ -1955,7 +1965,7 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 				OPB_err(111);
 			}
 			break;
-		case 32: 
+		case 33: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 				x = OPB_NewBoolConst(0);
@@ -2002,7 +2012,7 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 	p = *par0;
 	f = x->typ->form;
 	switch (fctno) {
-		case 13: case 14: 
+		case 14: case 15: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 				p->typ = OPT_notyp;
@@ -2018,7 +2028,7 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 				p->typ = OPT_notyp;
 			}
 			break;
-		case 15: case 16: 
+		case 16: case 17: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 			} else if (f == 4) {
@@ -2031,7 +2041,7 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 			}
 			p->typ = OPT_notyp;
 			break;
-		case 17: 
+		case 18: 
 			if (!(f == 4) || x->class != 7) {
 				OPB_err(69);
 			} else if (x->typ->size == 1) {
@@ -2062,7 +2072,7 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 				OPB_err(132);
 			}
 			break;
-		case 18: 
+		case 19: 
 			if (OPB_NotVar(x)) {
 				OPB_err(112);
 			} else if ((__IN(x->typ->comp, 0x0c, 32) && x->typ->BaseTyp->form == 3)) {
@@ -2072,13 +2082,13 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 				t = x;
 				x = p;
 				p = t;
-				p = NewOp__54(19, 18, p, x);
+				p = NewOp__54(19, 19, p, x);
 			} else {
 				OPB_err(111);
 			}
 			p->typ = OPT_notyp;
 			break;
-		case 19: 
+		case 20: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 			} else if (f == 4) {
@@ -2122,13 +2132,13 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 				OPB_err(64);
 			}
 			break;
-		case 22: case 23: 
+		case 23: case 24: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 			} else if (f != 4) {
 				OPB_err(111);
 			} else {
-				if (fctno == 22) {
+				if (fctno == 23) {
 					p = NewOp__54(12, 27, p, x);
 				} else {
 					p = NewOp__54(12, 28, p, x);
@@ -2136,11 +2146,11 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 				p->typ = p->left->typ;
 			}
 			break;
-		case 24: case 25: case 26: case 27: 
+		case 25: case 26: case 27: case 28: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 			} else if (__IN(f, 0x18ff, 32)) {
-				if (fctno == 24 || fctno == 26) {
+				if (fctno == 25 || fctno == 27) {
 					if (OPB_NotVar(x)) {
 						OPB_err(112);
 					}
@@ -2154,7 +2164,7 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 			}
 			p->typ = OPT_notyp;
 			break;
-		case 28: 
+		case 29: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 			} else if (f == 4) {
@@ -2164,7 +2174,7 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 			}
 			p->typ = OPT_booltyp;
 			break;
-		case 29: 
+		case 30: 
 			if (((x->class == 8 || x->class == 9) || __IN(f, 0x0501, 32)) || x->typ->comp == 3) {
 				OPB_err(126);
 			}
@@ -2184,17 +2194,17 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 			}
 			p = x;
 			break;
-		case 30: 
+		case 31: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 			} else if (f == 4) {
-				p = NewOp__54(19, 30, p, x);
+				p = NewOp__54(19, 31, p, x);
 			} else {
 				OPB_err(111);
 			}
 			p->typ = OPT_notyp;
 			break;
-		case 31: 
+		case 32: 
 			if (x->class == 8 || x->class == 9) {
 				OPB_err(126);
 			} else if ((((x->class == 7 && f == 4)) && x->typ->size < OPT_adrtyp->size)) {
@@ -2205,7 +2215,7 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 			}
 			p->link = x;
 			break;
-		case 32: 
+		case 33: 
 			if ((f == 4 && x->class == 7)) {
 				if ((0 <= x->conval->intval && x->conval->intval <= 255)) {
 					OPB_BindNodes(28, OPT_notyp, &x, x);
@@ -2220,7 +2230,7 @@ void OPB_StPar1 (OPT_Node *par0, OPT_Node x, INT8 fctno)
 					} else if (p->class == 28) {
 						OPB_err(99);
 					} else {
-						p->subcl = 32;
+						p->subcl = 33;
 					}
 				} else {
 					OPB_err(218);
@@ -2262,12 +2272,12 @@ void OPB_StParN (OPT_Node *par0, OPT_Node x, INT16 fctno, INT16 n)
 		} else {
 			OPB_err(111);
 		}
-	} else if ((fctno == 31 && n == 2)) {
+	} else if ((fctno == 32 && n == 2)) {
 		if (x->class == 8 || x->class == 9) {
 			OPB_err(126);
 		} else if (f == 4) {
 			node = OPT_NewNode(19);
-			node->subcl = 31;
+			node->subcl = 32;
 			node->right = p;
 			node->left = p->link;
 			p->link = x;
@@ -2287,22 +2297,22 @@ void OPB_StFct (OPT_Node *par0, INT8 fctno, INT16 parno)
 	INT16 dim;
 	OPT_Node x = NIL, p = NIL;
 	p = *par0;
-	if (fctno <= 19) {
+	if (fctno <= 20) {
 		if ((fctno == 1 && p->typ != OPT_notyp)) {
 			if (p->typ->comp == 3) {
 				OPB_err(65);
 			}
 			p->typ = OPT_notyp;
-		} else if (fctno <= 12) {
+		} else if (fctno <= 13) {
 			if (parno < 1) {
 				OPB_err(65);
 			}
 		} else {
-			if (((fctno == 13 || fctno == 14) && parno == 1)) {
+			if (((fctno == 14 || fctno == 15) && parno == 1)) {
 				OPB_BindNodes(19, OPT_notyp, &p, OPB_NewIntConst(1));
 				p->subcl = fctno;
 				p->right->typ = p->left->typ;
-			} else if ((fctno == 17 && parno == 1)) {
+			} else if ((fctno == 18 && parno == 1)) {
 				if (p->typ->comp == 3) {
 					dim = 0;
 					while (p->class == 4) {
@@ -2318,7 +2328,7 @@ void OPB_StFct (OPT_Node *par0, INT8 fctno, INT16 parno)
 				OPB_err(65);
 			}
 		}
-	} else if (fctno == 32) {
+	} else if (fctno == 33) {
 		if (parno == 1) {
 			x = NIL;
 			OPB_BindNodes(28, OPT_notyp, &x, OPB_NewIntConst(0));
@@ -2333,13 +2343,13 @@ void OPB_StFct (OPT_Node *par0, INT8 fctno, INT16 parno)
 			} else if (p->class == 28) {
 				OPB_err(99);
 			} else {
-				p->subcl = 32;
+				p->subcl = 33;
 			}
 		} else if (parno < 1) {
 			OPB_err(65);
 		}
 	} else {
-		if ((parno < 1 || (fctno > 21 && parno < 2)) || (fctno == 31 && parno < 3)) {
+		if ((parno < 1 || (fctno > 22 && parno < 2)) || (fctno == 32 && parno < 3)) {
 			OPB_err(65);
 		}
 	}

@@ -7,4 +7,4 @@ mv install/lib/libvoc-OC.a ../lib
 mv install/lib/libvoc-OC.so ../lib
 rm -rf install
 rm -rf build/*
-rm voc.exe
+rm -f voc.exe

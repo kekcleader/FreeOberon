@@ -1,49 +1,51 @@
 PROG=FreeOberon
 OS=win32
+VOC=../data/bin/voc/bin/voc
+CC=gcc
 SDL2Opts=-w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2
 
-all: $(PROG)
+all: voc $(PROG) install
 
 $(PROG): $(PROG).sym
-	gcc -fPIC -g -I "..\data\bin\voc\C\include" \
-	-o $(PROG).exe $(PROG).o Graph.o SDL2.o \
-	OV.o Editor.o Term.o Terminal.o \
-	EditorText.o Config.o term/term.o \
-	resources.o \
-	-L"..\data\bin\voc\lib" -lvoc-OC \
-	$(SDL2Opts) -lSDL2_image && \
-	mv $(PROG).exe ..
+	$(CC) -fPIC -g -I "../data/bin/voc/C/include" \
+		-o $(PROG).exe $(PROG).o Graph.o SDL2.o \
+		OV.o Editor.o Term.o Terminal.o \
+		EditorText.o Config.o term/term.o \
+		resources.o \
+		../data/bin/voc/lib/libvoc-OC.a \
+		$(SDL2Opts) -lSDL2_image && \
+		mv $(PROG).exe ..
 
 $(PROG).sym: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
 		Editor.sym Term.sym Graph.sym SDL2.sym resources.o
-	voc -OC -cesF -m $(PROG).Mod
+	$(VOC) -OC -cesF -m $(PROG).Mod
 
 OV.sym: OV.Mod Terminal.sym Graph.sym
-	voc -OC -cesF OV.Mod
+	$(VOC) -OC -cesF OV.Mod
 
 Editor.sym: Editor.Mod Terminal.sym EditorText.sym OV.sym Graph.sym
-	voc -OC -cesF Editor.Mod
+	$(VOC) -OC -cesF Editor.Mod
 
 Term.sym: Term.Mod term/term.o
-	voc -OC -cesF Term.Mod
+	$(VOC) -OC -cesF Term.Mod
 
 Terminal.sym: Terminal.Mod Graph.sym
-	voc -OC -cesF Terminal.Mod
+	$(VOC) -OC -cesF Terminal.Mod
 
 EditorText.sym: EditorText.Mod Config.sym
-	voc -OC -cesF EditorText.Mod
+	$(VOC) -OC -cesF EditorText.Mod
 
 Config.sym: Config_$(OS).Mod
-	voc -OC -cesF Config_$(OS).Mod
+	$(VOC) -OC -cesF Config_$(OS).Mod
 
 term/term.o: term/term_$(OS).c
 	gcc -c term/term_$(OS).c -o term/term.o
 
 Graph.sym: Graph.Mod SDL2.sym
-	voc -OC -cesF Graph.Mod
+	$(VOC) -OC -cesF Graph.Mod
 
 SDL2.sym: SDL2.Mod
-	voc -OC -cesF SDL2.Mod
+	$(VOC) -OC -cesF SDL2.Mod
 
 resources.o: resources.rc
 	windres resources.rc resources.o
@@ -52,9 +54,14 @@ resources.o: resources.rc
 
 clean:
 	rm -f *.c *.h *.o *.sym term/term.o .tmp..* ../Programs/.tmp..*
+	make -C ../data/bin/voc/src clean
 
 cleanall: clean
 	rm -f ../$(PROG).exe ../bin/*
+	make -C ../data/bin/voc/src cleanall
+
+voc:
+	make -C ../data/bin/voc/src
 
 install:
 	cp Graph.sym SDL2.sym ../data/bin/voc/C/sym

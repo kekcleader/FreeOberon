@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2017/06/21]. Bootstrapping compiler for address size 8, alignment 8. xtspaSF */
+/* voc 2.1.0 [2017/07/20]. Bootstrapping compiler for address size 8, alignment 8. xtspaSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -29,6 +29,7 @@ static void OPV_CaseStat (OPT_Node n, OPT_Object outerProc);
 static void OPV_Convert (OPT_Node n, OPT_Struct newtype, INT16 prec);
 static void OPV_DefineTDescs (OPT_Node n);
 static void OPV_Entier (OPT_Node n, INT16 prec);
+static void OPV_Floor (OPT_Node n, INT16 prec);
 static void OPV_GetTProcNum (OPT_Object obj);
 static void OPV_IfStat (OPT_Node n, BOOLEAN withtrap, OPT_Object outerProc);
 static BOOLEAN OPV_ImplicitReturn (OPT_Node n);
@@ -352,6 +353,17 @@ static void OPV_Entier (OPT_Node n, INT16 prec)
 	}
 }
 
+static void OPV_Floor (OPT_Node n, INT16 prec)
+{
+	if (__IN(n->typ->form, 0x60, 32)) {
+		OPM_WriteString((CHAR*)"__FLOOR(", 9);
+		OPV_expr(n, -1);
+		OPM_Write(')');
+	} else {
+		OPV_expr(n, prec);
+	}
+}
+
 static void OPV_SizeCast (OPT_Node n, INT32 to)
 {
 	if ((to < n->typ->size && __IN(2, OPM_Options, 32))) {
@@ -455,7 +467,7 @@ static void OPV_design (OPT_Node n, INT16 prec)
 	OPT_Struct typ = NIL;
 	INT16 class, designPrec, comp;
 	OPT_Node d = NIL, x = NIL;
-	INT16 dims, i, _for__26;
+	INT16 dims, i, _for__27;
 	comp = n->typ->comp;
 	obj = n->obj;
 	class = n->class;
@@ -531,9 +543,9 @@ static void OPV_design (OPT_Node n, INT16 prec)
 					}
 					x = x->left;
 				}
-				_for__26 = dims;
+				_for__27 = dims;
 				i = 1;
-				while (i <= _for__26) {
+				while (i <= _for__27) {
 					OPM_Write(')');
 					i += 1;
 				}
@@ -1342,21 +1354,21 @@ static void OPV_stat (OPT_Node n, OPT_Object outerProc)
 							OPV_NewArr(n->left, n->right);
 						}
 						break;
-					case 13: case 14: 
+					case 14: case 15: 
 						OPV_expr(n->left, -1);
-						OPC_Increment(n->subcl == 14);
+						OPC_Increment(n->subcl == 15);
 						OPV_expr(n->right, -1);
 						break;
-					case 15: case 16: 
+					case 16: case 17: 
 						OPV_expr(n->left, -1);
-						OPC_SetInclude(n->subcl == 16);
+						OPC_SetInclude(n->subcl == 17);
 						OPM_WriteString((CHAR*)"__SETOF(", 9);
 						OPV_expr(n->right, -1);
 						OPM_WriteString((CHAR*)",", 2);
 						OPM_WriteInt(__ASHL(n->left->typ->size, 3));
 						OPM_Write(')');
 						break;
-					case 18: 
+					case 19: 
 						OPM_WriteString((CHAR*)"__COPY(", 8);
 						OPV_expr(n->right, -1);
 						OPM_WriteString((CHAR*)", ", 3);
@@ -1365,7 +1377,7 @@ static void OPV_stat (OPT_Node n, OPT_Object outerProc)
 						OPV_Len(n->left, 0);
 						OPM_Write(')');
 						break;
-					case 31: 
+					case 32: 
 						OPM_WriteString((CHAR*)"__MOVE(", 8);
 						OPV_expr(n->right, -1);
 						OPM_WriteString((CHAR*)", ", 3);
@@ -1374,7 +1386,7 @@ static void OPV_stat (OPT_Node n, OPT_Object outerProc)
 						OPV_expr(n->right->link, -1);
 						OPM_Write(')');
 						break;
-					case 24: 
+					case 25: 
 						OPM_WriteString((CHAR*)"__GET(", 7);
 						OPV_expr(n->right, -1);
 						OPM_WriteString((CHAR*)", ", 3);
@@ -1383,7 +1395,7 @@ static void OPV_stat (OPT_Node n, OPT_Object outerProc)
 						OPC_Ident(n->left->typ->strobj);
 						OPM_Write(')');
 						break;
-					case 25: 
+					case 26: 
 						OPM_WriteString((CHAR*)"__PUT(", 7);
 						OPV_expr(n->left, -1);
 						OPM_WriteString((CHAR*)", ", 3);
@@ -1392,10 +1404,10 @@ static void OPV_stat (OPT_Node n, OPT_Object outerProc)
 						OPC_Ident(n->right->typ->strobj);
 						OPM_Write(')');
 						break;
-					case 26: case 27: 
+					case 27: case 28: 
 						OPM_err(200);
 						break;
-					case 30: 
+					case 31: 
 						OPM_WriteString((CHAR*)"__SYSNEW(", 10);
 						OPV_design(n->left, -1);
 						OPM_WriteString((CHAR*)", ", 3);
@@ -1427,7 +1439,7 @@ static void OPV_stat (OPT_Node n, OPT_Object outerProc)
 				OPV_ActualPar(n->right, n->obj);
 				break;
 			case 20: 
-				if (n->subcl != 32) {
+				if (n->subcl != 33) {
 					OPV_IfStat(n, 0, outerProc);
 				} else if (__IN(7, OPM_Options, 32)) {
 					OPM_WriteString((CHAR*)"__ASSERT(", 10);
