@@ -49,11 +49,12 @@ SDL2.sym: SDL2.Mod
 .PHONY: clean cleanall install pack prepare
 
 clean:
-	rm -f *.c *.h *.o *.sym term/term.o .tmp..* ../Programs/.tmp..*
+	rm -f *.c *.h *.o *.sym term/term.o .tmp..* \
+		../Programs/.tmp..* ../bin/*
 	make -C ../data/bin/voc/src clean
 
 cleanall: clean
-	rm -f ../$(PROG) ../$(PROG).exe ../bin/*
+	rm -f ../$(PROG) ../$(PROG).exe
 	make -C ../data/bin/voc/src cleanall
 
 prepare:

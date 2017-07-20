@@ -53,11 +53,12 @@ resources.o: resources.rc
 .PHONY: clean cleanall install
 
 clean:
-	rm -f *.c *.h *.o *.sym term/term.o .tmp..* ../Programs/.tmp..*
+	rm -f *.c *.h *.o *.sym term/term.o .tmp..* \
+		../Programs/.tmp..* ../bin/*
 	make -C ../data/bin/voc/src clean
 
 cleanall: clean
-	rm -f ../$(PROG).exe ../bin/*
+	rm -f ../$(PROG) ../$(PROG).exe
 	make -C ../data/bin/voc/src cleanall
 
 voc:
