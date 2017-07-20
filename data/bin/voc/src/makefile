@@ -86,7 +86,6 @@ usage:
 	@echo ""
 	@echo "Targets for (re)creating and reverting bootstrap C sources:"
 	@echo "  make bootstrap       - Update bootstrap C source directories."
-	@echo "  make revertbootstrap - Use git checkout to restore bootstrap C source directories"
 
 
 
@@ -98,16 +97,16 @@ configuration: FORCE
 	@$(CC) -I src/runtime -o a.o src/tools/make/configure.c
 	@./a.o
 	@rm a.o
-	@echo BRANCH=$$(git rev-parse --abbrev-ref HEAD)>>Configuration.Make
-	@echo Branch: $$(git rev-parse --abbrev-ref HEAD).
+	@echo BRANCH=>>Configuration.Make
+	@echo Branch: .
 
 
 bootstrapconfiguration: FORCE
 	@$(CC) -I src/runtime -o a.o src/tools/make/configure.c
 	@./a.o bootstrap
 	@rm a.o
-	@echo BRANCH=$$(git rev-parse --abbrev-ref HEAD)>>Configuration.Make
-	@echo Branch: $$(git rev-parse --abbrev-ref HEAD).
+	@echo BRANCH=>>Configuration.Make
+	@echo Branch: .
 
 
 
@@ -147,17 +146,17 @@ full: configuration
 # Use latest compiler to make compiler binary from latest compiler sources
 	@make -f src/tools/make/oberon.mk -s translate MODEL=2
 	@make -f src/tools/make/oberon.mk -s assemble MODEL=2
-	@printf "\n\n--- Compiler build successfull ---\n\n"
+	@printf "\n\n--- Compiler build successful ---\n\n"
 	@make -f src/tools/make/oberon.mk -s browsercmd MODEL=2
 	@printf "\n\n--- Library build started ---\n\n"
 	@make -f src/tools/make/oberon.mk -s library MODEL=2
 	@make -f src/tools/make/oberon.mk -s library MODEL=C
-	@printf "\n\n--- Library build successfull ---\n\n"
+	@printf "\n\n--- Library build successful ---\n\n"
 	@make -f src/tools/make/oberon.mk -s sourcechanges
 	@make -f src/tools/make/oberon.mk -s makeinstalldir
-	@printf "\n\n--- Confidence tests started ---\n\n"
-	@make -f src/tools/make/oberon.mk -s confidence MODEL=2
-	@make -f src/tools/make/oberon.mk -s instructions
+#	@printf "\n\n--- Confidence tests started ---\n\n"
+#	@make -f src/tools/make/oberon.mk -s confidence MODEL=2
+#	@make -f src/tools/make/oberon.mk -s instructions
 
 
 assemble:
@@ -277,11 +276,6 @@ bootstrapunclean: bootstrapconfiguration
 
 
 
-revertbootstrap:
-	@rm -rf bootstrap/*
-	git checkout bootstrap
-
-
 
 
 # --- multi-machine multi-platform build management ---
@@ -311,7 +305,6 @@ auto: configuration
 
 # autoonce: What auto does each time a build is triggered.
 autoonce: configuration
-	git pull
 	@if make -s full; then echo \*\* Succeeded \*\*; else echo \*\* Failed \*\*;fi
 
 

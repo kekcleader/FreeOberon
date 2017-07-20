@@ -4,7 +4,7 @@ VOC=../data/bin/voc/bin/voc
 CC=gcc
 SDL2Opts=`sdl2-config --cflags --libs`
 
-all: voc $(PROG) install
+all: prepare voc $(PROG) install
 
 $(PROG): $(PROG).sym
 	$(CC) -fPIC -g -I ../data/bin/voc/C/include \
@@ -46,21 +46,23 @@ Graph.sym: Graph.Mod SDL2.sym
 SDL2.sym: SDL2.Mod
 	$(VOC) -OC -cesF SDL2.Mod
 
-.PHONY: clean cleanall install pack
+.PHONY: clean cleanall install pack prepare
 
 clean:
 	rm -f *.c *.h *.o *.sym term/term.o .tmp..* ../Programs/.tmp..*
 	make -C ../data/bin/voc/src clean
 
 cleanall: clean
-	rm -f ../$(PROG) ../bin/*
+	rm -f ../$(PROG) ../$(PROG).exe ../bin/*
 	make -C ../data/bin/voc/src cleanall
 
-pack: clean
-	rm -rf Makefile ../FreeOberon ../*.exe ../*.dll \
+prepare:
+	chmod +x ../data/bin/*.sh ../data/bin/voc/src/*.sh
+
+pack: clean prepare
+	rm -rf Makefile ../$(PROG) ../*.exe ../*.dll \
 		../data/bin/voc/src/*.exe
 	ln -s Makefile_linux Makefile
-	chmod +x ../data/bin/*.sh ../data/bin/voc/src/*.sh
 	$(eval TMPDIR := $(shell mktemp -d /tmp/FreeOberon_XXXXXX))
 	mkdir -p $(TMPDIR)/FreeOberon
 	cp -r ../* $(TMPDIR)/FreeOberon
