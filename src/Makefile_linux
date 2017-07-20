@@ -53,13 +53,18 @@ clean:
 cleanall: clean
 	rm -f ../$(PROG) ../bin/*
 
-preparelinux: clean
+preparelinux: cleanall
+	rm -rf Makefile ../FreeOberon ../*.exe ../*.dll \
+		../data/bin/voc/C ../data/bin/voc/bin \
+		../data/bin/voc/lib ../data/bin/voc/src/*.exe
 	ln -s Makefile_linux Makefile
 	chmod +x ../data/bin/*.sh
-	rm -f ../*.exe ../*.dll \
-		../data/bin/voc/C ../data/bin/voc/bin \
-		../data/bin/voc/lib ../data/bin/voc/src/*.exe \
-		../data/bin/mingw32
+	$(eval TMPDIR := $(shell mktemp -d /tmp/FreeOberon_XXXXXX))
+	mkdir -p $(TMPDIR)/FreeOberon
+	cp -r ../* $(TMPDIR)/FreeOberon/
+	rm -rf $(TMPDIR)/FreeOberon/data/bin/mingw32
+	tar czf ../../FreeOberon_v0.1.0.tar.gz -C $(TMPDIR) FreeOberon
+	rm -rf $(TMPDIR)
 
 install:
 	cp Graph.sym SDL2.sym /opt/voc/C/sym
