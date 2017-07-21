@@ -19,7 +19,8 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <wait.h>
+//#include <wait.h>
+#include <sys/wait.h>
 
 #define BUFSIZE 4096
 
@@ -100,7 +101,8 @@ int RunProcess(char *cmd, char *buf, int limit, int *len, int *err) {
       n = fgetc(F);
     }
     *len = i;
-    *err = WEXITSTATUS(pclose(F));
+    int ex_code = pclose(F);
+    *err = WEXITSTATUS(ex_code);
     if (!*err) success = 1;
   }
   return success;
