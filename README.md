@@ -2,7 +2,7 @@
 
 # Free Oberon
 * Version 0.1.0
-* Riga, July 21, 2017
+* Riga, July 23, 2017
 * Website: [freeoberon.su](http://freeoberon.su)
 
 # Installation
@@ -23,7 +23,7 @@
   apt-get install -y libsdl2-dev libsdl2-image-dev binutils gcc make
   ```
   (This command must be executed with superuser privileges, that is, you must first run `su` and enter the password.)
-  On OS Fedora, Red Hat, CentOS and others, the command and package names will differ:
+  On OS Fedora, Red Hat, CentOS and others, the command and package names will differ (one the packages glibc-static or glibc-devel-static might also be required):
   ```
   sudo yum install SDL2-devel SDL2_image-devel binutils gcc make       (not tested!)
   ```
@@ -42,7 +42,7 @@
 
 Download the setup porgram in EXE format from [freeoberon.su](http://freeoberon.su), run it and follow the instructions.
 
-Alternatively, you can download a ZIP-archive, extract it to any place on the disk and create a desktop shortcut.
+Alternatively, you can download a version of Free Oberon in a ZIP-archive, extract it to any place on the disk and create a desktop shortcut.
 
 Note. If you want to recompile Free Oberon under Windows from the source code yourself, refer to Appendix A of the Free Oberon documentation on [freeoberon.su](http://freeoberon.su).
 
