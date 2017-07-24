@@ -415,18 +415,18 @@ END AddRegion;
 (* Drawing *)
 
 PROCEDURE MakeCol*(r, g, b: INTEGER): INTEGER;
-BEGIN (*!FIXME use MOD and ASH? *)
+BEGIN
   r := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, r) * {0..7});
   g := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, g) * {0..7});
   b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, b) * {0..7});
-  RETURN SHORT(ASH(ASH(0FF00H + b, 8) + g, 8)) + r
+  RETURN SYSTEM.LSH(SYSTEM.LSH(0FF00H + b, 8) + g, 8) + r
 END MakeCol;
 
 PROCEDURE ColorToRGB*(color: INTEGER; VAR r, g, b: INTEGER);
-BEGIN (*!FIXME use MOD and ASH? *)
+BEGIN
   r := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, color) * {0..7});
-  g := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, ASH(color, -8)) * {0..7});
-  b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, ASH(color, -16)) * {0..7})
+  g := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -8)) * {0..7});
+  b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -16)) * {0..7})
 END ColorToRGB;
 
 PROCEDURE BmpCol*(bmp: Bitmap; r, g, b: INTEGER): INTEGER;
