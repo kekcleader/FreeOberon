@@ -204,7 +204,7 @@ TYPE
     bmp*: Bitmap;
     charW*, charH*: INTEGER;
     charRows*, charsInRow*: INTEGER;
-    sprites*: POINTER TO ARRAY OF ARRAY OF SDL.Rect
+    sprites*: POINTER [1] TO ARRAY OF ARRAY OF SDL.Rect
   END;
 
   KeyArray = SDL.KeyArray;
@@ -684,6 +684,7 @@ BEGIN
     font.charW := charW; font.charH := charH;
     font.charsInRow := font.bmp.w DIV charW;
     font.charRows := font.bmp.h DIV charH;
+    (*!FIXME remove sprites from here at all*)
     NEW(font.sprites, font.charRows, font.charsInRow);
     sy := 0;
     FOR y := 0 TO font.charRows - 1 DO
