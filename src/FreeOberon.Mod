@@ -344,18 +344,24 @@ PROCEDURE Compile(filename: ARRAY OF CHAR; graph: BOOLEAN): BOOLEAN;
 CONST bufLen = 20480;
 VAR buf: ARRAY bufLen OF CHAR;
     len, err: INTEGER;
+    scriptPostfix: ARRAY 32 OF CHAR;
     cmd: ARRAY 1024 OF CHAR;
     s, sN: ARRAY 80 OF CHAR;
     success: BOOLEAN;
 BEGIN
+  IF ~graph THEN scriptPostfix := '_no_graph' ELSE scriptPostfix := '' END;
   IF Config.isWindows THEN
     IF Term.SearchPath('cmd.exe', cmd) # 0 THEN
       Strings.Insert('"', 0, cmd);
-      Strings.Append('" /C data\bin\compile.bat ', cmd);
+      Strings.Append('" /C data\bin\compile', cmd);
+      Strings.Append(scriptPostfix, cmd);
+      Strings.Append('.bat ', cmd)
     ELSE T.PutString(0, T.charsY - 1, 'Could not find cmd.exe', 15, 4, 0)
     END
   ELSE (* Linux *)
-    COPY('data/bin/compile.sh ', cmd)
+    COPY('data/bin/compile', cmd);
+      Strings.Append(scriptPostfix, cmd);
+      Strings.Append('.sh ', cmd)
   END;
   Strings.Append(filename, cmd);
   success := (Term.RunProcess(cmd, buf, bufLen, len, err) # 0) &
@@ -490,67 +496,102 @@ BEGIN w := c.app.windows;
   END
 END FileSave;
 
-PROCEDURE GetSym(R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
+PROCEDURE SkipComment(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
+VAR last: CHAR;
+BEGIN last := ch; Files.Read(R, ch);
+  WHILE ~R.eof & ((last # '*') OR (ch # ')')) DO
+    IF (last = '(') & (ch = '*') THEN SkipComment(R, ch, s) END;
+    last := ch; Files.Read(R, ch)
+  END;
+  IF ~R.eof THEN Files.Read(R, ch) END;
+  WHILE ~R.eof & (ch <= ' ') DO Files.Read(R, ch) END
+END SkipComment;
+
+PROCEDURE GetSym(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN
   WHILE ~R.eof & (ch <= ' ') DO Files.Read(R, ch) END;
   i := 0;
-  WHILE ~R.eof & (ch > ' ') DO
-    IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
-    Files.Read(R, ch)
+  IF ~R.eof THEN
+    IF ch = '(' THEN
+      Files.Read(R, ch);
+      IF ch = '*' THEN Files.Read(R, ch); SkipComment(R, ch, s)
+      ELSE s[i] := ch; INC(i)
+      END
+    END;
+    IF ('A' <= CAP(ch)) & (CAP(ch) <= 'Z') THEN
+      WHILE ~R.eof &
+            (('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
+             ('0' <= ch) & (ch <= '9')) DO
+        IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
+        Files.Read(R, ch)
+      END
+    ELSE
+      WHILE ~R.eof & (ch > ' ') &
+            ~(('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
+              ('0' <= ch) & (ch <= '9')) DO
+        IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
+        Files.Read(R, ch)
+      END
+    END
   END;
-  s[i] := 0X;
-  Out.String(' SYM "'); Out.String(s); Out.String('".'); Out.Ln
+  s[i] := 0X
 END GetSym;
 
-PROCEDURE GetImportedModules(F: Files.File): StrList;
-VAR R: Files.Rider;
+PROCEDURE GetImportedModules(filename: ARRAY OF CHAR): StrList;
+VAR F: Files.File;
+  R: Files.Rider;
   top, p: StrList;
   ch: CHAR;
   s: ARRAY 64 OF CHAR;
   ok: BOOLEAN;
 BEGIN NEW(top); top.next := NIL; p := top;
-  Files.Set(R, F, 0); Files.Read(R, ch); GetSym(R, ch, s);
-  ok := s = 'MODULE'; GetSym(R, ch, s); GetSym(R, ch, s);
-  IF ok THEN
-    ok := s = ';'; GetSym(R, ch, s);
+  s := 'Programs/'; Strings.Append(filename, s);
+  F := Files.Old(s);
+  IF F # NIL THEN
+    Files.Set(R, F, 0); Files.Read(R, ch); GetSym(R, ch, s);
+    ok := s = 'MODULE'; GetSym(R, ch, s); GetSym(R, ch, s);
     IF ok THEN
-      ok := s = 'IMPORT'; GetSym(R, ch, s);
-      WHILE ok & (CAP(s[0]) >= 'A') & (CAP(s[0]) <= 'Z') DO
-        NEW(p.next); p := p.next; p.next := NIL; p.s := s;
-        GetSym(R, ch, s);
-        IF s = ',' THEN GetSym(R, ch, s) ELSE ok := FALSE END
+      ok := s = ';'; GetSym(R, ch, s);
+      IF ok THEN
+        ok := s = 'IMPORT'; GetSym(R, ch, s);
+        WHILE ok & ('A' <= CAP(s[0])) & (CAP(s[0]) <= 'Z') DO
+          NEW(p.next); p := p.next; p.next := NIL; p.s := s;
+          GetSym(R, ch, s);
+          IF s = ':=' THEN GetSym(R, ch, s); p.s := s; GetSym(R, ch, s) END;
+          IF s = ',' THEN GetSym(R, ch, s) ELSE ok := FALSE END
+        END
       END
     END
   END;
   RETURN top.next
 END GetImportedModules;
 
-PROCEDURE HasGraph(filename: ARRAY OF CHAR): BOOLEAN;
-VAR F: Files.File;
-  p: StrList;
-  graph: BOOLEAN;
-  s: ARRAY 256 OF CHAR;
-BEGIN graph := FALSE;
-  s := 'Programs/'; Strings.Append(filename, s);
-  F := Files.Old(s);
-  IF F # NIL THEN
-    (*p := GetImportedModules(F);
-    WHILE (p # NIL) DO Out.String(p.s); Out.Ln; p := p.next END;
-    p := GetImportedModules(F);
-    WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END;
-    IF p # NIL THEN graph := TRUE END*)
-  END;
-  RETURN graph
-END HasGraph;
+PROCEDURE GetAllImportedModules(filename: ARRAY OF CHAR): StrList;
+VAR list: StrList;
+BEGIN
+  list := GetImportedModules(filename);
+  (*!TODO recursion*)
+  RETURN list
+END GetAllImportedModules;
 
-PROCEDURE OnCompile(c: OV.Control);
+PROCEDURE ImportsGraph(p: StrList): BOOLEAN;
+BEGIN 
+  WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END;
+  RETURN p # NIL
+END ImportsGraph;
+
+PROCEDURE OnBuild(c: OV.Control);
 VAR w: OV.Window; graph: BOOLEAN;
+  primaryFile: ARRAY 256 OF CHAR;
+  p: StrList;
 BEGIN w := c.app.windows;
   IF (w # NIL) & (w IS Editor.Editor) THEN
     IF Editor.TextChanged(w(Editor.Editor)) THEN FileSave(c) END;
     IF w(Editor.Editor).filename[0] # 0X THEN
-      graph := HasGraph(w(Editor.Editor).filename);
+      COPY(w(Editor.Editor).filename, primaryFile);
+      p := GetAllImportedModules(primaryFile);
+      graph := ImportsGraph(p);
       IF Compile(w(Editor.Editor).filename, graph) THEN
         tempWindowed := needWindowed & T.isFullscreen;
         IF tempWindowed THEN G.SwitchToWindowed END;
@@ -558,7 +599,7 @@ BEGIN w := c.app.windows;
       END
     END
   END
-END OnCompile;
+END OnBuild;
 
 PROCEDURE InitIDE;
 VAR w: OV.Window;
@@ -598,15 +639,15 @@ BEGIN
   OV.Add(m, OV.NewMenu('&Find procedure...', '', 0, NIL));
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Run', '', 0, NIL);
-  OV.Add(m, OV.NewMenu('&Run', 'Ctrl+F9', OV.hCtrlF9, OnCompile));
+  OV.Add(m, OV.NewMenu('&Run', 'Ctrl+F9', OV.hCtrlF9, OnBuild));
   OV.Add(m, OV.NewMenu('Run &Directory...', '', 0, NIL));
   OV.Add(m, OV.NewMenu('P&arameters...', '', 0, NIL));
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Compile', '', 0, NIL);
-  OV.Add(m, OV.NewMenu('&Compile', 'Alt+F9', OV.hAltF9, OnCompile));
-  OV.Add(m, OV.NewMenu('&Make', 'Shift+F9', OV.hShiftF9, OnCompile));
-  OV.Add(m, OV.NewMenu('Make && &Run', 'F9', OV.hF9, OnCompile));
-  OV.Add(m, OV.NewMenu('&Build', '', 0, OnCompile));
+  OV.Add(m, OV.NewMenu('&Compile', 'Alt+F9', OV.hAltF9, OnBuild));
+  OV.Add(m, OV.NewMenu('&Make', 'Shift+F9', OV.hShiftF9, OnBuild));
+  OV.Add(m, OV.NewMenu('Make && &Run', 'F9', OV.hF9, OnBuild));
+  OV.Add(m, OV.NewMenu('&Build', '', 0, OnBuild));
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Debug', '', 0, NIL);
   OV.Add(m, OV.NewMenu('&Output', '', 0, NIL));
@@ -667,7 +708,7 @@ BEGIN
   OV.AddStatusbar(app, OV.NewQuickBtn('Help', 'F1', 0, NIL));
   OV.AddStatusbar(app, OV.NewQuickBtn('Save', 'F2', 0, FileSave));
   OV.AddStatusbar(app, OV.NewQuickBtn('Open', 'F3', 0, FileOpen));
-  OV.AddStatusbar(app, OV.NewQuickBtn('Compile & Run', 'F9', 0, OnCompile));
+  OV.AddStatusbar(app, OV.NewQuickBtn('Compile & Run', 'F9', 0, OnBuild));
   OV.AddStatusbar(app, OV.NewQuickBtn('Local menu', 'Alt+F10', 0, NIL));
   (*OV.SetStatusText(app, 'Hello');*)
 END InitIDE;

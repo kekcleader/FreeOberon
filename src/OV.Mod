@@ -725,7 +725,7 @@ BEGIN
     app.cur := c;
     IF c = NIL THEN T.ShowCursor(FALSE)
     ELSIF c.do.getFocus # NIL THEN c.do.getFocus(c)
-    END;
+    END
   END
 END SetFocus;
 
@@ -1509,6 +1509,7 @@ PROCEDURE NextWindow*(c: Control);
 BEGIN
   IF c.app.windows # NIL THEN
     c.app.windows := c.app.windows.next(Window);
+    SetFocus(c.app, c.app.windows);
     NeedRedraw(c.app)
   END
 END NextWindow;
@@ -1517,6 +1518,7 @@ PROCEDURE PrevWindow*(c: Control);
 BEGIN
   IF c.app.windows # NIL THEN
     c.app.windows := c.app.windows.prev(Window);
+    SetFocus(c.app, c.app.windows);
     NeedRedraw(c.app)
   END
 END PrevWindow;
@@ -1845,7 +1847,7 @@ VAR handled: BOOLEAN; p: Control;
 BEGIN handled := FALSE; p := app.cur;
   IF (key.mod * (G.mCtrl + G.mAlt + G.mShift) # {}) OR
      (G.kF1 <= key.code) & (key.code <= G.kF12) OR
-     (key.sym = G.kPause) THEN
+     (key.code = G.kPause) THEN
     handled := CheckHotkey(app, key);
     IF ~handled & (key.mod * G.mAlt # {}) THEN
       handled := CheckMenuOpenKey(app, key)
