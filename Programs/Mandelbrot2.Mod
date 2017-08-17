@@ -55,7 +55,7 @@ BEGIN G.Settings(0, 0, {G.fullscreen});
     END
   END;
   angle := 0; col := 0;
-  REPEAT Draw; angle := angle + M.pi / 180;
+  REPEAT Draw; angle := angle + M.pi / 90;
     IF angle > M.pi * 2 THEN
       angle := angle - M.pi * 2;
       col := (col + 1) MOD 7;
