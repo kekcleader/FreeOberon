@@ -81,3 +81,5 @@ install:
 	cp Graph.sym SDL2.sym ../data/bin/voc/C/sym
 	cp Graph.h SDL2.h SDL2.h0 ../data/bin/voc/C/include
 	cp Graph.o SDL2.o ../data/bin/voc/lib
+	mkdir -p ../bin
+
