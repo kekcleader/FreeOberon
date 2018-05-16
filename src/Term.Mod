@@ -18,7 +18,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT SYSTEM;
 
-PROCEDURE -AAIncludeTermh '#include "term/term.h"';
+PROCEDURE -AAIncludeTermh* '#include "term/term.h"';
 
 PROCEDURE -StartProcess*
   (cmd: ARRAY OF CHAR): BOOLEAN

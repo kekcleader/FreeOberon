@@ -46,7 +46,7 @@ CONST
   windowEvent* = 2;
   keyDown*     = 3;
   keyUp*       = 4;
-  textInput*        = 5;
+  textInput*   = 5;
   mouseMove*   = 6;
   mouseDown*   = 7;
   mouseUp*     = 8;
@@ -884,9 +884,20 @@ BEGIN b := CreateBitmap(12, 19);
   stdMousePointer := b
 END CreateStdMousePointer;
 
-PROCEDURE SetMousePointer*(bmp: Bitmap);
+PROCEDURE SetMouseFocus*(x, y: INTEGER);
 BEGIN
-  mousePointer := bmp;
+  mouseFocusX := x; mouseFocusY := y;
+  needRedrawMouse := TRUE
+END SetMouseFocus;
+
+PROCEDURE SetMousePointer*(bmp: Bitmap; x, y: INTEGER);
+BEGIN
+  IF bmp = NIL THEN
+    mousePointer := stdMousePointer;
+    x := 0; y := 0
+  ELSE mousePointer := bmp
+  END;
+  SetMouseFocus(x, y);
   underMouse := CreateBitmap(mousePointer.w, mousePointer.h);
   needRedrawMouse := TRUE
 END SetMousePointer;
@@ -896,16 +907,9 @@ BEGIN
   RETURN mousePointer
 END GetMousePointer;
 
-PROCEDURE SetMouseFocus*(x, y: INTEGER);
-BEGIN
-  mouseFocusX := x; mouseFocusY := y;
-  needRedrawMouse := TRUE
-END SetMouseFocus;
-
 PROCEDURE SetStdMousePointer*;
 BEGIN
-  SetMousePointer(stdMousePointer);
-  SetMouseFocus(0, 0)
+  SetMousePointer(stdMousePointer, 0, 0)
 END SetStdMousePointer;
 
 PROCEDURE InitMouseData;

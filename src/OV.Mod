@@ -1006,14 +1006,21 @@ BEGIN w := 2; i := 0; esc := FALSE;
   m.w := w; m.h := 1
 END MenuRefresh;
 
-(* Returns the first child with status = selected
-   or just the first child. *)
+(* Returns the first child with status = selected,
+   or just the first non-disabled child, or NIL. *)
 PROCEDURE FindSelectedChild(c: Control): Control;
-VAR p, br: Control;
-BEGIN p := c.children; br := p;
-  REPEAT p := p.next
-  UNTIL (p = br) OR (p.status = selected) OR (p = c(Menu).lastSelected);
-  p.status := selected;
+VAR p: Control;
+BEGIN p := c.children;
+  WHILE (p # NIL) & (p.status # selected) & (p # c(Menu).lastSelected) DO
+    IF p.next = c.children THEN p := NIL ELSE p := p.next END
+  END;
+  IF (p = NIL) OR (p.status = disabled) THEN
+    p := c.children;
+    WHILE (p # NIL) & ((p.status = disabled) OR (p.caption = '-')) DO
+      IF p.next = c.children THEN p := NIL ELSE p := p.next END
+    END
+  END;
+  IF p # NIL THEN p.status := selected END;
   RETURN p
 END FindSelectedChild;
 
@@ -1029,7 +1036,7 @@ BEGIN i := 0; x := c.caption[0];
 END MenuHotkey;
 
 PROCEDURE MenuKeyDown*(c: Control; key: G.Key);
-VAR p, br: Control; found: BOOLEAN;
+VAR p, p2, br: Control; found: BOOLEAN;
 BEGIN
   CASE key.code OF
     G.kUp, G.kDown:
@@ -1043,8 +1050,9 @@ BEGIN
     WHILE p.parent # p.app.menu DO p := p.parent END;
     IF key.code = G.kLeft THEN p := p.prev ELSE p := p.next END;
     p.status := open;
-    p := FindSelectedChild(p);
-    SetFocus(c.app, p);
+    p2 := FindSelectedChild(p);
+    IF p2 = NIL THEN p2 := p END;
+    SetFocus(c.app, p2);
     NeedRedraw(c.app)
   | G.kEnter: c.do.click(c)
   | G.kEsc:
@@ -1084,6 +1092,7 @@ BEGIN
     IF c.onClick # NIL THEN c.onClick(c) END
   ELSE c.status := open;
     p := FindSelectedChild(c);
+    IF p = NIL THEN p := c END;
     SetFocus(c.app, p)
   END;
   NeedRedraw(c.app)
@@ -1169,12 +1178,13 @@ END MenuMouseMove;
 PROCEDURE MenuMouseDown*(c: Control; x, y, button: INTEGER);
 VAR p: Control;
 BEGIN
-  IF button = G.btnLeft THEN
+  IF (button = G.btnLeft) & (c.status # disabled) THEN
     SetFocus(c.app, c);
     p := c; WHILE p.parent # NIL DO p := p.parent END;
     c.app.dragged := p; c.app.dragX := p.x; c.app.dragY := p.y;
     IF c.children = NIL THEN SetFocus(c.app, c)
     ELSE c.status := open; p := FindSelectedChild(c);
+      IF p = NIL THEN p := c END;
       SetFocus(c.app, p); p.status := normal
     END;
     IF c.parent # c.app.menu THEN

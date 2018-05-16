@@ -1,5 +1,5 @@
 MODULE FreeOberon;
-(* Copyright 2017 Arthur Yefimov
+(* Copyright 2017, 2018 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -14,13 +14,13 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT G := Graph, T := Terminal, Text := EditorText, Files,
        OV, Editor, Term, Config, Strings, Out;
 CONST
   needFullscreen = TRUE;
-  version* = '0.10';
+  version* = '1.0.0';
 
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -76,7 +76,7 @@ BEGIN
       s[i] := CHR(ORD('0') + n MOD 10);
       n := n DIV 10; INC(i)
     END;
-    IF neg & (i < LEN(s) - 1) THEN s[i] := '-'; INC(i) END;
+    IF neg & (i < LEN(s) - 1) THEN s[i] := '-'; INC(i) END
   END;
   s[i] := 0X; j := 0; DEC(i);
   WHILE j < i DO
@@ -94,7 +94,8 @@ BEGIN
       INC(lines); x := 0
     ELSIF s[i] # 0DX THEN
       IF x = width - 1 THEN INC(lines); x := 0
-      ELSE INC(x) END;
+      ELSE INC(x)
+      END
     END;
     INC(i)
   END;
@@ -111,19 +112,22 @@ BEGIN
   y := T.charsY - 2 - lines;
   WHILE (s[i] # 0X) & (y < T.charsY - 2) DO
     IF s[i] = 0AX THEN
-      WHILE x < x0 + width (* Till end of line *)
-      DO T.PutChar(x, y, ' ', 0, 3); INC(x) END;
+      WHILE x < x0 + width DO (* Till end of line *)
+        T.PutChar(x, y, ' ', 0, 3); INC(x)
+      END;
       x := x0; INC(y)
     ELSIF s[i] # 0DX THEN
       T.PutChar(x, y, s[i], 0, 3);
       IF x = x0 + width - 1 THEN INC(y); x := x0
-      ELSE INC(x) END
+      ELSE INC(x)
+      END
     END;
     INC(i)
   END;
   IF x > x0 THEN
-    WHILE x < x0 + width
-    DO T.PutChar(x, y, ' ', 0, 3); INC(x) END
+    WHILE x < x0 + width DO
+      T.PutChar(x, y, ' ', 0, 3); INC(x)
+    END
   END;
   IF T.Draw() THEN G.Flip; G.Pause END (*!FIXME*)
 END ShowErrors;
@@ -389,10 +393,12 @@ PROCEDURE RunProgram(prg: ARRAY OF CHAR);
 VAR cmd: ARRAY 128 OF CHAR;
     x: INTEGER;
 BEGIN
-  (* Extract 'MyProg' from 'MyProg.Mod' *)
+  (* Extract 'Prg' from 'Prg.Mod' or 'dir/Prg.Mod' *)
   x := Strings.Length(prg);
   WHILE (x > 0) & (prg[x] # '.') DO DEC(x) END;
   IF prg[x] = '.' THEN prg[x] := 0X END;
+  WHILE (x >= 0) & (prg[x] # '/') DO DEC(x) END;
+  IF x >= 0 THEN Strings.Delete(prg, 0, x + 1) END;
 
   (* Construct 'bin/MyProg' or 'bin\MyProg' *)
   IF Config.isWindows THEN COPY('bin\', cmd) ELSE COPY('bin/', cmd) END;
@@ -601,6 +607,11 @@ BEGIN w := c.app.windows;
   END
 END OnBuild;
 
+PROCEDURE ToggleGraphMode(c: OV.Control);
+BEGIN
+  needWindowed := ~needWindowed
+END ToggleGraphMode;
+
 PROCEDURE InitIDE;
 VAR w: OV.Window;
     m, m2: OV.Menu;
@@ -619,7 +630,8 @@ BEGIN
   OV.Add(m, OV.NewMenu('E&xit', 'Alt+X', OV.hAltX, OV.QuitApp));
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Edit', '', 0, NIL);
-  OV.Add(m, OV.NewMenu('&Undo', 'DelText', OV.hAltBackspace, NIL));
+  m2 := OV.NewMenu('&Undo', 'DelText', OV.hAltBackspace, NIL); m2.status := OV.disabled;
+  OV.Add(m, m2);
   m2 := OV.NewMenu('&Redo', '', 0, NIL); m2.status := OV.disabled;
   OV.Add(m, m2);
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
@@ -632,16 +644,23 @@ BEGIN
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Search', '', 0, NIL);
   OV.Add(m, OV.NewMenu('&Find...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Replace...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Search again', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   OV.Add(m, OV.NewMenu('&Go to line number...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Find procedure...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Run', '', 0, NIL);
   OV.Add(m, OV.NewMenu('&Run', 'Ctrl+F9', OV.hCtrlF9, OnBuild));
   OV.Add(m, OV.NewMenu('Run &Directory...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('P&arameters...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Compile', '', 0, NIL);
   OV.Add(m, OV.NewMenu('&Compile', 'Alt+F9', OV.hAltF9, OnBuild));
@@ -651,39 +670,62 @@ BEGIN
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Debug', '', 0, NIL);
   OV.Add(m, OV.NewMenu('&Output', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Tools', '', 0, NIL);
   OV.Add(m, OV.NewMenu('&Messages', 'F11', OV.hF11, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   OV.Add(m, OV.NewMenu('&Calculator', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('Ascii &table', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Options', '', 0, NIL);
   OV.Add(m, OV.NewMenu('Mode&...', 'Normal', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Compiler...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Memory sizes...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Linker...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Directories...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Tools...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   m2 := OV.NewMenu('&Environment', '', 0, NIL);
   OV.Add(m2, OV.NewMenu('&Preferences...', '', 0, NIL));
+  (*!TODO*) m2.children.prev.status := OV.disabled;
   OV.Add(m2, OV.NewMenu('&Editor...', '', 0, NIL));
+  (*!TODO*) m2.children.prev.status := OV.disabled;
   OV.Add(m2, OV.NewMenu('Code&Complete...', '', 0, NIL));
+  (*!TODO*) m2.children.prev.status := OV.disabled;
   OV.Add(m2, OV.NewMenu('Code&Templates...', '', 0, NIL));
+  (*!TODO*) m2.children.prev.status := OV.disabled;
   OV.Add(m2, OV.NewMenu('&Desktop...', '', 0, NIL));
+  (*!TODO*) m2.children.prev.status := OV.disabled;
   OV.Add(m2, OV.NewMenu('Keyboard && &mouse...', '', 0, NIL));
+  (*!TODO*) m2.children.prev.status := OV.disabled;
   OV.Add(m2, OV.NewMenu('Learn &Keys', '', 0, NIL));
+  (*!TODO*) m2.children.prev.status := OV.disabled;
   OV.Add(m, m2);
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   OV.Add(m, OV.NewMenu('&Open...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Save', 'fo.ini', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('Save &as...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Window', '', 0, NIL);
   OV.Add(m, OV.NewMenu('&Tile', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('C&ascade', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('Cl&ose all', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   OV.Add(m, OV.NewMenu('&Size/Move', 'Ctrl+F5', OV.hCtrlF5, NIL));
   OV.Add(m, OV.NewMenu('&Zoom', 'F5', OV.hF5, OV.ZoomCurWindow));
@@ -692,17 +734,26 @@ BEGIN
   OV.Add(m, OV.NewMenu('&Close', 'Alt+F3', OV.hAltF3, OV.CloseCurWindow));
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   OV.Add(m, OV.NewMenu('&List...', 'Alt+0', OV.hAlt0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Refresh display', '', 0, OV.RefreshDisplay));
+  OV.Add(m, OV.NewMenu('&Toogle Graph Mode', '', 0, ToggleGraphMode));
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Help', '', 0, NIL);
   OV.Add(m, OV.NewMenu('&Contents', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Index', 'Shift+F1', OV.hShiftF1, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Topic search', 'Ctrl+F1', OV.hCtrlF1, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Previous topic', 'Alt+F1', OV.hAltF1, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Using help', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Files...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   OV.Add(m, OV.NewMenu('&About...', '', 0, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
 
   OV.AddStatusbar(app, OV.NewQuickBtn('Help', 'F1', 0, NIL));

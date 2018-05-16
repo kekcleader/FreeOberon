@@ -11,9 +11,10 @@ $VOC -OC -cfFm ../Programs/$1
 retcode=$?
 if [ "$retcode" -eq "0" ]; then
   THENAME="${1%.*}"
+  ONAME="${THENAME##*/}"
   SDL2Opts=`sdl2-config --cflags --libs`
   $CC -fPIC -g -I $VOCDIR/C/include \
-    -o $THENAME $THENAME.o \
+    -o $ONAME $ONAME.o \
     $VOCDIR/lib/Graph.o $VOCDIR/lib/SDL2.o \
     $VOCDIR/lib/libvoc-OC.a \
     $SDL2Opts -lSDL2_image
