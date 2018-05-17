@@ -71,7 +71,7 @@ pack: clean prepare
 		$(TMPDIR)/FreeOberon/data/bin/voc/bin \
 		$(TMPDIR)/FreeOberon/data/bin/voc/C \
 		$(TMPDIR)/FreeOberon/data/bin/voc/lib
-	tar czf ../../FreeOberon_v0.1.0.tar.gz -C $(TMPDIR) FreeOberon
+	tar czf ../../FreeOberon_v1.0.1.tar.gz -C $(TMPDIR) FreeOberon
 	rm -rf $(TMPDIR)
 
 voc:
