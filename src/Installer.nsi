@@ -14,7 +14,7 @@ Name "FreeOberon"
 ;!define MUI_ICON "FreeOberon\data\images\icon.ico"
 
 ; The file to write
-OutFile "FreeOberon_Setup_v0.1.0.exe"
+OutFile "FreeOberon_Setup_v1.0.1.exe"
 
 ; The default installation directory
 InstallDir C:\FreeOberon
@@ -92,11 +92,18 @@ Section "Uninstall"
   Delete $INSTDIR\uninstall.exe
   Delete $INSTDIR\LICENSE
   Delete $INSTDIR\README.md
-  Delete $INSTDIR\*.dll
+  Delete $INSTDIR\libjpeg-9.dll
+  Delete $INSTDIR\libpng16-16.dll
+  Delete $INSTDIR\SDL2.dll
+  Delete $INSTDIR\SDL2_image.dll
+  Delete $INSTDIR\zlib1.dll
   Delete $INSTDIR\Programs\BlitBmp.Mod
   Delete $INSTDIR\Programs\BlitBmp2.Mod
   Delete $INSTDIR\Programs\Book.Mod
   Delete $INSTDIR\Programs\Gradient24.Mod
+  Delete $INSTDIR\Programs\Gui.Mod
+  Delete $INSTDIR\Programs\Mandelbrot.Mod
+  Delete $INSTDIR\Programs\Mandelbrot2.Mod
   Delete $INSTDIR\Programs\r.Mod
   Delete "$DESKTOP\Free Oberon.lnk"
 
