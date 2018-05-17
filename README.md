@@ -1,7 +1,7 @@
 ![Free Oberon screenshot](http://freeoberon.su/images/screenshot.png)
 
 # Free Oberon
-* Version 1.0.0
+* Version 1.0.1
 * Riga, May 17, 2018
 * Website: [freeoberon.su](http://freeoberon.su/en), [на русском](http://freeoberon.su)
 
