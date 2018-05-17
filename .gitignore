@@ -2,7 +2,6 @@
 FreeOberon
 FreeOberon.exe
 bin/*
-*.dll
 src/Makefile
 src/*.o
 src/*.h
@@ -18,3 +17,6 @@ data/bin/voc/src/Configuration.Make
 data/bin/voc/src/Configuration.Mod
 data/bin/voc/src/voc.exe
 data/bin/voc/src/voc
+*.dll
+!data/bin/ming32/bin/*.dll
+!data/bin/ming32/libexec/gcc/i686-w64-mingw32/6.2.0/*.dll
