@@ -20,7 +20,7 @@ IMPORT G := Graph, T := Terminal, Text := EditorText, Files,
        OV, Editor, Term, Config, Strings, Out;
 CONST
   needFullscreen = TRUE;
-  version* = '1.0.0';
+  version* = '1.0.1';
 
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -183,13 +183,13 @@ BEGIN
         s[0] := ' '; j := 1;
         WHILE s[i] >= ' ' DO s[j] := s[i]; INC(i); INC(j) END;
         (* Remove trailing spaces *)
-        WHILE (j > 0) & (s[j] = ' ') DO DEC(j) END;
+        WHILE (j > 0) & (s[j - 1] = ' ') DO DEC(j) END;
         s[j] := '.'; INC(j); s[j] := 0X;
         (* Capitalize first letter (0th is a space). *)
         IF (s[1] >= 'a') & (s[1] <= 'z') THEN s[1] := CAP(s[1]) END;
         app.windows(Editor.Editor).text.MoveToPos(pos);
         Editor.PrintText(app.windows(Editor.Editor));
-        T.ResetCursorBlink; (* !FIXME *)
+        T.ResetCursorBlink (* !FIXME *)
       END
     END
   END
@@ -598,6 +598,7 @@ BEGIN w := c.app.windows;
       COPY(w(Editor.Editor).filename, primaryFile);
       p := GetAllImportedModules(primaryFile);
       graph := ImportsGraph(p);
+      needWindowed := graph;
       IF Compile(w(Editor.Editor).filename, graph) THEN
         tempWindowed := needWindowed & T.isFullscreen;
         IF tempWindowed THEN G.SwitchToWindowed END;
@@ -606,11 +607,6 @@ BEGIN w := c.app.windows;
     END
   END
 END OnBuild;
-
-PROCEDURE ToggleGraphMode(c: OV.Control);
-BEGIN
-  needWindowed := ~needWindowed
-END ToggleGraphMode;
 
 PROCEDURE InitIDE;
 VAR w: OV.Window;
@@ -736,7 +732,6 @@ BEGIN
   OV.Add(m, OV.NewMenu('&List...', 'Alt+0', OV.hAlt0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Refresh display', '', 0, OV.RefreshDisplay));
-  OV.Add(m, OV.NewMenu('&Toogle Graph Mode', '', 0, ToggleGraphMode));
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Help', '', 0, NIL);
   OV.Add(m, OV.NewMenu('&Contents', '', 0, NIL));

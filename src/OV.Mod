@@ -707,8 +707,6 @@ VAR p, common: Control;
 BEGIN
   p := app.cur;
   IF c = NIL THEN c := app.windows END;
-  (*Out.String('FOCUS '); IF p = NIL THEN Out.String('NIL') ELSE Out.String(p.caption) END; Out.String(' -> ');
-  IF c = NIL THEN Out.String('NIL') ELSE Out.String(c.caption) END; Out.Ln; (*!FIXME remove*)*)
   IF p # c THEN
     IF p # NIL THEN
       REPEAT
@@ -1040,13 +1038,15 @@ VAR p, p2, br: Control; found: BOOLEAN;
 BEGIN
   CASE key.code OF
     G.kUp, G.kDown:
-    p := c;
-    REPEAT
-      IF key.code = G.kUp THEN p := p.prev ELSE p := p.next END
-    UNTIL (p = c) OR (p.caption # '-') & (p.status # disabled);
-    c.status := normal; p.status := selected; SetFocus(c.app, p);
-    NeedRedraw(c.app)
-  | G.kLeft, G.kRight: p := c.parent;
+    IF c.parent # c.app.menu THEN
+      p := c;
+      REPEAT
+        IF key.code = G.kUp THEN p := p.prev ELSE p := p.next END
+      UNTIL (p = c) OR (p.caption # '-') & (p.status # disabled);
+      c.status := normal; p.status := selected; SetFocus(c.app, p);
+      NeedRedraw(c.app)
+    END
+  | G.kLeft, G.kRight: p := c;
     WHILE p.parent # p.app.menu DO p := p.parent END;
     IF key.code = G.kLeft THEN p := p.prev ELSE p := p.next END;
     p.status := open;
@@ -1878,7 +1878,6 @@ END OnKeyDown;
 
 PROCEDURE OnTextInput(app: App; s: ARRAY OF CHAR; sym: INTEGER);
 BEGIN
-  (*Out.String('TEXT "');Out.String(s); Out.String('"; sym = ');Out.Int(sym, 0);Out.Ln;*) (*!FIXME*)
   IF (app.cur # NIL) & (app.cur.do.textInput # NIL) THEN
     app.cur.do.textInput(app.cur, s, sym)
   END

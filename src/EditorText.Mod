@@ -382,44 +382,23 @@ BEGIN
   RETURN success
 END LoadFromFile; 
 
-(*PROCEDURE (t: Text) MoveToPos*(pos: INTEGER);
-CONST centerY = 6;
-VAR i: INTEGER; L: Line;
-BEGIN
-  L := t.first; i := pos; t.y := 0;
-  WHILE (L # NIL) & (L.len + L.lineEndLen <= i) DO
-    Out.String('i = '); Out.Int(i, 0);
-    Out.String('  L.len = '); Out.Int(L.len, 0);
-    Out.String('  L.lineEndLen = '); Out.Int(L.lineEndLen, 0); Out.Ln;
-    DEC(i, L.len + L.lineEndLen);
-    INC(t.y); L := L.next
-  END;
-  IF L = NIL THEN L := t.last; DEC(t.y); i := L.len
-  ELSIF i > L.len THEN i := L.len
-  END;
-  t.cur := L; t.x := i; i := centerY;
-  WHILE (L.prev # NIL) & (i > 0) DO L := L.prev; DEC(i) END;
-  t.scrY := t.y - centerY + i;
-  t.scrFirst := L
-END MoveToPos;*)
-
 PROCEDURE (t: Text) MoveToPos*(pos: INTEGER);
 CONST centerY = 6;
 VAR i: INTEGER; L: Line;
 BEGIN
-  L := t.first; t.y := 0;
+  L := t.first; t.x := 0; t.y := 0;
   REPEAT
-    t.x := 0;
     WHILE (L.s[t.x] # 0X) & (pos > 0) DO
-      IF (ORD(L.s[t.x]) > 127) & (pos > 2) THEN DEC(pos, 2)
+      IF (ORD(L.s[t.x]) > 127) & (pos >= 2) THEN DEC(pos, 2)
       ELSE DEC(pos)
       END;
       INC(t.x)
     END;
-    IF (pos > L.lineEndLen) & (L.next # NIL) THEN
-      DEC(pos, L.lineEndLen); L := L.next; INC(t.y)
+    IF (pos >= L.lineEndLen) & (L.next # NIL) THEN
+      DEC(pos, L.lineEndLen); L := L.next; INC(t.y); t.x := 0
     END
   UNTIL (L.next = NIL) OR (pos = 0);
+  IF t.x < L.len THEN INC(t.x) END;
   t.cur := L;
 
   i := centerY;
