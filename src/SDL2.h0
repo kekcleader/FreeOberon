@@ -66,5 +66,6 @@ extern void SDL_StopTextInput(void);
 extern int SDL_HasEvent(int);
 extern int SDL_HasEvents(int, int);
 extern int SDL_PeepEvents(void *, int, int, int, int);
+extern int SDL_SetSurfaceAlphaMod(void *, UINT8);
 
 #endif

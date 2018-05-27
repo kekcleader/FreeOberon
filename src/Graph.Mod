@@ -648,6 +648,11 @@ BEGIN
   SDL.BlitScaled(src.surface, a, dest.surface, b)
 END StretchBlit;
 
+PROCEDURE SetAlpha*(bmp: Bitmap; alpha: INTEGER);
+BEGIN
+  IF SDL.SetSurfaceAlphaMod(bmp.surface, CHR(alpha)) = 0 THEN END
+END SetAlpha;
+
 PROCEDURE MaskedBlit*(src, dest: Bitmap; sx, sy, dx, dy, w, h: INTEGER);
 BEGIN
   (*Al.MaskedBlit(src.bmp, dest.bmp, sx, sy, dx, dy, w, h)*)
@@ -1103,7 +1108,7 @@ BEGIN
   RETURN SDL.windowShown IN flags
 END WindowShown;
 
-PROCEDURE GetTicks(): INTEGER;
+PROCEDURE GetTicks*(): INTEGER;
 BEGIN
   RETURN SDL.GetTicks()
 END GetTicks;

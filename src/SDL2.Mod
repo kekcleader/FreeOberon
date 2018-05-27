@@ -293,7 +293,7 @@ TYPE
 
   KeyArray* = POINTER [1] TO ARRAY 1024 OF BOOLEAN;
 
-PROCEDURE -AAIncludeSDL2h0 '#include "SDL2.h0"';
+PROCEDURE -AAIncludeSDL2h0* '#include "SDL2.h0"';
 
 PROCEDURE -Init*(flags: SET): SHORTINT "SDL_Init(flags)";
 PROCEDURE -Quit* "SDL_Quit()";
@@ -432,5 +432,8 @@ PROCEDURE -GetTicks*(): INTEGER "SDL_GetTicks()";
 
 PROCEDURE -SetWindowFullscreen*(win: Window; flags: SET): INTEGER
     "SDL_SetWindowFullscreen(win, flags)";
+
+PROCEDURE -SetSurfaceAlphaMod*(surface: Surface; alpha: CHAR): INTEGER
+    "SDL_SetSurfaceAlphaMod(surface, alpha)";
 
 END SDL2.
