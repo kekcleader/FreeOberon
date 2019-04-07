@@ -153,7 +153,8 @@ BEGIN
       needRedraw := TRUE;
       IF cursorShown THEN chars[cursorY, cursorX].updated := TRUE END;
       cursorTick := 0; cursorShown := ~cursorShown
-    ELSE INC(cursorTick) END
+    ELSE INC(cursorTick)
+    END
   END
 END Act;
 
@@ -214,7 +215,8 @@ BEGIN
   IF (x >= 0) & (y >= 0) & (x < charsX) & (y < charsY) &
      ((chars[y, x].ch # ch) OR
       (chars[y, x].fg # fg) OR
-      (chars[y, x].bg # bg)) THEN
+      (chars[y, x].bg # bg) OR
+      (cursorX = x) & (cursorY = y)) THEN
     chars[y, x].ch := ch;
     chars[y, x].fg := fg;
     chars[y, x].bg := bg;
