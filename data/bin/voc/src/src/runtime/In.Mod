@@ -140,6 +140,7 @@ PROCEDURE Real*(VAR x: REAL);
 VAR
   str: ARRAY 16 OF CHAR;
 BEGIN
+  StartAndSkip;
   Line(str);
   Strings.StrToReal(str, x);
 END Real;
@@ -148,6 +149,7 @@ PROCEDURE LongReal*(VAR y: LONGREAL);
 VAR
   str: ARRAY 16 OF CHAR;
 BEGIN
+  StartAndSkip;
   Line(str);
   Strings.StrToLongReal(str, y);
 END LongReal;

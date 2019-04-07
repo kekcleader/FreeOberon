@@ -1,5 +1,5 @@
 MODULE Editor;
-(* Copyright 2017 Arthur Yefimov
+(* Copyright 2017-2019 Arthur Yefimov
 
 This file is part of Free Oberon.
 

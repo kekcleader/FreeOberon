@@ -1,5 +1,5 @@
 MODULE Graph;
-(* Copyright 2017 Arthur Yefimov
+(* Copyright 2017-2019 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -573,12 +573,40 @@ BEGIN
   SDL.FillRect(bmp.surface, rect, color)
 END RectFill;
 
-PROCEDURE Circle*(bmp: Bitmap; x, y, r, color: INTEGER);
+PROCEDURE Circle*(b: Bitmap; cx, cy, r, col: INTEGER);
+VAR x, y, d: INTEGER;
 BEGIN
+  x := 0; y := r; d := 3 - 2 * r;
+  WHILE x <= y DO
+    PutPixel(b, cx + x, cy + y, col);
+    PutPixel(b, cx + y, cy + x, col);
+    PutPixel(b, cx + x, cy - y, col);
+    PutPixel(b, cx + y, cy - x, col);
+    PutPixel(b, cx - x, cy + y, col);
+    PutPixel(b, cx - y, cy + x, col);
+    PutPixel(b, cx - x, cy - y, col);
+    PutPixel(b, cx - y, cy - x, col);
+    IF d < 0 THEN d := d + 4 * x + 6
+    ELSE d := d + 4 * (x - y) + 10; DEC(y)
+    END;
+    INC(x)
+  END
 END Circle;
 
-PROCEDURE CircleFill*(bmp: Bitmap; x, y, r, color: INTEGER);
+PROCEDURE CircleFill*(b: Bitmap; cx, cy, r, col: INTEGER);
+VAR x, y, d: INTEGER;
 BEGIN
+  x := 0; y := r; d := 3 - 2 * r;
+  WHILE x <= y DO
+    HLine(b, cx - x, cy + y, cx + x, col);
+    HLine(b, cx - y, cy + x, cx + y, col);
+    HLine(b, cx - x, cy - y, cx + x, col);
+    HLine(b, cx - y, cy - x, cx + y, col);
+    IF d < 0 THEN d := d + 4 * x + 6
+    ELSE d := d + 4 * (x - y) + 10; DEC(y)
+    END;
+    INC(x)
+  END
 END CircleFill;
 
 PROCEDURE Ellipse*(bmp: Bitmap; x, y, rx, ry, color: INTEGER);

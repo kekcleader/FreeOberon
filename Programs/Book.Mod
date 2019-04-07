@@ -1,8 +1,11 @@
 MODULE Book;
 IMPORT Out, In, G := Graph;
 VAR screen: G.Bitmap;
+
 BEGIN
   screen := G.Init();
+  G.Circle(screen, 50, 50, 45, G.MakeCol(0, 255, 0));
+
   G.Line(screen, FLOOR(200.0), 50, 450, 50, G.MakeCol(255, 0, 0));
   G.Line(screen, 150, 350, 400, 350, G.MakeCol(255, 0, 0));
   G.Line(screen, 200, 50, 150, 350, G.MakeCol(255, 0, 0));
