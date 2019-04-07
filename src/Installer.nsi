@@ -47,7 +47,7 @@ Section "FreeOberon (required)"
   SetOutPath $INSTDIR
   
   ; Files to install
-  File /r "FreeOberon\*"
+  File /r "C:\FreeOberon\*"
   
   ; Write the installation path into the registry
   WriteRegStr HKLM SOFTWARE\NSIS_FreeOberon "Install_Dir" "$INSTDIR"
