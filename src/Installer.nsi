@@ -14,7 +14,7 @@ Name "FreeOberon"
 ;!define MUI_ICON "FreeOberon\data\images\icon.ico"
 
 ; The file to write
-OutFile "FreeOberon_Setup_v1.0.1.exe"
+OutFile "FreeOberon_Setup_v1.0.2.exe"
 
 ; The default installation directory
 InstallDir C:\FreeOberon
