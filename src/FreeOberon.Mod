@@ -61,6 +61,7 @@ VAR
   programFinished: BOOLEAN;
   tempWindowed: BOOLEAN; (* True if editor is in windowed mode while program is running *)
   needWindowed: BOOLEAN;
+  blockToggle: BOOLEAN; (* If true, ALT+ENTER will not toggle fullscreen *)
 
   app: OV.App;
 
@@ -297,7 +298,10 @@ BEGIN
   ELSE
     CASE key.code OF
       G.kEnter, G.kEnterPad:
-      IF key.mod * G.mAlt # {} THEN T.ToggleFullscreen
+      IF key.mod * G.mAlt # {} THEN
+        IF blockToggle THEN blockToggle := FALSE
+        ELSE T.ToggleFullscreen; blockToggle := TRUE
+        END
       ELSE T.Ln; WriteToProcess(inputBuf, inputBufLen);
         inputBufLen := 0; buf[0] := 0AX;
         Term.WriteToProcess(buf, 1)
@@ -766,6 +770,7 @@ BEGIN
   IF T.Init(needFullscreen) THEN
     InitIDE;
     needWindowed := TRUE;
+    blockToggle := FALSE;
     success := TRUE
   ELSE Out.String('Terminal init failed.'); Out.Ln
   END;

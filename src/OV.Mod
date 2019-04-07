@@ -650,6 +650,8 @@ VAR
   menuMethod-: ControlMethod;
   quickBtnMethod-: ControlMethod;
 
+  blockToggle: BOOLEAN; (* If true, ALT+ENTER will not toggle fullscreen *)
+
 PROCEDURE DrawAppWindows*(app: App);
 VAR w, br: Control;
 BEGIN
@@ -1865,7 +1867,9 @@ BEGIN handled := FALSE; p := app.cur;
   END;
   IF ~handled THEN
     IF (key.code = G.kEnter) & (key.mod * G.mAlt # {}) THEN
-      T.ToggleFullscreen
+      IF blockToggle THEN blockToggle := FALSE
+      ELSE T.ToggleFullscreen; blockToggle := TRUE
+      END
     ELSIF p # NIL THEN
       IF p.do.keyDown # NIL THEN p.do.keyDown(p, key) END;
       IF (p.parent # NIL) & (p.parent IS Window) &
@@ -1980,6 +1984,7 @@ BEGIN
 END RunApp;
 
 BEGIN
+  blockToggle := FALSE;
   NEW(controlMethod); InitControlMethod(controlMethod);
   NEW(buttonMethod); InitButtonMethod(buttonMethod);
   NEW(winBtnMethod); InitWinBtnMethod(winBtnMethod);
