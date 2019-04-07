@@ -373,6 +373,12 @@ BEGIN
       GetToken(s, i, class, len, comLevel);
       fg := GetTokenColor(class)
     END
+  END;
+  DEC(i);
+  WHILE (i >= 0) & (s[i] = ' ') DO
+    DEC(x);
+    T.PutChar(x, y, 0FAX, 3, bg);
+    DEC(i)
   END
 END PutStringH;
 

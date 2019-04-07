@@ -16,11 +16,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT G := Graph, T := Terminal, Text := EditorText, Files,
+IMPORT G := Graph, T := Terminal, Files,
        OV, Editor, Term, Config, Strings, Out;
 CONST
   needFullscreen = TRUE;
-  version* = '1.0.1';
+  version* = '1.0.2';
 
   (* Direction of Selection *)
   dirLeft  = 0;
