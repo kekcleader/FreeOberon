@@ -612,6 +612,13 @@ BEGIN w := c.app.windows;
   END
 END OnBuild;
 
+PROCEDURE HelpAbout(c: OV.Control);
+BEGIN
+  IF app.statusText[0] # 0X THEN OV.SetStatusText(app, '')
+  ELSE OV.SetStatusText(app, 'Visit freeoberon.su')
+  END
+END HelpAbout;
+
 PROCEDURE InitIDE;
 VAR w: OV.Window;
     m, m2: OV.Menu;
@@ -751,16 +758,14 @@ BEGIN
   OV.Add(m, OV.NewMenu('&Files...', '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
-  OV.Add(m, OV.NewMenu('&About...', '', 0, NIL));
-  (*!TODO*) m.children.prev.status := OV.disabled;
+  OV.Add(m, OV.NewMenu('&About...', '', OV.hF1, HelpAbout));
   OV.AddMenu(app, m);
 
-  OV.AddStatusbar(app, OV.NewQuickBtn('Help', 'F1', 0, NIL));
+  OV.AddStatusbar(app, OV.NewQuickBtn('Help', 'F1', 0, HelpAbout));
   OV.AddStatusbar(app, OV.NewQuickBtn('Save', 'F2', 0, FileSave));
   OV.AddStatusbar(app, OV.NewQuickBtn('Open', 'F3', 0, FileOpen));
   OV.AddStatusbar(app, OV.NewQuickBtn('Compile & Run', 'F9', 0, OnBuild));
-  OV.AddStatusbar(app, OV.NewQuickBtn('Local menu', 'Alt+F10', 0, NIL));
-  (*OV.SetStatusText(app, 'Hello');*)
+  OV.AddStatusbar(app, OV.NewQuickBtn('Local menu', 'Alt+F10', 0, NIL))
 END InitIDE;
 
 PROCEDURE Init(): BOOLEAN;
