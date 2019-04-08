@@ -3,6 +3,7 @@ OS=linux
 VOC=../data/bin/voc/bin/voc
 CC=gcc
 SDL2Opts=`sdl2-config --cflags --libs`
+VER=1.0.2
 
 all: prepare voc $(PROG) install
 
@@ -75,7 +76,7 @@ pack: clean prepare
 		$(TMPDIR)/FreeOberon/data/bin/voc/bin \
 		$(TMPDIR)/FreeOberon/data/bin/voc/C \
 		$(TMPDIR)/FreeOberon/data/bin/voc/lib
-	tar czf ../../FreeOberon_v1.0.1.tar.gz -C $(TMPDIR) FreeOberon
+	tar czf ../../FreeOberon_v$(VER).tar.gz -C $(TMPDIR) FreeOberon
 	rm -rf $(TMPDIR)
 
 voc:
