@@ -555,7 +555,6 @@ VAR fname: ARRAY 120 OF CHAR;
 BEGIN
   fname := 'Programs/'; Strings.Append(s, fname);
   Strings.Append('.Mod', fname);
-  Out.String(">>>");Out.String(fname);Out.Ln;
   F := Files.Old(fname);
   exists := F # NIL;
   IF F # NIL THEN Files.Close(F) END;
