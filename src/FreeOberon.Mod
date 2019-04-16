@@ -558,6 +558,7 @@ BEGIN
   F := Files.Old(fname);
   exists := F # NIL;
   IF F # NIL THEN Files.Close(F) END;
+  IF s = 'Graph' THEN exists := TRUE END; (*!FIXME Temporary exception*)
 RETURN exists END ModuleExists;
 
 PROCEDURE GetImportedModules(filename: ARRAY OF CHAR): StrList;
