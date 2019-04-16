@@ -50,7 +50,7 @@ CONST
 TYPE
   StrList = POINTER TO StrListDesc;
   StrListDesc = RECORD
-    s: ARRAY 64 OF CHAR;
+    s: ARRAY 120 OF CHAR;
     next: StrList
   END;
 
@@ -207,7 +207,7 @@ END HandleMouseMotion;
 PROCEDURE PollProgram;
 VAR len, i: INTEGER;
     err: INTEGER;
-    s, sN: ARRAY 64 OF CHAR;
+    s, sN: ARRAY 120 OF CHAR;
   PROCEDURE WriteProgBuf;
   VAR ch: CHAR; i: INTEGER;
   BEGIN
@@ -548,27 +548,43 @@ BEGIN
   s[i] := 0X
 END GetSym;
 
+PROCEDURE ModuleExists(s: ARRAY OF CHAR): BOOLEAN;
+VAR fname: ARRAY 120 OF CHAR;
+  F: Files.File;
+  exists: BOOLEAN;
+BEGIN
+  fname := 'Programs/'; Strings.Append(s, fname);
+  Strings.Append('.Mod', fname);
+  Out.String(">>>");Out.String(fname);Out.Ln;
+  F := Files.Old(fname);
+  exists := F # NIL;
+  IF F # NIL THEN Files.Close(F) END;
+RETURN exists END ModuleExists;
+
 PROCEDURE GetImportedModules(filename: ARRAY OF CHAR): StrList;
 VAR F: Files.File;
   R: Files.Rider;
   top, p: StrList;
   ch: CHAR;
-  s: ARRAY 64 OF CHAR;
+  mod, s: ARRAY 120 OF CHAR;
   ok: BOOLEAN;
 BEGIN NEW(top); top.next := NIL; p := top;
   s := 'Programs/'; Strings.Append(filename, s);
   F := Files.Old(s);
   IF F # NIL THEN
     Files.Set(R, F, 0); Files.Read(R, ch); GetSym(R, ch, s);
-    ok := s = 'MODULE'; GetSym(R, ch, s); GetSym(R, ch, s);
+    ok := s = 'MODULE'; GetSym(R, ch, s); GetSym(R, ch, s); (*!FIXME check module name*)
     IF ok THEN
       ok := s = ';'; GetSym(R, ch, s);
       IF ok THEN
         ok := s = 'IMPORT'; GetSym(R, ch, s);
         WHILE ok & ('A' <= CAP(s[0])) & (CAP(s[0]) <= 'Z') DO
-          NEW(p.next); p := p.next; p.next := NIL; p.s := s;
+          mod := s;
           GetSym(R, ch, s);
-          IF s = ':=' THEN GetSym(R, ch, s); p.s := s; GetSym(R, ch, s) END;
+          IF s = ':=' THEN GetSym(R, ch, s); mod := s; GetSym(R, ch, s) END;
+          IF ModuleExists(mod) THEN
+            NEW(p.next); p := p.next; p.next := NIL; p.s := mod
+          END;
           IF s = ',' THEN GetSym(R, ch, s) ELSE ok := FALSE END
         END
       END
@@ -577,19 +593,51 @@ BEGIN NEW(top); top.next := NIL; p := top;
   RETURN top.next
 END GetImportedModules;
 
+PROCEDURE DebugStrList(p: StrList);
+BEGIN
+  WHILE p # NIL DO
+    Out.Char("'"); Out.String(p.s); Out.Char("'"); Out.Ln;
+    p := p.next
+  END
+END DebugStrList;
+
+PROCEDURE AddUniqueToList(what: StrList; VAR where: StrList);
+VAR p, q, nextP: StrList;
+BEGIN
+  IF where = NIL THEN where := what
+  ELSE
+    p := what;
+    WHILE p # NIL DO
+      nextP := p.next;
+      IF where.s # p.s THEN
+        q := where;
+        WHILE (q.next # NIL) & (q.next.s # p.s) DO q := q.next END;
+        IF q.next = NIL THEN q.next := p; p.next := NIL END
+      END;
+      p := nextP
+    END
+  END
+END AddUniqueToList;
+
 PROCEDURE GetAllImportedModules(filename: ARRAY OF CHAR): StrList;
-VAR list: StrList;
+VAR list, list2, p: StrList;
+  s: ARRAY 120 OF CHAR;
 BEGIN
   list := GetImportedModules(filename);
-  (*!TODO recursion*)
-  RETURN list
-END GetAllImportedModules;
+  p := list;
+  WHILE p # NIL DO
+    s := p.s;
+    Strings.Append(".Mod", s);
+    list2 := GetImportedModules(s);
+    AddUniqueToList(list2, list);
+    p := p.next
+  END;
+RETURN list END GetAllImportedModules;
 
 PROCEDURE ImportsGraph(p: StrList): BOOLEAN;
 BEGIN 
   WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END;
-  RETURN p # NIL
-END ImportsGraph;
+RETURN p # NIL END ImportsGraph;
 
 PROCEDURE OnBuild(c: OV.Control);
 VAR w: OV.Window; graph: BOOLEAN;
@@ -601,6 +649,7 @@ BEGIN w := c.app.windows;
     IF w(Editor.Editor).filename[0] # 0X THEN
       COPY(w(Editor.Editor).filename, primaryFile);
       p := GetAllImportedModules(primaryFile);
+      (*DebugStrList(p);*)
       graph := ImportsGraph(p);
       needWindowed := graph;
       IF Compile(w(Editor.Editor).filename, graph) THEN
