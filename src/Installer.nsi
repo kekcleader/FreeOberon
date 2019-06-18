@@ -14,7 +14,7 @@ Name "FreeOberon"
 ;!define MUI_ICON "FreeOberon\data\images\icon.ico"
 
 ; The file to write
-OutFile "FreeOberon_Setup_v1.0.2.exe"
+OutFile "FreeOberon_Setup_v1.0.3.exe"
 
 ; The default installation directory
 InstallDir C:\FreeOberon
@@ -100,6 +100,7 @@ Section "Uninstall"
   Delete $INSTDIR\Programs\BlitBmp.Mod
   Delete $INSTDIR\Programs\BlitBmp2.Mod
   Delete $INSTDIR\Programs\Book.Mod
+  Delete $INSTDIR\Programs\GEVM.Mod
   Delete $INSTDIR\Programs\Gradient24.Mod
   Delete $INSTDIR\Programs\Gui.Mod
   Delete $INSTDIR\Programs\Mandelbrot.Mod
