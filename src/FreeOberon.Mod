@@ -50,7 +50,7 @@ CONST
 TYPE
   StrList = POINTER TO StrListDesc;
   StrListDesc = RECORD
-    s: ARRAY 120 OF CHAR;
+    s: ARRAY 256 OF CHAR;
     next: StrList
   END;
 
@@ -62,6 +62,7 @@ VAR
   tempWindowed: BOOLEAN; (* True if editor is in windowed mode while program is running *)
   needWindowed: BOOLEAN;
   blockToggle: BOOLEAN; (* If true, ALT+ENTER will not toggle fullscreen *)
+  sysModules: StrList;
 
   app: OV.App;
 
@@ -163,7 +164,54 @@ BEGIN
   END
 END StringsFindNext;
 
-PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR);
+PROCEDURE FileNew(c: OV.Control);
+VAR e: Editor.Editor;
+  p, br: OV.Control;
+  count: INTEGER;
+BEGIN e := Editor.NewEditor(); 
+  p := app.windows; br := p; count := 0;
+  WHILE p # NIL DO INC(count);
+    IF p.next = br THEN p := NIL ELSE p := p.next END
+  END;
+  IF app.windows # NIL THEN
+    e.x := app.windows.x + 1; e.y := app.windows.y + 1;
+    e.w := app.windows.w - 1; e.h := app.windows.h - 1
+  END;
+  e.caption := 'NONAME??.Mod';
+  e.caption[6] := CHR(ORD('0') + count DIV 10 MOD 10);
+  e.caption[7] := CHR(ORD('0') + count MOD 10);
+  OV.AddWindow(app, e)
+END FileNew;
+
+PROCEDURE DoOpenFile(filename: ARRAY OF CHAR);
+VAR e: Editor.Editor; newWin: BOOLEAN;
+BEGIN
+  IF (app.windows # NIL) & (app.windows IS Editor.Editor) THEN
+    e := app.windows(Editor.Editor)
+  ELSE e := NIL
+  END;
+  newWin := (e = NIL) OR ~Editor.IsEmpty(e);
+  IF newWin THEN e := Editor.NewEditor() END;
+  IF e.text.LoadFromFile(filename) THEN
+    e.caption := filename; e.filename := filename;
+    IF newWin THEN OV.AddWindow(app, e) END
+  END
+END DoOpenFile;
+
+PROCEDURE FocusOrOpenFile(filename: ARRAY OF CHAR);
+VAR e, f: Editor.Editor;
+BEGIN
+  e := app.windows(Editor.Editor); f := e;
+  WHILE (e # NIL) & (e.filename # filename) DO
+    IF e.next = f THEN e := NIL ELSE e := e.next(Editor.Editor) END
+  END;
+  IF e = NIL THEN DoOpenFile(filename)
+  ELSE app.windows := e; OV.SetFocus(app, e)
+  END;
+  OV.DrawApp(app)
+END FocusOrOpenFile;
+
+PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; filename: ARRAY OF CHAR);
 VAR i, j, pos, st, len, skip: INTEGER; found: BOOLEAN;
 BEGIN
   StringsFindNext(' pos ', s, 0, found, i);
@@ -188,6 +236,7 @@ BEGIN
         s[j] := '.'; INC(j); s[j] := 0X;
         (* Capitalize first letter (0th is a space). *)
         IF (s[1] >= 'a') & (s[1] <= 'z') THEN s[1] := CAP(s[1]) END;
+        FocusOrOpenFile(filename);
         app.windows(Editor.Editor).text.MoveToPos(pos);
         Editor.PrintText(app.windows(Editor.Editor));
         T.ResetCursorBlink (* !FIXME *)
@@ -208,6 +257,7 @@ PROCEDURE PollProgram;
 VAR len, i: INTEGER;
     err: INTEGER;
     s, sN: ARRAY 120 OF CHAR;
+
   PROCEDURE WriteProgBuf;
   VAR ch: CHAR; i: INTEGER;
   BEGIN
@@ -302,12 +352,13 @@ BEGIN
         IF blockToggle THEN blockToggle := FALSE
         ELSE T.ToggleFullscreen; blockToggle := TRUE
         END
-      ELSE T.Ln; WriteToProcess(inputBuf, inputBufLen);
+      ELSE T.Ln;
+        WriteToProcess(inputBuf, inputBufLen);
         inputBufLen := 0; buf[0] := 0AX;
         Term.WriteToProcess(buf, 1)
       END
     | G.kBackspace:
-      IF (inputBufLen > 0) THEN
+      IF inputBufLen > 0 THEN
         DEC(inputBufLen); T.Backspace
       END
     | G.kPause:
@@ -348,50 +399,133 @@ BEGIN quit := FALSE;
   UNTIL quit
 END RunTerminal;
 
-PROCEDURE Compile(filename: ARRAY OF CHAR; graph: BOOLEAN): BOOLEAN;
+PROCEDURE IsSysModule(name: ARRAY OF CHAR): BOOLEAN;
+VAR p: StrList;
+BEGIN p := sysModules;
+  WHILE (p # NIL) & (p.s # name) DO p := p.next END;
+  RETURN p # NIL
+END IsSysModule;
+
+PROCEDURE ModuleExists(s: ARRAY OF CHAR): BOOLEAN;
+VAR fname: ARRAY 120 OF CHAR;
+  F: Files.File;
+  exists: BOOLEAN;
+BEGIN
+  fname := 'Programs/'; Strings.Append(s, fname);
+  Strings.Append('.Mod', fname);
+  F := Files.Old(fname);
+  exists := F # NIL;
+  IF F # NIL THEN Files.Close(F) END;
+RETURN exists END ModuleExists;
+
+PROCEDURE RunCommand(filename: ARRAY OF CHAR;
+    link, graph, main: BOOLEAN; list: StrList): BOOLEAN;
 CONST bufLen = 20480;
 VAR buf: ARRAY bufLen OF CHAR;
+    p: StrList;
     len, err: INTEGER;
-    scriptPostfix: ARRAY 32 OF CHAR;
+    command: ARRAY 32 OF CHAR;
     cmd: ARRAY 1024 OF CHAR;
     s, sN: ARRAY 80 OF CHAR;
     success: BOOLEAN;
 BEGIN
-  IF ~graph THEN scriptPostfix := '_no_graph' ELSE scriptPostfix := '' END;
+  IF ~link THEN command := 'compile'
+  ELSIF graph THEN command := 'link_graph'
+  ELSE command := 'link_console'
+  END;
   IF Config.isWindows THEN
     IF Term.SearchPath('cmd.exe', cmd) # 0 THEN
       Strings.Insert('"', 0, cmd);
-      Strings.Append('" /C data\bin\compile', cmd);
-      Strings.Append(scriptPostfix, cmd);
+      Strings.Append('" /C data\bin\', cmd);
+      Strings.Append(command, cmd);
       Strings.Append('.bat ', cmd)
     ELSE T.PutString(0, T.charsY - 1, 'Could not find cmd.exe', 15, 4, 0)
     END
   ELSE (* Linux *)
-    COPY('data/bin/compile', cmd);
-      Strings.Append(scriptPostfix, cmd);
-      Strings.Append('.sh ', cmd)
+    COPY('data/bin/', cmd); Strings.Append(command, cmd);
+    Strings.Append('.sh ', cmd)
   END;
   Strings.Append(filename, cmd);
+  IF main THEN Strings.Append(' -m', cmd)
+  ELSIF link & (list # NIL) THEN
+    p := list;
+    WHILE p.next # NIL DO
+      IF ModuleExists(p.s) THEN
+        Strings.Append(' ', cmd); Strings.Append(p.s, cmd);
+        Strings.Append('.o', cmd)
+      END;
+      p := p.next
+    END
+  END;
   success := (Term.RunProcess(cmd, buf, bufLen, len, err) # 0) &
              (err = 0);
   IF ~success THEN
-    COPY(' Compilation returned ', s);
-    IntToStr(err, sN);
-    Strings.Append(sN, s);
+    s := ' Command returned ';
+    IntToStr(err, sN); Strings.Append(sN, s);
     Strings.Append(' exit status ', s);
     IF (len > 0) & (len < bufLen) THEN
       IF buf[len - 1] = 0AX THEN buf[len - 1] := 0X
       ELSE buf[len] := 0X
       END;
-      ParseErrors(buf)
-    ELSE COPY(' Compilation failed.', buf)
+      ParseErrors(buf, filename)
+    ELSIF link THEN buf := 'Linking failed.'
+    ELSE buf := 'Compilation failed.'
     END;
     IF buf[0] = 0X THEN ShowErrors(s)
     ELSE ShowErrors(buf)
     END
   END;
   RETURN success
+END RunCommand;
+
+PROCEDURE Compile(filename: ARRAY OF CHAR; main: BOOLEAN): BOOLEAN;
+BEGIN RETURN RunCommand(filename, FALSE, FALSE, main, NIL)
 END Compile;
+
+PROCEDURE Link(filename: ARRAY OF CHAR;
+    graph: BOOLEAN; list: StrList): BOOLEAN;
+BEGIN RETURN RunCommand(filename, TRUE, graph, FALSE, list)
+END Link;
+
+PROCEDURE ResetSysModules;
+  PROCEDURE Add(s: ARRAY OF CHAR);
+  VAR p: StrList;
+  BEGIN NEW(p); p.s := s; p.next := sysModules; sysModules := p
+  END Add;
+BEGIN sysModules := NIL;
+  Add('SYSTEM');  Add('Texts');    Add('Files');  Add('Strings');
+  Add('In');      Add('Out');      Add('Math');   Add('MathL');
+  Add('Modules'); Add('Platform'); Add('Oberon'); Add('Reals');
+  Add('VT100');   Add('Graph');    Add('SDL2');   Add('Term')
+END ResetSysModules;
+
+PROCEDURE CompileAll(modules: StrList): BOOLEAN;
+VAR s: ARRAY 256 OF CHAR;
+  p, last: StrList;
+  ok, graph: BOOLEAN;
+BEGIN
+  IF modules # NIL THEN
+    ok := TRUE; p := modules; graph := FALSE;
+    WHILE ok & (p.next # NIL) DO
+      IF ModuleExists(p.s) THEN
+        s := p.s; Strings.Append('.Mod', s);
+        IF ~Compile(s, FALSE) THEN ok := FALSE END
+      ELSIF IsSysModule(p.s) THEN
+        IF p.s = 'Graph' THEN graph := TRUE END
+      ELSE ok := FALSE
+      END;
+      p := p.next
+    END;
+    IF ok THEN
+      IF ModuleExists(p.s) THEN
+        s := p.s; Strings.Append('.Mod', s);
+        IF ~Compile(s, TRUE) THEN ok := FALSE END
+      END;
+      IF ~Link(p.s, graph, modules) THEN ok := FALSE END
+    END
+  ELSE ok := FALSE
+  END;
+RETURN ok END CompileAll;
 
 PROCEDURE RunProgram(prg: ARRAY OF CHAR);
 VAR cmd: ARRAY 128 OF CHAR;
@@ -417,39 +551,9 @@ BEGIN
   END
 END RunProgram;
 
-PROCEDURE FileNew(c: OV.Control);
-VAR e: Editor.Editor;
-  p, br: OV.Control;
-  count: INTEGER;
-BEGIN e := Editor.NewEditor(); 
-  p := app.windows; br := p; count := 0;
-  WHILE p # NIL DO INC(count);
-    IF p.next = br THEN p := NIL ELSE p := p.next END
-  END;
-  IF app.windows # NIL THEN
-    e.x := app.windows.x + 1; e.y := app.windows.y + 1;
-    e.w := app.windows.w - 1; e.h := app.windows.h - 1
-  END;
-  e.caption := 'NONAME??.Mod';
-  e.caption[6] := CHR(ORD('0') + count DIV 10 MOD 10);
-  e.caption[7] := CHR(ORD('0') + count MOD 10);
-  OV.AddWindow(app, e)
-END FileNew;
-
-PROCEDURE DoOpenFile(c: OV.Control; filename: ARRAY OF CHAR);
-VAR e: Editor.Editor; newWin: BOOLEAN;
-BEGIN
-  IF (c.app.windows # NIL) & (c.app.windows IS Editor.Editor) THEN
-    e := c.app.windows(Editor.Editor)
-  ELSE e := NIL
-  END;
-  newWin := (e = NIL) OR ~Editor.IsEmpty(e);
-  IF newWin THEN e := Editor.NewEditor() END;
-  IF e.text.LoadFromFile(filename) THEN
-    e.caption := filename; e.filename := filename;
-    IF newWin THEN OV.AddWindow(app, e) END
-  END
-END DoOpenFile;
+PROCEDURE OpenFileOkClick(c: OV.Control; filename: ARRAY OF CHAR);
+BEGIN DoOpenFile(filename)
+END OpenFileOkClick;
 
 PROCEDURE DoSaveFile(c: OV.Control; filename: ARRAY OF CHAR);
 VAR w: OV.Window; e: Editor.Editor;
@@ -467,7 +571,7 @@ PROCEDURE FileOpen(c: OV.Control);
 VAR w: Editor.FileDialog;
 BEGIN
   w := Editor.NewFileDialog(Editor.open);
-  w.onFileOk := DoOpenFile;
+  w.onFileOk := OpenFileOkClick;
   OV.AddWindow(app, w)
 END FileOpen;
 
@@ -548,28 +652,15 @@ BEGIN
   s[i] := 0X
 END GetSym;
 
-PROCEDURE ModuleExists(s: ARRAY OF CHAR): BOOLEAN;
-VAR fname: ARRAY 120 OF CHAR;
-  F: Files.File;
-  exists: BOOLEAN;
-BEGIN
-  fname := 'Programs/'; Strings.Append(s, fname);
-  Strings.Append('.Mod', fname);
-  F := Files.Old(fname);
-  exists := F # NIL;
-  IF F # NIL THEN Files.Close(F) END;
-  IF s = 'Graph' THEN exists := TRUE END; (*!FIXME Temporary exception*)
-RETURN exists END ModuleExists;
-
-PROCEDURE GetImportedModules(filename: ARRAY OF CHAR): StrList;
+PROCEDURE GetImportedModules(modname: ARRAY OF CHAR): StrList;
 VAR F: Files.File;
   R: Files.Rider;
   top, p: StrList;
   ch: CHAR;
-  mod, s: ARRAY 120 OF CHAR;
+  mod, s: ARRAY 256 OF CHAR;
   ok: BOOLEAN;
 BEGIN NEW(top); top.next := NIL; p := top;
-  s := 'Programs/'; Strings.Append(filename, s);
+  s := 'Programs/'; Strings.Append(modname, s); Strings.Append('.Mod', s);
   F := Files.Old(s);
   IF F # NIL THEN
     Files.Set(R, F, 0); Files.Read(R, ch); GetSym(R, ch, s);
@@ -582,7 +673,7 @@ BEGIN NEW(top); top.next := NIL; p := top;
           mod := s;
           GetSym(R, ch, s);
           IF s = ':=' THEN GetSym(R, ch, s); mod := s; GetSym(R, ch, s) END;
-          IF ModuleExists(mod) THEN
+          IF IsSysModule(mod) OR ModuleExists(mod) THEN
             NEW(p.next); p := p.next; p.next := NIL; p.s := mod
           END;
           IF s = ',' THEN GetSym(R, ch, s) ELSE ok := FALSE END
@@ -590,8 +681,7 @@ BEGIN NEW(top); top.next := NIL; p := top;
       END
     END
   END;
-  RETURN top.next
-END GetImportedModules;
+RETURN top.next END GetImportedModules;
 
 PROCEDURE DebugStrList(p: StrList);
 BEGIN
@@ -619,40 +709,49 @@ BEGIN
   END
 END AddUniqueToList;
 
-PROCEDURE GetAllImportedModules(filename: ARRAY OF CHAR): StrList;
-VAR list, list2, p: StrList;
-  s: ARRAY 120 OF CHAR;
-BEGIN
-  list := GetImportedModules(filename);
+PROCEDURE UsedModuleList(modname: ARRAY OF CHAR): StrList;
+VAR res, list, list2, p: StrList;
+BEGIN res := NIL;
+  list := GetImportedModules(modname);
   p := list;
   WHILE p # NIL DO
-    s := p.s;
-    Strings.Append(".Mod", s);
-    list2 := GetImportedModules(s);
-    AddUniqueToList(list2, list);
+    list2 := UsedModuleList(p.s);
+    AddUniqueToList(list2, res);
     p := p.next
   END;
-RETURN list END GetAllImportedModules;
+  NEW(p); p.s := modname; p.next := NIL; AddUniqueToList(p, res);
+RETURN res END UsedModuleList;
 
 PROCEDURE ImportsGraph(p: StrList): BOOLEAN;
 BEGIN 
   WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END;
 RETURN p # NIL END ImportsGraph;
 
+(* "Module.Mod" -> "Module" *)
+PROCEDURE GetModuleName(filename: ARRAY OF CHAR; VAR modname: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN i := 0;
+  WHILE (filename[i] # 0X) & (filename[i] # '.') DO
+    modname[i] := filename[i]; INC(i)
+  END;
+  modname[i] := 0X
+END GetModuleName;
+
 PROCEDURE OnBuild(c: OV.Control);
 VAR w: OV.Window; graph: BOOLEAN;
-  primaryFile: ARRAY 256 OF CHAR;
-  p: StrList;
+  primaryFile, modname: ARRAY 256 OF CHAR;
+  modules: StrList;
 BEGIN w := c.app.windows;
   IF (w # NIL) & (w IS Editor.Editor) THEN
     IF Editor.TextChanged(w(Editor.Editor)) THEN FileSave(c) END;
     IF w(Editor.Editor).filename[0] # 0X THEN
       COPY(w(Editor.Editor).filename, primaryFile);
-      p := GetAllImportedModules(primaryFile);
-      (*DebugStrList(p);*)
-      graph := ImportsGraph(p);
+      GetModuleName(primaryFile, modname);
+      modules := UsedModuleList(modname);
+      (*DebugStrList(modules);*)
+      graph := ImportsGraph(modules);
       needWindowed := graph;
-      IF Compile(w(Editor.Editor).filename, graph) THEN
+      IF CompileAll(modules) THEN
         tempWindowed := needWindowed & T.isFullscreen;
         IF tempWindowed THEN G.SwitchToWindowed END;
         RunProgram(w(Editor.Editor).filename)
@@ -825,6 +924,7 @@ BEGIN
     InitIDE;
     needWindowed := TRUE;
     blockToggle := FALSE;
+    ResetSysModules;
     success := TRUE
   ELSE Out.String('Terminal init failed.'); Out.Ln
   END;

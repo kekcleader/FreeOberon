@@ -292,10 +292,9 @@ PROCEDURE Backspace*;
 BEGIN
   needRedraw := TRUE;
   chars[cursorY, cursorX].updated := TRUE;
-  IF cursorX = 0 THEN
-    cursorX := charsX - 1;
-    DEC(cursorY)
-  ELSE DEC(cursorX) END;
+  IF cursorX # 0 THEN DEC(cursorX)
+  ELSIF cursorY # 0 THEN cursorX := charsX - 1; DEC(cursorY)
+  END;
   chars[cursorY, cursorX].ch := ' ';
   chars[cursorY, cursorX].updated := TRUE
 END Backspace;

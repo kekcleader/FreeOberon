@@ -49,7 +49,7 @@ Graph.sym: Graph.Mod SDL2.sym
 SDL2.sym: SDL2.Mod
 	$(VOC) -OC -cesF SDL2.Mod
 
-.PHONY: clean cleanall install pack prepare
+.PHONY: clean cleanfo cleanall install pack prepare
 
 cleanfo:
 	rm -f *.c *.h *.o *.sym term/term.o .tmp..* \
