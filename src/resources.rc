@@ -14,7 +14,7 @@ BEGIN
       VALUE "LegalCopyright", "Free Oberon"
       VALUE "OriginalFilename", "FreeOberon.exe"
       VALUE "ProductName", "Free Oberon"
-      VALUE "ProductVersion", "0.1.0"
+      VALUE "ProductVersion", "1.0.3"
     END
   END
   BLOCK "VarFileInfo"
