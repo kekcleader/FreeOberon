@@ -325,13 +325,13 @@ BEGIN
   RETURN success
 END LoadMedia;
 
-PROCEDURE Init*(fullscreen: BOOLEAN): BOOLEAN;
+PROCEDURE Init*(fullscreen, software: BOOLEAN): BOOLEAN;
 VAR success: BOOLEAN; options: SET;
 BEGIN
   success := FALSE; isFullscreen := fullscreen;
   options := {G.buffered, G.initMouse, G.spread};
-  (*INCL(options, G.software);*)
   IF fullscreen THEN INCL(options, G.fullscreen) END;
+  IF software THEN INCL(options, G.software) END;
   G.Settings(640, 400, options);
   G.SetSizeStep(charW, charH);
   screen := G.Init();

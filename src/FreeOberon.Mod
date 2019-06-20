@@ -16,11 +16,10 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT G := Graph, T := Terminal, Files,
+IMPORT G := Graph, T := Terminal, Files, Modules,
        OV, Editor, Term, Config, Strings, Out;
 CONST
-  needFullscreen = TRUE;
-  version* = '1.0.2';
+  version* = '1.0.4';
 
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -53,6 +52,7 @@ TYPE
     s: ARRAY 256 OF CHAR;
     next: StrList
   END;
+  Fnames = ARRAY 32, 256 OF CHAR;
 
 VAR
   progBuf: ARRAY 16300 OF CHAR; (* For interacting with a launched program *)
@@ -767,6 +767,56 @@ BEGIN
   END
 END HelpAbout;
 
+PROCEDURE TileWindows*(c: OV.Control);
+VAR W, E: OV.Control;
+  count, cols, rows, i, col, x, y, w, h, h2: INTEGER;
+BEGIN E := app.windows; count := 0;
+  IF E # NIL THEN W := E.next;
+    WHILE W # NIL DO
+      INC(count);
+      IF W = E THEN W := NIL ELSE W := W.next END
+    END;
+    IF count < 4 THEN cols := 1
+    ELSIF count < 9 THEN cols := 2
+    ELSE cols := 3
+    END;
+    rows := count DIV cols; col := 1;
+    x := 0; y := 1; w := T.charsX DIV cols;
+    h := (T.charsY - 2) DIV rows;
+    W := E.next; i := 0;
+    WHILE W # NIL DO
+      IF i # rows - 1 THEN h2 := h
+      ELSE h2 := T.charsY - y - 1
+      END;
+      OV.WindowResize(W, x, y, w, h2);
+      IF W = E THEN W := NIL ELSE W := W.next END;
+      INC(y, h); INC(i);
+      IF (i = rows) & (col < cols) THEN (* New column *)
+        i := 0; INC(col); INC(x, w); y := 1;
+        IF col = cols THEN (* Last column *)
+          rows := count - rows * (cols - 1);
+          w := T.charsX - x;
+          h := (T.charsY - 2) DIV rows
+        END
+      END
+    END
+  END
+END TileWindows;
+
+PROCEDURE CascadeWindows*(c: OV.Control);
+VAR W, E: OV.Control;
+  x, y, w, h: INTEGER;
+BEGIN E := app.windows;
+  x := 0; y := 1; w := T.charsX; h := T.charsY - 2;
+  IF E # NIL THEN W := E.next;
+    WHILE W # NIL DO
+      OV.WindowResize(W, x, y, w, h);
+      INC(x); INC(y); DEC(w); DEC(h);
+      IF W = E THEN W := NIL ELSE W := W.next END
+    END
+  END
+END CascadeWindows;
+
 PROCEDURE InitIDE;
 VAR w: OV.Window;
     m, m2: OV.Menu;
@@ -875,12 +925,9 @@ BEGIN
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Window', '', 0, NIL);
-  OV.Add(m, OV.NewMenu('&Tile', '', 0, NIL));
-  (*!TODO*) m.children.prev.status := OV.disabled;
-  OV.Add(m, OV.NewMenu('C&ascade', '', 0, NIL));
-  (*!TODO*) m.children.prev.status := OV.disabled;
-  OV.Add(m, OV.NewMenu('Cl&ose all', '', 0, NIL));
-  (*!TODO*) m.children.prev.status := OV.disabled;
+  OV.Add(m, OV.NewMenu('&Tile', '', 0, TileWindows));
+  OV.Add(m, OV.NewMenu('C&ascade', '', 0, CascadeWindows));
+  OV.Add(m, OV.NewMenu('Cl&ose all', '', 0, OV.CloseAllWindows));
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   OV.Add(m, OV.NewMenu('&Size/Move', 'Ctrl+F5', OV.hCtrlF5, NIL));
   OV.Add(m, OV.NewMenu('&Zoom', 'F5', OV.hF5, OV.ZoomCurWindow));
@@ -916,15 +963,44 @@ BEGIN
   OV.AddStatusbar(app, OV.NewQuickBtn('Local menu', 'Alt+F10', 0, NIL))
 END InitIDE;
 
+PROCEDURE OpenFiles(VAR fnames: Fnames);
+VAR i: INTEGER;
+BEGIN i := 0;
+  WHILE (i < LEN(fnames)) & (fnames[i] # '') DO
+    DoOpenFile(fnames[i]); INC(i)
+  END;
+  IF i # 0 THEN OV.NextWindow(app.windows) END
+END OpenFiles;
+
+PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN;
+    VAR fnames: Fnames);
+VAR i, nofnames: INTEGER;
+  s: ARRAY 256 OF CHAR;
+BEGIN fs := TRUE; sw := FALSE; i := 0; nofnames := 0;
+  WHILE i # Modules.ArgCount DO
+    Modules.GetArg(i, s);
+    IF s = '-window' THEN fs := FALSE
+    ELSIF s = '-software' THEN sw := TRUE
+    ELSIF nofnames < LEN(fnames) THEN
+      COPY(s, fnames[nofnames]); INC(nofnames)
+    END;
+    INC(i)
+  END;
+  IF nofnames < LEN(fnames) THEN fnames[nofnames][0] := 0X END
+END ParseArgs;
+
 PROCEDURE Init(): BOOLEAN;
-VAR success: BOOLEAN;
+VAR success, fs, sw: BOOLEAN;
+  fnames: Fnames;
 BEGIN
   success := FALSE;
-  IF T.Init(needFullscreen) THEN
+  ParseArgs(fs, sw, fnames);
+  IF T.Init(fs, sw) THEN
     InitIDE;
     needWindowed := TRUE;
     blockToggle := FALSE;
     ResetSysModules;
+    OpenFiles(fnames);
     success := TRUE
   ELSE Out.String('Terminal init failed.'); Out.Ln
   END;

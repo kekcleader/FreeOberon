@@ -981,7 +981,7 @@ BEGIN DrawMenuCaption(c, x, y);
       IF x + w + 3 > T.charsX THEN x := T.charsX - w - 3 END;
       DrawSubmenuFrame(x - 1, y + 1, w + 4, h + 2);
       p := c.children; openMenu := NIL;
-      REPEAT (* Do't draw the submenu until all items are drawn *)
+      REPEAT (* Don't draw the submenu until all items are drawn *)
         IF p.status = open THEN openMenu := p; p.status := selected END;
         p.do.draw(p, x, y); p := p.next
       UNTIL p = c.children;
@@ -1090,8 +1090,10 @@ PROCEDURE MenuClick*(c: Control);
 VAR p: Control;
 BEGIN
   IF c.children = NIL THEN
-    SetFocus(c.app, NIL);
-    IF c.onClick # NIL THEN c.onClick(c) END
+    IF c.status # disabled THEN
+      SetFocus(c.app, NIL);
+      IF c.onClick # NIL THEN c.onClick(c) END
+    END
   ELSE c.status := open;
     p := FindSelectedChild(c);
     IF p = NIL THEN p := c END;
@@ -1564,6 +1566,11 @@ BEGIN
     NeedRedraw(c.app)
   END
 END CloseCurWindow;
+
+PROCEDURE CloseAllWindows*(c: Control);
+BEGIN
+  WHILE c.app.windows # NIL DO CloseCurWindow(c) END
+END CloseAllWindows;
 
 PROCEDURE RefreshDisplay*(c: Control);
 BEGIN T.ClearScreen; NeedRedraw(c.app)
