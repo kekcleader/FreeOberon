@@ -979,8 +979,8 @@ VAR i, nofnames: INTEGER;
 BEGIN fs := TRUE; sw := FALSE; i := 0; nofnames := 0;
   WHILE i # Modules.ArgCount DO
     Modules.GetArg(i, s);
-    IF s = '-window' THEN fs := FALSE
-    ELSIF s = '-software' THEN sw := TRUE
+    IF s = '--window' THEN fs := FALSE
+    ELSIF s = '--software' THEN sw := TRUE
     ELSIF nofnames < LEN(fnames) THEN
       COPY(s, fnames[nofnames]); INC(nofnames)
     END;
