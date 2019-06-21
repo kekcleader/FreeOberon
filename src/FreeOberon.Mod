@@ -175,7 +175,12 @@ BEGIN e := Editor.NewEditor();
   END;
   IF app.windows # NIL THEN
     e.x := app.windows.x + 1; e.y := app.windows.y + 1;
-    e.w := app.windows.w - 1; e.h := app.windows.h - 1
+    e.w := app.windows.w; e.h := app.windows.h;
+    IF e.x + e.w >= T.charsX THEN e.w := T.charsX - e.x END;
+    IF e.y + e.h >= T.charsY - 1 THEN e.h := T.charsY - e.y - 1 END;
+    IF (e.w < 10) OR (e.h < 3) THEN
+      e.x := 0; e.y := 1; e.w := T.charsX; e.h := T.charsY - 2
+    END
   END;
   e.caption := 'NONAME??.Mod';
   e.caption[6] := CHR(ORD('0') + count DIV 10 MOD 10);
@@ -769,7 +774,8 @@ END HelpAbout;
 
 PROCEDURE TileWindows*(c: OV.Control);
 VAR W, E: OV.Control;
-  count, cols, rows, i, col, x, y, w, h, h2: INTEGER;
+  count, cols, rows, i, col, x, y, w, h, w2, h2: INTEGER;
+  aw, ah, dw, dh: INTEGER; (* Accumulator, delta *)
 BEGIN E := app.windows; count := 0;
   IF E # NIL THEN W := E.next;
     WHILE W # NIL DO
@@ -781,22 +787,30 @@ BEGIN E := app.windows; count := 0;
     ELSE cols := 3
     END;
     rows := count DIV cols; col := 1;
-    x := 0; y := 1; w := T.charsX DIV cols;
+    x := 0; y := 1;
+    w := T.charsX DIV cols; w2 := w;
+    dw := T.charsX MOD cols;
     h := (T.charsY - 2) DIV rows;
+    dh := (T.charsY - 2) MOD rows;
+    IF h < 2 THEN h := 2; dh := 0 END;
+    aw := dw; ah := 0;
     W := E.next; i := 0;
     WHILE W # NIL DO
-      IF i # rows - 1 THEN h2 := h
-      ELSE h2 := T.charsY - y - 1
-      END;
-      OV.WindowResize(W, x, y, w, h2);
+      INC(ah, dh);
+      IF ah < rows THEN h2 := h ELSE h2 := h + 1; DEC(ah, rows) END;
+      OV.WindowResize(W, x, y, w2, h2);
       IF W = E THEN W := NIL ELSE W := W.next END;
-      INC(y, h); INC(i);
+      INC(y, h2); INC(i);
       IF (i = rows) & (col < cols) THEN (* New column *)
-        i := 0; INC(col); INC(x, w); y := 1;
+        i := 0; INC(col); INC(x, w2); y := 1; ah := 0;
+        INC(aw, dw);
+        IF aw < cols THEN w2 := w ELSE w2 := w + 1; DEC(aw, cols) END;
         IF col = cols THEN (* Last column *)
           rows := count - rows * (cols - 1);
           w := T.charsX - x;
-          h := (T.charsY - 2) DIV rows
+          h := (T.charsY - 2) DIV rows;
+          dh := (T.charsY - 2) MOD rows;
+          IF h < 2 THEN h := 2; dh := 0 END
         END
       END
     END
@@ -812,6 +826,9 @@ BEGIN E := app.windows;
     WHILE W # NIL DO
       OV.WindowResize(W, x, y, w, h);
       INC(x); INC(y); DEC(w); DEC(h);
+      IF (w < 10) OR (h < 3) THEN
+        x := 0; y := 1; w := T.charsX; h := T.charsY - 2
+      END;
       IF W = E THEN W := NIL ELSE W := W.next END
     END
   END
