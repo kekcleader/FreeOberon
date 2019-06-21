@@ -19,7 +19,7 @@ along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 IMPORT G := Graph, T := Terminal, Files, Modules,
        OV, Editor, Term, Config, Strings, Out;
 CONST
-  version* = '1.0.4';
+  version* = '1.0.3';
 
   (* Direction of Selection *)
   dirLeft  = 0;
