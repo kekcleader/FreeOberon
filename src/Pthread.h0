@@ -1,0 +1,6 @@
+#ifndef Pthread__h0
+#define Pthread__h0
+
+#include <pthread.h>
+
+#endif

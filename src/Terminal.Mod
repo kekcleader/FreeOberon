@@ -1,5 +1,5 @@
 MODULE Terminal;
-(* Copyright 2017-2019 Arthur Yefimov
+(* Copyright 2017-2020 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -45,7 +45,13 @@ VAR
   isFullscreen-: BOOLEAN;
 
 PROCEDURE Redraw*;
-BEGIN needRedraw := TRUE
+VAR x, y: INTEGER;
+BEGIN needRedraw := TRUE;
+  FOR y := 0 TO charsY - 1 DO
+    FOR x := 0 TO charsX - 1 DO
+      chars[y, x].updated := TRUE
+    END
+  END
 END Redraw;
 
 PROCEDURE ToggleFullscreen*;
@@ -91,30 +97,17 @@ END InvertColor;
 PROCEDURE DrawChar*(ch: CHAR; x, y, fg, bg: INTEGER);
 VAR color: INTEGER;
 BEGIN
-  G.RectFill(screen, x, y, x + charW - 1,
-    y + charH - 1, ExpandColor(bg));
+  G.RectFill(screen, x, y, x + charW - 1, y + charH - 1, ExpandColor(bg));
   IF ch # ' ' THEN
     G.DrawCharacter(screen, font, x, y, ch, ExpandColor(fg))
-  END
+  END;
+  G.AddRegion(x, y, charW, charH)
 END DrawChar;
 
-PROCEDURE DrawMouse;
-VAR x, y, bg, fg: INTEGER; ch: CHAR;
-BEGIN
-  IF (mouseX >= 0) & (mouseX < charsX) &
-     (mouseY >= 0) & (mouseY < charsY) THEN
-    bg := InvertColor(chars[mouseY, mouseX].bg);
-    fg := InvertColor(chars[mouseY, mouseX].fg);
-    ch := chars[mouseY, mouseX].ch
-  ELSE bg := 6; fg := 0; ch := ' ' END;
-  x := mouseX * charW;  y := mouseY * charH;
-  DrawChar(ch, x, y, fg, bg)
-END DrawMouse;
-
-(* Draws characters that have been changed, and the mouse.
+(* Draws characters that have been updated, and the mouse.
    Returns TRUE if something has been drawn. *)
 PROCEDURE Draw*(): BOOLEAN;
-VAR x, y, color: INTEGER;
+VAR x, y, fg, bg: INTEGER;
     drawn: BOOLEAN;
 BEGIN
   drawn := needRedraw;
@@ -125,26 +118,34 @@ BEGIN
       FOR x := 0 TO charsX - 1 DO
         IF chars[y, x].updated THEN
           chars[y, x].updated := FALSE;
-          DrawChar(chars[y, x].ch, x * charW, y * charH,
-            chars[y, x].fg, chars[y, x].bg)
+          fg := chars[y, x].fg;
+          bg := chars[y, x].bg;
+          IF (x = mouseX) & (y = mouseY) THEN
+            fg := InvertColor(fg);
+            bg := InvertColor(bg)
+          END;
+          DrawChar(chars[y, x].ch, x * charW, y * charH, fg, bg)
         END
       END
     END;
     (* Text Cursor *)
     IF cursorShown THEN
-      color := ExpandColor(chars[cursorY, cursorX].fg);
-      x := cursorX * charW;  y := cursorY * charH;
+      fg := chars[cursorY, cursorX].fg;
+      IF (mouseX = cursorX) & (mouseY = cursorY) THEN
+        fg := InvertColor(fg)
+      END;
+      fg := ExpandColor(fg);
+      x := cursorX * charW; y := cursorY * charH;
       IF insertCursor THEN
-        G.RectFill(screen, x, y, x + charW - 1, y + charH - 1, color) (*!FIXME*)
-      ELSE
-        INC(y, charH);
-        G.RectFill(screen, x, y - 2, x + charW - 1, y - 1, color)
+        G.RectFill(screen, x, y, x + charW - 1, y + charH - 1, fg); (*!FIXME*)
+        G.AddRegion(x, y, charW, charH) (*!FIXME return*)
+      ELSE INC(y, charH);
+        G.RectFill(screen, x, y - 2, x + charW - 1, y - 1, fg);
+        G.AddRegion(x, y - 2, charW, 2) (*!FIXME return*)
       END
-    END;
-    DrawMouse
+    END
   END;
-  RETURN drawn
-END Draw;
+RETURN drawn END Draw;
 
 PROCEDURE Act*;
 BEGIN
@@ -187,10 +188,14 @@ END GoToXY;
 
 PROCEDURE MouseXY*(x, y: INTEGER);
 BEGIN
-  needRedraw := TRUE;
-  chars[mouseY, mouseX].updated := TRUE;
-  mouseX := x; mouseY := y;
-  chars[mouseY, mouseX].updated := TRUE
+  IF x < 0 THEN x := 0 ELSIF x >= charsX THEN x := charsX - 1 END;
+  IF y < 0 THEN y := 0 ELSIF y >= charsY THEN y := charsY - 1 END;
+  IF (mouseX # x) OR (mouseY # y) THEN
+    needRedraw := TRUE;
+    chars[mouseY, mouseX].updated := TRUE;
+    mouseX := x; mouseY := y;
+    chars[mouseY, mouseX].updated := TRUE
+  END
 END MouseXY;
 
 PROCEDURE ResizeScreen;
@@ -320,7 +325,7 @@ END WriteString;
 PROCEDURE LoadMedia(): BOOLEAN;
 VAR success: BOOLEAN;
 BEGIN
-  font := G.LoadFont('data/images/font.bmp', charW, charH);
+  font := G.LoadFont('data/images/font.png', charW, charH);
   success := font # NIL;
   RETURN success
 END LoadMedia;
@@ -332,7 +337,8 @@ BEGIN
   options := {G.buffered, G.initMouse, G.spread};
   IF fullscreen THEN INCL(options, G.fullscreen) END;
   IF software THEN INCL(options, G.software) END;
-  G.Settings(640, 400, options);
+  G.Settings(640, 480, options);
+  G.Settings(1280, 720, options);
   G.SetSizeStep(charW, charH);
   screen := G.Init();
   IF screen # NIL THEN
@@ -346,8 +352,8 @@ BEGIN
       insertCursor := FALSE;
       cursorOn := FALSE;
       cursorShown := FALSE;
-      cursorX := 1;  cursorY := 2;
-      mouseX := 0;  mouseY := 0;
+      cursorX := 1; cursorY := 2;
+      mouseX := 0; mouseY := 0;
       ResizeScreen
     END
   END;

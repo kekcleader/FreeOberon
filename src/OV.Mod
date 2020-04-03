@@ -1,5 +1,5 @@
 MODULE OV;
-(* Copyright 2017-2019 Arthur Yefimov
+(* Copyright 2017-2020 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT G := Graph, T := Terminal, Strings, Out, SYSTEM;
+IMPORT G := Graph, T := Terminal, Strings, SYSTEM, Out;
 CONST
   (* Control Statuses *)
   normal*   = 0;
@@ -585,7 +585,7 @@ TYPE
     refresh*: PROCEDURE (c: Control);
     click*: PROCEDURE (c: Control);
     keyDown*: PROCEDURE (c: Control; key: G.Key);
-    textInput*: PROCEDURE (c: Control; s: ARRAY OF CHAR; sym: INTEGER);
+    textInput*: PROCEDURE (c: Control; key: G.Key);
     getFocus*: PROCEDURE (c: Control);
     lostFocus*: PROCEDURE (c: Control);
     mouseMove*: PROCEDURE (c: Control; x, y: INTEGER; buttons: SET);
@@ -649,8 +649,6 @@ VAR
   windowMethod-: ControlMethod;
   menuMethod-: ControlMethod;
   quickBtnMethod-: ControlMethod;
-
-  blockToggle: BOOLEAN; (* If true, ALT+ENTER will not toggle fullscreen *)
 
 PROCEDURE DrawAppWindows*(app: App);
 VAR w, br: Control;
@@ -1069,6 +1067,7 @@ BEGIN
       IF p.next = c THEN p := NIL ELSE p := p.next END
     END;
     IF p # NIL THEN
+      G.RemoveTextInputEvent;
       c.status := normal; p.status := selected;
       c.parent(Menu).lastSelected := p; p.do.click(p)
     END
@@ -1127,16 +1126,8 @@ BEGIN p := NIL;
       IF menu # app.menu THEN
         REPEAT p := menu.children; br := p;
           WHILE (p # NIL) & ~((x >= p.x) & (x < p.x + p.w) & (y = p.y)) DO
-            (*Out.String('x=');Out.Int(x,2); Out.String(' y=');Out.Int(x,2);
-            Out.String(' p.x=');Out.Int(p.x,2); Out.String(' p.w=');Out.Int(p.w,2);
-            Out.String(' p.y=');Out.Int(p.y,2); Out.String(' p.h=');Out.Int(p.h,2); Out.Ln;*)
             IF p.next = br THEN p := NIL ELSE p := p.next END
           END;
-          (*IF p # NIL THEN 
-            Out.String('x=');Out.Int(x,2); Out.String(' y=');Out.Int(x,2);
-            Out.String(' p.x=');Out.Int(p.x,2); Out.String(' p.w=');Out.Int(p.w,2);
-            Out.String(' p.y=');Out.Int(p.y,2); Out.String(' p.h=');Out.Int(p.h,2); Out.String(' - FOUND');Out.Ln;
-          END;*)
           IF p = NIL THEN menu := menu.parent; INC(y, menu.h) END
         UNTIL (menu = app.menu) OR (p # NIL);
         IF p # NIL THEN DEC(x, p.x); DEC(y, p.y) END
@@ -1266,15 +1257,17 @@ PROCEDURE QuickBtnDraw(c: Control; x, y: INTEGER);
 VAR i, w, bg, fg: INTEGER;
   hl: BOOLEAN; (* Highlighted letter *)
 BEGIN INC(x, c.x); INC(y, c.y);
-  IF c.status = normal THEN bg := 7 ELSE bg := 2 END;
+  IF c.status = selected THEN bg := 2 ELSE bg := 7 END;
+  IF c.status = disabled THEN fg := 8 ELSE fg := 4 END;
   T.PutChar(x, y, ' ', 0, bg); INC(x); i := 0;
   WHILE c(Menu).hint[i] # 0X DO
-    T.PutChar(x, y, c(Menu).hint[i], 4, bg);
+    T.PutChar(x, y, c(Menu).hint[i], fg, bg);
     INC(x); INC(i)
   END;
+  IF c.status = disabled THEN fg := 8 ELSE fg := 0 END;
   T.PutChar(x, y, ' ', 0, bg); INC(x); i := 0;
   WHILE c.caption[i] # 0X DO
-    T.PutChar(x, y, c.caption[i], 0, bg);
+    T.PutChar(x, y, c.caption[i], fg, bg);
     INC(x); INC(i)
   END;
   T.PutChar(x, y, ' ', 0, bg)
@@ -1490,11 +1483,11 @@ BEGIN e := c(Edit); redraw := TRUE;
   IF redraw THEN NeedRedraw(c.app); T.ResetCursorBlink END
 END EditKeyDown;
 
-PROCEDURE EditTextInput*(c: Control; s: ARRAY OF CHAR; sym: INTEGER);
+PROCEDURE EditTextInput*(c: Control; key: G.Key);
 VAR e: Edit;
 BEGIN
-  IF sym # 0 THEN e := c(Edit);
-    InsertChar(CHR(sym), e.pos, e.caption, e.len);
+  IF key.sym # 0 (*!FIXME*) THEN e := c(Edit);
+    InsertChar(CHR(key.sym), e.pos, e.caption, e.len);
     IF e.pos < e.len THEN INC(e.pos) END;
     NeedRedraw(c.app); T.ResetCursorBlink
   END
@@ -1819,11 +1812,12 @@ BEGIN app.statusText := text
 END SetStatusText;
 
 PROCEDURE CheckMenuOpenKey(app: App; key: G.Key): BOOLEAN;
-VAR p, q, br: Control; found: BOOLEAN;
+VAR p, q, br: Control; found: BOOLEAN; ch: CHAR;
 BEGIN found := FALSE;
-  IF (ORD('a') <= key.sym) & (key.sym <= ORD('z')) & ~HasModalWindow(app) THEN
+  IF (1 <= key.code) & (key.code <= 26) & ~HasModalWindow(app) THEN
+    ch := CHR(ORD('a') - 4 + key.code); (*!FIXME i.e. for Russian*)
     p := app.menu.children.prev; br := p;
-    REPEAT p := p.next; found := MenuHotkey(p(Menu), CHR(key.sym))
+    REPEAT p := p.next; found := MenuHotkey(p(Menu), ch)
     UNTIL found OR (p = br); (* !FIXME use loop pattern *)
     IF found THEN SetFocus(app, NIL); p.do.click(p) END
   END;
@@ -1874,9 +1868,7 @@ BEGIN handled := FALSE; p := app.cur;
   END;
   IF ~handled THEN
     IF (key.code = G.kEnter) & (key.mod * G.mAlt # {}) THEN
-      IF blockToggle THEN blockToggle := FALSE
-      ELSE T.ToggleFullscreen; blockToggle := TRUE
-      END
+      T.ToggleFullscreen
     ELSIF p # NIL THEN
       IF p.do.keyDown # NIL THEN p.do.keyDown(p, key) END;
       IF (p.parent # NIL) & (p.parent IS Window) &
@@ -1887,10 +1879,10 @@ BEGIN handled := FALSE; p := app.cur;
   END
 END OnKeyDown;
 
-PROCEDURE OnTextInput(app: App; s: ARRAY OF CHAR; sym: INTEGER);
+PROCEDURE OnTextInput(app: App; key: G.Key);
 BEGIN
   IF (app.cur # NIL) & (app.cur.do.textInput # NIL) THEN
-    app.cur.do.textInput(app.cur, s, sym)
+    app.cur.do.textInput(app.cur, key)
   END
 END OnTextInput;
 
@@ -1966,32 +1958,31 @@ BEGIN x := event.x DIV T.charW; y := event.y DIV T.charH;
 END OnMouseUp;
 
 PROCEDURE RunApp*(app: App);
-VAR
-  event: G.Event;
+VAR e: G.Event;
 BEGIN
   app.quit := FALSE;
   DrawApp(app);
+  IF T.Draw() THEN G.Flip END;
   REPEAT
     G.WaitEvents(50);
-    WHILE G.PollEvent(event) DO
-      CASE event.type OF
-        G.mouseMove: OnMouseMove(app, event)
-      | G.mouseDown: OnMouseDown(app, event)
-      | G.mouseUp: OnMouseUp(app, event)
-      | G.keyDown: OnKeyDown(app, event.key)
-      | G.textInput: OnTextInput(app, event.s, event.key.sym(*!FIXME*))
+    WHILE G.PollEvent(e) DO
+      CASE e.type OF
+        G.mouseMove: OnMouseMove(app, e)
+      | G.mouseDown: OnMouseDown(app, e)
+      | G.mouseUp: OnMouseUp(app, e)
+      | G.keyDown: OnKeyDown(app, e.key)
+      | G.textInput: OnTextInput(app, e.key)
+      | G.timer: T.Act
       | G.quit: app.quit := TRUE
       ELSE
       END
     END;
-    T.Act;
     IF app.needRedraw THEN DrawApp(app) END;
     IF T.Draw() THEN G.Flip ELSE G.RepeatFlip END
   UNTIL app.quit
 END RunApp;
 
 BEGIN
-  blockToggle := FALSE;
   NEW(controlMethod); InitControlMethod(controlMethod);
   NEW(buttonMethod); InitButtonMethod(buttonMethod);
   NEW(winBtnMethod); InitWinBtnMethod(winBtnMethod);

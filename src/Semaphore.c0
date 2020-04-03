@@ -1,0 +1,30 @@
+#ifndef Semaphore__h0
+#define Semaphore__h0
+
+#include <errno.h>
+#include <time.h>
+#include <semaphore.h>
+
+extern int my_sem_timedwait(sem_t *sem, int ms);
+int my_sem_timedwait(sem_t *sem, int ms) {
+  int res, a;
+  struct timespec ts;
+  if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
+    ts.tv_nsec += ms % 1000 * 1000;
+    if (ts.tv_nsec >= 1000000) {
+      a = ts.tv_nsec / 1000000;
+      ts.tv_nsec %= 1000000;
+      ts.tv_sec += 1 + ms / 1000;
+    } else {
+      ts.tv_sec += ms / 1000;
+    }
+    while ((res = sem_timedwait(sem, &ts)) == -1 && errno == EINTR) {
+      // Do nothing
+    }
+  } else {
+    res = -1;
+  }
+  return res;
+}
+
+#endif

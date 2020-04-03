@@ -795,10 +795,16 @@ MODULE OPM;  (* RC 6.3.89 / 28.6.89, J.Templ 10.7.89 / 22.7.96  *)
   END IsProbablyInstallDir;
 
   PROCEDURE FindInstallDir;
+  VAR vocdir: ARRAY 4096 OF CHAR;
   BEGIN
-    COPY(Modules.BinaryDir, InstallDir);
-    IF ~IsProbablyInstallDir(InstallDir) THEN COPY('../data/bin/voc', InstallDir) END
-    ;COPY('../data/bin/voc', InstallDir)(*!FIXME remove*)
+    Platform.GetEnv("VOCDIR", vocdir);
+    IF vocdir[0] = 0X THEN
+      (* COPY(Modules.BinaryDir, InstallDir);
+      IF ~IsProbablyInstallDir(InstallDir) THEN COPY("../data/bin/voc", InstallDir) END;*)
+      COPY("../data/bin/voc", InstallDir)
+    ELSE
+      COPY(vocdir, InstallDir)
+    END
   END FindInstallDir;
 
 BEGIN

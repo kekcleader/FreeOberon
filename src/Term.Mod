@@ -1,5 +1,5 @@
 MODULE Term;
-(* Copyright 2017-2019 Arthur Yefimov
+(* Copyright 2017-2020 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -18,11 +18,15 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT SYSTEM;
 
-PROCEDURE -AAIncludeTermh* '#include "term/term.h"';
+PROCEDURE -AAIncludeTermh* '#include "Term/Term.h"';
 
 PROCEDURE -StartProcess*
   (cmd: ARRAY OF CHAR): BOOLEAN
   "StartProcess(cmd)";
+
+PROCEDURE -StartProcessDir*
+  (cmd, dir: ARRAY OF CHAR): BOOLEAN
+  "StartProcessDir(cmd, dir)";
 
 PROCEDURE -ProcessFinished*(VAR err: INTEGER): BOOLEAN
   "ProcessFinished(err)";

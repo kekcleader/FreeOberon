@@ -1,5 +1,5 @@
 MODULE EditorText;
-(* Copyright 2017-2019 Arthur Yefimov
+(* Copyright 2017-2020 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT Config, Files, Strings, Out;
+IMPORT Config, Files, Strings;
 
 CONST
   lineLen = 256;

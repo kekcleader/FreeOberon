@@ -1,5 +1,5 @@
 MODULE FreeOberon;
-(* Copyright 2017-2019 Arthur Yefimov
+(* Copyright 2017-2020 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -17,9 +17,9 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT G := Graph, T := Terminal, Files, Modules,
-       OV, Editor, Term, Config, Strings, Out;
+       OV, Editor, Term, Config, Strings, Out, Signals;
 CONST
-  version* = '1.0.3';
+  version* = '1.0.4'; (*Allegro4 branch*)
 
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -30,14 +30,6 @@ CONST
   (* States *)
   stateEditor   = 0;
   stateTerminal = 1;
-
-  (* Character Classes *)
-  charOther       = 0; (*!FIXME Remove these constants *)
-  charAlpha       = 1;
-  charDigit       = 2;
-  charMinusPlus   = 3;
-  charQuote       = 4;
-  charOpenBracket = 5;
 
   (* Token Classes *)
   tokenOther   = 0;
@@ -61,7 +53,6 @@ VAR
   programFinished: BOOLEAN;
   tempWindowed: BOOLEAN; (* True if editor is in windowed mode while program is running *)
   needWindowed: BOOLEAN;
-  blockToggle: BOOLEAN; (* If true, ALT+ENTER will not toggle fullscreen *)
   sysModules: StrList;
 
   app: OV.App;
@@ -101,8 +92,7 @@ BEGIN
     END;
     INC(i)
   END;
-  RETURN lines
-END CountLines;
+RETURN lines END CountLines;
 
 PROCEDURE ShowErrors(s: ARRAY OF CHAR);
 VAR lines, width, x0, x, y, i: INTEGER;
@@ -250,10 +240,9 @@ BEGIN
   END
 END ParseErrors;
 
-PROCEDURE HandleMouseMotion;
-VAR x, y, newX, newY: INTEGER;
+PROCEDURE HandleMouseMotion(x, y: INTEGER);
+VAR newX, newY: INTEGER;
 BEGIN
-  G.GetMousePos(x, y);
   newX := x DIV T.charW;  newY := y DIV T.charH;
   IF (newX # T.mouseX) OR (newY # T.mouseY) THEN T.MouseXY(newX, newY) END
 END HandleMouseMotion;
@@ -353,10 +342,7 @@ BEGIN
   ELSE
     CASE key.code OF
       G.kEnter, G.kEnterPad:
-      IF key.mod * G.mAlt # {} THEN
-        IF blockToggle THEN blockToggle := FALSE
-        ELSE T.ToggleFullscreen; blockToggle := TRUE
-        END
+      IF key.mod * G.mAlt # {} THEN T.ToggleFullscreen
       ELSE T.Ln;
         WriteToProcess(inputBuf, inputBufLen);
         inputBufLen := 0; buf[0] := 0AX;
@@ -376,11 +362,11 @@ BEGIN
   END
 END HandleTerminalKeyDown;
 
-PROCEDURE HandleTerminalTextInput(s: ARRAY OF CHAR; sym: INTEGER);
+PROCEDURE HandleTerminalTextInput(key: G.Key);
 BEGIN
-  IF (sym # 0) & (inputBufLen < LEN(inputBuf)) THEN
-    inputBuf[inputBufLen] := CHR(sym); INC(inputBufLen);
-    T.Write(CHR(sym))
+  IF (key.sym # 0) & (inputBufLen < LEN(inputBuf)) THEN
+    inputBuf[inputBufLen] := CHR(key.sym); INC(inputBufLen);
+    T.Write(CHR(key.sym))
   END
 END HandleTerminalTextInput;
 
@@ -392,14 +378,14 @@ BEGIN quit := FALSE;
     G.WaitEvents(50);
     WHILE G.PollEvent(event) DO
       CASE event.type OF
-        G.mouseMove: HandleMouseMotion
+        G.mouseMove: HandleMouseMotion(event.x, event.y)
       | G.keyDown: HandleTerminalKeyDown(event.key, quit)
-      | G.textInput: HandleTerminalTextInput(event.s, event.key.sym)
+      | G.textInput: HandleTerminalTextInput(event.key)
+      | G.timer: T.Act
       ELSE
       END
     END;
     PollProgram;
-    T.Act;
     IF T.Draw() THEN G.Flip ELSE G.RepeatFlip END
   UNTIL quit
 END RunTerminal;
@@ -408,11 +394,10 @@ PROCEDURE IsSysModule(name: ARRAY OF CHAR): BOOLEAN;
 VAR p: StrList;
 BEGIN p := sysModules;
   WHILE (p # NIL) & (p.s # name) DO p := p.next END;
-  RETURN p # NIL
-END IsSysModule;
+RETURN p # NIL END IsSysModule;
 
 PROCEDURE ModuleExists(s: ARRAY OF CHAR): BOOLEAN;
-VAR fname: ARRAY 120 OF CHAR;
+VAR fname: ARRAY 250 OF CHAR;
   F: Files.File;
   exists: BOOLEAN;
 BEGIN
@@ -422,6 +407,45 @@ BEGIN
   exists := F # NIL;
   IF F # NIL THEN Files.Close(F) END;
 RETURN exists END ModuleExists;
+
+PROCEDURE ExtModuleExists(s: ARRAY OF CHAR): BOOLEAN;
+VAR fname: ARRAY 250 OF CHAR;
+  F: Files.File;
+  exists: BOOLEAN;
+BEGIN
+  fname := 'Programs/'; Strings.Append(s, fname);
+  Strings.Append('/', fname); Strings.Append(s, fname);
+  Strings.Append('.c', fname);
+  F := Files.Old(fname);
+  exists := F # NIL;
+  IF F # NIL THEN Files.Close(F) END;
+RETURN exists END ExtModuleExists;
+
+PROCEDURE PrependPath(VAR mod: ARRAY OF CHAR; path: ARRAY OF CHAR);
+VAR i, j: INTEGER;
+BEGIN i := 0;
+  WHILE (i < LEN(path)) & (path[i] # 0X) DO INC(i) END;
+  WHILE (i >= 0) & (path[i] # '/') DO DEC(i) END;
+  INC(i);
+  IF i > 0 THEN j := 0;
+    WHILE (j < LEN(mod)) & (mod[j] # 0X) DO INC(j) END;
+    IF LEN(mod) >= i + j THEN
+      WHILE j >= 0 DO mod[j + i] := mod[j]; DEC(j) END;
+      j := 0;
+      WHILE j < i DO mod[j] := path[j]; INC(j) END
+    END
+  END
+END PrependPath;
+
+PROCEDURE RemovePath(s: ARRAY OF CHAR; VAR res: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN i := 0;
+  WHILE (i < LEN(s)) & (s[i] # 0X) DO INC(i) END;
+  WHILE (i >= 0) & (s[i] # '/') DO DEC(i) END;
+  IF i >= 0 THEN Strings.Extract(s, i + 1, 80, res)
+  ELSE COPY(s, res)
+  END
+END RemovePath;
 
 PROCEDURE RunCommand(filename: ARRAY OF CHAR;
     link, graph, main: BOOLEAN; list: StrList): BOOLEAN;
@@ -450,18 +474,20 @@ BEGIN
     COPY('data/bin/', cmd); Strings.Append(command, cmd);
     Strings.Append('.sh ', cmd)
   END;
+  Strings.Append('Programs/', cmd);(*!FIXME*)
   Strings.Append(filename, cmd);
   IF main THEN Strings.Append(' -m', cmd)
   ELSIF link & (list # NIL) THEN
     p := list;
     WHILE p.next # NIL DO
       IF ModuleExists(p.s) THEN
-        Strings.Append(' ', cmd); Strings.Append(p.s, cmd);
-        Strings.Append('.o', cmd)
+        RemovePath(p.s, s); Strings.Append(' ', cmd);
+        Strings.Append(s, cmd)
       END;
       p := p.next
     END
   END;
+  Out.String('cmd=');Out.String(cmd);Out.Ln;(*!FIXME*)
   success := (Term.RunProcess(cmd, buf, bufLen, len, err) # 0) &
              (err = 0);
   IF ~success THEN
@@ -480,15 +506,14 @@ BEGIN
     ELSE ShowErrors(buf)
     END
   END;
-  RETURN success
-END RunCommand;
+RETURN success END RunCommand;
 
 PROCEDURE Compile(filename: ARRAY OF CHAR; main: BOOLEAN): BOOLEAN;
 BEGIN RETURN RunCommand(filename, FALSE, FALSE, main, NIL)
 END Compile;
 
 PROCEDURE Link(filename: ARRAY OF CHAR;
-    graph: BOOLEAN; list: StrList): BOOLEAN;
+  graph: BOOLEAN; list: StrList): BOOLEAN;
 BEGIN RETURN RunCommand(filename, TRUE, graph, FALSE, list)
 END Link;
 
@@ -498,10 +523,12 @@ PROCEDURE ResetSysModules;
   BEGIN NEW(p); p.s := s; p.next := sysModules; sysModules := p
   END Add;
 BEGIN sysModules := NIL;
-  Add('SYSTEM');  Add('Texts');    Add('Files');  Add('Strings');
-  Add('In');      Add('Out');      Add('Math');   Add('MathL');
-  Add('Modules'); Add('Platform'); Add('Oberon'); Add('Reals');
-  Add('VT100');   Add('Graph');    Add('SDL2');   Add('Term')
+  Add('SYSTEM');  Add('Texts');     Add('Files');   Add('Strings');
+  Add('In');      Add('Out');       Add('Math');    Add('MathL');
+  Add('Modules'); Add('Platform');  Add('Oberon');  Add('Reals');
+  Add('VT100');   Add('Graph');     Add('SDL2');    Add('Allegro');
+  Add('Signals'); Add('Processes'); Add('Pthread'); Add('Semaphore');
+  Add('Term')(*!FIXME Term?*)
 END ResetSysModules;
 
 PROCEDURE CompileAll(modules: StrList): BOOLEAN;
@@ -526,29 +553,44 @@ BEGIN
         s := p.s; Strings.Append('.Mod', s);
         IF ~Compile(s, TRUE) THEN ok := FALSE END
       END;
-      IF ~Link(p.s, graph, modules) THEN ok := FALSE END
+      IF ok & ~Link(p.s, graph, modules) THEN ok := FALSE END
     END
   ELSE ok := FALSE
   END;
 RETURN ok END CompileAll;
 
 PROCEDURE RunProgram(prg: ARRAY OF CHAR);
-VAR cmd: ARRAY 128 OF CHAR;
+VAR cmd, name, dir: ARRAY 256 OF CHAR;
     x: INTEGER;
 BEGIN
-  (* Extract 'Prg' from 'Prg.Mod' or 'dir/Prg.Mod' *)
-  x := Strings.Length(prg);
-  WHILE (x > 0) & (prg[x] # '.') DO DEC(x) END;
-  IF prg[x] = '.' THEN prg[x] := 0X END;
-  WHILE (x >= 0) & (prg[x] # '/') DO DEC(x) END;
-  IF x >= 0 THEN Strings.Delete(prg, 0, x + 1) END;
+  (* Leave only "dir/d/Prg" from "dir/d/Prg.Mod" *)
+  (* (or "Prg" from "Prg.Mod") *)
+  x := Strings.Length(prg) - 1;
+  WHILE (x > 0) & (prg[x] # ".") DO DEC(x) END;
+  IF x > 0 THEN prg[x] := 0X END;
 
-  (* Construct 'bin/MyProg' or 'bin\MyProg' *)
-  IF Config.isWindows THEN COPY('bin\', cmd) ELSE COPY('bin/', cmd) END;
-  Strings.Append(prg, cmd);
+  (* Split "dir/d/Prg" to "dir/d" and "Prg" *)
+  (* (or "Prg" to "" and "Prg") *)
+  WHILE (x > 0) & (prg[x] # "/") DO DEC(x) END;
+  IF x > 0 THEN
+    Strings.Extract(prg, x + 1, 80, name);
+    prg[x] := 0X
+  ELSE COPY(prg, name); cmd[0] := 0X
+  END;
 
-  IF ~Term.StartProcess(cmd) THEN
-    T.PutString(0, T.charsY - 1, ' Program execution failed ', 15, 4, 0);
+  IF Config.isWindows THEN x := 0;
+    WHILE prg[x] # 0X DO
+      IF prg[x] = "/" THEN prg[x] := "\" END;
+      INC(x)
+    END
+  END;
+
+  dir := "Programs/";
+  IF Config.isWindows THEN dir[Strings.Length(dir) - 1] := "\" END;
+  Strings.Append(cmd, dir);
+
+  IF ~Term.StartProcessDir(name, dir) THEN
+    T.PutString(0, T.charsY - 1, " Program execution failed ", 15, 4, 0);
     IF T.Draw() THEN G.Flip; G.Pause END
   ELSE
     programFinished := FALSE;
@@ -678,8 +720,13 @@ BEGIN NEW(top); top.next := NIL; p := top;
           mod := s;
           GetSym(R, ch, s);
           IF s = ':=' THEN GetSym(R, ch, s); mod := s; GetSym(R, ch, s) END;
-          IF IsSysModule(mod) OR ModuleExists(mod) THEN
+          IF IsSysModule(mod) THEN
             NEW(p.next); p := p.next; p.next := NIL; p.s := mod
+          ELSE
+            PrependPath(mod, modname);
+            IF ModuleExists(mod) THEN
+              NEW(p.next); p := p.next; p.next := NIL; p.s := mod
+            END
           END;
           IF s = ',' THEN GetSym(R, ch, s) ELSE ok := FALSE END
         END
@@ -742,7 +789,7 @@ BEGIN i := 0;
   modname[i] := 0X
 END GetModuleName;
 
-PROCEDURE OnBuild(c: OV.Control);
+PROCEDURE OnCompileAndRun(c: OV.Control);
 VAR w: OV.Window; graph: BOOLEAN;
   primaryFile, modname: ARRAY 256 OF CHAR;
   modules: StrList;
@@ -753,7 +800,7 @@ BEGIN w := c.app.windows;
       COPY(w(Editor.Editor).filename, primaryFile);
       GetModuleName(primaryFile, modname);
       modules := UsedModuleList(modname);
-      (*DebugStrList(modules);*)
+      (*DebugStrList(modules);(*!FIXME*)*)
       graph := ImportsGraph(modules);
       needWindowed := graph;
       IF CompileAll(modules) THEN
@@ -763,7 +810,7 @@ BEGIN w := c.app.windows;
       END
     END
   END
-END OnBuild;
+END OnCompileAndRun;
 
 PROCEDURE HelpAbout(c: OV.Control);
 BEGIN
@@ -782,7 +829,8 @@ BEGIN E := app.windows; count := 0;
       INC(count);
       IF W = E THEN W := NIL ELSE W := W.next END
     END;
-    IF count < 4 THEN cols := 1
+    IF count = 2 THEN cols := 2
+    ELSIF count < 4 THEN cols := 1
     ELSIF count < 9 THEN cols := 2
     ELSE cols := 3
     END;
@@ -878,17 +926,17 @@ BEGIN
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Run', '', 0, NIL);
-  OV.Add(m, OV.NewMenu('&Run', 'Ctrl+F9', OV.hCtrlF9, OnBuild));
+  OV.Add(m, OV.NewMenu('&Run', 'Ctrl+F9', OV.hCtrlF9, OnCompileAndRun));
   OV.Add(m, OV.NewMenu('Run &Directory...', '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('P&arameters...', '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Compile', '', 0, NIL);
-  OV.Add(m, OV.NewMenu('&Compile', 'Alt+F9', OV.hAltF9, OnBuild));
-  OV.Add(m, OV.NewMenu('&Make', 'Shift+F9', OV.hShiftF9, OnBuild));
-  OV.Add(m, OV.NewMenu('Make && &Run', 'F9', OV.hF9, OnBuild));
-  OV.Add(m, OV.NewMenu('&Build', '', 0, OnBuild));
+  OV.Add(m, OV.NewMenu('&Compile', 'Alt+F9', OV.hAltF9, OnCompileAndRun));
+  OV.Add(m, OV.NewMenu('&Make', 'Shift+F9', OV.hShiftF9, OnCompileAndRun));
+  OV.Add(m, OV.NewMenu('Make && &Run', 'F9', OV.hF9, OnCompileAndRun));
+  OV.Add(m, OV.NewMenu('&Build', '', 0, OnCompileAndRun));
   OV.AddMenu(app, m);
   m := OV.NewMenu('&Debug', '', 0, NIL);
   OV.Add(m, OV.NewMenu('&Output', '', 0, NIL));
@@ -947,6 +995,7 @@ BEGIN
   OV.Add(m, OV.NewMenu('Cl&ose all', '', 0, OV.CloseAllWindows));
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   OV.Add(m, OV.NewMenu('&Size/Move', 'Ctrl+F5', OV.hCtrlF5, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('&Zoom', 'F5', OV.hF5, OV.ZoomCurWindow));
   OV.Add(m, OV.NewMenu('&Next', 'F6', OV.hF6, OV.NextWindow));
   OV.Add(m, OV.NewMenu('&Previous', 'Shift+F6', OV.hShiftF6, OV.PrevWindow));
@@ -976,8 +1025,9 @@ BEGIN
   OV.AddStatusbar(app, OV.NewQuickBtn('Help', 'F1', 0, HelpAbout));
   OV.AddStatusbar(app, OV.NewQuickBtn('Save', 'F2', 0, FileSave));
   OV.AddStatusbar(app, OV.NewQuickBtn('Open', 'F3', 0, FileOpen));
-  OV.AddStatusbar(app, OV.NewQuickBtn('Compile & Run', 'F9', 0, OnBuild));
-  OV.AddStatusbar(app, OV.NewQuickBtn('Local menu', 'Alt+F10', 0, NIL))
+  OV.AddStatusbar(app, OV.NewQuickBtn('Compile & Run', 'F9', 0, OnCompileAndRun));
+  OV.AddStatusbar(app, OV.NewQuickBtn('Local menu', 'Alt+F10', 0, NIL));
+  (*!TODO*) app.statusbar.children.prev.status := OV.disabled
 END InitIDE;
 
 PROCEDURE OpenFiles(VAR fnames: Fnames);
@@ -993,7 +1043,7 @@ PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN;
     VAR fnames: Fnames);
 VAR i, nofnames: INTEGER;
   s: ARRAY 256 OF CHAR;
-BEGIN fs := TRUE; sw := FALSE; i := 0; nofnames := 0;
+BEGIN fs := FALSE; sw := FALSE; i := 0; nofnames := 0;
   WHILE i # Modules.ArgCount DO
     Modules.GetArg(i, s);
     IF s = '--window' THEN fs := FALSE
@@ -1015,14 +1065,12 @@ BEGIN
   IF T.Init(fs, sw) THEN
     InitIDE;
     needWindowed := TRUE;
-    blockToggle := FALSE;
     ResetSysModules;
     OpenFiles(fnames);
     success := TRUE
   ELSE Out.String('Terminal init failed.'); Out.Ln
   END;
-  RETURN success
-END Init;
+RETURN success END Init;
 
 BEGIN
   IF ~Init() THEN Out.String('Could not initialize.'); Out.Ln

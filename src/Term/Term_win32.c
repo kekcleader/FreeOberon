@@ -1,4 +1,4 @@
-/* Copyright 2017-2019 Arthur Yefimov
+/* Copyright 2017-2020 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -116,7 +116,7 @@ BOOL MyCreatePipeEx(
 	return( TRUE );
 }
 
-int StartProcess(char *process) {
+int StartProcessDir(char *process, char *dir) {
   SECURITY_ATTRIBUTES saAttr;
 
 // Set the bInheritHandle flag so pipe handles are inherited.
@@ -214,6 +214,10 @@ int ProcessFinished(int *err) {
     *err = 0;
   }
   return result;
+}
+
+int StartProcess(char *process) {
+  return StartProcessDir(process, NULL);
 }
 
 void WriteToProcess(char *buf, int len) {

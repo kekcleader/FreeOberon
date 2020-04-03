@@ -1,4 +1,4 @@
-/* Copyright 2017-2019 Arthur Yefimov
+/* Copyright 2017-2020 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -29,7 +29,7 @@ extern void exit(int);
 int p[2], q[2];
 pid_t pid;
 
-int StartProcess(char *process) {
+int StartProcessDir(char *process, char *dir) {
   int success = 0;
   if ((pipe(p) == -1) || (pipe(q) == -1)) {
     perror("StartProcess: Could not create pipes.");
@@ -46,18 +46,37 @@ int StartProcess(char *process) {
       }
       close(q[1]);
       close(p[0]);
+      if ((dir != NULL) && (dir != ".")) {
+        if (chdir(dir)) {
+          fprintf(stderr, "Could not change directory.\n");
+          exit(0);
+        }
+      }
+      fprintf(stderr, "[%s] [%s]\n", process, dir);
       if (execl(process, process, (char*)NULL)) {
-        puts("Could not run program.");
+        fprintf(stderr, "Could not run program.\n");
         exit(0);
       }
     } else { // Parent process
+
+      // Ignore SIGPIPE in case write() is used
+      // on a pipe that noone would read from
+      if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+        perror("signal(SIGPIPE, SIG_IGN)");
+      }
+
       close(q[0]);
       close(p[1]);
       fcntl(p[0], F_SETFL, O_NONBLOCK);
     }
     success = 1;
   }
+  puts("CCC3");
   return success;
+}
+
+int StartProcess(char *process) {
+  return StartProcessDir(process, NULL);
 }
 
 int ProcessFinished(int *err) {

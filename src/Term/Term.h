@@ -2,6 +2,7 @@
 #define TERM_H
 
 int StartProcess(char *process);
+int StartProcessDir(char *process, char *dir);
 int ProcessFinished();
 int WriteToProcess(char *buf, int len);
 int ReadFromProcess(char *buf, int *len, int limit);

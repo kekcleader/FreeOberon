@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT Al := Allegro, Signals,
+IMPORT SDL := SDL2, (* Mix := SDL2mixer, Net := SDL2net,*)
        SYSTEM, Platform, Out;
 
 CONST
@@ -51,7 +51,6 @@ CONST
   mouseDown*   = 7;
   mouseUp*     = 8;
   mouseWheel*  = 9;
-  timer*       = 15;
 
   (* Mouse Buttons *)
   btnLeft*  = 0;
@@ -196,19 +195,19 @@ TYPE
 
   Bitmap* = POINTER TO BitmapDesc;
   BitmapDesc* = RECORD
-    bmp: Al.PBitmap;
+    surface: SDL.Surface;
     w*, h*: INTEGER
   END;
 
   Font* = POINTER TO FontDesc;
   FontDesc* = RECORD
+    bmp*: Bitmap;
     charW*, charH*: INTEGER;
     charRows*, charsInRow*: INTEGER;
-    bmp: Al.PBitmap;
-    sprites: ARRAY 256 OF Al.PBitmap
+    sprites*: POINTER [1] TO ARRAY OF ARRAY OF SDL.Rect
   END;
 
-  KeyArray = ARRAY 128 OF BOOLEAN;
+  KeyArray = SDL.KeyArray;
 
   Key* = RECORD
     code*: INTEGER; (* Physical key code *)
@@ -258,46 +257,40 @@ TYPE
     button*: INTEGER;
     buttons*: SET; (* What mouse buttons are pressed *)
     down*: BOOLEAN;
-    time*: INTEGER
+    s*: ARRAY 32 OF CHAR
   END;
 
   EventQueue* = RECORD
     buf: ARRAY 256 OF Event;
-    first, last: INTEGER; (* Indices of first and last element *)
-    len: INTEGER (* Amount of elements currently in the queue *)
+    first, last: INTEGER; (* Index of first and last element *)
+    len: INTEGER (* Amount of elements currently in queue *)
   END;
 
   CloseBtnProc* = PROCEDURE;
 
 VAR
-  screen: Bitmap; (* Buffer *)
-  realScreen: Al.PBitmap; (* Allegro screen *)
+  window: SDL.Window;
+  renderer: SDL.Renderer;
+  screen: Bitmap;
+  screenTexture: SDL.Texture;
   events: EventQueue;
-  mouseEvents: EventQueue; (* For events that come from interrupts *)
-  keyboardEvents: EventQueue; (* For events that come from interrupts *)
   keyPressed: INTEGER;
-  keys: KeyArray;
-  keyMod: SET;
-  readKeyBuf: CHAR;
-  keyMap: ARRAY 128 OF INTEGER; (* Map from Allegro keys to SDL *)
-  closeButtonPressed: BOOLEAN;
 
   sizeStepX, sizeStepY: INTEGER;
   wantW, wantH: INTEGER;
   wantFullscreen, wantBuffer, wantSpread: BOOLEAN;
   wantSharpPixels, wantSoftware: BOOLEAN;
   wantMouse, wantSound, wantNet: BOOLEAN;
-  wantFPS, timerDelay: INTEGER;
+  wantFPS: INTEGER;
   buffer: Bitmap;
-  lastTick: INTEGER;
+  lastFlip: INTEGER;
   frames, framesT: INTEGER;
 
   (* Flip Region *)
-  useRegions: BOOLEAN;
-  region: Region;
+  flipRegion: Region;
 
   (* Mouse *)
-  mouseX, mouseY, mouseZ: INTEGER;
+  mouseX, mouseY: INTEGER;
   mouseFocusX, mouseFocusY: INTEGER;
   lastBlitMouseOutside: BOOLEAN;
   lastBlitMouseX, lastBlitMouseY: INTEGER;
@@ -309,28 +302,21 @@ VAR
 
   randomSeed-: INTEGER;
 
-  hasEvents: Signals.Signal;
+PROCEDURE -AAIncludeSDL2h0 '#include "SDL2.h0"';
 
-PROCEDURE -AAIncludeAllegroh0 '#include "Allegro.h0"';
+(* C Macros *)
+
+PROCEDURE LoadBmp(filename: ARRAY OF CHAR): SDL.Surface;
+BEGIN
+  RETURN SDL.LoadBmpRW(SDL.RWFromFile(filename, 'rb'), 1)
+END LoadBmp;
 
 (* Misc *)
 
-PROCEDURE GetTicks*(): INTEGER;
-BEGIN RETURN SHORT(Platform.Time())
-END GetTicks;
-
 PROCEDURE Str*(n: INTEGER; VAR s: ARRAY OF CHAR);
-VAR i, l, r: INTEGER; c: CHAR;
 BEGIN
-  IF n < 0 THEN s[0] := "-"; i := 1; n := -n ELSE i := 0 END;
-  l := i;
-  REPEAT
-    s[i] := CHR(ORD("0") + n MOD 10);
-    n := n DIV 10;
-    IF i < LEN(s) - 1 THEN INC(i) END
-  UNTIL n = 0;
-  s[i] := 0X; r := i - 1;
-  WHILE l < r DO c := s[l]; s[l] := s[r]; s[r] := c; INC(l); DEC(r) END
+  (*IntStr.IntToStr(n, s)*)
+  s[0] := '4'; s[1] := '2'; s[2] := 0X (*!FIXME*)
 END Str;
 
 PROCEDURE Val*(s: ARRAY OF CHAR): INTEGER;
@@ -351,8 +337,11 @@ END AppendN;
 (* General *)
 
 PROCEDURE GetError*(VAR s: ARRAY OF CHAR);
+TYPE P = POINTER TO ARRAY 10240 OF CHAR;
+VAR p: P;
 BEGIN
-  s[0] := "E"; s[1] := 0X (*!FIXME*)
+  p := SYSTEM.VAL(P, SDL.GetError());
+  COPY(p^, s)
 END GetError;
 
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
@@ -364,6 +353,7 @@ BEGIN (*!TODO: Refactor, save options in a SET*)
   wantSharpPixels := sharpPixels IN flags;
   wantSoftware := software IN flags;
   wantMouse := initMouse IN flags;
+  showMouse := wantMouse;
   wantNet := initNet IN flags;
   wantSound := initSound IN flags
 END Settings;
@@ -376,13 +366,14 @@ END SetSizeStep;
 PROCEDURE SetFPS*(fps: INTEGER);
 BEGIN
   IF fps <= 0 THEN fps := -1 END;
-  wantFPS := fps;
-  timerDelay := 1000 DIV fps
+  wantFPS := fps
 END SetFPS;
 
 PROCEDURE GetDesktopResolution*(VAR w, h: INTEGER);
+VAR mode: SDL.DisplayMode;
 BEGIN
-  IF Al.GetDesktopResolution(w, h) # 0 THEN w := -1; h := -1 END
+  SDL.GetDesktopDisplayMode(0, mode);
+  w := mode.w; h := mode.h
 END GetDesktopResolution;
 
 PROCEDURE CheckWantedScreenSize;
@@ -396,89 +387,61 @@ BEGIN
 END CheckWantedScreenSize;
 
 (* Flip Region *)
-
-PROCEDURE UseRegions*(b: BOOLEAN);
-BEGIN useRegions := b
-END UseRegions;
-
 PROCEDURE SetRegion*(x, y, w, h: INTEGER);
-BEGIN region.x := x; region.y := y;
-  region.w := w; region.h := h
+BEGIN
+  flipRegion.x := x;  flipRegion.y := y;
+  flipRegion.w := w;  flipRegion.h := h
 END SetRegion;
 
 PROCEDURE UnsetRegion*;
-BEGIN region.w := -1
+BEGIN
+  flipRegion.w := -1
 END UnsetRegion;
 
 PROCEDURE AddRegion*(x, y, w, h: INTEGER);
 BEGIN
-  IF useRegions THEN
-    IF region.w = -1 THEN (* No flip region yet *)
-      SetRegion(x, y, w, h) (* Just set it *)
-    ELSE (* Flip Region exists, add to it *)
-      IF x < region.x THEN INC(region.w, region.x - x); region.x := x END;
-      IF y < region.y THEN INC(region.h, region.y - y); region.y := y END;
-      IF x + w > region.x + region.w THEN
-        region.w := w + x - region.x
-      END;
-      IF y + h > region.y + region.h THEN
-        region.h := h + y - region.y
-      END
-    END
+  IF flipRegion.w = -1 THEN (* No flip region yet *)
+    SetRegion(x, y, w, h) (* Just set it *)
+  ELSE (* Flip Region exists, add to it *)
+    IF x < flipRegion.x THEN flipRegion.x := x END;
+    IF y < flipRegion.y THEN flipRegion.y := y END;
+    IF x + w > flipRegion.x + flipRegion.w THEN
+      flipRegion.w := w + x - flipRegion.x END;
+    IF y + h > flipRegion.y + flipRegion.h THEN
+      flipRegion.h := h + y - flipRegion.y END
   END
 END AddRegion;
 
 (* Drawing *)
 
 PROCEDURE MakeCol*(r, g, b: INTEGER): INTEGER;
-BEGIN RETURN Al.MakeCol32(r, g, b);
+BEGIN
+  r := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, r) * {0..7});
+  g := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, g) * {0..7});
+  b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, b) * {0..7});
+  RETURN SYSTEM.LSH(SYSTEM.LSH(0FF00H + b, 8) + g, 8) + r
 END MakeCol;
-
-PROCEDURE MakeACol*(r, g, b, a: INTEGER): INTEGER;
-BEGIN RETURN Al.MakeACol32(r, g, b, a);
-END MakeACol;
 
 PROCEDURE ColorToRGB*(color: INTEGER; VAR r, g, b: INTEGER);
 BEGIN
-  r := Al.GetR32(color);
-  g := Al.GetG32(color);
-  b := Al.GetB32(color)
+  r := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, color) * {0..7});
+  g := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -8)) * {0..7});
+  b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -16)) * {0..7})
 END ColorToRGB;
 
-PROCEDURE ColorToRGBA*(color: INTEGER; VAR r, g, b, a: INTEGER);
-BEGIN
-  r := Al.GetR32(color);
-  g := Al.GetG32(color);
-  b := Al.GetB32(color);
-  a := Al.GetA32(color)
-END ColorToRGBA;
-
-PROCEDURE GetR*(color: INTEGER): INTEGER;
-BEGIN RETURN Al.GetR32(color)
-END GetR;
-
-PROCEDURE GetG*(color: INTEGER): INTEGER;
-BEGIN RETURN Al.GetG32(color)
-END GetG;
-
-PROCEDURE GetB*(color: INTEGER): INTEGER;
-BEGIN RETURN Al.GetB32(color)
-END GetB;
-
-PROCEDURE GetA*(color: INTEGER): INTEGER;
-BEGIN RETURN Al.GetA32(color)
-END GetA;
-
 PROCEDURE BmpCol*(bmp: Bitmap; r, g, b: INTEGER): INTEGER;
-BEGIN RETURN MakeCol(r, g, b) (*!FIXME*)
+BEGIN
+  RETURN SDL.MapRGB(bmp.surface.format, SHORT(r), SHORT(g), SHORT(b))
 END BmpCol;
 
 PROCEDURE ClearToColor*(bmp: Bitmap; color: INTEGER);
-BEGIN Al.ClearToColor(bmp.bmp, color)
+BEGIN
+  SDL.FillRectNil(bmp.surface, color)
 END ClearToColor;
 
 PROCEDURE ClearBitmap*(bmp: Bitmap);
-BEGIN Al.ClearBitmap(bmp.bmp)
+BEGIN
+  ClearToColor(bmp, MakeCol(0, 0, 0))
 END ClearBitmap;
 
 PROCEDURE ClearScreenToColor*(color: INTEGER);
@@ -493,56 +456,121 @@ END ClearScreen;
 
 PROCEDURE LockBitmap*(bmp: Bitmap);
 BEGIN
-  (*SDL.LockSurface(bmp.surface)*)
+  SDL.LockSurface(bmp.surface)
 END LockBitmap;
 
 PROCEDURE UnlockBitmap*(bmp: Bitmap);
 BEGIN
-  (*SDL.UnlockSurface(bmp.surface)*)
+  SDL.UnlockSurface(bmp.surface)
 END UnlockBitmap;
 
 PROCEDURE PutPixelFast*(bmp: Bitmap; x, y, color: INTEGER);
-BEGIN Al.PutPixel32(bmp.bmp, x, y, color)
+VAR n: SYSTEM.ADDRESS;
+BEGIN n := SYSTEM.VAL(SYSTEM.ADDRESS, bmp.surface.pixels);
+  INC(n, (y * bmp.w + x) * 4);
+  SYSTEM.PUT(n, color)
 END PutPixelFast;
 
 PROCEDURE PutPixel*(bmp: Bitmap; x, y, color: INTEGER);
+VAR n: SYSTEM.ADDRESS;
 BEGIN
-  IF (x >= 0) & (x < bmp.w) & (y >= 0) & (y < bmp.h) THEN
-    Al.PutPixel32(bmp.bmp, x, y, color)
+  IF (x >= 0) & (x < bmp.w) &
+     (y >= 0) & (y < bmp.h) THEN
+    SDL.LockSurface(bmp.surface);
+    n := SYSTEM.VAL(SYSTEM.ADDRESS, bmp.surface.pixels);
+    INC(n, (y * bmp.w + x) * 4);
+    SYSTEM.PUT(n, color);
+    SDL.UnlockSurface(bmp.surface)
   END
 END PutPixel;
 
 PROCEDURE GetPixel*(bmp: Bitmap; x, y: INTEGER): INTEGER;
-VAR c: INTEGER;
+VAR color: INTEGER;
+  n: SYSTEM.ADDRESS;
 BEGIN
-  IF (x >= 0) & (x < bmp.w) & (y >= 0) & (y < bmp.h) THEN
-    c := Al.GetPixel32(bmp.bmp, x, y)
-  ELSE c := 0 END;
-RETURN c END GetPixel;
+  IF (x >= 0) & (x < bmp.w) &
+     (y >= 0) & (y < bmp.h) THEN
+    SDL.LockSurface(bmp.surface);
+    n := SYSTEM.VAL(SYSTEM.ADDRESS, bmp.surface.pixels);
+    INC(n, (y * bmp.w + x) * 4);
+    SYSTEM.GET(n, color);
+    SDL.UnlockSurface(bmp.surface)
+  ELSE color := 0 END;
+  RETURN color
+END GetPixel;
 
 PROCEDURE HLine*(bmp: Bitmap; x1, y, x2, color: INTEGER);
-BEGIN Al.HLine(bmp.bmp, x1, y, x2, color)
+VAR rect: SDL.Rect; t: INTEGER;
+BEGIN
+  IF x1 > x2 THEN t := x1; x1 := x2; x2 := t END;
+  rect.x := x1; rect.y := y;
+  rect.w := x2 - x1 + 1; rect.h := 1;
+  SDL.FillRect(bmp.surface, rect, color)
 END HLine;
 
 PROCEDURE VLine*(bmp: Bitmap; x, y1, y2, color: INTEGER);
-BEGIN Al.VLine(bmp.bmp, x, y1, y2, color)
+VAR rect: SDL.Rect; t: INTEGER;
+BEGIN
+  IF y1 > y2 THEN t := y1; y1 := y2; y2 := t END;
+  rect.x := x; rect.y := y1;
+  rect.w := 1; rect.h := y2 - y1 + 1;
+  SDL.FillRect(bmp.surface, rect, color)
 END VLine;
 
 PROCEDURE Line*(bmp: Bitmap; x1, y1, x2, y2, color: INTEGER);
-BEGIN Al.Line(bmp.bmp, x1, y1, x2, y2, color)
+VAR x, y, i, dx, dy, sx, sy, e: INTEGER; vert: BOOLEAN;
+BEGIN
+  IF x1 = x2 THEN VLine(bmp, x1, y1, y2, color)
+  ELSIF y1 = y2 THEN HLine(bmp, x1, y1, x2, color)
+  ELSE
+    SDL.LockSurface(bmp.surface);
+    dx := ABS(x1 - x2); dy := ABS(y1 - y2);
+    IF x2 > x1 THEN sx := 1 ELSE sx := -1 END;
+    IF y2 > y1 THEN sy := 1 ELSE sy := -1 END;
+    x := x1; y := y1; vert := dy > dx;
+    IF vert THEN i := dx; dx := dy; dy := i END;
+    e := 2 * dy - dx;
+    FOR i := 0 TO dx DO
+      IF (x >= 0) & (x < bmp.w) &
+         (y >= 0) & (y < bmp.h) THEN
+        PutPixelFast(bmp, x, y, color)
+      END;
+      IF e >= 0 THEN
+        IF vert THEN INC(x, sx) ELSE INC(y, sy) END;
+        DEC(e, 2 * dx)
+      END;
+      IF vert THEN INC(y, sy) ELSE INC(x, sx) END;
+      INC(e, 2 * dy)
+    END;
+    SDL.UnlockSurface(bmp.surface)
+  END
 END Line;
 
 PROCEDURE FastLine*(bmp: Bitmap; x1, y1, x2, y2, color: INTEGER);
 BEGIN
-  Al.FastLine(bmp.bmp, x1, y1, x2, y2, color)
+  (*Al.FastLine(bmp.bmp, x1, y1, x2, y2, color)*)
 END FastLine;
 
 PROCEDURE Rect*(bmp: Bitmap; x1, y1, x2, y2, color: INTEGER); (*!FIXME*)
-BEGIN Al.Rect(bmp.bmp, x1, y1, x2, y2, color)
+VAR rect: SDL.Rect;
+BEGIN
+  rect.x := x1; rect.y := y1;
+  rect.w := 1; rect.h := y2 - y1 + 1;
+  SDL.FillRect(bmp.surface, rect, color);
+  rect.x := x2;
+  SDL.FillRect(bmp.surface, rect, color);
+  rect.x := x1; rect.w := x2 - x1 + 1; rect.h := 1;
+  SDL.FillRect(bmp.surface, rect, color);
+  rect.y := y2;
+  SDL.FillRect(bmp.surface, rect, color)
 END Rect;
 
 PROCEDURE RectFill*(bmp: Bitmap; x1, y1, x2, y2, color: INTEGER);
-BEGIN Al.RectFill(bmp.bmp, x1, y1, x2, y2, color)
+VAR rect: SDL.Rect;
+BEGIN
+  rect.x := x1; rect.y := y1;
+  rect.w := x2 - x1 + 1; rect.h := y2 - y1 + 1;
+  SDL.FillRect(bmp.surface, rect, color)
 END RectFill;
 
 PROCEDURE Circle*(b: Bitmap; cx, cy, r, col: INTEGER);
@@ -582,77 +610,80 @@ BEGIN
 END CircleFill;
 
 PROCEDURE Ellipse*(bmp: Bitmap; x, y, rx, ry, color: INTEGER);
-BEGIN Al.Ellipse(bmp.bmp, x, y, rx, ry, color)
+BEGIN
 END Ellipse;
 
 PROCEDURE EllipseFill*(bmp: Bitmap; x, y, rx, ry, color: INTEGER);
-BEGIN Al.EllipseFill(bmp.bmp, x, y, rx, ry, color)
+BEGIN
 END EllipseFill;
 
 PROCEDURE FloodFill*(bmp: Bitmap; x, y, color: INTEGER);
-BEGIN Al.FloodFill(bmp.bmp, x, y, color)
+BEGIN
 END FloodFill;
 
 (* Bitmap *)
 
 PROCEDURE (bmp: Bitmap) Finalize*;
-BEGIN Al.DestroyBitmap(bmp.bmp)
+BEGIN
 END Finalize;
 
 PROCEDURE CreateBitmap*(w, h: INTEGER): Bitmap;
 VAR bmp: Bitmap;
-BEGIN NEW(bmp); bmp.bmp := Al.CreateBitmap(w, h);
-  IF bmp.bmp = NIL THEN Out.String("Could not create bitmap."); Out.Ln END;
-  bmp.w := w; bmp.h := h;
-RETURN bmp END CreateBitmap;
+    s: ARRAY 2560 OF CHAR;
+BEGIN
+  NEW(bmp);
+  bmp.surface := SDL.CreateRGBSurface(0, w, h, 32,
+    000000FFH, 0000FF00H, 00FF0000H, -1000000H);
+  IF bmp.surface = NIL THEN
+    GetError(s); Out.String(s); Out.Ln
+  END;
+  bmp.w := w;  bmp.h := h;
+  RETURN bmp
+END CreateBitmap;
 
 PROCEDURE DestroyBitmap*(bmp: Bitmap);
 BEGIN
-(*  SDL.FreeSurface(bmp.surface)*)
+  SDL.FreeSurface(bmp.surface)
 END DestroyBitmap;
 
-PROCEDURE FixBitmap(b: Bitmap);
-VAR x, y, a, t: INTEGER;
-BEGIN t := MakeACol(255, 0, 255, 0);
-  FOR y := 0 TO b.h - 1 DO
-    FOR x := 0 TO b.w - 1 DO
-      a := GetA(GetPixel(b, x, y));
-      IF a = 0 THEN
-        PutPixel(b, x, y, t);
-      END
-    END
-  END
-END FixBitmap;
-
 PROCEDURE LoadBitmap*(filename: ARRAY OF CHAR): Bitmap;
-VAR b: Bitmap;
-  bmp: Al.PBitmap;
-BEGIN
-  bmp := Al.LoadBitmap(filename, NIL);
-  IF bmp = NIL THEN b := NIL
-  ELSE NEW(b); b.bmp := bmp; b.w := bmp.w; b.h := bmp.h; FixBitmap(b)
-  END;
-RETURN b END LoadBitmap;
+VAR bmp: Bitmap;
+BEGIN        (* LoadBmp(filename) for BMP-only *)
+  NEW(bmp); bmp.surface := SDL.ImgLoad(filename);
+  IF bmp.surface = NIL THEN bmp := NIL
+  ELSE bmp.w := bmp.surface.w; bmp.h := bmp.surface.h END;
+  RETURN bmp
+END LoadBitmap;
 
-PROCEDURE Blit*(dest, src: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER);
-BEGIN Al.Blit(src.bmp, dest.bmp, sx, sy, dx, dy, sw, sh)
+PROCEDURE Blit*(src, dest: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER);
+VAR a, b: SDL.Rect;
+BEGIN a.x := sx; a.y := sy; a.w := sw; a.h := sh;
+  b.x := dx; b.y := dy;
+  SDL.BlitSurface(src.surface, a, dest.surface, b)
 END Blit;
 
-PROCEDURE BlitWhole*(dest, src: Bitmap; x, y: INTEGER);
-BEGIN Al.Blit(src.bmp, dest.bmp, 0, 0, x, y, src.w, src.h)
+PROCEDURE BlitWhole*(src, dest: Bitmap; x, y: INTEGER);
+VAR b: SDL.Rect;
+BEGIN b.x := x; b.y := y;
+  SDL.BlitSurfaceNil(src.surface, dest.surface, b)
 END BlitWhole;
 
-PROCEDURE StretchBlit*(dest, src: Bitmap; sx, sy, sw, sh, dx, dy, dw, dh: INTEGER);
-BEGIN Al.StretchBlit(src.bmp, dest.bmp, sx, sy, sw, sh, dx, dy, dw, dh)
+PROCEDURE StretchBlit*(src, dest: Bitmap; sx, sy, sw, sh, dx, dy, dw, dh: INTEGER);
+VAR a, b: SDL.Rect;
+BEGIN
+  a.x := sx; a.y := sy; a.w := sw; a.h := sh;
+  b.x := dx; b.y := dy; b.w := dw; b.h := dh;
+  SDL.BlitScaled(src.surface, a, dest.surface, b)
 END StretchBlit;
 
 PROCEDURE SetAlpha*(bmp: Bitmap; alpha: INTEGER);
 BEGIN
-  (*IF SDL.SetSurfaceAlphaMod(bmp.surface, CHR(alpha)) = 0 THEN END*)
+  IF SDL.SetSurfaceAlphaMod(bmp.surface, CHR(alpha)) = 0 THEN END
 END SetAlpha;
 
-PROCEDURE MaskedBlit*(dest, src: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER);
-BEGIN Al.MaskedBlit(src.bmp, dest.bmp, sx, sy, dx, dy, sw, sh)
+PROCEDURE MaskedBlit*(src, dest: Bitmap; sx, sy, dx, dy, w, h: INTEGER);
+BEGIN
+  (*Al.MaskedBlit(src.bmp, dest.bmp, sx, sy, dx, dy, w, h)*)
 END MaskedBlit;
 
 PROCEDURE DrawSpriteEx*(dest, sprite: Bitmap; x, y, mode: INTEGER; flip: SET);
@@ -665,141 +696,214 @@ BEGIN
   (*Al.DrawCharacterEx(dest.bmp, sprite.bmp, x, y, color, bg)*)
 END DrawCharacterEx;
 
+PROCEDURE SetColorKey*(bmp: Bitmap; color: INTEGER);
+BEGIN
+  SDL.SetColorKey(bmp.surface, 1, color)
+END SetColorKey;
+
 (* Font *)
 
 PROCEDURE LoadFont*(filename: ARRAY OF CHAR; charW, charH: INTEGER): Font;
-VAR f: Al.PBitmap; font: Font;
-    x, y, i: INTEGER;
-    qq: INTEGER;
+VAR bmp: Bitmap; font: Font;
+    x, y, sx, sy, tmp: INTEGER;
 BEGIN
-  f := Al.LoadBitmap(filename, NIL);
-  IF f = NIL THEN font := NIL
+  bmp := LoadBitmap(filename);
+  IF bmp = NIL THEN font := NIL
   ELSE
-    NEW(font); font.bmp := f;
+    bmp.surface := SDL.ConvertSurface(bmp.surface,
+      screen.surface.format, 0);
+    SetColorKey(bmp, BmpCol(bmp, 0, 0, 0));
+    NEW(font); font.bmp := bmp;
     font.charW := charW; font.charH := charH;
     font.charsInRow := font.bmp.w DIV charW;
     font.charRows := font.bmp.h DIV charH;
-    x := 0; y := 0;
-    FOR i := 0 TO font.charRows * font.charsInRow - 1 DO
-      font.sprites[i] := Al.CreateSubBitmap(font.bmp,
-        x, y, charW, charH);
-      INC(x, charW);
-      IF x >= font.bmp.w THEN x := 0; INC(y, charH) END
+    (*!FIXME remove sprites from here at all*)
+    NEW(font.sprites, font.charRows, font.charsInRow);
+    sy := 0;
+    FOR y := 0 TO font.charRows - 1 DO
+      sx := 0;
+      FOR x := 0 TO font.charsInRow - 1 DO
+        font.sprites[y, x].x := sx;
+        font.sprites[y, x].y := sy;
+        font.sprites[y, x].w := charW;
+        font.sprites[y, x].h := charH;
+        INC(sx, charW)
+      END;
+      INC(sy, charH)
     END
   END;
-RETURN font END LoadFont;
-
-PROCEDURE DrawCharacterFast*(dest: Bitmap; font: Font;
-  x, y: INTEGER; ch: CHAR);
-BEGIN Al.DrawLitSprite(dest.bmp, font.sprites[ORD(ch)], x, y, 0)
-END DrawCharacterFast;
+  RETURN font
+END LoadFont;
 
 PROCEDURE DrawCharacter*(dest: Bitmap; font: Font;
   x, y: INTEGER; ch: CHAR; fg: INTEGER);
-VAR r, g, b: INTEGER;
-BEGIN ColorToRGB(fg, r, g, b);
-  Al.SetColorBlender(r, g, b, 255);
-  Al.DrawLitSprite(dest.bmp, font.sprites[ORD(ch)], x, y, 0);
-  Al.SetAlphaBlender
+VAR fx, fy, r, g, b: INTEGER; dstRect: SDL.Rect;
+BEGIN
+  dstRect.x := x; dstRect.y := y;
+  fx := ORD(ch) MOD font.charsInRow;
+  fy := ORD(ch) DIV font.charsInRow;
+  ColorToRGB(fg, r, g, b);
+  SDL.SetSurfaceColorMod(font.bmp.surface, r, g, b);
+  SDL.BlitSurface(font.bmp.surface, font.sprites[fy, fx],
+    screen.surface, dstRect)
 END DrawCharacter;
 
 PROCEDURE DrawString*(dest: Bitmap; font: Font;
   x, y: INTEGER; s: ARRAY OF CHAR; fg: INTEGER);
-VAR i, cx, r, g, b: INTEGER;
-BEGIN i := 0; cx := x; ColorToRGB(fg, r, g, b);
-  Al.SetColorBlender(r, g, b, 255);
+VAR i, cx: INTEGER;
+BEGIN
+  i := 0; cx := x;
   WHILE (s[i] # 0X) & (cx < dest.w) DO
-    DrawCharacterFast(dest, font, cx, y, s[i]);
+    DrawCharacter(dest, font, cx, y, s[i], fg);
     INC(i); INC(cx, font.charW)
-  END;
-  Al.SetAlphaBlender
+  END
 END DrawString;
 
 PROCEDURE StartTextInput*;
-BEGIN (*SDL.StartTextInput*)
+BEGIN SDL.StartTextInput
 END StartTextInput;
 
 PROCEDURE StopTextInput*;
-BEGIN (*SDL.StopTextInput*)
+BEGIN SDL.StopTextInput
 END StopTextInput;
 
-(* EventQueue *)
-
-PROCEDURE InitEventQueue(VAR queue: EventQueue);
-BEGIN queue.first := 0; queue.last := -1; queue.len := 0
-END InitEventQueue;
-
-(* Returns index of the next free element or -1 if there is no space. *)
-PROCEDURE NextQueueIndex(VAR queue: EventQueue): INTEGER;
-VAR n: INTEGER;
+PROCEDURE QueueEvent;
 BEGIN
-  IF queue.len = LEN(queue.buf) THEN n := -1
-  ELSIF queue.last = LEN(queue.buf) - 1 THEN n := 0
-  ELSE n := queue.last + 1
-  END;
-RETURN n END NextQueueIndex;
+  INC(events.len); INC(events.last);
+  IF events.last = LEN(events.buf) THEN events.last := 0 END
+END QueueEvent;
 
-(* Increase length of elements in queue and advance the last index. *)
-PROCEDURE EnqueueEvent(VAR queue: EventQueue);
+PROCEDURE PumpKeyDown(VAR event: SDL.Event);
+VAR e: SDL.KeyboardEvent;
+  n: INTEGER; mod: SET;
 BEGIN
-  IF queue.len < LEN(queue.buf) THEN
-    IF queue.last = LEN(queue.buf) - 1 THEN queue.last := 0
-    ELSE INC(queue.last)
-    END;
-    INC(queue.len)
+  IF events.len < LEN(events.buf) THEN
+    e := SYSTEM.VAL(SDL.KeyboardEvent, SYSTEM.ADR(event));
+    n := e.keysym.mod; mod := SYSTEM.VAL(SET32, n);
+    QueueEvent;
+    events.buf[events.last].type := keyDown;
+    events.buf[events.last].key.code := e.keysym.scancode;
+    events.buf[events.last].key.sym := e.keysym.sym;
+    events.buf[events.last].key.mod := mod;
+    events.buf[events.last].key.repeat := e.repeat # 0;
+    INC(keyPressed)
   END
-END EnqueueEvent;
+END PumpKeyDown;
+
+PROCEDURE PumpTextEvent(event: SDL.Event);
+VAR sym: INTEGER;
+    e: SDL.TextInputEvent;
+BEGIN
+  IF events.len < LEN(events.buf) THEN
+    e := SYSTEM.VAL(SDL.TextInputEvent, SYSTEM.ADR(event));
+    IF e.text[1] = 0X THEN (* ASCII character *)
+      sym := ORD(e.text[0])
+    ELSE (* Unicode character. Assuming 2 bytes *)
+      sym := ORD(e.text[1]);
+      (* UTF-8 cyrillic *)
+      IF (e.text[0] = 0D0X) OR (e.text[0] = 0D1X) THEN
+        IF e.text[0] = 0D0X THEN DEC(sym, 090H)
+        ELSE DEC(sym, 060H - 16)
+        END;
+        (* Convert to CP866 *)
+        IF sym = 65 THEN sym := 0F1H (* jo *)
+        ELSIF sym = -15 THEN sym := 0F0H (* JO *)
+        ELSIF sym < 48 THEN INC(sym, 80H) (* A..JA, a..p *)
+        ELSE INC(sym, 0E0H - 48) (* r..ja *)
+        END
+      END
+    END;
+    QueueEvent;
+    events.buf[events.last].type := textInput;
+    events.buf[events.last].key.sym := sym; (*!FIXME sym needed?*)
+    COPY(e.text, events.buf[events.last].s)
+  END
+END PumpTextEvent;
+
+PROCEDURE UpdateMousePos(event: SDL.Event);
+VAR e: SDL.MouseMotionEvent; newX, newY: INTEGER;
+BEGIN
+  e := SYSTEM.VAL(SDL.MouseMotionEvent, SYSTEM.ADR(event));
+  newX := e.x; newY := e.y;
+  IF newX < 0 THEN newX := 0
+  ELSIF newX >= screen.w THEN newX := screen.w - 1 END;
+  IF newY < 0 THEN newY := 0
+  ELSIF newY >= screen.h THEN newY := screen.h - 1 END;
+  IF (newX # mouseX) OR (newY # mouseY) THEN
+    mouseX := newX;  mouseY := newY;
+    needRedrawMouse := TRUE
+  END
+END UpdateMousePos;
 
 (* Keyboard *)
 
-PROCEDURE KeyDown*(scancode: INTEGER): BOOLEAN;
-BEGIN RETURN keys[scancode]
+PROCEDURE GetKeyArray(): KeyArray;
+BEGIN
+  RETURN SYSTEM.VAL(KeyArray, SDL.GetKeyboardStateNil())
+END GetKeyArray;
+
+PROCEDURE KeyDown*(key: INTEGER): BOOLEAN;
+VAR keys: KeyArray;
+BEGIN
+  keys := GetKeyArray();
+  RETURN keys[key]
 END KeyDown;
 
+PROCEDURE AltPressed*(): BOOLEAN;
+VAR keys: KeyArray;
+BEGIN
+  keys := GetKeyArray();
+  RETURN keys[kAlt] OR keys[kAltGr]
+END AltPressed;
+
 PROCEDURE ShiftPressed*(): BOOLEAN;
-BEGIN RETURN mShift * keyMod # {}
+VAR keys: KeyArray;
+BEGIN
+  keys := GetKeyArray();
+  RETURN keys[kLShift] OR keys[kRShift]
 END ShiftPressed;
 
 PROCEDURE CtrlPressed*(): BOOLEAN;
-BEGIN RETURN mCtrl * keyMod # {}
+VAR keys: KeyArray;
+BEGIN
+  keys := GetKeyArray();
+  RETURN keys[kLCtrl] OR keys[kRCtrl]
 END CtrlPressed;
-
-PROCEDURE AltPressed*(): BOOLEAN;
-BEGIN RETURN mAlt * keyMod # {}
-END AltPressed;
 
 (* Mouse *)
 
 PROCEDURE MouseOnScreen*(): BOOLEAN;
-BEGIN RETURN Al.MouseOnScreen() # 0
+VAR flags: SET;
+BEGIN
+  flags := SDL.GetWindowFlags(window);
+  RETURN SDL.windowMouseFocus IN flags
 END MouseOnScreen;
 
-PROCEDURE MouseMoved*(): BOOLEAN;
-BEGIN RETURN needRedrawMouse
-END MouseMoved;
-
 PROCEDURE ShowMouse*(show: BOOLEAN);
-BEGIN showMouse := show
+BEGIN
+  showMouse := show
 END ShowMouse;
 
 PROCEDURE GetRealMousePos*(VAR x, y: INTEGER);
-BEGIN Al.GetMouseX(x); Al.GetMouseY(y)
+BEGIN
+  IF SDL.GetMouseState(x, y) = 0 THEN END
 END GetRealMousePos;
 
 PROCEDURE GetMousePos*(VAR x, y: INTEGER);
-BEGIN x := mouseX; y := mouseY
+BEGIN
+  x := mouseX; y := mouseY
 END GetMousePos;
 
 PROCEDURE GetMouseButtons*(): SET;
-VAR b: SET;
-BEGIN Al.GetMouseB(b);
-RETURN b END GetMouseButtons; (*!FIXME*)
+VAR x, y: INTEGER;
+BEGIN RETURN SYSTEM.VAL(SET32, SDL.GetMouseState(x, y))
+END GetMouseButtons;
 
 PROCEDURE CreateStdMousePointer*;
 VAR b: Bitmap; fg, bg: INTEGER;
 BEGIN b := CreateBitmap(12, 19);
   bg := MakeCol(255, 0, 255); fg := MakeCol(0, 0, 0);
-  ClearToColor(b, bg);
+  ClearToColor(b, bg); SetColorKey(b, bg);
   Line(b, 0, 0, 10, 10, fg); Line(b, 0, 0, 0, 14, fg);
   Line(b, 0, 14, 3, 11, fg); Line(b, 10, 10, 6, 10, fg);
   Line(b, 4, 12, 6, 17, fg); Line(b, 6, 11, 9, 17, fg);
@@ -821,7 +925,9 @@ END SetMouseFocus;
 
 PROCEDURE SetMousePointer*(bmp: Bitmap; x, y: INTEGER);
 BEGIN
-  IF bmp = NIL THEN mousePointer := stdMousePointer; x := 0; y := 0
+  IF bmp = NIL THEN
+    mousePointer := stdMousePointer;
+    x := 0; y := 0
   ELSE mousePointer := bmp
   END;
   SetMouseFocus(x, y);
@@ -830,33 +936,32 @@ BEGIN
 END SetMousePointer;
 
 PROCEDURE GetMousePointer*(): Bitmap;
-BEGIN RETURN mousePointer
+BEGIN
+  RETURN mousePointer
 END GetMousePointer;
 
 PROCEDURE SetStdMousePointer*;
-BEGIN SetMousePointer(stdMousePointer, 0, 0)
+BEGIN
+  SetMousePointer(stdMousePointer, 0, 0)
 END SetStdMousePointer;
 
 PROCEDURE InitMouseData;
 BEGIN
-  mousePointer := NIL; lastBlitMouseOutside := FALSE;
-  mouseFocusX := 0; mouseFocusY := 0;
   CreateStdMousePointer;
-  SetStdMousePointer;
-  GetRealMousePos(mouseX, mouseY);
-  Al.GetMouseZ(mouseZ)
+  SetStdMousePointer
 END InitMouseData;
 
 (* Misc *)
 PROCEDURE SetWindowTitle*(title: ARRAY OF CHAR);
-BEGIN Al.SetWindowTitle(title)
+BEGIN
+  SDL.SetWindowTitle(window, title)
 END SetWindowTitle;
 
 PROCEDURE SwitchToWindowed*;
 BEGIN
   IF wantFullscreen THEN
-    IF Al.SetGfxMode(Al.gfxAutodetectWindowed, wantW, wantH, 0, 0) = 0 THEN
-      realScreen := Al.screen();
+    SDL.SetWindowSize(window, screen.w, screen.h);
+    IF SDL.SetWindowFullscreen(window, {}) = 0 THEN
       wantFullscreen := FALSE
     END
   END
@@ -865,8 +970,7 @@ END SwitchToWindowed;
 PROCEDURE SwitchToFullscreen*;
 BEGIN
   IF ~wantFullscreen THEN
-    IF Al.SetGfxMode(Al.gfxAutodetect, wantW, wantH, 0, 0) = 0 THEN
-      realScreen := Al.screen();
+    IF SDL.SetWindowFullscreen(window, SDL.windowFullscreenDesktop) = 0 THEN
       wantFullscreen := TRUE
     END
   END
@@ -880,58 +984,30 @@ BEGIN
 END ToggleFullscreen;
 
 PROCEDURE Delay*(n: INTEGER);
-BEGIN Al.USleep(n * 1000) (*Can be replaced with Al.Rest(n)*)
+BEGIN
+  SDL.Delay(n)
 END Delay;
 
-PROCEDURE RepeatFlip*;
+PROCEDURE HandleMouseButton(VAR event: SDL.Event);
+VAR e: SDL.MouseButtonEvent;
 BEGIN
-END RepeatFlip;
 
-PROCEDURE PumpKeyDown(sym, scancode: INTEGER; VAR e: Event);
-BEGIN
-  e.type := keyDown;
-  e.time := GetTicks();
-  e.key.code := scancode;
-  e.key.sym := sym;
-  e.key.mod := keyMod;
-  e.key.repeat := keys[scancode]
-END PumpKeyDown;
-
-PROCEDURE PumpKeyUp(scancode: INTEGER; VAR e: Event);
-BEGIN
-  e.type := keyUp;
-  e.time := GetTicks();
-  e.key.code := scancode;
-  e.key.sym := 0; (*!FIXME*)
-  e.key.mod := keyMod;
-  e.key.repeat := FALSE
-END PumpKeyUp;
-
-PROCEDURE PumpTextInput(sym: INTEGER; repeat: BOOLEAN; VAR e: Event);
-BEGIN
-  e.type := textInput;
-  e.time := GetTicks();
-  e.key.sym := sym;
-  e.key.mod := keyMod;
-  e.key.repeat := repeat
-END PumpTextInput;
+END HandleMouseButton;
 
 PROCEDURE PumpQuit;
-VAR n: INTEGER;
 BEGIN
-  n := NextQueueIndex(events);
-  IF n # -1 THEN
-    events.buf[n].type := quit;
-    events.buf[n].time := GetTicks();
-    EnqueueEvent(events);
-    Signals.Send(hasEvents)
+  IF events.len < LEN(events.buf) THEN
+    QueueEvent;
+    events.buf[events.last].type := quit
   END
 END PumpQuit;
 
-PROCEDURE PumpMouseMove(VAR e: Event);
-VAR newX, newY: INTEGER; b: SET;
+PROCEDURE PumpMouseMove(VAR event: SDL.Event);
+VAR e: SDL.MouseMotionEvent;
+    newX, newY: INTEGER;
 BEGIN
-  Al.GetMouseX(newX); Al.GetMouseY(newY); Al.GetMouseB(b);
+  e := SYSTEM.VAL(SDL.MouseMotionEvent, SYSTEM.ADR(event));
+  newX := e.x; newY := e.y;
   IF newX < 0 THEN newX := 0
   ELSIF newX >= screen.w THEN newX := screen.w - 1
   END;
@@ -939,339 +1015,180 @@ BEGIN
   ELSIF newY >= screen.h THEN newY := screen.h - 1
   END;
   IF (newX # mouseX) OR (newY # mouseY) THEN
-    e.type := mouseMove;
-    e.time := GetTicks();
-    e.x := newX;
-    e.y := newY;
-    e.xRel := newX - mouseX;
-    e.yRel := newY - mouseY;
-    e.buttons := b;
     mouseX := newX; mouseY := newY;
-    needRedrawMouse := TRUE
+    needRedrawMouse := TRUE;
+    IF events.len < LEN(events.buf) THEN
+      QueueEvent;
+      events.buf[events.last].type := mouseMove;
+      events.buf[events.last].x := newX;
+      events.buf[events.last].y := newY;
+      events.buf[events.last].xRel := e.xRel;
+      events.buf[events.last].yRel := e.yRel;
+      events.buf[events.last].buttons := SYSTEM.VAL(SET32, e.state)
+    END
   END
 END PumpMouseMove;
 
-PROCEDURE PumpMouseButton(flags: SET; VAR e: Event);
-VAR btn, x, y, z: INTEGER;
+PROCEDURE PumpMouseButton(VAR event: SDL.Event; type: INTEGER);
+VAR e: SDL.MouseButtonEvent;
 BEGIN
-  Al.GetMouseX(x); Al.GetMouseY(y);
-  e.time := GetTicks();
-  IF {Al.mouseFlagLeftDown, Al.mouseFlagRightDown,
-      Al.mouseFlagMiddleDown} * flags # {} THEN
-    e.type := mouseDown;
-    IF Al.mouseFlagLeftDown IN flags THEN btn := 0
-    ELSIF Al.mouseFlagRightDown IN flags THEN btn := 1
-    ELSE btn := 2
+  e := SYSTEM.VAL(SDL.MouseButtonEvent, SYSTEM.ADR(event));
+  IF events.len < LEN(events.buf) THEN
+    QueueEvent;
+    events.buf[events.last].type := type;
+    events.buf[events.last].button := e.button - 1;
+    events.buf[events.last].down := e.state # 0;
+    IF e.x < 0 THEN e.x := 0
+    ELSIF e.x >= screen.w THEN e.x := screen.w - 1
     END;
-  ELSIF {Al.mouseFlagLeftUp, Al.mouseFlagRightUp,
-      Al.mouseFlagMiddleUp} * flags # {} THEN
-    e.type := mouseUp;
-    IF Al.mouseFlagLeftUp IN flags THEN btn := 0
-    ELSIF Al.mouseFlagRightUp IN flags THEN btn := 1
-    ELSE btn := 2
+    IF e.y < 0 THEN e.y := 0
+    ELSIF e.y >= screen.h THEN e.y := screen.h - 1
     END;
-  ELSIF Al.mouseFlagMoveZ IN flags THEN
-    e.type := mouseWheel;
-    Al.GetMouseZ(z);
-    IF z < mouseZ THEN btn := 4 ELSE btn := 3 END;
-    mouseZ := z
-  ELSE btn := 0
-  END;
-  e.button := btn;
-  IF x < 0 THEN x := 0
-  ELSIF x >= screen.w THEN x := screen.w - 1
-  END;
-  IF y < 0 THEN y := 0
-  ELSIF y >= screen.h THEN y := screen.h - 1
-  END;
-  e.x := x; e.y := y
+    events.buf[events.last].x := e.x;
+    events.buf[events.last].y := e.y
+  END
 END PumpMouseButton;
 
-PROCEDURE PumpTimer;
-VAR n: INTEGER;
-BEGIN n := NextQueueIndex(events);
-  IF n # -1 THEN
-    events.buf[n].type := timer;
-    events.buf[n].time := GetTicks();
-    EnqueueEvent(events);
-    Signals.Send(hasEvents)
-  END
-END PumpTimer;
-
-PROCEDURE CheckTimer;
-VAR t, dt: INTEGER; (* Time and delta time *)
+PROCEDURE RepeatFlip*;
 BEGIN
-  IF wantFPS # -1 THEN t := GetTicks();
-    IF lastTick = -1 THEN lastTick := t; PumpTimer
-    ELSE dt := t - lastTick;
-      WHILE dt > timerDelay DO
-        PumpTimer;
-        DEC(dt, timerDelay); INC(lastTick, timerDelay)
-      END
-    END
+  IF screenTexture # NIL THEN
+    SDL.SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL.RenderClear(renderer);
+    SDL.RenderCopyNil(renderer, screenTexture);
+    SDL.RenderPresent(renderer)
   END
-END CheckTimer;
+END RepeatFlip;
 
 PROCEDURE WaitEvents*(timeout: INTEGER);
-BEGIN CheckTimer;
-  IF events.len = 0 THEN
-    IF Signals.TimedWait(hasEvents, timeout) THEN END
-  END
-END WaitEvents;
-
-PROCEDURE RemoveTextInputEvent*;
-VAR i, n: INTEGER;
+VAR event: SDL.Event; n: INTEGER;
 BEGIN
-  n := events.len; i := events.first;
-  WHILE (n > 0) & (events.buf[n].type # textInput) DO
-    DEC(n); INC(i);
-    IF i = LEN(events.buf) THEN i := 0 END
-  END;
-  DEC(n);
-  WHILE n > 0 DO
-    events.buf[i] := events.buf[i + 1];
-    DEC(n); INC(i);
-    IF i = LEN(events.buf) THEN i := 0 END
-  END;
-  DEC(events.len); DEC(events.last);
-  IF events.last = -1 THEN events.last := LEN(events.buf) - 1 END
-END RemoveTextInputEvent;
-
-PROCEDURE KeyPressCb(sym: INTEGER; VAR scancode: INTEGER): INTEGER;
-VAR n: INTEGER;
-BEGIN
-  IF Al.GetAtomic() = 0 THEN
-    Al.AtomicInc;
-    n := NextQueueIndex(keyboardEvents);
-    IF n # -1 THEN
-      (*Out.Int(sym, 5); Out.Int(scancode, 5);(*!FIXME*)*)
-      scancode := keyMap[scancode];
-      (*Out.Int(scancode, 5); Out.Ln;(*!FIXME*)*)
-      (* Key Down Event *)
-      PumpKeyDown(sym, scancode, keyboardEvents.buf[n]);
-      EnqueueEvent(keyboardEvents);
-      INC(keyPressed);
-      (* To indicate repeat key presses *)
-      keys[scancode] := TRUE;
-      (* Text Input Event *)
-      IF (sym >= 32) & (sym # 127) THEN
-        n := NextQueueIndex(keyboardEvents);
-        IF n # -1 THEN
-          PumpTextInput(sym, keys[scancode], keyboardEvents.buf[n]);
-          EnqueueEvent(keyboardEvents)
-        END
-      END;
-      Signals.Send(hasEvents)
-    END;
-    Al.AtomicDec
-  END;
-RETURN sym END KeyPressCb;
-
-PROCEDURE KeyLowlevelCb(scancode: INTEGER);
-VAR k, n: INTEGER; up: BOOLEAN;
-BEGIN
-  IF Al.GetAtomic() = 0 THEN
-    Al.AtomicInc;
-    IF scancode < 128 THEN up := FALSE
-    ELSE up := TRUE; DEC(scancode, 128)
-    END;
-    (* Key modifier constants beginning with "m" *)
-    IF (115 <= scancode) & (scancode <= 120) THEN
-      IF scancode < 117 THEN
-        IF up THEN EXCL(keyMod, scancode - 115)
-        ELSE INCL(keyMod, scancode - 115)
-        END
-      ELSE
-        IF up THEN EXCL(keyMod, scancode - 111)
-        ELSE INCL(keyMod, scancode - 111)
-        END
+  n := SDL.PollEvent(event);
+  IF (n # 0) OR (events.len = 0) THEN
+    IF n = 0 THEN
+      IF timeout > 0 THEN n := SDL.WaitEventTimeout(event, timeout)
+      ELSIF timeout < 0 THEN n := SDL.WaitEvent(event)
       END
     END;
-    IF up THEN
-      k := keyMap[scancode];
-      n := NextQueueIndex(keyboardEvents);
-      IF n # -1 THEN
-        PumpKeyUp(k, keyboardEvents.buf[n]);
-        EnqueueEvent(keyboardEvents);
-        Signals.Send(hasEvents)
-      END;
-      keys[k] := FALSE
-    END;
-    Al.AtomicDec
-  END
-END KeyLowlevelCb;
-
-PROCEDURE MouseCb(flags: SET);
-VAR n: INTEGER;
-BEGIN
-  IF Al.GetAtomic() = 0 THEN
-    Al.AtomicInc;
-    n := NextQueueIndex(mouseEvents);
-    IF n # -1 THEN
-      IF Al.mouseFlagMove IN flags THEN PumpMouseMove(mouseEvents.buf[n])
-      ELSE PumpMouseButton(flags, mouseEvents.buf[n])
-      END;
-      EnqueueEvent(mouseEvents);
-      Signals.Send(hasEvents)
-    END;
-    Al.AtomicDec
-  END
-END MouseCb;
-
-PROCEDURE RemoveEvent(VAR queue: EventQueue);
-BEGIN
-  IF queue.len # 0 THEN
-    IF queue.first = LEN(queue.buf) - 1 THEN queue.first := 0
-    ELSE INC(queue.first)
-    END;
-    DEC(queue.len)
-  END
-END RemoveEvent;
-
-PROCEDURE MergeEvents;
-VAR n, m, k: INTEGER;
-BEGIN n := 0;
-  WHILE (n # -1) & (mouseEvents.len # 0) & (keyboardEvents.len # 0) DO
-    n := NextQueueIndex(events);
-    IF n # -1 THEN
-      m := mouseEvents.first; k := keyboardEvents.first;
-      IF mouseEvents.buf[m].time < keyboardEvents.buf[k].time THEN
-        events.buf[n] := mouseEvents.buf[m];
-        WHILE Al.GetAtomic() # 0 DO Delay(1) END;
-        Al.AtomicInc;
-        RemoveEvent(mouseEvents);
-        Al.AtomicDec
-      ELSE events.buf[n] := keyboardEvents.buf[k];
-        WHILE Al.GetAtomic() # 0 DO Delay(1) END;
-        Al.AtomicInc;
-        RemoveEvent(keyboardEvents);
-        Al.AtomicDec
-      END;
-      EnqueueEvent(events)
-    END
-  END;
-  WHILE (n # -1) & (mouseEvents.len # 0) DO
-    n := NextQueueIndex(events);
-    IF n # -1 THEN
-      m := mouseEvents.first;
-      events.buf[n] := mouseEvents.buf[m];
-      WHILE Al.GetAtomic() # 0 DO Delay(1) END;
-      Al.AtomicInc;
-      RemoveEvent(mouseEvents);
-      Al.AtomicDec;
-      EnqueueEvent(events)
-    END
-  END;
-  WHILE (n # -1) & (keyboardEvents.len # 0) DO
-    n := NextQueueIndex(events);
-    IF n # -1 THEN
-      k := keyboardEvents.first;
-      events.buf[n] := keyboardEvents.buf[k];
-      WHILE Al.GetAtomic() # 0 DO Delay(1) END;
-      Al.AtomicInc;
-      RemoveEvent(keyboardEvents);
-      Al.AtomicDec;
-      EnqueueEvent(events)
+    IF n # 0 THEN
+      REPEAT
+        IF event.type = SDL.mouseMotion THEN
+          PumpMouseMove(event)
+        ELSIF event.type = SDL.mouseButtonDown THEN
+          PumpMouseButton(event, mouseDown)
+        ELSIF event.type = SDL.mouseButtonUp THEN
+          PumpMouseButton(event, mouseUp)
+        ELSIF event.type = SDL.keyDown THEN
+          PumpKeyDown(event)
+        ELSIF event.type = SDL.textInput THEN
+          PumpTextEvent(event)
+        ELSIF event.type = SDL.quit THEN
+          PumpQuit
+        END
+      UNTIL SDL.PollEvent(event) = 0
     END
   END
-END MergeEvents;
+END WaitEvents;
 
 PROCEDURE PollEvent*(VAR event: Event): BOOLEAN;
 VAR hasEvent: BOOLEAN;
 BEGIN
-  IF closeButtonPressed THEN closeButtonPressed := FALSE; PumpQuit END;
-  IF Al.GetAtomic() = 0 THEN MergeEvents END;
-  CheckTimer;
-  IF events.len # 0 THEN
+  IF events.len > 0 THEN
     event := events.buf[events.first];
-    IF event.type = keyUp THEN DEC(keyPressed) END;
-    RemoveEvent(events);
+    IF event.type = keyDown THEN DEC(keyPressed) END;
+    DEC(events.len); INC(events.first);
+    IF events.first = LEN(events.buf) THEN events.first := 0 END;
     hasEvent := TRUE
   ELSE hasEvent := FALSE
   END;
-RETURN hasEvent END PollEvent;
+  RETURN hasEvent
+END PollEvent;
 
 PROCEDURE KeyPressed*(): BOOLEAN;
-BEGIN WaitEvents(0);
-RETURN keyPressed > 0 END KeyPressed;
+BEGIN
+  WaitEvents(0);
+  RETURN keyPressed > 0
+END KeyPressed;
 
 PROCEDURE ReadKey*(): CHAR;
 VAR event: Event; done: BOOLEAN; ch: CHAR;
-BEGIN
-  IF readKeyBuf # 0X THEN ch := readKeyBuf; readKeyBuf := 0X
-  ELSE done := FALSE;
-    REPEAT
-      WaitEvents(-1);
-      WHILE PollEvent(event) & ~done DO
-        CASE event.type OF
-          keyDown: done := TRUE;
-          IF event.key.sym = 0 THEN ch := 0X;
-            readKeyBuf := CHR(event.key.code)
-          ELSE ch := CHR(event.key.sym)
-          END
-        | quit: ch := 0X; done := TRUE
-        ELSE
-        END
+BEGIN done := FALSE;
+  REPEAT
+    WaitEvents(-1);
+    WHILE PollEvent(event) DO
+      CASE event.type OF
+        keyDown: ch := CHR(event.key.sym); done := TRUE
+      | quit: ch := 0X; done := TRUE
+      ELSE
       END
-    UNTIL done
-  END;
-RETURN ch END ReadKey;
+    END
+  UNTIL done;
+  RETURN ch
+END ReadKey;
 
 PROCEDURE Pause*;
-BEGIN
-  WHILE ReadKey() = 0X DO END
+BEGIN IF ReadKey() = 0X THEN END
 END Pause;
 
 PROCEDURE WindowShown*(): BOOLEAN;
 VAR flags: SET;
 BEGIN
-  RETURN TRUE
-(*  flags := SDL.GetWindowFlags(window);
-  RETURN SDL.windowShown IN flags*)
+  flags := SDL.GetWindowFlags(window);
+  RETURN SDL.windowShown IN flags
 END WindowShown;
+
+PROCEDURE GetTicks*(): INTEGER;
+BEGIN
+  RETURN SDL.GetTicks()
+END GetTicks;
 
 PROCEDURE Flip*;
 VAR mx, my: INTEGER; (* Mouse bitmap X Y *)
     blitMouse: BOOLEAN;
+    dt: INTEGER; (* Delta time *)
 
   PROCEDURE PrepareMouse;
   BEGIN
     mx := mouseX - mouseFocusX;
     my := mouseY - mouseFocusY;
     (* Save image under mouse from buffer *)
-    Blit(underMouse, screen, mx, my,
+    Blit(screen, underMouse, mx, my,
       underMouse.w, underMouse.h, 0, 0);
     (* Blit mouse pointer onto buffer *)
-    MaskedBlit(screen, mousePointer, 0, 0,
-      mousePointer.w, mousePointer.h, mx, my);
-    AddRegion(mx, my, underMouse.w, underMouse.h)
+    Blit(mousePointer, screen, 0, 0,
+      mousePointer.w, mousePointer.h, mx, my)
   END PrepareMouse;
 
   PROCEDURE CleanMouse;
   BEGIN
     (* Restore image under mouse in buffer *)
-    Blit(screen, underMouse, 0, 0, underMouse.w, underMouse.h, mx, my);
-    AddRegion(mx, my, underMouse.w, underMouse.h);
+    Blit(underMouse, screen, 0, 0,
+      underMouse.w, underMouse.h, mx, my);
     needRedrawMouse := FALSE
   END CleanMouse;
 
 BEGIN
+  IF wantFPS # -1 THEN
+    IF lastFlip # -1 THEN
+      dt := 1000 DIV wantFPS - (GetTicks() - lastFlip);
+      IF (dt > 0) & (dt < 1000) THEN Delay(dt) END
+    END;
+    lastFlip := GetTicks()
+  END;
   IF WindowShown() THEN
     mx := 0; my := 0;
     blitMouse := showMouse & MouseOnScreen();
     IF blitMouse THEN PrepareMouse END;
-    
-    (*Al.VSync;*)
-    IF ~useRegions OR (region.w = -1) THEN
-      Al.Blit(screen.bmp, realScreen, 0, 0, 0, 0, screen.w, screen.h);
-    ELSE
-      (*Al.RectFill(realScreen, 0, 0, screen.w, screen.h, MakeCol(30, 0, 0));*)
-      Al.Blit(screen.bmp, realScreen, region.x, region.y,
-        region.x, region.y, region.w, region.h);
-      (*Al.Rect(realScreen, region.x, region.y, region.x+region.w-1, region.y+region.h-1, MakeCol(255, 0, 0));*)
-      region.w := -1;
-      Delay(20)
+
+    (* Blit buffer on screen *)
+    SDL.SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL.RenderClear(renderer);
+    IF screenTexture # NIL THEN
+      SDL.DestroyTexture(screenTexture);
+      screenTexture := NIL
     END;
+    screenTexture := SDL.CreateTextureFromSurface(renderer, screen.surface);
+    SDL.RenderCopyNil(renderer, screenTexture);
+    SDL.RenderPresent(renderer);
 
     IF blitMouse THEN CleanMouse END
   END
@@ -1524,146 +1441,102 @@ BEGIN
   PutSeed(Time())
 END Randomize;
 
-(* Unicode *)
-
-PROCEDURE ToUtf8*(c: INTEGER; VAR s: ARRAY OF CHAR);
-VAR d: SET;
-BEGIN d := SYSTEM.VAL(SET32, c);
-  IF c < 80H THEN s[0] := CHR(c); s[1] := 0X
-  ELSIF c < 800H THEN
-    s[0] := CHR(c DIV 64 + 0C0H);
-    s[1] := CHR(SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, c) * {0..5} + {7}));
-    s[2] := 0X
-  ELSIF c < 10000H THEN
-    s[0] := CHR(c + 0E0H); (*!FIXME*)
-    s[1] := CHR(c + 80H);
-    s[2] := CHR(c + 80H);
-    s[3] := 0X
-  ELSIF c < 110000H THEN
-    s[0] := CHR(c + 0F0H); (*!FIXME*)
-    s[1] := CHR(c + 80H);
-    s[2] := CHR(c + 80H);
-    s[3] := CHR(c + 80H);
-    s[4] := 0X
-  ELSE s[0] := 0X
-  END;
-END ToUtf8;
-
 (* Init *)
 
-PROCEDURE InitKeyMap;
-VAR i: INTEGER;
-BEGIN
-  FOR i := 0 TO LEN(keyMap) - 1 DO keyMap[i] := 0 END;
-  FOR i := 1 TO 26 DO keyMap[i] := i + 3 END;
-  FOR i := 28 TO 36 DO keyMap[i] := i + 2 END;
-  FOR i := 47 TO 58 DO keyMap[i] := i + 11 END;
-  keyMap[27] := 39;
-  keyMap[59] := 41;
-  keyMap[60] := 53;
-  keyMap[61] := 45;
-  keyMap[62] := 46;
-  keyMap[63] := 42;
-  keyMap[64] := 43;
-  keyMap[65] := 47;
-  keyMap[66] := 48;
-  keyMap[67] := 40;
-  keyMap[75] := 44;
-  keyMap[76] := 73;
-  keyMap[77] := 76;
-  keyMap[78] := 74;
-  keyMap[79] := 77;
-  keyMap[80] := 75;
-  keyMap[81] := 78;
-  keyMap[82] := 80;
-  keyMap[83] := 79;
-  keyMap[84] := 82;
-  keyMap[85] := 81;
-  keyMap[93] := 72
-END InitKeyMap;
-
-PROCEDURE GetScreenSize(VAR w, h: INTEGER);
-VAR d: Al.PGfxDriver;
-BEGIN d := Al.gfxDriver();
-  IF d = NIL THEN w := 0; h := 0
-  ELSE w := d.w; h := d.h
-  END
-END GetScreenSize;
-
-PROCEDURE CloseButtonCb;
-BEGIN closeButtonPressed := TRUE
-END CloseButtonCb;
-
 PROCEDURE Init*(): Bitmap;
-VAR w, h, card: INTEGER;
+VAR flags: SET; success: BOOLEAN; w, h, nw, nh: INTEGER;
+    s: ARRAY 2000 OF CHAR;
 BEGIN screen := NIL;
-  IF Al.InstallAllegro(Al.systemAutodetect, 0, 0) = 0 THEN
-    IF (wantW <= 0) OR (wantH <= 0) THEN wantW := 640; wantH := 480 END;
-    IF wantFullscreen THEN card := Al.gfxAutodetect
-    ELSE card := Al.gfxAutodetectWindowed
+  IF SDL.Init({SDL.initVideo}) = 0 THEN
+    flags := {};
+    IF wantFullscreen THEN
+      flags := flags + SDL.windowFullscreenDesktop;
+      IF (wantW <= 0) OR (wantH <= 0) THEN
+        GetDesktopResolution(wantW, wantH)
+      ELSIF wantSpread THEN
+        GetDesktopResolution(w, h);
+        IF wantSharpPixels THEN
+          nw := w DIV wantW; nh := h DIV wantH;
+          IF nw < nh THEN
+            wantW := w DIV nw; wantH := h DIV nw;
+          ELSE
+            wantW := w DIV nh; wantH := h DIV nh;
+          END
+        END;
+        IF w / h > wantW / wantH THEN wantW := w * wantH DIV h
+        ELSE wantH := h * wantW DIV w
+        END
+      END
+    ELSIF (wantW <= 0) OR (wantH <= 0) THEN wantW := 640; wantH := 400
     END;
-    IF Al.InstallTimer() # 0 THEN
-      Out.String("Could not install timer."); Out.Ln;
-    END;
-    IF Al.InstallKeyboard() = 0 THEN
-      Al.SetKeyboardUCallback(KeyPressCb);
-      Al.SetKeyboardLowlevelCallback(KeyLowlevelCb)
-    ELSE Out.String("Could not install keyboard."); Out.Ln
-    END;
-    Al.SetColorDepth(32);
-    IF Al.SetGfxMode(card, wantW, wantH, 0, 0) = 0 THEN
-      realScreen := Al.screen();
-      GetScreenSize(w, h);
-      screen := CreateBitmap(w, h);
-
-      closeButtonPressed := FALSE;
-      Al.SetCloseButtonCallback(CloseButtonCb);
-
-      Al.LoadPngInit;
-      Al.SetAlphaBlender;
-
+    IF sizeStepX # 1 THEN wantW := wantW DIV sizeStepX * sizeStepX END;
+    IF sizeStepY # 1 THEN wantH := wantH DIV sizeStepY * sizeStepY END;
+    window := SDL.CreateWindow('',
+      SDL.windowPosUndefined, SDL.windowPosUndefined,
+      wantW, wantH, flags);
+    IF window # NIL THEN
+      IF wantSoftware THEN flags := {SDL.rendererSoftware}
+      ELSE flags := {SDL.rendererAccelerated}
+      END;
+      INCL(flags, SDL.rendererPresentVsync);
+      renderer := SDL.CreateRenderer(window, -1, flags);
+      IF wantSharpPixels THEN
+        SDL.SetHint(SDL.hintRenderScaleQuality, '0')
+      ELSE
+        SDL.SetHint(SDL.hintRenderScaleQuality, '1')
+      END;
+      SDL.RenderSetLogicalSize(renderer, wantW, wantH);
+      screen := CreateBitmap(wantW, wantH);
+      screenTexture := NIL;
       UnsetRegion;
-      IF wantMouse THEN
-        IF Al.InstallMouse() = -1 THEN
-          showMouse := FALSE;
-          Out.String("Could not install mouse."); Out.Ln
-        ELSE
-          Al.SetMouseCallback(MouseCb);
-          InitMouseData;
-          showMouse := TRUE
+      SDL.ShowCursor(0);
+      IF wantMouse THEN InitMouseData END;
+      flags := {SDL.imgInitPng, SDL.imgInitJpg};
+      IF flags - SDL.ImgInit(flags) # {} THEN
+        Out.String('Could not initialize PNG or JPG: ');
+        GetError(s); Out.String(s); Out.Ln
+      END;
+      (*
+      IF wantSound THEN
+        IF Mix.Init({}) = 0 THEN
+          IF Mix.OpenAudio(22050, Mix.defaultFormat,
+             4, 1024) = 0 THEN END
         END
       END;
+      IF wantNet THEN
+        IF Net.Init() = 0 THEN END
+      END
+      *)
       Randomize;
-      Al.AtomicZero; SetFPS(60);
-      InitEventQueue(events);
-      InitEventQueue(mouseEvents);
-      InitEventQueue(keyboardEvents);
       keyPressed := 0;
-      readKeyBuf := 0X;
-      lastTick := -1;
-      useRegions := FALSE
+      lastFlip := -1
     END
   END;
   RETURN screen
 END Init;
 
 PROCEDURE Close*;
-BEGIN Al.Exit
+BEGIN
+  IF screenTexture # NIL THEN
+    SDL.DestroyTexture(screenTexture);
+    screenTexture := NIL
+  END;
+  (*
+  IF wantSound THEN Mix.Quit END;
+  IF wantNet THEN Net.Quit END;
+  *)
+  SDL.Quit
 END Close;
 
 BEGIN
-  InitKeyMap;
   wantW := 640; wantH := 400;
-  wantFullscreen := FALSE;
-  wantBuffer := FALSE;
-  wantSpread := FALSE;
-  wantSharpPixels := TRUE;
-  wantSoftware := FALSE;
-  wantMouse := FALSE;
-  wantNet := FALSE;
-  wantSound := FALSE;
-  buffer := NIL;
   sizeStepX := 1; sizeStepY := 1;
-  randomSeed := 1;
-  Signals.Init(hasEvents)
+  wantFullscreen := TRUE; wantSpread := TRUE;
+  wantBuffer := FALSE; buffer := NIL; wantFPS := 60;
+  wantSharpPixels := TRUE;
+  mousePointer := NIL; lastBlitMouseOutside := FALSE;
+  mouseFocusX := 0; mouseFocusY := 0;
+  events.first := 0; events.last := -1; events.len := 0;
+  randomSeed := 1; keyPressed := 0
 END Graph.
+

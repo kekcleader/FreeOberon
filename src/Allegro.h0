@@ -1,0 +1,12 @@
+#ifndef Allegro__h0
+#define Allegro__h0
+
+/*This can be removed if Al.Rest and not Al.USleep is used in Graph.Delay*/
+#include <unistd.h>
+
+#include <allegro.h>
+#include "loadpng.h"
+
+static _Atomic int _al_atomic_int;
+
+#endif

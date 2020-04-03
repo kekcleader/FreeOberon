@@ -1,0 +1,2 @@
+#!/bin/bash
+vim -p FreeOberon.Mod Graph.Mod Signals.Mod Semaphore.Mod signals/signals.c Pthread.Mod Pthread.h0 Terminal.Mod EditorText.Mod Editor.Mod OV.Mod Allegro.Mod

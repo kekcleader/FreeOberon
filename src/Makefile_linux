@@ -2,8 +2,7 @@ PROG=FreeOberon
 OS=linux
 VOC=../data/bin/voc/bin/voc
 CC=gcc
-SDL2Opts=`sdl2-config --cflags --libs`
-VER=1.0.3
+VER=1.0.4
 
 all: prepare voc $(PROG) install
 
@@ -11,15 +10,17 @@ fo: $(PROG)
 
 $(PROG): $(PROG).sym
 	$(CC) -fPIC -g -I ../data/bin/voc/C/include \
-		-o $(PROG) $(PROG).o Graph.o SDL2.o \
+		-o $(PROG) $(PROG).o Graph.o Allegro.o \
 		OV.o Editor.o Term.o Terminal.o \
-		EditorText.o Config.o term/term.o \
-		../data/bin/voc/lib/libvoc-OC.a \
-		$(SDL2Opts) -lSDL2_image && \
+		EditorText.o Signals.o Pthread.o Semaphore.o \
+    Config.o Term/Term.o Semaphore/Semaphore.o \
+    al_icon/al_icon.o \
+		../data/bin/voc/lib/libvoc-OC.a -lpthread \
+    `allegro-config --libs` -lloadpng && \
 		mv $(PROG) ..
 
 $(PROG).sym: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
-		Editor.sym Term.sym Graph.sym SDL2.sym
+		Editor.sym Term.sym Graph.sym al_icon/al_icon.o
 	$(VOC) -OC -cesF -m $(PROG).Mod
 
 OV.sym: OV.Mod Terminal.sym Graph.sym
@@ -28,7 +29,7 @@ OV.sym: OV.Mod Terminal.sym Graph.sym
 Editor.sym: Editor.Mod Terminal.sym EditorText.sym OV.sym Graph.sym
 	$(VOC) -OC -cesF Editor.Mod
 
-Term.sym: Term.Mod term/term.o
+Term.sym: Term.Mod Term/Term.o
 	$(VOC) -OC -cesF Term.Mod
 
 Terminal.sym: Terminal.Mod Graph.sym
@@ -40,20 +41,35 @@ EditorText.sym: EditorText.Mod Config.sym
 Config.sym: Config_$(OS).Mod
 	$(VOC) -OC -cesF Config_$(OS).Mod
 
-term/term.o: term/term_$(OS).c
-	$(CC) -c term/term_$(OS).c -o term/term.o
+Term/Term.o: Term/Term_$(OS).c
+	$(CC) -c Term/Term_$(OS).c -o Term/Term.o
 
-Graph.sym: Graph.Mod SDL2.sym
+Graph.sym: Graph.Mod Allegro.sym Signals.sym
 	$(VOC) -OC -cesF Graph.Mod
 
-SDL2.sym: SDL2.Mod
-	$(VOC) -OC -cesF SDL2.Mod
+Allegro.sym: Allegro.Mod
+	$(VOC) -OC -cesF Allegro.Mod
 
-.PHONY: clean cleanfo cleanall install pack prepare
+Signals.sym: Signals.Mod Semaphore.sym Pthread.sym
+	$(VOC) -OC -cesF Signals.Mod
+
+Pthread.sym: Pthread.Mod
+	$(VOC) -OC -cesF Pthread.Mod
+
+Semaphore.sym: Semaphore.Mod Semaphore/Semaphore.o
+	$(VOC) -OC -cesF Semaphore.Mod
+
+Semaphore/Semaphore.o: Semaphore/Semaphore.c
+	$(CC) -c Semaphore/Semaphore.c -o Semaphore/Semaphore.o
+
+al_icon/al_icon.o: al_icon/al_icon.c
+	$(CC) -c al_icon/al_icon.c -o al_icon/al_icon.o
+
+.PHONY: clean cleanfo cleanall install pack prepare run
 
 cleanfo:
-	rm -f *.c *.h *.o *.sym term/term.o .tmp..* \
-		../Programs/.tmp..* ../bin/*
+	rm -f *.c *.h *.o *.sym Term/*.o Semaphore/*.o al_icon/*.o .tmp..* \
+		../Programs/.tmp..*
 
 clean: cleanfo
 	make -C ../data/bin/voc/src clean
@@ -82,9 +98,11 @@ pack: clean prepare
 voc:
 	make -C ../data/bin/voc/src
 
-install:
-	cp Graph.sym SDL2.sym ../data/bin/voc/C/sym
-	cp Graph.h SDL2.h SDL2.h0 ../data/bin/voc/C/include
-	cp Graph.o SDL2.o ../data/bin/voc/lib
-	mkdir -p ../bin
+run: fo
 
+install:
+	cp Graph.sym Allegro.sym ../data/bin/voc/C/sym
+	cp Graph.h Allegro.h Allegro.h0 ../data/bin/voc/C/include
+	cp Graph.o Allegro.o Signals.o Semaphore.o Pthread.o ../data/bin/voc/lib
+	mkdir -p ../data/bin/voc/lib/Semaphore
+	cp Semaphore/Semaphore.o ../data/bin/voc/lib/Semaphore

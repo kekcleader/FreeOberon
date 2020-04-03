@@ -1,5 +1,5 @@
 MODULE Editor;
-(* Copyright 2017-2019 Arthur Yefimov
+(* Copyright 2017-2020 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT OV, T := Terminal, G := Graph, Text := EditorText, Strings, Out;
+IMPORT OV, T := Terminal, G := Graph, Text := EditorText, Strings;
 CONST
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -789,10 +789,11 @@ BEGIN
   OV.WindowMouseMove(c, x, y, buttons)
 END EditorMouseMove;
 
-PROCEDURE EditorTextInput(c: OV.Control; s: ARRAY OF CHAR; sym: INTEGER);
+PROCEDURE EditorTextInput(c: OV.Control; key: G.Key);
 BEGIN
-  IF sym # 0 THEN c(Editor).text.InsertChar(CHR(sym)); T.ResetCursorBlink;
-    c(Editor).text.selected := FALSE; PrintText(c(Editor))
+  IF key.sym # 0 THEN c(Editor).text.InsertChar(CHR(key.sym));
+    T.ResetCursorBlink; c(Editor).text.selected := FALSE;
+    PrintText(c(Editor))
   END
 END EditorTextInput;
 
