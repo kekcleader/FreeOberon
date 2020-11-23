@@ -1,15 +1,15 @@
-![Free Oberon screenshot](http://freeoberon.su/images/screenshot.png)
+![Free Oberon screenshot](http://free.oberon.org/images/screenshot.png)
 
 # Free Oberon
 * Version 1.0.3
 * Riga, June 18, 2019
-* Website: [freeoberon.su](http://freeoberon.su/en), [на русском](http://freeoberon.su)
+* Website: [free.oberon.org](http://free.oberon.org/en), [на русском](http://free.oberon.org)
 
 # Installation
 
 ## Installation under OS GNU/Linux.
 
-1. Download Free Oberon source code from [freeoberon.su](http://freeoberon.su) in tar.gz format or from the GitHub repo. Note that the archive with the version for Windows is also suitable, because it contains the source code. Extract the archive to your home directory or to another location on the disk. (This tutorial will assume the files are extracted to the home directory.)
+1. Download Free Oberon source code from [free.oberon.org](http://free.oberon.org) in tar.gz format or from the GitHub repo. Note that the archive with the version for Windows is also suitable, because it contains the source code. Extract the archive to your home directory or to another location on the disk. (This tutorial will assume the files are extracted to the home directory.)
 2. Using terminal or in any other way, install the following packages:
   * libsdl2-dev
   * libsdl2-image-dev
@@ -40,11 +40,11 @@
 
 ## Installation under Windows.
 
-Download the setup porgram in EXE format from [freeoberon.su](http://freeoberon.su), run it and follow the instructions.
+Download the setup porgram in EXE format from [free.oberon.org](http://free.oberon.org), run it and follow the instructions.
 
-Alternatively, you can download a version of Free Oberon in a ZIP-archive (from [freeoberon.su](http://freeoberon.su)), extract it to any place on the disk and (optionally) create a desktop shortcut.
+Alternatively, you can download a version of Free Oberon in a ZIP-archive (from [free.oberon.org](http://free.oberon.org)), extract it to any place on the disk and (optionally) create a desktop shortcut.
 
-Note. If you want to recompile Free Oberon under Windows from the source code yourself, refer to Appendix A of the [Free Oberon documentation on freeoberon.su](http://freeoberon.su/files/FreeOberon_v1.0.3_en.pdf), [на русском](FreeOberon_v1.0.3.pdf).
+Note. If you want to recompile Free Oberon under Windows from the source code yourself, refer to Appendix A of the [Free Oberon documentation on free.oberon.org](http://free.oberon.org/files/FreeOberon_v1.0.3_en.pdf), [на русском](FreeOberon_v1.0.3.pdf).
 
 # Usage
 
