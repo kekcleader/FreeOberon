@@ -118,19 +118,6 @@ BEGIN
   t.RemoveLine(L.next)
 END Combine2Lines;
 
-PROCEDURE (t: Text) HandleBackspace*;
-BEGIN
-  IF t.x > 0 THEN
-    DEC(t.x); t.cur.Delete(t.x, 1);
-    t.changed := TRUE
-  ELSIF t.cur.prev # NIL THEN (* Курсор в начале строки и перед ней есть ещё строка *)
-    t.cur := t.cur.prev;
-    DEC(t.y); t.x := t.cur.len;
-    t.Combine2Lines(t.cur);
-    t.changed := TRUE
-  END
-END HandleBackspace;
-
 PROCEDURE (t: Text) GetFirstSelLine*(): Line;
 VAR y: INTEGER; L: Line;
 BEGIN
@@ -148,6 +135,70 @@ BEGIN t.selected := TRUE;
   t.selB := count;
   t.selR := 5
 END SelectAll;
+
+(**Returns true if at least one whole line is selected,
+   but leading spaces may still be unselected*)
+PROCEDURE (t: Text) WholeLineSelected*(): BOOLEAN;
+VAR L: Line;
+  i: INTEGER;
+  res: BOOLEAN;
+BEGIN res := FALSE;
+  IF t.selected THEN
+    IF t.selT # t.selB THEN res := TRUE
+    ELSE
+      L := t.GetFirstSelLine();
+      IF t.selR = L.len THEN
+        i := 0;
+        WHILE (i # t.selL) & (L.s[i] = ' ') DO INC(i) END;
+        IF i = t.selL THEN res := TRUE END
+      END
+    END
+  END;
+RETURN res END WholeLineSelected;
+
+PROCEDURE (t: Text) RemoveIndent*;
+VAR L: Line;
+  i, y, endY: INTEGER;
+BEGIN
+  L := t.GetFirstSelLine(); y := t.selT;
+  endY := t.selB;
+  IF t.selR = 0 THEN DEC(endY) END;
+  WHILE y <= endY DO
+    FOR i := 1 TO 2 DO
+      IF L.s[0] = ' ' THEN
+        L.Delete(0, 1);
+        IF (y = t.selT) & (t.selL # 0) THEN
+          DEC(t.selL);
+          IF t.y = t.selT THEN DEC(t.x) END
+        ELSIF (y = t.selB) & (t.selR # 0) THEN
+          DEC(t.selR);
+          IF (t.y # t.selT) & (t.y = t.selB) THEN DEC(t.x) END
+        END
+      END
+    END;
+    L := L.next; INC(y)
+  END
+END RemoveIndent;
+
+PROCEDURE (t: Text) AddIndent*;
+VAR L: Line;
+  i, y, endY: INTEGER;
+BEGIN
+  L := t.GetFirstSelLine();
+  y := t.selT;
+  endY := t.selB;
+  IF t.selR = 0 THEN DEC(endY) END;
+  WHILE y <= endY DO
+    FOR i := 1 TO 2 DO IF L.len # 0 THEN L.InsertChar(' ', 0) END END;
+    L := L.next; INC(y)
+  END;
+  INC(t.selL, 2);
+  IF t.selT = t.y THEN INC(t.x, 2) END;
+  IF t.selR # 0 THEN
+    INC(t.selR, 2);
+    IF (t.selT # t.y) & (t.selB = t.y) THEN INC(t.x, 2) END
+  END
+END AddIndent;
 
 PROCEDURE (t: Text) DeleteSelection*;
 VAR x0, x, y: INTEGER; L0, L: Line;
@@ -173,6 +224,20 @@ BEGIN
     t.changed := TRUE
   END
 END DeleteSelection;
+
+PROCEDURE (t: Text) HandleBackspace*;
+BEGIN
+  IF t.selected THEN t.DeleteSelection
+  ELSIF t.x > 0 THEN
+    DEC(t.x); t.cur.Delete(t.x, 1);
+    t.changed := TRUE
+  ELSIF t.cur.prev # NIL THEN (* Курсор в начале строки и перед ней есть ещё строка *)
+    t.cur := t.cur.prev;
+    DEC(t.y); t.x := t.cur.len;
+    t.Combine2Lines(t.cur);
+    t.changed := TRUE
+  END
+END HandleBackspace;
 
 PROCEDURE (t: Text) HandleDelete*;
 BEGIN

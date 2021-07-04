@@ -666,7 +666,6 @@ END MoveToLineEdge;
 PROCEDURE HandleBackspace(c: Editor);
 BEGIN
   c.text.HandleBackspace;
-  c.text.selected := FALSE;
   PrintText(c)
 END HandleBackspace;
 
@@ -675,6 +674,21 @@ BEGIN
   c.text.HandleDelete;
   PrintText(c)
 END HandleDelete;
+
+PROCEDURE HandleTab(e: Editor; shift: BOOLEAN);
+BEGIN
+  IF shift THEN e.text.RemoveIndent
+  ELSIF e.text.WholeLineSelected() THEN
+    IF shift THEN e.text.RemoveIndent
+    ELSE e.text.AddIndent
+    END
+  ELSE
+    IF e.text.selected THEN e.text.DeleteSelection END;
+    e.text.InsertChar(' ');
+    IF ODD(e.text.x MOD 2) THEN e.text.InsertChar(' ') END
+  END;
+  PrintText(e)
+END HandleTab;
 
 PROCEDURE HandleEnter(c: Editor);
 BEGIN
@@ -808,9 +822,7 @@ BEGIN
   | G.kBackspace: HandleBackspace(c(Editor))
   | G.kDel:       HandleDelete(c(Editor))
   | G.kEnter, G.kEnterPad: HandleEnter(c(Editor))
-  | G.kTab: c(Editor).text.InsertChar(' ');
-    IF ODD(c(Editor).text.x MOD 2) THEN c(Editor).text.InsertChar(' ') END;
-    PrintText(c(Editor))
+  | G.kTab:       HandleTab(c(Editor), key.mod * G.mShift # {})
   ELSE
   END
 END EditorKeyDown;
