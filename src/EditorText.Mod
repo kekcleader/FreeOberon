@@ -1,5 +1,5 @@
 MODULE EditorText;
-(* Copyright 2017-2019 Arthur Yefimov
+(* Copyright 2017-2021 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -152,24 +152,26 @@ END SelectAll;
 PROCEDURE (t: Text) DeleteSelection*;
 VAR x0, x, y: INTEGER; L0, L: Line;
 BEGIN
-  L := t.GetFirstSelLine();
-  L0 := L; y := t.selT; 
-  WHILE y < t.selB DO L := L.next; INC(y) END;
-  L0.next := L.next;
-  IF L.next = NIL THEN t.last := L0
-  ELSE L.next.prev := L0 END;
+  IF t.selected THEN
+    L := t.GetFirstSelLine();
+    L0 := L; y := t.selT; 
+    WHILE y < t.selB DO L := L.next; INC(y) END;
+    L0.next := L.next;
+    IF L.next = NIL THEN t.last := L0
+    ELSE L.next.prev := L0 END;
 
-  x0 := t.selL; x := t.selR;
-  WHILE L.s[x] # 0X
-  DO L0.s[x0] := L.s[x]; INC(x0); INC(x) END;
-  L0.s[x0] := 0X; L0.len := x0;
+    x0 := t.selL; x := t.selR;
+    WHILE L.s[x] # 0X
+    DO L0.s[x0] := L.s[x]; INC(x0); INC(x) END;
+    L0.s[x0] := 0X; L0.len := x0;
 
-  t.cur := L0; t.y := t.selT; t.x := t.selL;
-  IF (t.scrY >= t.selT) & (t.scrY <= t.selB) THEN
-    t.scrFirst := t.cur; t.scrY := t.y
-  END;
-  t.selected := FALSE;
-  t.changed := TRUE
+    t.cur := L0; t.y := t.selT; t.x := t.selL;
+    IF (t.scrY >= t.selT) & (t.scrY <= t.selB) THEN
+      t.scrFirst := t.cur; t.scrY := t.y
+    END;
+    t.selected := FALSE;
+    t.changed := TRUE
+  END
 END DeleteSelection;
 
 PROCEDURE (t: Text) HandleDelete*;

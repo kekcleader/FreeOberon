@@ -1,4 +1,4 @@
-/* Copyright 2017-2019 Arthur Yefimov
+/* Copyright 2017-2021 Arthur Yefimov
 
 This file is part of Free Oberon.
 

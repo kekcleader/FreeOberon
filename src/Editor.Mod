@@ -1,5 +1,5 @@
 MODULE Editor;
-(* Copyright 2017-2019 Arthur Yefimov
+(* Copyright 2017-2021 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -729,10 +729,8 @@ BEGIN
   IF (c.app.windows # NIL) & (c.app.windows IS Editor) &
       (clipboard[0] # 0X) THEN
     e := c.app.windows(Editor);
-    e.text.selL := e.text.x; e.text.selT := e.text.y;
+    e.text.DeleteSelection;
     e.text.Insert(clipboard, FALSE);
-    e.text.selR := e.text.x; e.text.selB := e.text.y;
-    e.text.selected := TRUE;
     IF e.text.y >= e.text.scrY + e.h - 2 THEN
       MoveScreen(e, e.text.y - e.h + 3 - e.text.scrY)
     END;
@@ -771,7 +769,7 @@ BEGIN OV.WindowMouseDown(c, x, y, button);
     t.selected := FALSE; L := t.scrFirst; i := y;
     WHILE (i > 0) & (L # NIL) DO DEC(i); L := L.next END;
     IF L # NIL THEN
-      t.cur := L; t.y := y - t.scrY;
+      t.cur := L; t.y := y + t.scrY;
       IF x > L.len THEN x := L.len END;
       t.x := x;
       T.GoToXY(c.x + x + 1, c.y + y + 1)

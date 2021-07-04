@@ -1,5 +1,5 @@
 MODULE Terminal;
-(* Copyright 2017-2019 Arthur Yefimov
+(* Copyright 2017-2021 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -112,7 +112,7 @@ BEGIN
 END DrawMouse;
 
 (* Draws characters that have been changed, and the mouse.
-   Returns TRUE if something has been drawn. *)
+   Returns TRUE if anything has been drawn. *)
 PROCEDURE Draw*(): BOOLEAN;
 VAR x, y, color: INTEGER;
     drawn: BOOLEAN;
