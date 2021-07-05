@@ -64,11 +64,11 @@ cleanall: clean
 	make -C ../data/bin/voc cleanall
 
 prepare:
-	chmod +x ../data/bin/*.sh ../data/bin/voc/*.sh
+	chmod +x ../data/bin/*.sh
 
 pack: clean prepare
 	rm -rf Makefile ../$(PROG) ../*.exe ../*.dll \
-		../data/bin/voc/src/*.exe
+		$(VOCDIR)/src/*.exe
 	ln -s Makefile_linux Makefile
 	$(eval TMPDIR := $(shell mktemp -d /tmp/FreeOberon_XXXXXX))
 	mkdir -p $(TMPDIR)/FreeOberon

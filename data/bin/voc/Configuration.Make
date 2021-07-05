@@ -1,0 +1,15 @@
+OLANGDIR=/home/kekc/prg/FreeOberon/data/bin/voc
+COMPILER=gcc
+OS=ubuntu
+VERSION=2.1.0
+ONAME=voc
+DATAMODEL=LP64
+ADRSIZE=8
+ALIGNMENT=8
+INSTALLDIR=/opt/voc
+PLATFORM=unix
+BINEXT=
+DYNEXT=.so
+COMPILE=gcc -fPIC -g
+STATICLINK= -static
+BRANCH=master
