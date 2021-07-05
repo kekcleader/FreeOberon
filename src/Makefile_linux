@@ -1,6 +1,7 @@
 PROG=FreeOberon
 OS=linux
-VOC=../data/bin/voc/bin/voc
+VOCDIR=../data/bin/voc/install
+VOC=$(VOCDIR)/bin/voc
 CC=gcc
 SDL2Opts=`sdl2-config --cflags --libs`
 VER=1.0.3
@@ -14,7 +15,7 @@ $(PROG): $(PROG).sym
 		-o $(PROG) $(PROG).o Graph.o SDL2.o \
 		OV.o Editor.o Term.o Terminal.o \
 		EditorText.o Config.o term/term.o \
-		../data/bin/voc/lib/libvoc-OC.a \
+		$(VOCDIR)/lib/libvoc-OC.a \
 		$(SDL2Opts) -lSDL2_image && \
 		mv $(PROG) ..
 
@@ -56,14 +57,14 @@ cleanfo:
 		../Programs/.tmp..* ../bin/*
 
 clean: cleanfo
-	make -C ../data/bin/voc/src clean
+	make -C ../data/bin/voc clean
 
 cleanall: clean
 	rm -f ../$(PROG) ../$(PROG).exe
-	make -C ../data/bin/voc/src cleanall
+	make -C ../data/bin/voc cleanall
 
 prepare:
-	chmod +x ../data/bin/*.sh ../data/bin/voc/src/*.sh
+	chmod +x ../data/bin/*.sh ../data/bin/voc/*.sh
 
 pack: clean prepare
 	rm -rf Makefile ../$(PROG) ../*.exe ../*.dll \
@@ -80,11 +81,11 @@ pack: clean prepare
 	rm -rf $(TMPDIR)
 
 voc:
-	make -C ../data/bin/voc/src
+	make -C ../data/bin/voc full
 
 install:
-	cp Graph.sym SDL2.sym ../data/bin/voc/C/sym
-	cp Graph.h SDL2.h SDL2.h0 ../data/bin/voc/C/include
-	cp Graph.o SDL2.o ../data/bin/voc/lib
+	cp Graph.sym SDL2.sym $(VOCDIR)/C/sym
+	cp Graph.h SDL2.h SDL2.h0 $(VOCDIR)/C/include
+	cp Graph.o SDL2.o $(VOCDIR)/lib
 	mkdir -p ../bin
 

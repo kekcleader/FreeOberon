@@ -449,9 +449,9 @@ BEGIN
   RETURN success
 END LoadFromFile; 
 
-PROCEDURE (t: Text) MoveToPos*(pos: INTEGER);
-CONST centerY = 6;
-VAR i: INTEGER; L: Line;
+PROCEDURE (t: Text) MoveToPos*(pos, winH: INTEGER);
+CONST pad = 3;
+VAR i, centerY: INTEGER; L: Line;
 BEGIN
   L := t.first; t.x := 0; t.y := 0;
   REPEAT
@@ -468,9 +468,11 @@ BEGIN
   IF t.x < L.len THEN INC(t.x) END;
   t.cur := L;
 
-  i := centerY;
-  WHILE (L.prev # NIL) & (i > 0) DO L := L.prev; DEC(i) END;
-  t.scrY := t.y - centerY + i; t.scrFirst := L
+  IF (t.y < t.scrY + pad) OR (t.y >= t.scrY + winH - pad) THEN
+    centerY := winH DIV 2; i := centerY;
+    WHILE (L.prev # NIL) & (i > 0) DO L := L.prev; DEC(i) END;
+    t.scrY := t.y - centerY + i; t.scrFirst := L
+  END
 END MoveToPos;
 
 END EditorText.

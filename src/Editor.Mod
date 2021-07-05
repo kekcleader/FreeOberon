@@ -787,7 +787,8 @@ BEGIN OV.WindowMouseDown(c, x, y, button);
       IF x > L.len THEN x := L.len END;
       t.x := x;
       T.GoToXY(c.x + x + 1, c.y + y + 1)
-    END
+    END;
+    PrintText(c(Editor))
   END
 END EditorMouseDown;
 

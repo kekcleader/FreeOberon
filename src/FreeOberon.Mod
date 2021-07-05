@@ -19,7 +19,7 @@ along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 IMPORT G := Graph, T := Terminal, Files, Modules,
        OV, Editor, Term, Config, Strings, Out;
 CONST
-  version* = '1.0.3';
+  version* = '1.0.4';
 
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -216,8 +216,8 @@ BEGIN
   OV.DrawApp(app)
 END FocusOrOpenFile;
 
-PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; filename: ARRAY OF CHAR);
-VAR i, j, pos, st, len, skip: INTEGER; found: BOOLEAN;
+PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; filename: ARRAY OF CHAR; VAR pos: INTEGER);
+VAR i, j, st, len, skip: INTEGER; found: BOOLEAN;
 BEGIN
   StringsFindNext(' pos ', s, 0, found, i);
   IF found THEN (* Read the position *)
@@ -240,11 +240,7 @@ BEGIN
         WHILE (j > 0) & (s[j - 1] = ' ') DO DEC(j) END;
         s[j] := '.'; INC(j); s[j] := 0X;
         (* Capitalize first letter (0th is a space). *)
-        IF (s[1] >= 'a') & (s[1] <= 'z') THEN s[1] := CAP(s[1]) END;
-        FocusOrOpenFile(filename);
-        app.windows(Editor.Editor).text.MoveToPos(pos);
-        Editor.PrintText(app.windows(Editor.Editor));
-        T.ResetCursorBlink (* !FIXME *)
+        IF (s[1] >= 'a') & (s[1] <= 'z') THEN s[1] := CAP(s[1]) END
       END
     END
   END
@@ -427,8 +423,9 @@ PROCEDURE RunCommand(filename: ARRAY OF CHAR;
     link, graph, main: BOOLEAN; list: StrList): BOOLEAN;
 CONST bufLen = 20480;
 VAR buf: ARRAY bufLen OF CHAR;
+    e: Editor.Editor;
     p: StrList;
-    len, err: INTEGER;
+    len, err, pos: INTEGER;
     command: ARRAY 32 OF CHAR;
     cmd: ARRAY 1024 OF CHAR;
     s, sN: ARRAY 80 OF CHAR;
@@ -472,7 +469,13 @@ BEGIN
       IF buf[len - 1] = 0AX THEN buf[len - 1] := 0X
       ELSE buf[len] := 0X
       END;
-      ParseErrors(buf, filename)
+
+      ParseErrors(buf, filename, pos);
+      FocusOrOpenFile(filename);
+      e := app.windows(Editor.Editor);
+      e.text.MoveToPos(pos, e.h - 2);
+      Editor.PrintText(app.windows(Editor.Editor));
+      T.ResetCursorBlink (* !FIXME *)
     ELSIF link THEN buf := 'Linking failed.'
     ELSE buf := 'Compilation failed.'
     END;
@@ -526,7 +529,7 @@ BEGIN
         s := p.s; Strings.Append('.Mod', s);
         IF ~Compile(s, TRUE) THEN ok := FALSE END
       END;
-      IF ~Link(p.s, graph, modules) THEN ok := FALSE END
+      IF ok & ~Link(p.s, graph, modules) THEN ok := FALSE END
     END
   ELSE ok := FALSE
   END;
@@ -768,7 +771,7 @@ END OnBuild;
 PROCEDURE HelpAbout(c: OV.Control);
 BEGIN
   IF app.statusText[0] # 0X THEN OV.SetStatusText(app, '')
-  ELSE OV.SetStatusText(app, 'Visit freeoberon.su')
+  ELSE OV.SetStatusText(app, '  free.oberon.org  ')
   END
 END HelpAbout;
 

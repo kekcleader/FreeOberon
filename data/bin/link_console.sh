@@ -3,7 +3,7 @@
 # script will be where FreeOberon executable is located. This
 # particular script is for console programs.
 cd bin
-VOCDIR=../data/bin/voc
+VOCDIR=../data/bin/voc/install
 CC=gcc
 THENAME="${1%.*}"
 ONAME="${THENAME##*/}"
