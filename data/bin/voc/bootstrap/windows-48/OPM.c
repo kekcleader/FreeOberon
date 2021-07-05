@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2019/11/01]. Bootstrapping compiler for address size 8, alignment 8. xrtspaSF */
+/* voc 2.1.0 [2021/07/05]. Bootstrapping compiler for address size 8, alignment 8. xrtspaSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -27,7 +27,7 @@ export INT16 OPM_AddressSize;
 static INT16 OPM_GlobalAlignment;
 export INT16 OPM_Alignment;
 export UINT32 OPM_GlobalOptions, OPM_Options;
-export INT16 OPM_ShortintSize, OPM_IntegerSize, OPM_LongintSize;
+export INT16 OPM_ShortintSize, OPM_IntegerSize, OPM_LongintSize, OPM_SetSize;
 export INT64 OPM_MaxIndex;
 export LONGREAL OPM_MinReal, OPM_MaxReal, OPM_MinLReal, OPM_MaxLReal;
 export BOOLEAN OPM_noerr;
@@ -338,7 +338,7 @@ BOOLEAN OPM_OpenPar (void)
 		OPM_LogWLn();
 		OPM_LogWStr((CHAR*)"    -O2   Original Oberon / Oberon-2:  8 bit SHORTINT, 16 bit INTEGER, 32 bit LONGINT and SET.", 95);
 		OPM_LogWLn();
-		OPM_LogWStr((CHAR*)"    -OC   Component Pascal:           16 bit SHORTINT, 32 bit INTEGER, 64 bit LONGINT and SET.", 95);
+		OPM_LogWStr((CHAR*)"    -OC   Component Pascal:           16 bit SHORTINT, 32 bit INTEGER and SET, 64 bit LONGINT.", 95);
 		OPM_LogWLn();
 		OPM_LogWStr((CHAR*)"    -OV   Alternate large model:       8 bit SHORTINT, 32 bit INTEGER, 64 bit LONGINT and SET.", 95);
 		OPM_LogWLn();
@@ -410,21 +410,25 @@ void OPM_InitOptions (void)
 			OPM_ShortintSize = 1;
 			OPM_IntegerSize = 2;
 			OPM_LongintSize = 4;
+			OPM_SetSize = 4;
 			break;
 		case 'C': 
 			OPM_ShortintSize = 2;
 			OPM_IntegerSize = 4;
 			OPM_LongintSize = 8;
+			OPM_SetSize = 4;
 			break;
 		case 'V': 
 			OPM_ShortintSize = 1;
 			OPM_IntegerSize = 4;
 			OPM_LongintSize = 8;
+			OPM_SetSize = 8;
 			break;
 		default: 
 			OPM_ShortintSize = 1;
 			OPM_IntegerSize = 2;
 			OPM_LongintSize = 4;
+			OPM_SetSize = 4;
 			break;
 	}
 	__MOVE(OPM_InstallDir, OPM_ResourceDir, 1024);

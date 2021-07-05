@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2019/11/01]. Bootstrapping compiler for address size 8, alignment 8. xrtspaSF */
+/* voc 2.1.0 [2021/07/05]. Bootstrapping compiler for address size 8, alignment 8. xrtspaSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -968,7 +968,9 @@ void Files_WriteSet (Files_Rider *R, ADDRESS *R__typ, UINT32 x)
 {
 	CHAR b[4];
 	INT32 i;
-	i = (INT32)x;
+	UINT64 y;
+	y = x;
+	i = __VAL(INT32, y);
 	b[0] = __CHR(i);
 	b[1] = __CHR(__ASHR(i, 8));
 	b[2] = __CHR(__ASHR(i, 16));

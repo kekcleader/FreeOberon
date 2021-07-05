@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2019/11/01]. Bootstrapping compiler for address size 8, alignment 8. xrtspaSF */
+/* voc 2.1.0 [2021/07/05]. Bootstrapping compiler for address size 8, alignment 8. xrtspaSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -2131,6 +2131,7 @@ export void *OPT__init(void)
 	OPT_EnterProc((CHAR*)"CAP", 3);
 	OPT_EnterProc((CHAR*)"ORD", 4);
 	OPT_EnterProc((CHAR*)"ENTIER", 5);
+	OPT_EnterProc((CHAR*)"FLOOR", -1);
 	OPT_EnterProc((CHAR*)"ODD", 6);
 	OPT_EnterProc((CHAR*)"MIN", 7);
 	OPT_EnterProc((CHAR*)"MAX", 8);

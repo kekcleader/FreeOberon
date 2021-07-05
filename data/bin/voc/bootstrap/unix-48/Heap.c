@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2019/11/01]. Bootstrapping compiler for address size 8, alignment 8. rtsSF */
+/* voc 2.1.0 [2021/07/05]. Bootstrapping compiler for address size 8, alignment 8. rtsSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -665,79 +665,77 @@ void Heap_GC (BOOLEAN markStack)
 	Heap_Module m;
 	INT32 i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11, i12, i13, i14, i15, i16, i17, i18, i19, i20, i21, i22, i23;
 	INT32 cand[10000];
-	if (Heap_lockdepth == 0 || (Heap_lockdepth == 1 && !markStack)) {
-		Heap_Lock();
-		m = (Heap_Module)(ADDRESS)Heap_modules;
-		while (m != NIL) {
-			if (m->enumPtrs != NIL) {
-				(*m->enumPtrs)(Heap_MarkP);
-			}
-			m = m->next;
+	Heap_Lock();
+	m = (Heap_Module)(ADDRESS)Heap_modules;
+	while (m != NIL) {
+		if (m->enumPtrs != NIL) {
+			(*m->enumPtrs)(Heap_MarkP);
 		}
-		if (markStack) {
-			i0 = -100;
-			i1 = -101;
-			i2 = -102;
-			i3 = -103;
-			i4 = -104;
-			i5 = -105;
-			i6 = -106;
-			i7 = -107;
-			i8 = 1;
-			i9 = 2;
-			i10 = 3;
-			i11 = 4;
-			i12 = 5;
-			i13 = 6;
-			i14 = 7;
-			i15 = 8;
-			i16 = 9;
-			i17 = 10;
-			i18 = 11;
-			i19 = 12;
-			i20 = 13;
-			i21 = 14;
-			i22 = 15;
-			i23 = 16;
-			for (;;) {
-				i0 += 1;
-				i1 += 2;
-				i2 += 3;
-				i3 += 4;
-				i4 += 5;
-				i5 += 6;
-				i6 += 7;
-				i7 += 8;
-				i8 += 9;
-				i9 += 10;
-				i10 += 11;
-				i11 += 12;
-				i12 += 13;
-				i13 += 14;
-				i14 += 15;
-				i15 += 16;
-				i16 += 17;
-				i17 += 18;
-				i18 += 19;
-				i19 += 20;
-				i20 += 21;
-				i21 += 22;
-				i22 += 23;
-				i23 += 24;
-				if ((i0 == -99 && i15 == 24)) {
-					Heap_MarkStack(32, (void*)cand, 10000);
-					break;
-				}
-			}
-			if (((((((((((((((((((((((i0 + i1) + i2) + i3) + i4) + i5) + i6) + i7) + i8) + i9) + i10) + i11) + i12) + i13) + i14) + i15) + i16) + i17) + i18) + i19) + i20) + i21) + i22) + i23 > 10000) {
-				return;
-			}
-		}
-		Heap_CheckFin();
-		Heap_Scan();
-		Heap_Finalize();
-		Heap_Unlock();
+		m = m->next;
 	}
+	if (markStack) {
+		i0 = -100;
+		i1 = -101;
+		i2 = -102;
+		i3 = -103;
+		i4 = -104;
+		i5 = -105;
+		i6 = -106;
+		i7 = -107;
+		i8 = 1;
+		i9 = 2;
+		i10 = 3;
+		i11 = 4;
+		i12 = 5;
+		i13 = 6;
+		i14 = 7;
+		i15 = 8;
+		i16 = 9;
+		i17 = 10;
+		i18 = 11;
+		i19 = 12;
+		i20 = 13;
+		i21 = 14;
+		i22 = 15;
+		i23 = 16;
+		for (;;) {
+			i0 += 1;
+			i1 += 2;
+			i2 += 3;
+			i3 += 4;
+			i4 += 5;
+			i5 += 6;
+			i6 += 7;
+			i7 += 8;
+			i8 += 9;
+			i9 += 10;
+			i10 += 11;
+			i11 += 12;
+			i12 += 13;
+			i13 += 14;
+			i14 += 15;
+			i15 += 16;
+			i16 += 17;
+			i17 += 18;
+			i18 += 19;
+			i19 += 20;
+			i20 += 21;
+			i21 += 22;
+			i22 += 23;
+			i23 += 24;
+			if ((i0 == -99 && i15 == 24)) {
+				Heap_MarkStack(32, (void*)cand, 10000);
+				break;
+			}
+		}
+		if (((((((((((((((((((((((i0 + i1) + i2) + i3) + i4) + i5) + i6) + i7) + i8) + i9) + i10) + i11) + i12) + i13) + i14) + i15) + i16) + i17) + i18) + i19) + i20) + i21) + i22) + i23 > 10000) {
+			return;
+		}
+	}
+	Heap_CheckFin();
+	Heap_Scan();
+	Heap_Finalize();
+	Heap_Unlock();
 }
 
 void Heap_RegisterFinalizer (SYSTEM_PTR obj, Heap_Finalizer finalize)

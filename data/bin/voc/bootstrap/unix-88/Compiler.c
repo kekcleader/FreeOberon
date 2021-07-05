@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2019/11/01]. Bootstrapping compiler for address size 8, alignment 8. xrtspamS */
+/* voc 2.1.0 [2021/07/05]. Bootstrapping compiler for address size 8, alignment 8. xrtspamS */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -89,7 +89,7 @@ static void Compiler_PropagateElementaryTypeSizes (void)
 	OPT_sintobj->typ = OPT_sinttyp;
 	OPT_intobj->typ = OPT_inttyp;
 	OPT_lintobj->typ = OPT_linttyp;
-	switch (OPM_LongintSize) {
+	switch (OPM_SetSize) {
 		case 4: 
 			OPT_settyp = OPT_set32typ;
 			break;

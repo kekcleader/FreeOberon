@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2019/11/01]. Bootstrapping compiler for address size 8, alignment 8. xrtspaSF */
+/* voc 2.1.0 [2021/07/05]. Bootstrapping compiler for address size 8, alignment 8. xrtspaSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -1737,6 +1737,16 @@ void OPB_StPar0 (OPT_Node *par0, INT16 fctno)
 				OPB_err(111);
 			}
 			x->typ = OPT_linttyp;
+			break;
+		case -1: 
+			if (x->class == 8 || x->class == 9) {
+				OPB_err(126);
+			} else if (__IN(f, 0x60, 32)) {
+				OPB_Convert(&x, OPT_inttyp);
+			} else {
+				OPB_err(111);
+			}
+			x->typ = OPT_inttyp;
 			break;
 		case 6: 
 			OPB_MOp(23, &x);

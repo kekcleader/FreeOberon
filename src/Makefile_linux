@@ -4,13 +4,13 @@ VOCDIR=../data/bin/voc/install
 VOC=$(VOCDIR)/bin/voc
 CC=gcc
 SDL2Opts=`sdl2-config --cflags --libs`
-VER=1.0.3
+VER=1.0.4
 
-all: prepare voc $(PROG) install
+all: prepare voc fo install
 
-fo: $(PROG)
+fo: ../$(PROG)
 
-$(PROG): $(PROG).sym
+../$(PROG): $(PROG).o
 	$(CC) -fPIC -g -I ../data/bin/voc/C/include \
 		-o $(PROG) $(PROG).o Graph.o SDL2.o \
 		OV.o Editor.o Term.o Terminal.o \
@@ -19,7 +19,7 @@ $(PROG): $(PROG).sym
 		$(SDL2Opts) -lSDL2_image && \
 		mv $(PROG) ..
 
-$(PROG).sym: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
+$(PROG).o: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
 		Editor.sym Term.sym Graph.sym SDL2.sym
 	$(VOC) -OC -cesF -m $(PROG).Mod
 

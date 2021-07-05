@@ -8,7 +8,7 @@ Merging program properties
 
 Для удовлетворения ссылок на файл (символ) включена библиотека по необходимости
 
-libvoc-O2.so                  /tmp/cc2ZmZif.o (Modules_Halt)
+libvoc-O2.so                  /tmp/cczE6csX.o (Modules_Halt)
 libc.so.6                     /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o (__libc_start_main@@GLIBC_2.2.5)
 
 Отброшенные входные разделы
@@ -24,9 +24,9 @@ libc.so.6                     /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-li
  .note.gnu.property
                 0x0000000000000000       0x20 /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o
  .note.GNU-stack
-                0x0000000000000000        0x0 /tmp/cc2ZmZif.o
+                0x0000000000000000        0x0 /tmp/cczE6csX.o
  .note.gnu.property
-                0x0000000000000000       0x20 /tmp/cc2ZmZif.o
+                0x0000000000000000       0x20 /tmp/cczE6csX.o
  .note.GNU-stack
                 0x0000000000000000        0x0 /usr/lib/x86_64-linux-gnu/libc_nonshared.a(elf-init.oS)
  .note.gnu.property
@@ -50,7 +50,7 @@ libc.so.6                     /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-li
 LOAD /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o
 LOAD /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o
 LOAD /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o
-LOAD /tmp/cc2ZmZif.o
+LOAD /tmp/cczE6csX.o
 LOAD /home/kekc/prg/FreeOberon/data/bin/voc/install/lib/libvoc-O2.so
 LOAD /usr/lib/gcc/x86_64-linux-gnu/9/libgcc.a
 LOAD /usr/lib/gcc/x86_64-linux-gnu/9/libgcc_s.so
@@ -210,7 +210,7 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
  .text          0x000000000000130f        0x0 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o
  *fill*         0x000000000000130f        0x1 
  .text          0x0000000000001310       0xb9 /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o
- .text          0x00000000000013c9      0x3b7 /tmp/cc2ZmZif.o
+ .text          0x00000000000013c9      0x3b7 /tmp/cczE6csX.o
                 0x0000000000001440                main
  .text          0x0000000000001780       0x75 /usr/lib/x86_64-linux-gnu/libc_nonshared.a(elf-init.oS)
                 0x0000000000001780                __libc_csu_init
@@ -235,7 +235,7 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
  .rodata.cst4   0x0000000000002000        0x4 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o
                 0x0000000000002000                _IO_stdin_used
  *fill*         0x0000000000002004        0x4 
- .rodata        0x0000000000002008       0x28 /tmp/cc2ZmZif.o
+ .rodata        0x0000000000002008       0x28 /tmp/cczE6csX.o
 
 .rodata1
  *(.rodata1)
@@ -257,7 +257,7 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
                                          0x30 (размер перед ослаблением)
  .eh_frame      0x00000000000020f0       0x18 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o
                                          0x30 (размер перед ослаблением)
- .eh_frame      0x0000000000002108       0x40 /tmp/cc2ZmZif.o
+ .eh_frame      0x0000000000002108       0x40 /tmp/cczE6csX.o
                                          0x58 (размер перед ослаблением)
  .eh_frame      0x0000000000002148       0x5c /usr/lib/x86_64-linux-gnu/libc_nonshared.a(elf-init.oS)
                                          0x78 (размер перед ослаблением)
@@ -362,7 +362,7 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
  .data.rel.local
                 0x0000000000004008        0x8 /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o
                 0x0000000000004008                __dso_handle
- .data          0x0000000000004010        0x0 /tmp/cc2ZmZif.o
+ .data          0x0000000000004010        0x0 /tmp/cczE6csX.o
  .data          0x0000000000004010        0x0 /usr/lib/x86_64-linux-gnu/libc_nonshared.a(elf-init.oS)
  .data          0x0000000000004010        0x0 /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o
  .data          0x0000000000004010        0x0 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
@@ -389,7 +389,7 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
  .bss           0x0000000000004020        0x0 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o
  .bss           0x0000000000004020        0x1 /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o
  *fill*         0x0000000000004021       0x1f 
- .bss           0x0000000000004040      0x4a8 /tmp/cc2ZmZif.o
+ .bss           0x0000000000004040      0x4a8 /tmp/cczE6csX.o
  .bss           0x00000000000044e8        0x0 /usr/lib/x86_64-linux-gnu/libc_nonshared.a(elf-init.oS)
  .bss           0x00000000000044e8        0x0 /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o
  .bss           0x00000000000044e8        0x0 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
@@ -416,11 +416,11 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
 
 .stab           0x0000000000000000      0x750
  *(.stab)
- .stab          0x0000000000000000      0x750 /tmp/cc2ZmZif.o
+ .stab          0x0000000000000000      0x750 /tmp/cczE6csX.o
 
 .stabstr        0x0000000000000000     0x1193
  *(.stabstr)
- .stabstr       0x0000000000000000     0x1193 /tmp/cc2ZmZif.o
+ .stabstr       0x0000000000000000     0x1193 /tmp/cczE6csX.o
 
 .stab.excl
  *(.stab.excl)
@@ -438,7 +438,7 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
  *(.comment)
  .comment       0x0000000000000000       0x2a /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o
                                          0x2b (размер перед ослаблением)
- .comment       0x000000000000002a       0x2b /tmp/cc2ZmZif.o
+ .comment       0x000000000000002a       0x2b /tmp/cczE6csX.o
  .comment       0x000000000000002a       0x2b /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o
 
 .gnu.build.attributes

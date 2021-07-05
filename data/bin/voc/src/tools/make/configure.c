@@ -40,7 +40,7 @@ void assert(int truth, char *complaint) {if (!truth) fail(complaint);}
 
 char builddate[256];
 char installdir[256];
-char versionstring[256];
+char versionstring[350];
 char osrelease[1024];
 char cwd[1024];
 char libspec[1024];

@@ -1,4 +1,4 @@
-/* voc 2.1.0 [2019/11/01]. Bootstrapping compiler for address size 8, alignment 8. xrtspaSF */
+/* voc 2.1.0 [2021/07/05]. Bootstrapping compiler for address size 8, alignment 8. xrtspaSF */
 
 #define SHORTINT INT8
 #define INTEGER  INT16
@@ -16,6 +16,8 @@ static INT16 Out_in;
 
 
 export void Out_Char (CHAR ch);
+export void Out_ConvertL (LONGREAL x, INT16 n, CHAR *d, ADDRESS d__len);
+export INT16 Out_Expo (REAL x);
 export void Out_Flush (void);
 export void Out_Hex (INT64 x, INT64 n);
 export void Out_Int (INT64 x, INT64 n);
@@ -24,6 +26,7 @@ export void Out_Ln (void);
 export void Out_LongReal (LONGREAL x, INT16 n);
 export void Out_Open (void);
 export void Out_Real (REAL x, INT16 n);
+export void Out_RealFix (REAL x, INT16 n, INT16 k);
 static void Out_RealP (LONGREAL x, INT16 n, BOOLEAN long_);
 export void Out_String (CHAR *str, ADDRESS str__len);
 export LONGREAL Out_Ten (INT16 e);
@@ -326,6 +329,138 @@ void Out_Real (REAL x, INT16 n)
 void Out_LongReal (LONGREAL x, INT16 n)
 {
 	Out_RealP(x, n, 1);
+}
+
+void Out_ConvertL (LONGREAL x, INT16 n, CHAR *d, ADDRESS d__len)
+{
+	INT32 i, j, k;
+	if (x < (LONGREAL)0) {
+		x = -x;
+	}
+	k = 0;
+	if (n > 9) {
+		i = __SHORT(__ENTIER(x / (LONGREAL)(LONGREAL)1000000000), 2147483648LL);
+		j = __SHORT(__ENTIER(x - i * (LONGREAL)1000000000), 2147483648LL);
+		if (j < 0) {
+			j = 0;
+		}
+		while (k < 9) {
+			d[__X(k, d__len)] = __CHR((int)__MOD(j, 10) + 48);
+			j = __DIV(j, 10);
+			k += 1;
+		}
+	} else {
+		i = __SHORT(__ENTIER(x), 2147483648LL);
+	}
+	while (k < n) {
+		d[__X(k, d__len)] = __CHR((int)__MOD(i, 10) + 48);
+		i = __DIV(i, 10);
+		k += 1;
+	}
+}
+
+INT16 Out_Expo (REAL x)
+{
+	INT16 i;
+	__GET((ADDRESS)&x + 2, i, INT16);
+	return __MASK(__ASHR(i, 7), -256);
+}
+
+static struct RealFix__13 {
+	INT16 *i;
+	CHAR (*d)[9];
+	struct RealFix__13 *lnk;
+} *RealFix__13_s;
+
+static void dig__14 (INT16 n);
+static void seq__16 (CHAR ch, INT16 n);
+
+static void seq__16 (CHAR ch, INT16 n)
+{
+	while (n > 0) {
+		Out_Char(ch);
+		n -= 1;
+	}
+}
+
+static void dig__14 (INT16 n)
+{
+	while (n > 0) {
+		*RealFix__13_s->i -= 1;
+		Out_Char((*RealFix__13_s->d)[__X(*RealFix__13_s->i, 9)]);
+		n -= 1;
+	}
+}
+
+void Out_RealFix (REAL x, INT16 n, INT16 k)
+{
+	INT16 e, i;
+	CHAR sign;
+	REAL x0;
+	CHAR d[9];
+	struct RealFix__13 _s;
+	_s.i = &i;
+	_s.d = (void*)d;
+	_s.lnk = RealFix__13_s;
+	RealFix__13_s = &_s;
+	e = Out_Expo(x);
+	if (k < 0) {
+		k = 0;
+	}
+	if (e == 0) {
+		seq__16(' ', (n - k) - 2);
+		Out_Char('0');
+		seq__16(' ', k + 1);
+	} else if (e == 255) {
+		Out_String((CHAR*)" NaN", 5);
+		seq__16(' ', n - 4);
+	} else {
+		e = __ASHR((e - 127) * 77, 8);
+		if (x < (REAL)0) {
+			sign = '-';
+			x = -x;
+		} else {
+			sign = ' ';
+		}
+		if (e >= 0) {
+			x = (x / (LONGREAL)Out_Ten(e));
+		} else {
+			x = (Out_Ten(-e) * x);
+		}
+		if (x >= (REAL)10) {
+			x =   1.0000000e-001 * x;
+			e += 1;
+		}
+		if (k + e >= 8) {
+			k = 8 - e;
+		} else if (k + e < 0) {
+			k = -e;
+			x = (REAL)0;
+		}
+		x0 = Out_Ten(k + e);
+		x = x0 * x +   5.0000000e-001;
+		if (x >= (REAL)10 * x0) {
+			e += 1;
+		}
+		e += 1;
+		i = k + e;
+		Out_ConvertL(x, i, (void*)d, 9);
+		if (e > 0) {
+			seq__16(' ', ((n - e) - k) - 2);
+			Out_Char(sign);
+			dig__14(e);
+			Out_Char('.');
+			dig__14(k);
+		} else {
+			seq__16(' ', (n - k) - 3);
+			Out_Char(sign);
+			Out_Char('0');
+			Out_Char('.');
+			seq__16('0', -e);
+			dig__14(k + e);
+		}
+	}
+	RealFix__13_s = _s.lnk;
 }
 
 

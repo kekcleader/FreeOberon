@@ -672,9 +672,13 @@ Especially Length would become fairly complex.
 
   PROCEDURE WriteSet* (VAR R: Rider; x: SET);
     VAR b: ARRAY 4 OF CHAR; i: LONGINT;
-  BEGIN i := SYSTEM.VAL(LONGINT, x);
+      y: SYSTEM.SET64;
+  BEGIN
+    IF SIZE(SET) = SIZE(INTEGER) THEN i := SYSTEM.VAL(INTEGER, x)
+    ELSE y := x; i := SYSTEM.VAL(LONGINT, y)
+    END;
     b[0] := CHR(i); b[1] := CHR(i DIV 100H); b[2] := CHR(i DIV 10000H); b[3] := CHR(i DIV 1000000H);
-    WriteBytes(R, b, 4);
+    WriteBytes(R, b, 4)
   END WriteSet;
 
   PROCEDURE WriteReal* (VAR R: Rider; x: REAL);

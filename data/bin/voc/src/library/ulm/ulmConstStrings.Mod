@@ -519,6 +519,7 @@ MODULE ulmConstStrings;
 	 | Streams.fromStart: realpos := cnt;
 	 | Streams.fromPos:   realpos := s.pos + cnt;
 	 | Streams.fromEnd:   realpos := s.string.length + cnt;
+	 ELSE
 	 END;
 	 IF (realpos < 0) OR (realpos > s.string.length) THEN
 	    RETURN FALSE
