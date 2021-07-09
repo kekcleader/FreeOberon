@@ -1,23 +1,26 @@
 PROG=FreeOberon
 OS=win32
-VOC=../data/bin/voc/bin/voc
+VOCDIR=../data/bin/voc/install
+VOC=$(VOCDIR)/bin/voc
 CC=gcc
 SDL2Opts=-w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2
 
-all: voc $(PROG) install
+all: voc fo install
 
-$(PROG): $(PROG).sym
-	$(CC) -fPIC -g -I "../data/bin/voc/C/include" \
+fo: ../$(PROG).exe
+
+../$(PROG).exe: $(PROG).o resources.o
+	$(CC) -fPIC -g -I "$(VOCDIR)/C/include" \
 		-o $(PROG).exe $(PROG).o Graph.o SDL2.o \
 		OV.o Editor.o Term.o Terminal.o \
 		EditorText.o Config.o term/term.o \
 		resources.o \
-		../data/bin/voc/lib/libvoc-OC.a \
+		$(VOCDIR)/lib/libvoc-OC.a \
 		$(SDL2Opts) -lSDL2_image && \
 		mv $(PROG).exe ..
 
-$(PROG).sym: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
-		Editor.sym Term.sym Graph.sym SDL2.sym resources.o
+$(PROG).o: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
+		Editor.sym Term.sym Graph.sym SDL2.sym
 	$(VOC) -OC -cesF -m $(PROG).Mod
 
 OV.sym: OV.Mod Terminal.sym Graph.sym
@@ -39,7 +42,7 @@ Config.sym: Config_$(OS).Mod
 	$(VOC) -OC -cesF Config_$(OS).Mod
 
 term/term.o: term/term_$(OS).c
-	gcc -c term/term_$(OS).c -o term/term.o
+	$(CC) -c term/term_$(OS).c -o term/term.o
 
 Graph.sym: Graph.Mod SDL2.sym
 	$(VOC) -OC -cesF Graph.Mod
@@ -55,17 +58,17 @@ resources.o: resources.rc
 clean:
 	rm -f *.c *.h *.o *.sym term/term.o .tmp..* \
 		../Programs/.tmp..* ../bin/*
-	make -C ../data/bin/voc/src clean
+	make -C ../data/bin/voc clean
 
 cleanall: clean
 	rm -f ../$(PROG) ../$(PROG).exe
-	make -C ../data/bin/voc/src cleanall
+	make -C ../data/bin/voc cleanall
 
 voc:
-	make -C ../data/bin/voc/src
+	make -C ../data/bin/voc full
 
 install:
-	cp Graph.sym SDL2.sym ../data/bin/voc/C/sym
-	cp Graph.h SDL2.h SDL2.h0 ../data/bin/voc/C/include
-	cp Graph.o SDL2.o ../data/bin/voc/lib
+	cp Graph.sym SDL2.sym $(VOCDIR)/C/sym
+	cp Graph.h SDL2.h SDL2.h0 $(VOCDIR)/C/include
+	cp Graph.o SDL2.o $(VOCDIR)/lib
 	mkdir -p ../bin
