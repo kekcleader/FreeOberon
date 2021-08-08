@@ -304,36 +304,6 @@ VAR
 
 PROCEDURE -AAIncludeSDL2h0 '#include "SDL2.h0"';
 
-(* C Macros *)
-
-PROCEDURE LoadBmp(filename: ARRAY OF CHAR): SDL.Surface;
-BEGIN
-  RETURN SDL.LoadBmpRW(SDL.RWFromFile(filename, 'rb'), 1)
-END LoadBmp;
-
-(* Misc *)
-
-PROCEDURE Str*(n: INTEGER; VAR s: ARRAY OF CHAR);
-BEGIN
-  (*IntStr.IntToStr(n, s)*)
-  s[0] := '4'; s[1] := '2'; s[2] := 0X (*!FIXME*)
-END Str;
-
-PROCEDURE Val*(s: ARRAY OF CHAR): INTEGER;
-VAR n: INTEGER; (*res: IntStr.ConvResults;*)
-BEGIN
-  (*IntStr.StrToInt(s, n, res);
-  IF res # IntStr.strAllRight THEN n := 0 END;
-  RETURN n*)
-  RETURN 42 (*!FIXME*)
-END Val;
-
-PROCEDURE AppendN*(n: INTEGER; VAR s: ARRAY OF CHAR);
-VAR sn: ARRAY 30 OF CHAR;
-BEGIN
-  (*Str(n, sn); S.Append(sn, s) !FIXME *)
-END AppendN;
-
 (* General *)
 
 PROCEDURE GetError*(VAR s: ARRAY OF CHAR);
@@ -648,12 +618,27 @@ END DestroyBitmap;
 
 PROCEDURE LoadBitmap*(filename: ARRAY OF CHAR): Bitmap;
 VAR bmp: Bitmap;
-BEGIN        (* LoadBmp(filename) for BMP-only *)
+BEGIN
   NEW(bmp); bmp.surface := SDL.ImgLoad(filename);
   IF bmp.surface = NIL THEN bmp := NIL
   ELSE bmp.w := bmp.surface.w; bmp.h := bmp.surface.h END;
   RETURN bmp
 END LoadBitmap;
+
+PROCEDURE SaveBmp*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
+BEGIN
+  RETURN SDL.SaveBmpRW(bmp.surface, SDL.RWFromFile(filename, 'wb'), 1) = 0
+END SaveBmp;
+
+PROCEDURE SavePng*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
+BEGIN
+  RETURN SDL.ImgSavePng(bmp.surface, filename) = 0
+END SavePng;
+
+PROCEDURE SaveJpg*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
+BEGIN
+  RETURN SDL.ImgSaveJpg(bmp.surface, filename) = 0
+END SaveJpg;
 
 PROCEDURE Blit*(src, dest: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER);
 VAR a, b: SDL.Rect;

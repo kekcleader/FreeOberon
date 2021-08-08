@@ -24,6 +24,7 @@ ECHO ON
 gcc -fPIC -g -I "%CURDIR%voc\C\include"^
  -o %ONAME%.exe %ONAME%.o^
  %ARGS%^
+ "%CURDIR%voc/lib/Int.o"^
  -L"%CURDIR%voc\lib" -lvoc-OC -lmingw32
 @SET RETCODE=%ERRORLEVEL%
 @EXIT /b %RETCODE%

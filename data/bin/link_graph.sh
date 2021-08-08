@@ -13,6 +13,7 @@ $CC -fPIC -g -I $VOCDIR/C/include \
   -o $ONAME $ONAME.o \
   $@ \
   $VOCDIR/lib/Graph.o $VOCDIR/lib/SDL2.o \
+  $VOCDIR/lib/Int.o \
   $VOCDIR/lib/libvoc-OC.a \
   $SDL2Opts -lSDL2_image
 retcode=$?

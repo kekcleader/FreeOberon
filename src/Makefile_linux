@@ -20,7 +20,7 @@ fo: ../$(PROG)
 		mv $(PROG) ..
 
 $(PROG).o: $(PROG).Mod EditorText.sym Terminal.sym OV.sym \
-		Editor.sym Term.sym Graph.sym SDL2.sym
+		Editor.sym Term.sym Graph.sym SDL2.sym Int.sym
 	$(VOC) -OC -cesF -m $(PROG).Mod
 
 OV.sym: OV.Mod Terminal.sym Graph.sym
@@ -46,6 +46,9 @@ term/term.o: term/term_$(OS).c
 
 Graph.sym: Graph.Mod SDL2.sym
 	$(VOC) -OC -cesF Graph.Mod
+
+Int.sym: Int.Mod
+	$(VOC) -OC -cesF Int.Mod
 
 SDL2.sym: SDL2.Mod
 	$(VOC) -OC -cesF SDL2.Mod
@@ -84,8 +87,8 @@ voc:
 	make -C ../data/bin/voc full
 
 install:
-	cp Graph.sym SDL2.sym $(VOCDIR)/C/sym
-	cp Graph.h SDL2.h SDL2.h0 $(VOCDIR)/C/include
-	cp Graph.o SDL2.o $(VOCDIR)/lib
+	cp Graph.sym SDL2.sym Int.sym $(VOCDIR)/C/sym
+	cp Graph.h SDL2.h SDL2.h0 Int.h $(VOCDIR)/C/include
+	cp Graph.o SDL2.o Int.o $(VOCDIR)/lib
 	mkdir -p ../bin
 

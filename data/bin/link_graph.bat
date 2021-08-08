@@ -26,6 +26,7 @@ gcc -fPIC -g -I "%CURDIR%voc/C/include"^
  %ARGS%^
  "%CURDIR%voc/lib/Graph.o"^
  "%CURDIR%voc/lib/SDL2.o"^
+ "%CURDIR%voc/lib/Int.o"^
  -L"%CURDIR%voc/lib" -lvoc-OC^
  -w -Wl,-subsystem,windows -lmingw32^
  -lSDL2main -lSDL2 -lSDL2_image

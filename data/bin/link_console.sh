@@ -12,6 +12,7 @@ shift
 $CC -fPIC -g -I $VOCDIR/C/include \
   -o $ONAME $ONAME.o \
   $@ \
+  $VOCDIR/lib/Int.o \
   $VOCDIR/lib/libvoc-OC.a
 retcode=$?
 cd ..

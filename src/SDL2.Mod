@@ -333,6 +333,9 @@ PROCEDURE -RWFromFile*(fname, mode: ARRAY OF CHAR): SYSTEM.PTR
     "SDL_RWFromFile(fname, mode)";
 PROCEDURE -LoadBmpRW*(src: SYSTEM.PTR; freeSrc: INTEGER): Surface
     "(void *)SDL_LoadBMP_RW(src, freeSrc)";
+PROCEDURE -SaveBmpRW*(surface: Surface; src: SYSTEM.PTR;
+    freeSrc: INTEGER): INTEGER
+    "(int)SDL_SaveBMP_RW(surface, src, freeSrc)";
 
 (* SDL Image Addon *)
 
@@ -340,6 +343,10 @@ PROCEDURE -ImgInit*(flags: SET): SET "IMG_Init(flags)";
 PROCEDURE -ImgQuit* "IMG_Quit()";
 PROCEDURE -ImgLoad*(file: ARRAY OF CHAR): Surface
     "(void *)IMG_Load(file)";
+PROCEDURE -ImgSavePng*(surface: Surface; file: ARRAY OF CHAR): INTEGER
+    "(int)IMG_SavePNG(surface, file)";
+PROCEDURE -ImgSaveJpg*(surface: Surface; file: ARRAY OF CHAR): INTEGER
+    "(int)IMG_SaveJPG(surface, file)";
 
 (* Renderer *)
 
