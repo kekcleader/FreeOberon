@@ -6,6 +6,8 @@ Free Oberon is a cross-platform integrated development environment for programmi
 
 ![Free Oberon screenshot](http://free.oberon.org/images/screenshot.png)
 
+![Game of Life animation in Oberon](http://free.oberon.org/images/life.gif)
+
 *See English text below.*
 
 # Среда программирования Free Oberon
