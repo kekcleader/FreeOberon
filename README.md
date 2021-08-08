@@ -6,7 +6,7 @@ Free Oberon is a cross-platform integrated development environment for programmi
 
 ![Free Oberon screenshot](http://free.oberon.org/images/screenshot.png)
 
-*RUSSIAN text. See English text below.*
+*See English text below.*
 
 # Среда программирования Free Oberon
 
