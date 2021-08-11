@@ -191,7 +191,9 @@ CONST
   mGui*   = {mLGui, mRGui};
 
 TYPE
-  SET32 = SYSTEM.SET32;
+  ADRINT = SYSTEM.ADRINT;
+  CHAR = SHORTCHAR;
+  SET32 = SET;
 
   Bitmap* = POINTER TO BitmapDesc;
   BitmapDesc* = RECORD
@@ -311,7 +313,7 @@ TYPE P = POINTER TO ARRAY 10240 OF CHAR;
 VAR p: P;
 BEGIN
   p := SYSTEM.VAL(P, SDL.GetError());
-  COPY(p^, s)
+  s := p^$
 END GetError;
 
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
@@ -435,19 +437,19 @@ BEGIN
 END UnlockBitmap;
 
 PROCEDURE PutPixelFast*(bmp: Bitmap; x, y, color: INTEGER);
-VAR n: SYSTEM.ADDRESS;
-BEGIN n := SYSTEM.VAL(SYSTEM.ADDRESS, bmp.surface.pixels);
+VAR n: ADRINT;
+BEGIN n := SYSTEM.VAL(ADRINT, bmp.surface.pixels);
   INC(n, (y * bmp.w + x) * 4);
   SYSTEM.PUT(n, color)
 END PutPixelFast;
 
 PROCEDURE PutPixel*(bmp: Bitmap; x, y, color: INTEGER);
-VAR n: SYSTEM.ADDRESS;
+VAR n: ADRINT;
 BEGIN
   IF (x >= 0) & (x < bmp.w) &
      (y >= 0) & (y < bmp.h) THEN
     SDL.LockSurface(bmp.surface);
-    n := SYSTEM.VAL(SYSTEM.ADDRESS, bmp.surface.pixels);
+    n := SYSTEM.VAL(ADRINT, bmp.surface.pixels);
     INC(n, (y * bmp.w + x) * 4);
     SYSTEM.PUT(n, color);
     SDL.UnlockSurface(bmp.surface)
@@ -456,12 +458,12 @@ END PutPixel;
 
 PROCEDURE GetPixel*(bmp: Bitmap; x, y: INTEGER): INTEGER;
 VAR color: INTEGER;
-  n: SYSTEM.ADDRESS;
+  n: ADRINT;
 BEGIN
   IF (x >= 0) & (x < bmp.w) &
      (y >= 0) & (y < bmp.h) THEN
     SDL.LockSurface(bmp.surface);
-    n := SYSTEM.VAL(SYSTEM.ADDRESS, bmp.surface.pixels);
+    n := SYSTEM.VAL(ADRINT, bmp.surface.pixels);
     INC(n, (y * bmp.w + x) * 4);
     SYSTEM.GET(n, color);
     SDL.UnlockSurface(bmp.surface)
@@ -593,7 +595,7 @@ END FloodFill;
 
 (* Bitmap *)
 
-PROCEDURE (bmp: Bitmap) Finalize*;
+PROCEDURE (bmp: Bitmap) Finalize*, NEW;
 BEGIN
 END Finalize;
 
@@ -801,7 +803,7 @@ BEGIN
     QueueEvent;
     events.buf[events.last].type := textInput;
     events.buf[events.last].key.sym := sym; (*!FIXME sym needed?*)
-    COPY(e.text, events.buf[events.last].s)
+    events.buf[events.last].s := e.text$
   END
 END PumpTextEvent;
 

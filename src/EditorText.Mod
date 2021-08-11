@@ -22,6 +22,8 @@ CONST
   lineLen = 256;
 
 TYPE
+  CHAR = SHORTCHAR;
+
   String* = ARRAY lineLen OF CHAR;
 
   Line* = POINTER TO LineDesc;
@@ -57,7 +59,7 @@ BEGIN
   NEW(L); InitLine(L); RETURN L
 END NewLine;
 
-PROCEDURE (L: Line) InsertChar*(ch: CHAR; pos: INTEGER);
+PROCEDURE (L: Line) InsertChar*(ch: CHAR; pos: INTEGER), NEW;
 VAR i: INTEGER;
 BEGIN
   IF L.len + 1 < LEN(L.s) THEN (*!FIXME*)
@@ -68,7 +70,7 @@ BEGIN
   END
 END InsertChar;
 
-PROCEDURE (L: Line) Delete(start, count: INTEGER);
+PROCEDURE (L: Line) Delete(start, count: INTEGER), NEW;
 VAR i: INTEGER;
 BEGIN
   IF count > 0 THEN
@@ -99,7 +101,7 @@ BEGIN
   NEW(t); InitText(t); RETURN t
 END NewText;
 
-PROCEDURE (t: Text) RemoveLine(L: Line);
+PROCEDURE (t: Text) RemoveLine(L: Line), NEW;
 BEGIN
   IF L.prev # NIL THEN L.prev.next := L.next END;
   IF L.next # NIL THEN L.next.prev := L.prev END;
@@ -107,7 +109,7 @@ BEGIN
 END RemoveLine;
 
 (* Объединить данную строку со следующей, прицепив её к данной *)
-PROCEDURE (t: Text) Combine2Lines(L: Line);
+PROCEDURE (t: Text) Combine2Lines(L: Line), NEW;
 VAR i: INTEGER;
 BEGIN
   ASSERT(L.next # NIL, 101);
@@ -118,7 +120,7 @@ BEGIN
   t.RemoveLine(L.next)
 END Combine2Lines;
 
-PROCEDURE (t: Text) GetFirstSelLine*(): Line;
+PROCEDURE (t: Text) GetFirstSelLine*(): Line, NEW;
 VAR y: INTEGER; L: Line;
 BEGIN
   y := t.y; L := t.cur;
@@ -127,7 +129,7 @@ BEGIN
   RETURN L
 END GetFirstSelLine;
 
-PROCEDURE (t: Text) SelectAll*;
+PROCEDURE (t: Text) SelectAll*, NEW;
 VAR count: INTEGER; L: Line;
 BEGIN t.selected := TRUE;
   t.selT := 0; t.selL := 0;
@@ -138,7 +140,7 @@ END SelectAll;
 
 (**Returns true if at least one whole line is selected,
    but leading spaces may still be unselected*)
-PROCEDURE (t: Text) WholeLineSelected*(): BOOLEAN;
+PROCEDURE (t: Text) WholeLineSelected*(): BOOLEAN, NEW;
 VAR L: Line;
   i: INTEGER;
   res: BOOLEAN;
@@ -156,7 +158,7 @@ BEGIN res := FALSE;
   END;
 RETURN res END WholeLineSelected;
 
-PROCEDURE (t: Text) RemoveIndent*;
+PROCEDURE (t: Text) RemoveIndent*, NEW;
 VAR L: Line;
   i, y, endY: INTEGER;
 BEGIN
@@ -180,7 +182,7 @@ BEGIN
   END
 END RemoveIndent;
 
-PROCEDURE (t: Text) AddIndent*;
+PROCEDURE (t: Text) AddIndent*, NEW;
 VAR L: Line;
   i, y, endY: INTEGER;
 BEGIN
@@ -200,7 +202,7 @@ BEGIN
   END
 END AddIndent;
 
-PROCEDURE (t: Text) DeleteSelection*;
+PROCEDURE (t: Text) DeleteSelection*, NEW;
 VAR x0, x, y: INTEGER; L0, L: Line;
 BEGIN
   IF t.selected THEN
@@ -225,7 +227,7 @@ BEGIN
   END
 END DeleteSelection;
 
-PROCEDURE (t: Text) HandleBackspace*;
+PROCEDURE (t: Text) HandleBackspace*, NEW;
 BEGIN
   IF t.selected THEN t.DeleteSelection
   ELSIF t.x > 0 THEN
@@ -239,7 +241,7 @@ BEGIN
   END
 END HandleBackspace;
 
-PROCEDURE (t: Text) HandleDelete*;
+PROCEDURE (t: Text) HandleDelete*, NEW;
 BEGIN
   IF t.selected THEN
     t.DeleteSelection;
@@ -251,7 +253,7 @@ BEGIN
   END
 END HandleDelete;
 
-PROCEDURE (t: Text) HandleEnter*(autoIndent: BOOLEAN);
+PROCEDURE (t: Text) HandleEnter*(autoIndent: BOOLEAN), NEW;
 VAR L: Line; i, spaces: INTEGER;
 BEGIN
   L := NewLine(); spaces := 0;
@@ -283,14 +285,14 @@ BEGIN
   t.changed := TRUE
 END HandleEnter;
 
-PROCEDURE (t: Text) InsertChar*(ch: CHAR);
+PROCEDURE (t: Text) InsertChar*(ch: CHAR), NEW;
 BEGIN
   t.cur.InsertChar(ch, t.x);
   INC(t.x);
   t.changed := TRUE
 END InsertChar;
 
-PROCEDURE (t: Text) Insert*(s: ARRAY OF CHAR; autoIndent: BOOLEAN);
+PROCEDURE (t: Text) Insert*(s: ARRAY OF CHAR; autoIndent: BOOLEAN), NEW;
 VAR i: INTEGER;
 BEGIN
   i := 0;
@@ -304,7 +306,7 @@ BEGIN
   END
 END Insert;
 
-PROCEDURE (t: Text) Clear*;
+PROCEDURE (t: Text) Clear*, NEW;
 BEGIN
   t.cur := NewLine(); t.first := t.cur;
   t.last := t.cur; t.scrFirst := t.cur;
@@ -313,7 +315,7 @@ BEGIN
   t.changed := TRUE
 END Clear;
 
-PROCEDURE (t: Text) CopySelection*(VAR buf: ARRAY OF CHAR);
+PROCEDURE (t: Text) CopySelection*(VAR buf: ARRAY OF CHAR), NEW;
 VAR i, x, len, y: INTEGER; L: Line;
 BEGIN
   L := t.GetFirstSelLine();
@@ -338,15 +340,15 @@ BEGIN
   i := 0; s[LEN(s) - 1] := 0X;
   WHILE s[i] # 0X DO
     ch := s[i];
-    IF ORD(ch) < 128 THEN Files.Write(r, ch) (* ASCII *)
+    IF ORD(ch) < 128 THEN Files.WriteChar(r, ch) (* ASCII *)
     ELSIF ORD(ch) = 240 THEN (* Big cyrillic Yo *)
-      Files.Write(r, 0D0X); Files.Write(r, 81X)
+      Files.WriteChar(r, 0D0X); Files.WriteChar(r, 81X)
     ELSIF ORD(ch) < 224 THEN (* Before small cyrillic R *)
-      Files.Write(r, 0D0X);
-      Files.Write(r, CHR(ORD(ch) - 128 + 090H))
+      Files.WriteChar(r, 0D0X);
+      Files.WriteChar(r, CHR(ORD(ch) - 128 + 090H))
     ELSE
-      Files.Write(r, 0D1X);
-      Files.Write(r, CHR(ORD(ch) - 224 + 080H))
+      Files.WriteChar(r, 0D1X);
+      Files.WriteChar(r, CHR(ORD(ch) - 224 + 080H))
     END;
     INC(i)
   END
@@ -354,18 +356,18 @@ END WriteString;
 
 PROCEDURE WriteLn(VAR r: Files.Rider);
 BEGIN
-  IF Config.isWindows THEN Files.Write(r, 0DX) END;
-  Files.Write(r, 0AX)
+  IF Config.isWindows THEN Files.WriteChar(r, 0DX) END;
+  Files.WriteChar(r, 0AX)
 END WriteLn;
 
-PROCEDURE (t: Text) SaveToFile*(fName: ARRAY OF CHAR): BOOLEAN;
+PROCEDURE (t: Text) SaveToFile*(fName: ARRAY OF CHAR): BOOLEAN, NEW;
 VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
   fPath: ARRAY 1024 OF CHAR;
   L: Line;
 BEGIN
   success := FALSE;
-  COPY('Programs/', fPath);
+  fPath := 'Programs/';
   Strings.Append(fName, fPath);
   f := Files.New(fPath);
   IF f # NIL THEN (*!FIXME error checking is wrong *)
@@ -393,29 +395,29 @@ PROCEDURE ReadLine(VAR r: Files.Rider; L: Line);
 VAR ch: CHAR; i: INTEGER;
 BEGIN
   i := 0;
-  Files.Read(r, ch);
+  Files.ReadChar(r, ch);
   WHILE ~r.eof & (i < LEN(L.s) - 1) & (ch # 0AX) & (ch # 0DX) DO
     IF ORD(ch) < 128 THEN L.s[i] := ch
     ELSIF ch = 0D0X THEN
-      Files.Read(r, ch);
+      Files.ReadChar(r, ch);
       IF ch = 081X THEN L.s[i] := CHR(240) (* Big Yo *)
       ELSE L.s[i] := CHR(ORD(ch) - 16)
       END
     ELSIF ch = 0D1X THEN
-      Files.Read(r, ch); L.s[i] := CHR(ORD(ch) + 96)
+      Files.ReadChar(r, ch); L.s[i] := CHR(ORD(ch) + 96)
     END;
-    Files.Read(r, ch);
+    Files.ReadChar(r, ch);
     INC(i)
   END;
   L.s[i] := 0X;
   IF ch = 0DX THEN
     L.lineEndLen := 2; (* Assume CRLF (DOS) *)
-    Files.Read(r, ch) (* Skip LF *)
+    Files.ReadChar(r, ch) (* Skip LF *)
   ELSE L.lineEndLen := 1 (* Assume LF (UNIX) *)
   END
 END ReadLine;
 
-PROCEDURE (t: Text) LoadFromFile*(fName: ARRAY OF CHAR): BOOLEAN;
+PROCEDURE (t: Text) LoadFromFile*(fName: ARRAY OF CHAR): BOOLEAN, NEW;
 VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
   fPath: ARRAY 1024 OF CHAR;
@@ -423,7 +425,7 @@ VAR f: Files.File; r: Files.Rider;
 BEGIN
   success := FALSE;
   IF fName[0] # 0X THEN
-    COPY('Programs/', fPath);
+    fPath := 'Programs/';
     Strings.Append(fName, fPath);
     f := Files.Old(fPath);
     IF f # NIL THEN
@@ -449,7 +451,7 @@ BEGIN
   RETURN success
 END LoadFromFile; 
 
-PROCEDURE (t: Text) MoveToPos*(pos, winH: INTEGER);
+PROCEDURE (t: Text) MoveToPos*(pos, winH: INTEGER), NEW;
 CONST pad = 3;
 VAR i, centerY: INTEGER; L: Line;
 BEGIN

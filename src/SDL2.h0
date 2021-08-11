@@ -1,6 +1,10 @@
 #ifndef SDL2__h0
 #define SDL2__h0
 
+typedef unsigned char UINT8;
+typedef unsigned short UINT16;
+typedef unsigned int UINT32;
+
 typedef enum {
   SDL_FALSE = 0,
   SDL_TRUE  = 1
@@ -26,6 +30,7 @@ extern int SDL_FillRect(void *, void *, UINT32);
 extern void SDL_FreeSurface(void *);
 extern int SDL_GetDesktopDisplayMode(int, void *);
 extern void *SDL_GetError(void);
+extern int SDL_GetModState();
 extern void *SDL_GetKeyboardState(void *);
 extern UINT32 SDL_GetMouseState(void *, void *);
 extern UINT32 SDL_GetTicks(void);
@@ -33,10 +38,11 @@ extern UINT32 SDL_GetWindowFlags(void *);
 extern void SDL_GetWindowSize(void *, void *, void *);
 extern int IMG_Init(int);
 extern void *IMG_Load(void *);
+extern void IMG_Quit(void);
 extern int IMG_SavePNG(void *, void *);
 extern int IMG_SaveJPG(void *, void *);
-extern void IMG_Quit(void);
 extern int SDL_Init(UINT32);
+extern int SDL_InitSubSystem(UINT32);
 extern void *SDL_LoadBMP_RW(void *, int);
 extern int SDL_SaveBMP_RW(void *, void *, int);
 extern int SDL_LockSurface(void *);
@@ -45,6 +51,7 @@ extern int SDL_PollEvent(void *);
 extern int SDL_WaitEvent(void *);
 extern int SDL_WaitEventTimeout(void *, int timeout);
 extern void SDL_Quit(void);
+extern void SDL_QuitSubSystem(UINT32);
 extern void *SDL_RWFromFile(void *, void *);
 extern int SDL_RenderClear(void *);
 extern int SDL_RenderCopy(void *, void *, void *, void *);
@@ -62,6 +69,7 @@ extern int SDL_SetSurfaceColorMod(void *, UINT8, UINT8, UINT8);
 extern int SDL_SetWindowFullscreen(void *, UINT32);
 extern void SDL_SetWindowSize(void *, int, int);
 extern void SDL_SetWindowTitle(void *, void *);
+extern void SDL_SetWindowIcon(void *, void *);
 extern int SDL_ShowCursor(int);
 extern void SDL_UnlockSurface(void *);
 extern void SDL_StartTextInput(void);
@@ -70,5 +78,8 @@ extern int SDL_HasEvent(int);
 extern int SDL_HasEvents(int, int);
 extern int SDL_PeepEvents(void *, int, int, int, int);
 extern int SDL_SetSurfaceAlphaMod(void *, UINT8);
+extern int SDL_SetTextureColorMod(void *, UINT8, UINT8, UINT8);
+extern int SDL_SetTextureAlphaMod(void *, UINT8);
+extern SDL_bool SDL_SetClipRect(void *, void *);
 
 #endif

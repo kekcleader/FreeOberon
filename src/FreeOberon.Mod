@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT G := Graph, T := Terminal, Files, Modules,
+IMPORT G := Graph, T := Terminal, Files, Args,
        OV, Editor, Term, Config, Strings, Out;
 CONST
   version* = '1.0.4';
@@ -47,6 +47,8 @@ CONST
   tokenComment = 4;
 
 TYPE
+  CHAR = SHORTCHAR;
+
   StrList = POINTER TO StrListDesc;
   StrListDesc = RECORD
     s: ARRAY 256 OF CHAR;
@@ -61,7 +63,6 @@ VAR
   programFinished: BOOLEAN;
   tempWindowed: BOOLEAN; (* True if editor is in windowed mode while program is running *)
   needWindowed: BOOLEAN;
-  blockToggle: BOOLEAN; (* If true, ALT+ENTER will not toggle fullscreen *)
   sysModules: StrList;
 
   app: OV.App;
@@ -198,7 +199,7 @@ BEGIN
   newWin := (e = NIL) OR ~Editor.IsEmpty(e);
   IF newWin THEN e := Editor.NewEditor() END;
   IF e.text.LoadFromFile(filename) THEN
-    e.caption := filename; e.filename := filename;
+    e.caption := filename$; e.filename := filename$;
     IF newWin THEN OV.AddWindow(app, e) END
   END
 END DoOpenFile;
@@ -349,10 +350,7 @@ BEGIN
   ELSE
     CASE key.code OF
       G.kEnter, G.kEnterPad:
-      IF key.mod * G.mAlt # {} THEN
-        IF blockToggle THEN blockToggle := FALSE
-        ELSE T.ToggleFullscreen; blockToggle := TRUE
-        END
+      IF key.mod * G.mAlt # {} THEN T.ToggleFullscreen
       ELSE T.Ln;
         WriteToProcess(inputBuf, inputBufLen);
         inputBufLen := 0; buf[0] := 0AX;
@@ -444,7 +442,7 @@ BEGIN
     ELSE T.PutString(0, T.charsY - 1, 'Could not find cmd.exe', 15, 4, 0)
     END
   ELSE (* Linux *)
-    COPY('data/bin/', cmd); Strings.Append(command, cmd);
+    cmd := 'data/bin/'; Strings.Append(command, cmd);
     Strings.Append('.sh ', cmd)
   END;
   Strings.Append(filename, cmd);
@@ -498,7 +496,7 @@ END Link;
 PROCEDURE ResetSysModules;
   PROCEDURE Add(s: ARRAY OF CHAR);
   VAR p: StrList;
-  BEGIN NEW(p); p.s := s; p.next := sysModules; sysModules := p
+  BEGIN NEW(p); p.s := s$; p.next := sysModules; sysModules := p
   END Add;
 BEGIN sysModules := NIL;
   Add('SYSTEM');  Add('Texts');    Add('Files');  Add('Strings');
@@ -516,7 +514,7 @@ BEGIN
     ok := TRUE; p := modules; graph := FALSE;
     WHILE ok & (p.next # NIL) DO
       IF ModuleExists(p.s) THEN
-        s := p.s; Strings.Append('.Mod', s);
+        s := p.s$; Strings.Append('.Mod', s);
         IF ~Compile(s, FALSE) THEN ok := FALSE END
       ELSIF IsSysModule(p.s) THEN
         IF p.s = 'Graph' THEN graph := TRUE END
@@ -526,7 +524,7 @@ BEGIN
     END;
     IF ok THEN
       IF ModuleExists(p.s) THEN
-        s := p.s; Strings.Append('.Mod', s);
+        s := p.s$; Strings.Append('.Mod', s);
         IF ~Compile(s, TRUE) THEN ok := FALSE END
       END;
       IF ok & ~Link(p.s, graph, modules) THEN ok := FALSE END
@@ -547,7 +545,7 @@ BEGIN
   IF x >= 0 THEN Strings.Delete(prg, 0, x + 1) END;
 
   (* Construct 'bin/MyProg' or 'bin\MyProg' *)
-  IF Config.isWindows THEN COPY('bin\', cmd) ELSE COPY('bin/', cmd) END;
+  IF Config.isWindows THEN cmd := 'bin\' ELSE cmd := 'bin/' END;
   Strings.Append(prg, cmd);
 
   IF ~Term.StartProcess(cmd) THEN
@@ -569,7 +567,7 @@ BEGIN
   IF filename[0] # 0X THEN w := c.app.windows;
     IF (w # NIL) & (w IS Editor.Editor) THEN e := w(Editor.Editor);
       IF e.text.SaveToFile(filename) THEN
-        COPY(filename, e.caption); e.filename := filename
+        e.caption := filename$; filename := e.filename$
       END
     END
   END
@@ -620,24 +618,24 @@ END FileSave;
 
 PROCEDURE SkipComment(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
 VAR last: CHAR;
-BEGIN last := ch; Files.Read(R, ch);
+BEGIN last := ch; Files.ReadChar(R, ch);
   WHILE ~R.eof & ((last # '*') OR (ch # ')')) DO
     IF (last = '(') & (ch = '*') THEN SkipComment(R, ch, s) END;
-    last := ch; Files.Read(R, ch)
+    last := ch; Files.ReadChar(R, ch)
   END;
-  IF ~R.eof THEN Files.Read(R, ch) END;
-  WHILE ~R.eof & (ch <= ' ') DO Files.Read(R, ch) END
+  IF ~R.eof THEN Files.ReadChar(R, ch) END;
+  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, ch) END
 END SkipComment;
 
 PROCEDURE GetSym(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN
-  WHILE ~R.eof & (ch <= ' ') DO Files.Read(R, ch) END;
+  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, ch) END;
   i := 0;
   IF ~R.eof THEN
     IF ch = '(' THEN
-      Files.Read(R, ch);
-      IF ch = '*' THEN Files.Read(R, ch); SkipComment(R, ch, s)
+      Files.ReadChar(R, ch);
+      IF ch = '*' THEN Files.ReadChar(R, ch); SkipComment(R, ch, s)
       ELSE s[i] := ch; INC(i)
       END
     END;
@@ -646,14 +644,14 @@ BEGIN
             (('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
              ('0' <= ch) & (ch <= '9')) DO
         IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
-        Files.Read(R, ch)
+        Files.ReadChar(R, ch)
       END
     ELSE
       WHILE ~R.eof & (ch > ' ') &
             ~(('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
               ('0' <= ch) & (ch <= '9')) DO
         IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
-        Files.Read(R, ch)
+        Files.ReadChar(R, ch)
       END
     END
   END;
@@ -671,7 +669,7 @@ BEGIN NEW(top); top.next := NIL; p := top;
   s := 'Programs/'; Strings.Append(modname, s); Strings.Append('.Mod', s);
   F := Files.Old(s);
   IF F # NIL THEN
-    Files.Set(R, F, 0); Files.Read(R, ch); GetSym(R, ch, s);
+    Files.Set(R, F, 0); Files.ReadChar(R, ch); GetSym(R, ch, s);
     ok := s = 'MODULE'; GetSym(R, ch, s); GetSym(R, ch, s); (*!FIXME check module name*)
     IF ok THEN
       ok := s = ';'; GetSym(R, ch, s);
@@ -682,7 +680,7 @@ BEGIN NEW(top); top.next := NIL; p := top;
           GetSym(R, ch, s);
           IF s = ':=' THEN GetSym(R, ch, s); mod := s; GetSym(R, ch, s) END;
           IF IsSysModule(mod) OR ModuleExists(mod) THEN
-            NEW(p.next); p := p.next; p.next := NIL; p.s := mod
+            NEW(p.next); p := p.next; p.next := NIL; p.s := mod$
           END;
           IF s = ',' THEN GetSym(R, ch, s) ELSE ok := FALSE END
         END
@@ -690,14 +688,6 @@ BEGIN NEW(top); top.next := NIL; p := top;
     END
   END;
 RETURN top.next END GetImportedModules;
-
-PROCEDURE DebugStrList(p: StrList);
-BEGIN
-  WHILE p # NIL DO
-    Out.Char("'"); Out.String(p.s); Out.Char("'"); Out.Ln;
-    p := p.next
-  END
-END DebugStrList;
 
 PROCEDURE AddUniqueToList(what: StrList; VAR where: StrList);
 VAR p, q, nextP: StrList;
@@ -727,7 +717,7 @@ BEGIN res := NIL;
     AddUniqueToList(list2, res);
     p := p.next
   END;
-  NEW(p); p.s := modname; p.next := NIL; AddUniqueToList(p, res);
+  NEW(p); p.s := modname$; p.next := NIL; AddUniqueToList(p, res);
 RETURN res END UsedModuleList;
 
 PROCEDURE ImportsGraph(p: StrList): BOOLEAN;
@@ -753,10 +743,9 @@ BEGIN w := c.app.windows;
   IF (w # NIL) & (w IS Editor.Editor) THEN
     IF Editor.TextChanged(w(Editor.Editor)) THEN FileSave(c) END;
     IF w(Editor.Editor).filename[0] # 0X THEN
-      COPY(w(Editor.Editor).filename, primaryFile);
+      primaryFile := w(Editor.Editor).filename$;
       GetModuleName(primaryFile, modname);
       modules := UsedModuleList(modname);
-      (*DebugStrList(modules);*)
       graph := ImportsGraph(modules);
       needWindowed := graph;
       IF CompileAll(modules) THEN
@@ -997,12 +986,12 @@ PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN;
 VAR i, nofnames: INTEGER;
   s: ARRAY 256 OF CHAR;
 BEGIN fs := TRUE; sw := FALSE; i := 0; nofnames := 0;
-  WHILE i # Modules.ArgCount DO
-    Modules.GetArg(i, s);
+  WHILE i # Args.argc DO
+    Args.Get(i, s);
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--software' THEN sw := TRUE
     ELSIF nofnames < LEN(fnames) THEN
-      COPY(s, fnames[nofnames]); INC(nofnames)
+      fnames[nofnames] := s$; INC(nofnames)
     END;
     INC(i)
   END;
@@ -1018,7 +1007,6 @@ BEGIN
   IF T.Init(fs, sw) THEN
     InitIDE;
     needWindowed := TRUE;
-    blockToggle := FALSE;
     ResetSysModules;
     OpenFiles(fnames);
     success := TRUE

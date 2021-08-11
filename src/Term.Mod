@@ -18,6 +18,8 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT SYSTEM;
 
+TYPE CHAR = SHORTCHAR;
+
 PROCEDURE -AAIncludeTermh* '#include "term/term.h"';
 
 PROCEDURE -StartProcess*

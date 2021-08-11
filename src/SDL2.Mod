@@ -149,6 +149,7 @@ CONST
   getEvent*  = 2;
 
 TYPE
+  CHAR = SHORTCHAR;
   INT8* = SYSTEM.INT8;
   INT16* = SYSTEM.INT16;
 
@@ -293,7 +294,7 @@ TYPE
 
   KeyArray* = POINTER [1] TO ARRAY 1024 OF BOOLEAN;
 
-PROCEDURE -AAIncludeSDL2h0* '#include "SDL2.h0"';
+PROCEDURE -AAIncludeSDL2h0 '#include "SDL2.h0"';
 
 PROCEDURE -Init*(flags: SET): SHORTINT "SDL_Init(flags)";
 PROCEDURE -Quit* "SDL_Quit()";
@@ -392,10 +393,10 @@ PROCEDURE -GetDesktopDisplayMode*(displayIndex: INTEGER; VAR mode: DisplayMode)
     "SDL_GetDesktopDisplayMode(displayIndex, mode)";
 
 PROCEDURE -FillRect*(dst: Surface; VAR rect: Rect; color: INTEGER)
-  "SDL_FillRect(dst, rect, color)";
+    "SDL_FillRect(dst, rect, color)";
 
 PROCEDURE -FillRectNil*(dst: Surface; color: INTEGER)
-  "SDL_FillRect(dst, (void *)0, color)"; (* !FIXME *)
+    "SDL_FillRect(dst, (void *)0, color)"; (* !FIXME *)
 
 PROCEDURE -LockSurface*(surface: Surface) "SDL_LockSurface(surface)";
 PROCEDURE -UnlockSurface*(surface: Surface) "SDL_UnlockSurface(surface)";

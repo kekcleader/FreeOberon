@@ -1,6 +1,8 @@
 MODULE Int;
 IMPORT Strings;
 
+TYPE CHAR = SHORTCHAR;
+
 PROCEDURE Str*(n: INTEGER; VAR s: ARRAY OF CHAR);
 VAR i, j: INTEGER; tmp: CHAR; neg: BOOLEAN;
 BEGIN
@@ -45,7 +47,7 @@ BEGIN
       INC(s); DEC(e)
     END
   END;
-  COPY(b, str)
+  str := b$
 END Val;
 
 PROCEDURE Append*(n: INTEGER; VAR s: ARRAY OF CHAR);

@@ -44,6 +44,8 @@ CONST
   save* = 2;
 
 TYPE
+  CHAR = SHORTCHAR;
+
   FileDialog* = POINTER TO FileDialogDesc;
   FileDialogDesc* = RECORD(OV.WindowDesc)
     type*: INTEGER; (* open or save *)

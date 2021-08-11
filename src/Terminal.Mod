@@ -22,6 +22,7 @@ CONST
   cursorTicks* = 10; (* Ticks before cursor flashes *)
 
 TYPE
+  CHAR = SHORTCHAR;
   ScreenChar* = RECORD
     ch*: CHAR;
     fg*, bg*: INTEGER; (* Цвет текста и цвет фона*)
@@ -107,7 +108,7 @@ BEGIN
     fg := InvertColor(chars[mouseY, mouseX].fg);
     ch := chars[mouseY, mouseX].ch
   ELSE bg := 6; fg := 0; ch := ' ' END;
-  x := mouseX * charW;  y := mouseY * charH;
+  x := mouseX * charW; y := mouseY * charH;
   DrawChar(ch, x, y, fg, bg)
 END DrawMouse;
 
@@ -133,7 +134,7 @@ BEGIN
     (* Text Cursor *)
     IF cursorShown THEN
       color := ExpandColor(chars[cursorY, cursorX].fg);
-      x := cursorX * charW;  y := cursorY * charH;
+      x := cursorX * charW; y := cursorY * charH;
       IF insertCursor THEN
         G.RectFill(screen, x, y, x + charW - 1, y + charH - 1, color) (*!FIXME*)
       ELSE
@@ -332,7 +333,7 @@ BEGIN
   options := {G.buffered, G.initMouse, G.spread};
   IF fullscreen THEN INCL(options, G.fullscreen) END;
   IF software THEN INCL(options, G.software) END;
-  G.Settings(640, 400, options);
+  G.Settings(768, 432, options);
   G.SetSizeStep(charW, charH);
   screen := G.Init();
   IF screen # NIL THEN
@@ -346,8 +347,8 @@ BEGIN
       insertCursor := FALSE;
       cursorOn := FALSE;
       cursorShown := FALSE;
-      cursorX := 1;  cursorY := 2;
-      mouseX := 0;  mouseY := 0;
+      cursorX := 1; cursorY := 2;
+      mouseX := 0; mouseY := 0;
       ResizeScreen
     END
   END;

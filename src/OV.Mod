@@ -560,13 +560,15 @@ CONST
   hCtrlAltShiftPause*     = 700H + 72;
 
 TYPE
+  CHAR = SHORTCHAR;
+
   App* = POINTER TO AppDesc;
   Control* = POINTER TO ControlDesc;
   ControlMethod* = POINTER TO ControlMethodDesc;
 
   ClickHandler* = PROCEDURE (c: Control);
   
-  ControlDesc* = RECORD
+  ControlDesc* = EXTENSIBLE RECORD
     app*: App;
     parent*, children*: Control;
     prev*, next*: Control;
@@ -578,7 +580,7 @@ TYPE
     do*: ControlMethod
   END;
 
-  ControlMethodDesc* = RECORD
+  ControlMethodDesc* = EXTENSIBLE RECORD
     added*: PROCEDURE (c, child: Control);
     draw*: PROCEDURE (c: Control; x, y: INTEGER);
     resize*: PROCEDURE (c: Control; x, y, w, h: INTEGER);
@@ -594,7 +596,7 @@ TYPE
   END;
 
   Menu* = POINTER TO MenuDesc;
-  MenuDesc* = RECORD(ControlDesc)
+  MenuDesc* = EXTENSIBLE RECORD(ControlDesc)
     innerW*, innerH*: INTEGER;
     hint*: ARRAY 40 OF CHAR;
     hintW*: INTEGER;
@@ -603,22 +605,22 @@ TYPE
   END;
 
   QuickBtn* = POINTER TO QuickBtnDesc;
-  QuickBtnDesc* = RECORD(MenuDesc) END;
+  QuickBtnDesc* = EXTENSIBLE RECORD(MenuDesc) END;
 
   Button* = POINTER TO ButtonDesc;
-  ButtonDesc* = RECORD(ControlDesc) END;
+  ButtonDesc* = EXTENSIBLE RECORD(ControlDesc) END;
 
   WinBtn* = POINTER TO WinBtnDesc;
-  WinBtnDesc* = RECORD(ButtonDesc) END;
+  WinBtnDesc* = EXTENSIBLE RECORD(ButtonDesc) END;
 
   Edit* = POINTER TO EditDesc;
-  EditDesc* = RECORD(ControlDesc)
+  EditDesc* = EXTENSIBLE RECORD(ControlDesc)
     len*: INTEGER; (* Actual amount of characters before 0X *)
     pos*: INTEGER
   END;
 
   Window* = POINTER TO WindowDesc;
-  WindowDesc* = RECORD(ControlDesc)
+  WindowDesc* = EXTENSIBLE RECORD(ControlDesc)
     cur*: Control;
     modal*: BOOLEAN;
     resizable*: BOOLEAN;
@@ -629,7 +631,7 @@ TYPE
     mx*, my*, mw*, mh*: INTEGER (* To save x, y, w, h when maximized *)
   END;
 
-  AppDesc* = RECORD
+  AppDesc* = EXTENSIBLE RECORD
     windows*: Window;
     menu*: Menu;
     statusbar*: Menu;
@@ -649,8 +651,6 @@ VAR
   windowMethod-: ControlMethod;
   menuMethod-: ControlMethod;
   quickBtnMethod-: ControlMethod;
-
-  blockToggle: BOOLEAN; (* If true, ALT+ENTER will not toggle fullscreen *)
 
 PROCEDURE DrawAppWindows*(app: App);
 VAR w, br: Control;
@@ -892,9 +892,9 @@ END InitControlMethod;
 PROCEDURE InitMenu*(m: Menu; caption, hint: ARRAY OF CHAR;
     hotkey: INTEGER; onClick: ClickHandler);
 BEGIN InitControl(m);
-  m.caption := caption;
+  m.caption := caption$;
   m.innerW := 0; m.innerH := 0;
-  m.hint := hint; m.hintW := 0;
+  m.hint := hint$; m.hintW := 0;
   m.hotkey := hotkey;
   m.lastSelected := NIL;
   m.onClick := onClick;
@@ -1301,7 +1301,7 @@ END InitQuickBtnMethod;
 PROCEDURE InitButton*(c: Button; caption: ARRAY OF CHAR);
 BEGIN InitControl(c);
   c.w := 10; c.h := 1;
-  c.caption := caption;
+  c.caption := caption$;
   c.do := buttonMethod
 END InitButton;
 
@@ -1815,7 +1815,7 @@ BEGIN SetApp(m, app); Add(app.menu, m); RefreshAppMenu(app.menu)
 END AddMenu;
 
 PROCEDURE SetStatusText*(app: App; text: ARRAY OF CHAR);
-BEGIN app.statusText := text
+BEGIN app.statusText := text$
 END SetStatusText;
 
 PROCEDURE CheckMenuOpenKey(app: App; key: G.Key): BOOLEAN;
@@ -1874,9 +1874,7 @@ BEGIN handled := FALSE; p := app.cur;
   END;
   IF ~handled THEN
     IF (key.code = G.kEnter) & (key.mod * G.mAlt # {}) THEN
-      IF blockToggle THEN blockToggle := FALSE
-      ELSE T.ToggleFullscreen; blockToggle := TRUE
-      END
+      T.ToggleFullscreen
     ELSIF p # NIL THEN
       IF p.do.keyDown # NIL THEN p.do.keyDown(p, key) END;
       IF (p.parent # NIL) & (p.parent IS Window) &
@@ -1991,7 +1989,6 @@ BEGIN
 END RunApp;
 
 BEGIN
-  blockToggle := FALSE;
   NEW(controlMethod); InitControlMethod(controlMethod);
   NEW(buttonMethod); InitButtonMethod(buttonMethod);
   NEW(winBtnMethod); InitWinBtnMethod(winBtnMethod);
