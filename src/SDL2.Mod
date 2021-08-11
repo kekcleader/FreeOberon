@@ -149,13 +149,14 @@ CONST
   getEvent*  = 2;
 
 TYPE
+  ADRINT = SYSTEM.ADRINT;
   CHAR = SHORTCHAR;
   INT8* = SYSTEM.INT8;
   INT16* = SYSTEM.INT16;
 
-  Window* = SYSTEM.PTR;
+  Window* = ADRINT;
 
-  Renderer* = SYSTEM.PTR;
+  Renderer* = ADRINT;
 
   WindowEvent* = POINTER [1] TO WindowEventDesc;
   WindowEventDesc* = RECORD
@@ -164,13 +165,13 @@ TYPE
     windowID*: INTEGER;
     event*: INT16;
     data1*: INTEGER;
-    data2*: INTEGER;
+    data2*: INTEGER
   END;
 
   Keysym* = RECORD
     scancode*: INTEGER;
     sym*: INTEGER;
-    mod*: SHORTINT;
+    mod*: SHORTINT
   END;
 
   KeyboardEvent* = POINTER [1] TO KeyboardEventDesc;
@@ -181,7 +182,7 @@ TYPE
     state*: INT16;
     repeat*: INT16;
     keysym*: Keysym;
-    padding1: ARRAY 100 OF CHAR
+    padding1: ARRAY 5000(*!FIXME 100*) OF CHAR
   END;
 
   MouseMotionEvent* = POINTER [1] TO MouseMotionEventDesc;
@@ -194,7 +195,7 @@ TYPE
     x*: INTEGER;
     y*: INTEGER;
     xRel*: INTEGER;
-    yRel*: INTEGER;
+    yRel*: INTEGER
   END;
 
   MouseButtonEvent* = POINTER [1] TO MouseButtonEventDesc;
@@ -208,7 +209,7 @@ TYPE
     clicks*: INT8;
     padding1: INT8;
     x*: INTEGER;
-    y*: INTEGER;
+    y*: INTEGER
   END;
 
   MouseWheelEvent* = POINTER [1] TO MouseWheelEventDesc;
@@ -219,7 +220,7 @@ TYPE
     which*: INTEGER;
     x*: INTEGER;
     y*: INTEGER;
-    direction*: INTEGER;
+    direction*: INTEGER
   END;
 
   TextEditingEvent* = POINTER [1] TO TextEditingEventDesc;
@@ -229,7 +230,7 @@ TYPE
     windowID*: INTEGER;
     text*: ARRAY textEditingEventTextSize OF CHAR;
     start*: INTEGER;
-    length*: INTEGER;
+    length*: INTEGER
   END;
 
   TextInputEvent* = POINTER [1] TO TextInputEventDesc;
@@ -237,12 +238,12 @@ TYPE
     type*: INTEGER;
     timestamp*: INTEGER;
     windowID*: INTEGER;
-    text*: ARRAY textInputEventTextSize OF CHAR;
+    text*: ARRAY textInputEventTextSize OF CHAR
   END;
 
   Event* = RECORD
     type*: INTEGER;
-    padding1: ARRAY 124 OF CHAR
+    padding1: ARRAY 5000(*!FIXME 124*) OF CHAR
   END;
 
   Rect* = RECORD
@@ -252,7 +253,7 @@ TYPE
   Palette* = POINTER [1] TO PaletteDesc;
   PaletteDesc* = RECORD
     nColors: INTEGER;
-    colors: SYSTEM.PTR;
+    colors: ADRINT;
     version: INTEGER;
     refCount: INTEGER
   END;
@@ -261,7 +262,7 @@ TYPE
     format*: INTEGER;
     w*, h*: INTEGER;
     refreshRate*: INTEGER;
-    driverData: SYSTEM.PTR
+    driverData: ADRINT
   END;
 
   PixelFormat* = POINTER [1] TO PixelFormatDesc;
@@ -273,7 +274,7 @@ TYPE
     rMask*: INTEGER;
     gMask*: INTEGER;
     aMask*: INTEGER;
-    padding1: ARRAY 16 OF CHAR
+    padding1: ARRAY 5000(*!FIXME 17*) OF CHAR
   END;
 
   Surface* = POINTER [1] TO SurfaceDesc;
@@ -281,16 +282,16 @@ TYPE
     flags: INTEGER;
     format*: PixelFormat;
     w*, h*, pitch*: INTEGER;
-    pixels*: SYSTEM.PTR;
-    userData*: SYSTEM.PTR;
+    pixels*: ADRINT;
+    userData*: ADRINT;
     locked: INTEGER;
-    lockData: SYSTEM.PTR;
+    lockData: ADRINT;
     clipRect*: Rect;
-    map: SYSTEM.PTR;
+    map: ADRINT;
     refCount*: INTEGER
   END;
 
-  Texture* = SYSTEM.PTR;
+  Texture* = ADRINT;
 
   KeyArray* = POINTER [1] TO ARRAY 1024 OF BOOLEAN;
 
@@ -300,12 +301,13 @@ PROCEDURE -Init*(flags: SET): SHORTINT "SDL_Init(flags)";
 PROCEDURE -Quit* "SDL_Quit()";
 
 PROCEDURE -CreateWindow*(title: ARRAY OF CHAR; x, y, w, h: INTEGER;
-    flags: SET): Window "(void *)SDL_CreateWindow(title, x, y, w, h, flags)";
+    flags: SET): Window
+    "(SYSTEM_ADRINT)SDL_CreateWindow(title, x, y, w, h, flags)";
 PROCEDURE -GetWindowSize*(window: Window; VAR w, h: INTEGER)
-    "SDL_GetWindowSize(window, w, h)";
+    "SDL_GetWindowSize((void *)window, w, h)";
 PROCEDURE -SetWindowSize*(window: Window; w, h: INTEGER)
-    "SDL_SetWindowSize(window, w, h)";
-PROCEDURE -DestroyWindow(win: SYSTEM.PTR) "SDL_DestroyWindow(win)";
+    "SDL_SetWindowSize((void *)window, w, h)";
+PROCEDURE -DestroyWindow(window: ADRINT) "SDL_DestroyWindow((void *)window)";
 
 PROCEDURE -PollEvent*(VAR e: Event): INTEGER "SDL_PollEvent(e)";
 PROCEDURE -WaitEvent*(VAR e: Event): INTEGER "SDL_WaitEvent(e)";
@@ -330,11 +332,11 @@ PROCEDURE -SetColorKey*(surface: Surface; flag: INTEGER; key: INTEGER)
 PROCEDURE -MapRGB*(format: PixelFormat; r, g, b: SHORTINT): INTEGER
     "SDL_MapRGB(format, r, g, b)";
 
-PROCEDURE -RWFromFile*(fname, mode: ARRAY OF CHAR): SYSTEM.PTR
+PROCEDURE -RWFromFile*(fname, mode: ARRAY OF CHAR): ADRINT
     "SDL_RWFromFile(fname, mode)";
-PROCEDURE -LoadBmpRW*(src: SYSTEM.PTR; freeSrc: INTEGER): Surface
+PROCEDURE -LoadBmpRW*(src: ADRINT; freeSrc: INTEGER): Surface
     "(void *)SDL_LoadBMP_RW(src, freeSrc)";
-PROCEDURE -SaveBmpRW*(surface: Surface; src: SYSTEM.PTR;
+PROCEDURE -SaveBmpRW*(surface: Surface; src: ADRINT;
     freeSrc: INTEGER): INTEGER
     "(int)SDL_SaveBMP_RW(surface, src, freeSrc)";
 
@@ -351,33 +353,37 @@ PROCEDURE -ImgSaveJpg*(surface: Surface; file: ARRAY OF CHAR): INTEGER
 
 (* Renderer *)
 
-PROCEDURE -CreateRenderer*(win: Window; index: INTEGER;
-    flags: SET): Renderer "(void *)SDL_CreateRenderer(win, index, flags)";
+PROCEDURE -CreateRenderer*(window: Window; index: INTEGER;
+    flags: SET): Renderer
+    "(SYSTEM_ADRINT)SDL_CreateRenderer((void *)window, index, flags)";
 PROCEDURE -SetRenderDrawColor*(renderer: Renderer; r, g, b, a: SHORTINT)
-    "SDL_SetRenderDrawColor(renderer, r, g, b, a)";
-PROCEDURE -RenderClear*(renderer: Renderer) "SDL_RenderClear(renderer)";
-PROCEDURE -RenderPresent*(renderer: Renderer) "SDL_RenderPresent(renderer)";
+    "SDL_SetRenderDrawColor((void *)renderer, r, g, b, a)";
+PROCEDURE -RenderClear*(renderer: Renderer)
+    "SDL_RenderClear((void *)renderer)";
+PROCEDURE -RenderPresent*(renderer: Renderer)
+    "SDL_RenderPresent((void *)renderer)";
 PROCEDURE -RenderDrawLine*(renderer: Renderer; x1, y1, x2, y2: INTEGER)
-    "SDL_RenderDrawLine(renderer, x1, y1, x2, y2)";
+    "SDL_RenderDrawLine((void *)renderer, x1, y1, x2, y2)";
 PROCEDURE -RenderDrawPoint*(renderer: Renderer; x, y: INTEGER)
-    "SDL_RenderDrawPoint(renderer, x, y)";
+    "SDL_RenderDrawPoint((void *)renderer, x, y)";
 PROCEDURE -RenderDrawRect*(renderer: Renderer; VAR rect: Rect)
-    "SDL_RenderDrawRect(renderer, rect)";
+    "SDL_RenderDrawRect((void *)renderer, rect)";
 PROCEDURE -RenderFillRect*(renderer: Renderer; VAR rect: Rect)
-    "SDL_RenderFillRect(renderer, rect)";
+    "SDL_RenderFillRect((void *)renderer, rect)";
 PROCEDURE -RenderSetLogicalSize*(renderer: Renderer; w, h: INTEGER)
-    "SDL_RenderSetLogicalSize(renderer, w, h)";
+    "SDL_RenderSetLogicalSize((void *)renderer, w, h)";
 PROCEDURE -RenderCopy*(renderer: Renderer; texture: Texture;
     VAR srcRect, dstRect: Rect)
-    "SDL_RenderCopy(renderer, texture, srcRect, dstRect)";
+    "SDL_RenderCopy((void *)renderer, (void *)texture, srcRect, dstRect)";
 PROCEDURE -RenderCopyNil*(renderer: Renderer; texture: Texture)
-    "SDL_RenderCopy(renderer, texture, (void *)0, (void *)0)";
+    "SDL_RenderCopy((void *)renderer, (void *)texture, (void *)0, (void *)0)";
 (*PROCEDURE -RenderCopyEx*(renderer: Renderer; texture: Texture;
     VAR srcRect, dstRect: Rect; angle: REAL; center: Point; flip: SET)
-    "SDL_RenderCopyEx(renderer, texture, srcRect, dstRect, angle, center, flip)";*)
+    "SDL_RenderCopyEx((void * )renderer, (void * )texture, srcRect, dstRect, angle, center, flip)";*)
 PROCEDURE -SetRenderDrawBlendMode*(renderer: Renderer; blendMode: SET)
-    "SDL_SetRenderDrawBlendMode(renderer, blendMode)";
-PROCEDURE -DestroyRenderer(renderer: SYSTEM.PTR) "SDL_DestroyRenderer(renderer)";
+    "SDL_SetRenderDrawBlendMode(void *)renderer, blendMode)";
+PROCEDURE -DestroyRenderer(renderer: ADRINT)
+    "SDL_DestroyRenderer((void *)renderer)";
 
 (* Misc *)
 
@@ -385,8 +391,8 @@ PROCEDURE -Delay*(ms: INTEGER) "SDL_Delay(ms)";
 PROCEDURE -SetHint*(name: ARRAY OF CHAR; value: ARRAY OF CHAR)
     "SDL_SetHint(name, value)";
 PROCEDURE -ShowCursor*(toggle: SHORTINT) "SDL_ShowCursor(toggle)";
-PROCEDURE -GetError*(): SYSTEM.PTR "SDL_GetError()";
-PROCEDURE -SDLGetKeyboardState(VAR numKeys: INTEGER): SYSTEM.PTR
+PROCEDURE -GetError*(): ADRINT "SDL_GetError()";
+PROCEDURE -SDLGetKeyboardState(VAR numKeys: INTEGER): ADRINT
     "(void *)SDL_GetKeyboardState(numKeys)";
 
 PROCEDURE -GetDesktopDisplayMode*(displayIndex: INTEGER; VAR mode: DisplayMode)
@@ -426,20 +432,21 @@ PROCEDURE -GetKeyboardStateNil*(): KeyArray "(void *)SDL_GetKeyboardState((void 
 
 PROCEDURE -GetMouseState*(VAR x, y: INTEGER): INTEGER "SDL_GetMouseState(x, y)";
 
-PROCEDURE -GetWindowFlags*(window: Window): SET "SDL_GetWindowFlags(window)";
+PROCEDURE -GetWindowFlags*(window: Window): SET "SDL_GetWindowFlags((void *)window)";
 
 PROCEDURE -SetWindowTitle*(window: Window; title: ARRAY OF CHAR)
-    "SDL_SetWindowTitle(window, title)";
+    "SDL_SetWindowTitle((void *)window, title)";
 
 PROCEDURE -CreateTextureFromSurface*(renderer: Renderer; surface: Surface): Texture
-    "(void *)SDL_CreateTextureFromSurface(renderer, surface)";
+    "(SYSTEM_ADRINT)SDL_CreateTextureFromSurface((void *)renderer, surface)";
 
-PROCEDURE -DestroyTexture*(texture: Texture) "SDL_DestroyTexture(texture)";
+PROCEDURE -DestroyTexture*(texture: Texture)
+    "SDL_DestroyTexture((void *)texture)";
 
 PROCEDURE -GetTicks*(): INTEGER "SDL_GetTicks()";
 
-PROCEDURE -SetWindowFullscreen*(win: Window; flags: SET): INTEGER
-    "SDL_SetWindowFullscreen(win, flags)";
+PROCEDURE -SetWindowFullscreen*(window: Window; flags: SET): INTEGER
+    "SDL_SetWindowFullscreen((void *)window, flags)";
 
 PROCEDURE -SetSurfaceAlphaMod*(surface: Surface; alpha: CHAR): INTEGER
     "SDL_SetSurfaceAlphaMod(surface, alpha)";

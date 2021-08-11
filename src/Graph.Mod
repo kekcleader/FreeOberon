@@ -189,6 +189,8 @@ CONST
   mShift* = {mLShift, mRShift};
   mAlt*   = {mLAlt, mRAlt};
   mGui*   = {mLGui, mRGui};
+  
+  NIL0 = 0;
 
 TYPE
   ADRINT = SYSTEM.ADRINT;
@@ -1038,7 +1040,7 @@ END PumpMouseButton;
 
 PROCEDURE RepeatFlip*;
 BEGIN
-  IF screenTexture # NIL THEN
+  IF screenTexture # NIL0 THEN
     SDL.SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL.RenderClear(renderer);
     SDL.RenderCopyNil(renderer, screenTexture);
@@ -1169,9 +1171,9 @@ BEGIN
     (* Blit buffer on screen *)
     SDL.SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL.RenderClear(renderer);
-    IF screenTexture # NIL THEN
+    IF screenTexture # NIL0 THEN
       SDL.DestroyTexture(screenTexture);
-      screenTexture := NIL
+      screenTexture := NIL0
     END;
     screenTexture := SDL.CreateTextureFromSurface(renderer, screen.surface);
     SDL.RenderCopyNil(renderer, screenTexture);
@@ -1284,7 +1286,7 @@ PROCEDURE Recv*(socket: Socket;
   VAR data: ARRAY OF CHAR; len: INTEGER): INTEGER;
 BEGIN
   RETURN Net.TCPRecv(socket,
-    SYSTEM.VAL(SYSTEM.PTR, SYSTEM.ADR(data[0])), len)
+    SYSTEM.VAL(ADRINT, SYSTEM.ADR(data[0])), len)
 END Recv;
 
 PROCEDURE RecvStr*(socket: Socket; VAR s: ARRAY OF CHAR): INTEGER;
@@ -1351,7 +1353,7 @@ BEGIN
     buf.s := s
   END;
   n := Net.TCPRecv(socket,
-    SYSTEM.VAL(SYSTEM.PTR, SYSTEM.ADR(buf.s[buf.len])),
+    SYSTEM.VAL(ADRINT, SYSTEM.ADR(buf.s[buf.len])),
     len);
   buf.lastLen := buf.len;
   IF n > 0 THEN
@@ -1461,7 +1463,7 @@ BEGIN screen := NIL;
     window := SDL.CreateWindow('',
       SDL.windowPosUndefined, SDL.windowPosUndefined,
       wantW, wantH, flags);
-    IF window # NIL THEN
+    IF window # NIL0 THEN
       IF wantSoftware THEN flags := {SDL.rendererSoftware}
       ELSE flags := {SDL.rendererAccelerated}
       END;
@@ -1474,7 +1476,7 @@ BEGIN screen := NIL;
       END;
       SDL.RenderSetLogicalSize(renderer, wantW, wantH);
       screen := CreateBitmap(wantW, wantH);
-      screenTexture := NIL;
+      screenTexture := NIL0;
       UnsetRegion;
       SDL.ShowCursor(0);
       IF wantMouse THEN InitMouseData END;
@@ -1504,9 +1506,9 @@ END Init;
 
 PROCEDURE Close*;
 BEGIN
-  IF screenTexture # NIL THEN
+  IF screenTexture # NIL0 THEN
     SDL.DestroyTexture(screenTexture);
-    screenTexture := NIL
+    screenTexture := NIL0
   END;
   (*
   IF wantSound THEN Mix.Quit END;
