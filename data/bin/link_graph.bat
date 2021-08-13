@@ -6,7 +6,11 @@ CD bin >nul 2>&1
 @DEL /s %~n1.exe >nul 2>&1
 SET CURDIR=%~dp0
 SET ONAME=%~n1
-SET PATH=%CURDIR%voc\bin;%CURDIR%mingw32\bin;%PATH%
+SET OFRDIR=%CURDIR%OfrontPlus\Target\Win64
+SET PATH=%OFRDIR%;%CURDIR%mingw64\bin;%PATH%
+SET CC=gcc
+REM SET SDL2Opts=-w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2
+SET SDL2Opts=-lmingw32 -lSDL2main -lSDL2
 
 REM Put all arguments starting from 2nd to ARGS.
 SHIFT
@@ -18,17 +22,15 @@ SET ARGS=%ARGS% %1
 SHIFT
 GOTO START
 :FINISH
-REM END Put all... ARGS.
-
+REM END Put all ARGS.
 ECHO ON
-gcc -fPIC -g -I "%CURDIR%voc/C/include"^
- -o %ONAME%.exe %ONAME%.o^
- %ARGS%^
- "%CURDIR%voc/lib/Graph.o"^
- "%CURDIR%voc/lib/SDL2.o"^
- "%CURDIR%voc/lib/Int.o"^
- -L"%CURDIR%voc/lib" -lvoc-OC^
- -w -Wl,-subsystem,windows -lmingw32^
- -lSDL2main -lSDL2 -lSDL2_image
+%CC% -g3 -O0 -fno-exceptions ^
+  -I %OFRDIR%\..\..\Mod\Lib ^
+  -I %OFRDIR%\Lib\Obj ^
+  %ONAME%.c -o %ONAME%.exe ^
+  %ARGS%^
+  %CURDIR%libFreeOberon.a ^
+  %OFRDIR%\Lib\Ofront.a ^
+  %SDL2Opts% -lSDL2_image
 @SET RETCODE=%ERRORLEVEL%
 @EXIT /b %RETCODE%
