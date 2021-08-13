@@ -189,7 +189,7 @@ CONST
   mShift* = {mLShift, mRShift};
   mAlt*   = {mLAlt, mRAlt};
   mGui*   = {mLGui, mRGui};
-  
+
   NIL0 = 0;
 
 TYPE
@@ -319,7 +319,7 @@ BEGIN
 END GetError;
 
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
-BEGIN (*!TODO: Refactor, save options in a SET*)
+BEGIN (*!TODO: Refactor, save options in a SET?*)
   wantW := w; wantH := h;
   wantFullscreen := fullscreen IN flags;
   wantBuffer := buffered IN flags;
@@ -363,8 +363,8 @@ END CheckWantedScreenSize;
 (* Flip Region *)
 PROCEDURE SetRegion*(x, y, w, h: INTEGER);
 BEGIN
-  flipRegion.x := x;  flipRegion.y := y;
-  flipRegion.w := w;  flipRegion.h := h
+  flipRegion.x := x; flipRegion.y := y;
+  flipRegion.w := w; flipRegion.h := h
 END SetRegion;
 
 PROCEDURE UnsetRegion*;
