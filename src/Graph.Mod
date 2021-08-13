@@ -208,7 +208,7 @@ TYPE
     bmp*: Bitmap;
     charW*, charH*: INTEGER;
     charRows*, charsInRow*: INTEGER;
-    sprites*: POINTER [1] TO ARRAY OF ARRAY OF SDL.Rect
+    sprites*: POINTER TO ARRAY OF ARRAY OF SDL.Rect
   END;
 
   KeyArray = SDL.KeyArray;
@@ -261,7 +261,7 @@ TYPE
     button*: INTEGER;
     buttons*: SET; (* What mouse buttons are pressed *)
     down*: BOOLEAN;
-    s*: ARRAY 32 OF CHAR
+    s*: ARRAY 140(*32*) OF CHAR
   END;
 
   EventQueue* = RECORD

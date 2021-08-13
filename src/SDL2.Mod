@@ -82,32 +82,90 @@ CONST
   kmodGui*      = {kmodLGui, kmodRGui};
 
   (* Hints (for SDL_Hint) *)
-  hintFramebufferAcceleration*  = 'SDL_FRAMEBUFFER_ACCELERATION';
-  hintRenderDriver*             = 'SDL_RENDER_DRIVER';
-  hintRenderOpenglShaders*      = 'SDL_RENDER_OPENGL_SHADERS';
-  hintRenderDirect3dThreadsafe* = 'SDL_RENDER_DIRECT3D_THREAD_SAFE';
-  hintRenderScaleQuality*       = 'SDL_RENDER_SCALE_QUALITY';
-  hintRenderVsync*              = 'SDL_RENDER_VSYNC';
-  hintVideoAllowScreensaver*    = 'SDL_VIDEO_ALLOW_SCREENSAVER';
-  hintVideoX11Xvidmode*         = 'SDL_VIDEO_X11_XVIDMODE';
-  hintVideoX11Xinerama*         = 'SDL_VIDEO_X11_XINERAMA';
-  hintVideoX11Xrandr*           = 'SDL_VIDEO_X11_XRANDR';
-  hintGrabKeyboard*             = 'SDL_GRAB_KEYBOARD';
-  hintMouseRelativeModeWarp*    = 'SDL_MOUSE_RELATIVE_MODE_WARP';
-  hintVideoMinimizeOnFocusLoss* = 'SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS';
-  hintIdleTimerDisabled*        = 'SDL_IOSIDLETIMERDISABLED';
-  hintOrientations*             = 'SDL_IOSORIENTATIONS'; (* !FIXME add _ lol *)
-  hintAccelerometerAsJoystick*  = 'SDL_ACCELEROMETERASJOYSTICK';
-  hintXinputEnabled*            = 'SDL_XINPUTENABLED';
-  hintGamecontrollerconfig*     = 'SDL_GAMECONTROLLERCONFIG';
-  hintJoystickAllowBgEvents* = 'SDL_JOYSTICKALLOWBACKGROUNDEVENTS';
-  hintAllowTopmost*                  = 'SDL_ALLOWTOPMOST';
-  hintTimerResolution*               = 'SDL_TIMERRESOLUTION';
-  hintVideoHighDpiDisabled*          = 'SDL_VIDEO_HIGHDPIDISABLED';
-  hintMacCtrlClickEmulateRClick* = 'SDL_MACCTRLCLICKEMULATERIGHTCLICK';
-  hintVideoWinD3dCompiler*           = 'SDL_VIDEO_WIND3DCOMPILER';
-  hintVideoWindowSharePixelFormat*   = 'SDL_VIDEO_WINDOWSHAREPIXELFORMAT';
-  hintVideoMacFullscreenSpaces*      = 'SDL_VIDEO_MACFULLSCREENSPACES';
+  hintFramebufferAcceleration*             = 'SDL_FRAMEBUFFER_ACCELERATION';
+  hintRenderDriver*                        = 'SDL_RENDER_DRIVER';
+  hintRenderOpenglShaders*                 = 'SDL_RENDER_OPENGL_SHADERS';
+  hintRenderDirect3dThreadsafe*            = 'SDL_RENDER_DIRECT3D_THREADSAFE';
+  hintRenderDirect3d11Debug*               = 'SDL_RENDER_DIRECT3D11_DEBUG';
+  hintRenderLogicalSizeMode*               = 'SDL_RENDER_LOGICAL_SIZE_MODE';
+  hintRenderScaleQuality*                  = 'SDL_RENDER_SCALE_QUALITY';
+  hintRenderVsync*                         = 'SDL_RENDER_VSYNC';
+  hintVideoAllowScreensaver*               = 'SDL_VIDEO_ALLOW_SCREENSAVER';
+  hintVideoX11Xvidmode*                    = 'SDL_VIDEO_X11_XVIDMODE';
+  hintVideoX11Xinerama*                    = 'SDL_VIDEO_X11_XINERAMA';
+  hintVideoX11Xrandr*                      = 'SDL_VIDEO_X11_XRANDR';
+  hintVideoX11NetWmPing*                   = 'SDL_VIDEO_X11_NET_WM_PING';
+  hintVideoX11NetWmBypassCompositor*       = 'SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR';
+  hintWindowFrameUsableWhileCursorHidden*  = 'SDL_WINDOW_FRAME_USABLE_WHILE_CURSOR_HIDDEN';
+  hintWindowsIntresourceIcon*              = 'SDL_WINDOWS_INTRESOURCE_ICON';
+  hintWindowsIntresourceIconSmall*         = 'SDL_WINDOWS_INTRESOURCE_ICON_SMALL';
+  hintWindowsEnableMessageloop*            = 'SDL_WINDOWS_ENABLE_MESSAGELOOP';
+  hintGrabKeyboard*                        = 'SDL_GRAB_KEYBOARD';
+  hintMouseDoubleClickTime*                = 'SDL_MOUSE_DOUBLE_CLICK_TIME';
+  hintMouseDoubleClickRadius*              = 'SDL_MOUSE_DOUBLE_CLICK_RADIUS';
+  hintMouseNormalSpeedScale*               = 'SDL_MOUSE_NORMAL_SPEED_SCALE';
+  hintMouseRelativeSpeedScale*             = 'SDL_MOUSE_RELATIVE_SPEED_SCALE';
+  hintMouseRelativeModeWarp*               = 'SDL_MOUSE_RELATIVE_MODE_WARP';
+  hintMouseFocusClickthrough*              = 'SDL_MOUSE_FOCUS_CLICKTHROUGH';
+  hintTouchMouseEvents*                    = 'SDL_TOUCH_MOUSE_EVENTS';
+  hintMouseTouchEvents*                    = 'SDL_MOUSE_TOUCH_EVENTS';
+  hintVideoMinimizeOnFocusLoss*            = 'SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS';
+  hintIdleTimerDisabled*                   = 'SDL_IOS_IDLE_TIMER_DISABLED';
+  hintOrientations*                        = 'SDL_IOS_ORIENTATIONS';
+  hintAppleTvControllerUiEvents*           = 'SDL_APPLE_TV_CONTROLLER_UI_EVENTS';
+  hintAppleTvRemoteAllowRotation*          = 'SDL_APPLE_TV_REMOTE_ALLOW_ROTATION';
+  hintIosHideHomeIndicator*                = 'SDL_IOS_HIDE_HOME_INDICATOR';
+  hintAccelerometerAsJoystick*             = 'SDL_ACCELEROMETER_AS_JOYSTICK';
+  hintTvRemoteAsJoystick*                  = 'SDL_TV_REMOTE_AS_JOYSTICK';
+  hintXinputEnabled*                       = 'SDL_XINPUT_ENABLED';
+  hintXinputUseOldJoystickMapping*         = 'SDL_XINPUT_USE_OLD_JOYSTICK_MAPPING';
+  hintGamecontrollerconfig*                = 'SDL_GAMECONTROLLERCONFIG';
+  hintGamecontrollerconfigFile*            = 'SDL_GAMECONTROLLERCONFIG_FILE';
+  hintGamecontrollerIgnoreDevices*         = 'SDL_GAMECONTROLLER_IGNORE_DEVICES';
+  hintGamecontrollerIgnoreDevicesExcept*   = 'SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT';
+  hintJoystickAllowBackgroundEvents*       = 'SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS';
+  hintJoystickHidapi*                      = 'SDL_JOYSTICK_HIDAPI';
+  hintJoystickHidapiPs4*                   = 'SDL_JOYSTICK_HIDAPI_PS4';
+  hintJoystickHidapiPs4Rumble*             = 'SDL_JOYSTICK_HIDAPI_PS4_RUMBLE';
+  hintJoystickHidapiSteam*                 = 'SDL_JOYSTICK_HIDAPI_STEAM';
+  hintJoystickHidapiSwitch*                = 'SDL_JOYSTICK_HIDAPI_SWITCH';
+  hintJoystickHidapiXbox*                  = 'SDL_JOYSTICK_HIDAPI_XBOX';
+  hintEnableSteamControllers*              = 'SDL_ENABLE_STEAM_CONTROLLERS';
+  hintAllowTopmost*                        = 'SDL_ALLOW_TOPMOST';
+  hintTimerResolution*                     = 'SDL_TIMER_RESOLUTION';
+  hintQtwaylandContentOrientation*         = 'SDL_QTWAYLAND_CONTENT_ORIENTATION';
+  hintQtwaylandWindowFlags*                = 'SDL_QTWAYLAND_WINDOW_FLAGS';
+  hintThreadStackSize*                     = 'SDL_THREAD_STACK_SIZE';
+  hintVideoHighdpiDisabled*                = 'SDL_VIDEO_HIGHDPI_DISABLED';
+  hintMacCtrlClickEmulateRightClick*       = 'SDL_MAC_CTRL_CLICK_EMULATE_RIGHT_CLICK';
+  hintVideoWinD3dcompiler*                 = 'SDL_VIDEO_WIN_D3DCOMPILER';
+  hintVideoWindowSharePixelFormat*         = 'SDL_VIDEO_WINDOW_SHARE_PIXEL_FORMAT';
+  hintWinrtPrivacyPolicyUrl*               = 'SDL_WINRT_PRIVACY_POLICY_URL';
+  hintWinrtPrivacyPolicyLabel*             = 'SDL_WINRT_PRIVACY_POLICY_LABEL';
+  hintWinrtHandleBackButton*               = 'SDL_WINRT_HANDLE_BACK_BUTTON';
+  hintVideoMacFullscreenSpaces*            = 'SDL_VIDEO_MAC_FULLSCREEN_SPACES';
+  hintMacBackgroundApp*                    = 'SDL_MAC_BACKGROUND_APP';
+  hintAndroidApkExpansionMainFileVersion*  = 'SDL_ANDROID_APK_EXPANSION_MAIN_FILE_VERSION';
+  hintAndroidApkExpansionPatchFileVersion* = 'SDL_ANDROID_APK_EXPANSION_PATCH_FILE_VERSION';
+  hintImeInternalEditing*                  = 'SDL_IME_INTERNAL_EDITING';
+  hintAndroidTrapBackButton*               = 'SDL_ANDROID_TRAP_BACK_BUTTON';
+  hintAndroidBlockOnPause*                 = 'SDL_ANDROID_BLOCK_ON_PAUSE';
+  hintReturnKeyHidesIme*                   = 'SDL_RETURN_KEY_HIDES_IME';
+  hintEmscriptenKeyboardElement*           = 'SDL_EMSCRIPTEN_KEYBOARD_ELEMENT';
+  hintNoSignalHandlers*                    = 'SDL_NO_SIGNAL_HANDLERS';
+  hintWindowsNoCloseOnAltF4*               = 'SDL_WINDOWS_NO_CLOSE_ON_ALT_F4';
+  hintBmpSaveLegacyFormat*                 = 'SDL_BMP_SAVE_LEGACY_FORMAT';
+  hintWindowsDisableThreadNaming*          = 'SDL_WINDOWS_DISABLE_THREAD_NAMING';
+  hintRpiVideoLayer*                       = 'SDL_RPI_VIDEO_LAYER';
+  hintVideoDoubleBuffer*                   = 'SDL_VIDEO_DOUBLE_BUFFER';
+  hintOpenglEsDriver*                      = 'SDL_OPENGL_ES_DRIVER';
+  hintAudioResamplingMode*                 = 'SDL_AUDIO_RESAMPLING_MODE';
+  hintAudioCategory*                       = 'SDL_AUDIO_CATEGORY';
+  hintRenderBatching*                      = 'SDL_RENDER_BATCHING';
+  hintEventLogging*                        = 'SDL_EVENT_LOGGING';
+  hintWaveRiffChunkSize*                   = 'SDL_WAVE_RIFF_CHUNK_SIZE';
+  hintWaveTruncation*                      = 'SDL_WAVE_TRUNCATION';
+  hintWaveFactChunk*                       = 'SDL_WAVE_FACT_CHUNK';
 
   (* Renderer Flags *)
   rendererSoftware*      = 0;
@@ -171,7 +229,7 @@ TYPE
   Keysym* = RECORD
     scancode*: INTEGER;
     sym*: INTEGER;
-    mod*: SHORTINT
+    mod*: INT16
   END;
 
   KeyboardEvent* = POINTER [1] TO KeyboardEventDesc;
@@ -181,8 +239,7 @@ TYPE
     windowID*: INTEGER;
     state*: INT16;
     repeat*: INT16;
-    keysym*: Keysym;
-    padding1: ARRAY 5000(*!FIXME 100*) OF CHAR
+    keysym*: Keysym
   END;
 
   MouseMotionEvent* = POINTER [1] TO MouseMotionEventDesc;
@@ -207,7 +264,7 @@ TYPE
     button*: INT8;
     state*: INT8;
     clicks*: INT8;
-    padding1: INT8;
+    padding: INT8;
     x*: INTEGER;
     y*: INTEGER
   END;
@@ -243,7 +300,7 @@ TYPE
 
   Event* = RECORD
     type*: INTEGER;
-    padding1: ARRAY 5000(*!FIXME 124*) OF CHAR
+    padding: ARRAY 124 OF CHAR
   END;
 
   Rect* = RECORD
@@ -274,7 +331,7 @@ TYPE
     rMask*: INTEGER;
     gMask*: INTEGER;
     aMask*: INTEGER;
-    padding1: ARRAY 5000(*!FIXME 17*) OF CHAR
+    padding: ARRAY 17 OF CHAR
   END;
 
   Surface* = POINTER [1] TO SurfaceDesc;
@@ -402,7 +459,7 @@ PROCEDURE -FillRect*(dst: Surface; VAR rect: Rect; color: INTEGER)
     "SDL_FillRect(dst, rect, color)";
 
 PROCEDURE -FillRectNil*(dst: Surface; color: INTEGER)
-    "SDL_FillRect(dst, (void *)0, color)"; (* !FIXME *)
+    "SDL_FillRect(dst, (void *)0, color)";
 
 PROCEDURE -LockSurface*(surface: Surface) "SDL_LockSurface(surface)";
 PROCEDURE -UnlockSurface*(surface: Surface) "SDL_UnlockSurface(surface)";
