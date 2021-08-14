@@ -9,6 +9,8 @@
 /src/*.c
 /src/*.sym
 /src/term/*.o
+/data/bin/libFreeOberon.a
+/data/bin/FreeOberon.a
 /data/bin/voc/C
 /data/bin/voc/bin
 /data/bin/voc/lib
