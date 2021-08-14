@@ -1,6 +1,9 @@
 @ECHO OFF
-REM This script is run by Free Oberon on Windows. Current directory of the
-REM script will be where FreeOberon.exe is located.
+REM This script is automatically run by Free Oberon on Windows
+REM for each compiled module. The initial current directory of
+REM the script is where FreeOberon executable is located.
+REM You are free to edit this file to adjust the process.
+
 CD bin >nul 2>&1
 SET CURDIR=%~dp0
 SET OFRDIR=%CURDIR%OfrontPlus\Target\Win64
