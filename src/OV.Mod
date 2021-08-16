@@ -16,9 +16,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT G := Graph, T := Terminal, Strings, Out, SYSTEM;
+IMPORT G := Graph, T := Terminal, Strings, StrList, Out, SYSTEM;
 CONST
-  (* Control Statuses *)
+  (* ControlDesc.status possible values *)
   normal*   = 0;
   disabled* = 1;
   selected* = 2;
@@ -573,6 +573,7 @@ TYPE
     parent*, children*: Control;
     prev*, next*: Control;
     x*, y*, w*, h*: INTEGER;
+    default*: BOOLEAN;
     focused*: BOOLEAN;
     status*: INTEGER;
     caption*: ARRAY 256 OF CHAR;
@@ -619,6 +620,14 @@ TYPE
     pos*: INTEGER
   END;
 
+  ColumnSelection* = POINTER TO ColumnSelectionDesc;
+  ColumnSelectionDesc* = EXTENSIBLE RECORD(ControlDesc)
+    cols*: INTEGER; (* Column count *)
+    items*: StrList.List;
+    begin*: INTEGER; (* What index list begins with visually *)
+    cur*: INTEGER
+  END;
+
   Window* = POINTER TO WindowDesc;
   WindowDesc* = EXTENSIBLE RECORD(ControlDesc)
     cur*: Control;
@@ -628,7 +637,7 @@ TYPE
     closeBtn*, zoomBtn*: WinBtn;
     bg*: INTEGER;
     minW*, minH*: INTEGER;
-    mx*, my*, mw*, mh*: INTEGER (* To save x, y, w, h when maximized *)
+    mx*, my*, mw*, mh*: INTEGER (* To store x, y, w, h when maximized *)
   END;
 
   AppDesc* = EXTENSIBLE RECORD
@@ -648,6 +657,7 @@ VAR
   buttonMethod-: ControlMethod;
   winBtnMethod-: ControlMethod;
   editMethod-: ControlMethod;
+  columnSelectionMethod-: ControlMethod;
   windowMethod-: ControlMethod;
   menuMethod-: ControlMethod;
   quickBtnMethod-: ControlMethod;
@@ -740,6 +750,24 @@ END SetApp;
 
 (* Common *)
 
+(** fg2 is a color of marked letters, that are escaped with '&'. *)
+PROCEDURE PutMarkedString*(x, y: INTEGER; s: ARRAY OF CHAR; fg, fg2, bg, limit: INTEGER);
+VAR i, c: INTEGER;
+  mark: BOOLEAN;
+BEGIN
+  IF limit = 0 THEN limit := T.charsX END; 
+  i := 0; mark := FALSE;
+  WHILE (i < LEN(s)) & (s[i] # 0X) & (x <= limit) DO
+    IF s[i] = '&' THEN mark := TRUE
+    ELSE
+      IF mark THEN c := fg2; mark := FALSE ELSE c := fg END;
+      T.PutChar(x, y, s[i], c, bg);
+      INC(x)
+    END;
+    INC(i)
+  END
+END PutMarkedString;
+
 PROCEDURE DrawWindowBorder*(x, y, w, h, fg, bg: INTEGER;
   title: ARRAY OF CHAR; resizable, moving, inactive: BOOLEAN);
 VAR i, x2, y2, len: INTEGER; ch: CHAR;
@@ -811,8 +839,8 @@ PROCEDURE InitControl*(c: Control);
 BEGIN
   c.x := 0; c.y := 0; c.w := 0; c.h := 0;
   c.parent := NIL; c.children := NIL;
-  c.prev := NIL; c.next := NIL;
-  c.focused := FALSE; c.status := 0; c.caption[0] := 0X;
+  c.prev := NIL; c.next := NIL; c.default := FALSE; c.focused := FALSE;
+  c.status := 0; c.caption[0] := 0X;
   c.do := controlMethod
 END InitControl;
 
@@ -1313,7 +1341,7 @@ END NewButton;
 (* Button Method *)
 
 PROCEDURE ButtonDraw*(c: Control; x, y: INTEGER);
-VAR i, bg: INTEGER;
+VAR i, fg, bg: INTEGER;
 BEGIN INC(x, c.x); INC(y, c.y);
   IF c.status = selected THEN INC(x) END;
   IF (c.parent # NIL) & (c.parent IS Window) THEN bg := c.parent(Window).bg
@@ -1322,8 +1350,9 @@ BEGIN INC(x, c.x); INC(y, c.y);
   T.CharFill(x, y, c.w, c.h, ' ', 0, 2);
   i := 0; WHILE c.caption[i] # 0X DO INC(i) END;
   IF i > c.w THEN i := c.w END;
-  T.PutString(x + (c.w - i) DIV 2, y + c.h DIV 2,
-    c.caption, 0, 2, x + c.w - 1);
+  IF c.default THEN fg := 11 ELSE fg := 0 END;
+  PutMarkedString(x + (c.w - i) DIV 2, y + c.h DIV 2,
+    c.caption, fg, 14, 2, x + c.w - 1);
   IF c.status # selected THEN
     T.PutChar(x + c.w, y, 0DCX, 0, bg);
     T.CharFill(x + c.w, y + 1, 1, c.h - 1, 0DBX, 0, bg);
@@ -1461,13 +1490,15 @@ VAR i, j: INTEGER; e: Edit;
 BEGIN e := c(Edit); INC(x, e.x); INC(y, e.y);
   T.PutChar(x, y, ' ', 0, 1);
   i := 0; j := x + 1;
-  WHILE (e.caption[i] # 0X) & (i < e.w) DO
+  WHILE (e.caption[i] # 0X) & (i < e.w - 1) DO
     T.PutChar(j, y, e.caption[i], 15, 1); INC(i); INC(j)
   END;
-  WHILE i < e.w DO
+  WHILE i < e.w - 1 DO
     T.PutChar(j, y, ' ', 15, 1); INC(i); INC(j)
   END;
-  IF c.app.cur = c THEN T.GoToXY(x + e.pos + 1, y) END
+
+  i := e.pos + 1; IF i >= e.w THEN i := e.w - 1 END;
+  IF c.app.cur = c THEN T.GoToXY(x + i, y) END
 END EditDraw;
 
 PROCEDURE EditMouseDown*(c: Control; x, y, edit: INTEGER);
@@ -1512,6 +1543,124 @@ BEGIN InitControlMethod(m);
   m.keyDown := EditKeyDown;
   m.textInput := EditTextInput
 END InitEditMethod;
+
+(* ColumnSelection *)
+
+PROCEDURE InitColumnSelection*(c: ColumnSelection);
+BEGIN InitControl(c); c.cols := 2; c.items := StrList.New();
+  c.w := 30; c.h := 6; c.caption[0] := 0X; c.cur := 0;
+  c.do := columnSelectionMethod
+END InitColumnSelection;
+
+PROCEDURE NewColumnSelection*(): ColumnSelection;
+VAR c: ColumnSelection;
+BEGIN NEW(c); InitColumnSelection(c); RETURN c
+END NewColumnSelection;
+
+(* ColumnSelection Method *)
+
+PROCEDURE ColumnSelectionDraw*(c: Control; x, y: INTEGER);
+VAR i, x2, y2, colw, fg, bg: INTEGER;
+  C: ColumnSelection;
+  s: ARRAY 256 OF CHAR;
+BEGIN C := c(ColumnSelection); INC(x, C.x); INC(y, C.y);
+  bg := 3; x2 := x + 1; y2 := y;
+  colw := (C.w - C.cols + 1) DIV C.cols;
+  T.CharFill(x, y, C.w, C.h - 1, ' ', 0, bg);
+
+  (* Scroll bars *)
+  T.CharFill(x + 1, y + C.h - 1, C.w - 1, 1, 0B1X, bg, 1);
+  T.PutChar(x, y + C.h - 1, 11X, bg, 1);
+  T.PutChar(x + C.w - 1, y + C.h - 1, 10X, bg, 1);
+  T.PutChar(x + 1, y + C.h - 1, 0FEX, bg, 1);
+
+  (* Column separators *)
+  i := x + colw;
+  WHILE i < x + C.w - 2 DO
+    T.CharFill(i, y, 1, C.h - 1, 0B3X, 1, bg); INC(i, colw + 1)
+  END;
+
+  StrList.First(C.items, s);
+  i := 0;
+  WHILE ~C.items.eol DO fg := 0; bg := 3;
+    IF i = C.cur THEN
+      IF C.status = selected THEN fg := 15; bg := 2;
+        T.CharFill(x2 - 1, y2, colw, 1, ' ', fg, bg)
+      ELSE fg := 14
+      END
+    END;
+    T.PutString(x2, y2, s, fg, bg, x2 + colw - 1);
+    IF y2 < y + C.h - 2 THEN INC(y2) ELSE y2 := y; INC(x2, colw + 1) END;
+    StrList.Next(C.items, s); INC(i)
+  END
+END ColumnSelectionDraw;
+
+PROCEDURE ColumnSelectionGetFocus*(c: Control);
+BEGIN ControlGetFocus(c); G.StartTextInput
+END ColumnSelectionGetFocus;
+
+PROCEDURE ColumnSelectionUpdateCur*(C: ColumnSelection; x, y: INTEGER);
+VAR oldCur, col, colw, count: INTEGER;
+BEGIN
+  IF (x < 0) OR (x >= C.w) THEN
+    (*!TODO scroll*)
+    (*IF ... THEN NeedRedraw(C.app) END*)
+  ELSIF y # C.h - 1 THEN oldCur := C.cur;
+    IF y < 0 THEN (* Scroll to top within column *)
+      C.cur := C.cur DIV (C.h - 1) * (C.h - 1)
+    ELSIF y >= C.h THEN (* Scroll to bottom within column *)
+      C.cur := C.cur DIV (C.h - 1) * (C.h - 1) + C.h - 2
+    ELSE
+      colw := (C.w - C.cols + 1) DIV C.cols;
+      col := x DIV (colw + 1);
+      C.cur := col * (C.h - 1) + y
+    END;
+    count := StrList.Count(C.items);
+    IF C.cur >= count THEN C.cur := count - 1 END;
+    IF C.cur # oldCur THEN NeedRedraw(C.app) END
+  END
+END ColumnSelectionUpdateCur;
+
+PROCEDURE ColumnSelectionMouseDown*(c: Control; x, y, button: INTEGER);
+VAR C: ColumnSelection;
+  col, colw: INTEGER;
+BEGIN C := c(ColumnSelection);
+  IF (c.parent # NIL) & (c.parent IS Window) THEN
+    c.status := selected;
+    c.app.dragged := c;
+    c.app.dragX := c.x + c.parent.x;
+    c.app.dragY := c.y + c.parent.y;
+    ColumnSelectionUpdateCur(C, x, y);
+    NeedRedraw(c.app)
+  END
+END ColumnSelectionMouseDown;
+
+PROCEDURE ColumnSelectionMouseUp*(c: Control; x, y, button: INTEGER);
+BEGIN
+  IF (c.status = selected) & (c.do.click # NIL) THEN c.do.click(c) END
+END ColumnSelectionMouseUp;
+
+PROCEDURE ColumnSelectionMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
+VAR C: ColumnSelection;
+  oldCur, col, colw: INTEGER;
+BEGIN C := c(ColumnSelection);
+  IF buttons = {G.btnLeft} THEN ColumnSelectionUpdateCur(C, x, y) END
+END ColumnSelectionMouseMove;
+
+PROCEDURE ColumnSelectionClick*(c: Control);
+BEGIN
+  IF c.onClick # NIL THEN c.onClick(c) END
+END ColumnSelectionClick;
+
+PROCEDURE InitColumnSelectionMethod*(m: ControlMethod);
+BEGIN InitControlMethod(m);
+  m.draw := ColumnSelectionDraw;
+  m.getFocus := ColumnSelectionGetFocus;
+  m.mouseDown := ColumnSelectionMouseDown;
+  m.mouseUp := ColumnSelectionMouseUp;
+  m.mouseMove := ColumnSelectionMouseMove;
+  m.click := ColumnSelectionClick
+END InitColumnSelectionMethod;
 
 (* Standard Click Handlers *)
 
@@ -1607,7 +1756,7 @@ BEGIN
 END HasModalWindow;
 
 PROCEDURE CenterWindow*(c: Window);
-BEGIN c.x := (T.charsX - c.w) DIV 2; c.y := (T.charsY - c.h) DIV 2 - 1;
+BEGIN c.x := (T.charsX - c.w) DIV 2; c.y := (T.charsY - c.h - 1) DIV 2;
   IF c.x < 0 THEN c.x := 0 END;
   IF c.y < 1 THEN c.y := 1 END
 END CenterWindow;
@@ -1993,6 +2142,7 @@ BEGIN
   NEW(buttonMethod); InitButtonMethod(buttonMethod);
   NEW(winBtnMethod); InitWinBtnMethod(winBtnMethod);
   NEW(editMethod); InitEditMethod(editMethod);
+  NEW(columnSelectionMethod); InitColumnSelectionMethod(columnSelectionMethod);
   NEW(windowMethod); InitWindowMethod(windowMethod);
   NEW(menuMethod); InitMenuMethod(menuMethod);
   NEW(quickBtnMethod); InitQuickBtnMethod(quickBtnMethod)

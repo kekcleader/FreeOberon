@@ -8,8 +8,8 @@ cd bin
 
 OFRDIR="../data/bin/OfrontPlus/Target/Linux_amd64"
 PATH="$OFRDIR:$PATH"
-export OBERON=".:$OFRDIR/Lib/Sym"
-OFR="ofront+ -88 -C -s"
+export OBERON=".:../src:$OFRDIR/Lib/Sym"
+OFR="ofront+ -88 -7 -s"
 
 
 $OFR $2 ../Programs/$1

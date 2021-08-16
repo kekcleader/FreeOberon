@@ -229,10 +229,9 @@ END PutChar;
 PROCEDURE PutString*(x, y: INTEGER; s: ARRAY OF CHAR; fg, bg, limit: INTEGER);
 VAR i: INTEGER;
 BEGIN
-  needRedraw := TRUE;
   IF limit = 0 THEN limit := charsX END; 
   i := 0;
-  WHILE (i < SHORT(LEN(s))) & (s[i] # 0X) & (x <= limit) DO
+  WHILE (i < LEN(s)) & (s[i] # 0X) & (x <= limit) DO
     PutChar(x, y, s[i], fg, bg);
     INC(i); INC(x)
   END
@@ -241,7 +240,6 @@ END PutString;
 PROCEDURE CharFill*(x, y, w, h: INTEGER; ch: CHAR; fg, bg: INTEGER);
 VAR X, Y: INTEGER;
 BEGIN
-  needRedraw := TRUE;
   FOR Y := y TO y + h - 1 DO
     FOR X := x TO x + w - 1 DO
       PutChar(X, Y, ch, fg, bg)

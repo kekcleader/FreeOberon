@@ -16,7 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT OV, T := Terminal, G := Graph, Text := EditorText, Strings, Out;
+IMPORT OV, T := Terminal, G := Graph, Text := EditorText,
+  Strings, StrList, Out;
 CONST
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -51,6 +52,7 @@ TYPE
     type*: INTEGER; (* open or save *)
     edtFilename*: OV.Edit;
     btnOk*, btnCancel*: OV.Button;
+    cslFiles*: OV.ColumnSelection;
     onFileOk*: PROCEDURE (c: OV.Control; filename: ARRAY OF CHAR)
   END;
 
@@ -81,23 +83,49 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   IF type = open THEN c.caption := 'Open a File'
   ELSE c.caption := 'Save File As'
   END;
-  c.modal := TRUE; c.w := 49; c.h := 19; OV.CenterWindow(c);
+  c.modal := TRUE; c.w := 70; c.h := 20; OV.CenterWindow(c);
+
   (* File Name Edit *)
   c.edtFilename := OV.NewEdit();
-  c.edtFilename.do.resize(c.edtFilename, 3, 3, 28, 1);
+  c.edtFilename.do.resize(c.edtFilename, 3, 3, c.w - 18, 1);
   OV.Add(c, c.edtFilename);
+
   (* Open/Save (Ok) button *)
-  IF type = open THEN c.btnOk := OV.NewButton('Open')
-  ELSE c.btnOk := OV.NewButton('Save')
+  IF type = open THEN c.btnOk := OV.NewButton('&Open')
+  ELSE c.btnOk := OV.NewButton('O&K')
   END;
-  c.btnOk.do.resize(c.btnOk, 35, 3, 10, 1);
+  c.btnOk.default := TRUE;
+  c.btnOk.do.resize(c.btnOk, c.w - 13, 3, 9, 1);
   c.btnOk.onClick := FileDialogOkClick;
   OV.Add(c, c.btnOk);
+
   (* Cancel button *)
   c.btnCancel := OV.NewButton('Cancel');
   c.btnCancel.onClick := OV.CloseCurWindow;
-  c.btnCancel.do.resize(c.btnCancel, 35, 6, 10, 1);
-  OV.Add(c, c.btnCancel)
+  c.btnCancel.do.resize(c.btnCancel, c.w - 13, 11, 9, 1);
+  OV.Add(c, c.btnCancel);
+
+  (* ColumnSelection *)
+  c.cslFiles := OV.NewColumnSelection();
+  (*c.cslFiles.onClick := FileDialogOkClick;*)
+  c.cslFiles.do.resize(c.cslFiles, 3, 6, c.w - 18, c.h - 8);
+  StrList.Append(c.cslFiles.items, '[..]');
+  StrList.Append(c.cslFiles.items, '[EGABGI]');
+  StrList.Append(c.cslFiles.items, '[Program Files]');
+  StrList.Append(c.cslFiles.items, 'GRAPH3.TPU');
+  StrList.Append(c.cslFiles.items, 'MEMORY.TPU');
+  StrList.Append(c.cslFiles.items, 'MENUS.TPU');
+  StrList.Append(c.cslFiles.items, 'CRT.PAS');
+  StrList.Append(c.cslFiles.items, 'TURBO3.TPU');
+  StrList.Append(c.cslFiles.items, 'COMPUTER.TPU');
+  StrList.Append(c.cslFiles.items, 'TEXTVIEW.TPU');
+  StrList.Append(c.cslFiles.items, 'HISTLIST.TPU');
+  StrList.Append(c.cslFiles.items, 'VALIDATE.TPU');
+  StrList.Append(c.cslFiles.items, 'STRINGS.TPU');
+  StrList.Append(c.cslFiles.items, 'MSGBOX.TPU');
+  StrList.Append(c.cslFiles.items, 'OPENGL.TPU');
+  StrList.Append(c.cslFiles.items, 'SDL2.TPU');
+  OV.Add(c, c.cslFiles)
 END InitFileDialog;
 
 PROCEDURE NewFileDialog*(type: INTEGER): FileDialog;
@@ -108,8 +136,13 @@ END NewFileDialog;
 (* FileDialog Method *)
 
 PROCEDURE FileDialogDraw*(c: OV.Control; x, y: INTEGER);
-BEGIN OV.WindowDraw(c, x, y); INC(x, c.x); INC(y, c.y);
-  T.PutString(x + 3, y + 2, 'Name', 14, 7, 0)
+VAR f: FileDialog;
+BEGIN f := c(FileDialog);
+  OV.WindowDraw(c, x, y); INC(x, c.x); INC(y, c.y);
+  IF f.type = open THEN OV.PutMarkedString(x + 3, y + 2, '&Name', 15, 14, 7, 0)
+  ELSE OV.PutMarkedString(x + 3, y + 2, '&Save file as', 15, 14, 7, 0)
+  END;
+  OV.PutMarkedString(x + 3, y + 5, '&Files', 0, 14, 7, 0)
 END FileDialogDraw;
 
 PROCEDURE FileDialogGetFocus(c: OV.Control);
