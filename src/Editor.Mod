@@ -52,7 +52,7 @@ TYPE
     type*: INTEGER; (* open or save *)
     edtFilename*: OV.Edit;
     btnOk*, btnCancel*: OV.Button;
-    cslFiles*: OV.ColumnSelection;
+    colFiles*: OV.ColumnList;
     onFileOk*: PROCEDURE (c: OV.Control; filename: ARRAY OF CHAR)
   END;
 
@@ -105,27 +105,27 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.btnCancel.do.resize(c.btnCancel, c.w - 13, 11, 9, 1);
   OV.Add(c, c.btnCancel);
 
-  (* ColumnSelection *)
-  c.cslFiles := OV.NewColumnSelection();
-  (*c.cslFiles.onClick := FileDialogOkClick;*)
-  c.cslFiles.do.resize(c.cslFiles, 3, 6, c.w - 18, c.h - 8);
-  StrList.Append(c.cslFiles.items, '[..]');
-  StrList.Append(c.cslFiles.items, '[EGABGI]');
-  StrList.Append(c.cslFiles.items, '[Program Files]');
-  StrList.Append(c.cslFiles.items, 'GRAPH3.TPU');
-  StrList.Append(c.cslFiles.items, 'MEMORY.TPU');
-  StrList.Append(c.cslFiles.items, 'MENUS.TPU');
-  StrList.Append(c.cslFiles.items, 'CRT.PAS');
-  StrList.Append(c.cslFiles.items, 'TURBO3.TPU');
-  StrList.Append(c.cslFiles.items, 'COMPUTER.TPU');
-  StrList.Append(c.cslFiles.items, 'TEXTVIEW.TPU');
-  StrList.Append(c.cslFiles.items, 'HISTLIST.TPU');
-  StrList.Append(c.cslFiles.items, 'VALIDATE.TPU');
-  StrList.Append(c.cslFiles.items, 'STRINGS.TPU');
-  StrList.Append(c.cslFiles.items, 'MSGBOX.TPU');
-  StrList.Append(c.cslFiles.items, 'OPENGL.TPU');
-  StrList.Append(c.cslFiles.items, 'SDL2.TPU');
-  OV.Add(c, c.cslFiles)
+  (* ColumnList *)
+  c.colFiles := OV.NewColumnList();
+  (*c.colFiles.onClick := FileDialogOkClick;*)
+  c.colFiles.do.resize(c.colFiles, 3, 6, c.w - 18, c.h - 8);
+  StrList.Append(c.colFiles.items, '[..]');
+  StrList.Append(c.colFiles.items, '[EGABGI]');
+  StrList.Append(c.colFiles.items, '[Program Files]');
+  StrList.Append(c.colFiles.items, 'GRAPH3.TPU');
+  StrList.Append(c.colFiles.items, 'MEMORY.TPU');
+  StrList.Append(c.colFiles.items, 'MENUS.TPU');
+  StrList.Append(c.colFiles.items, 'CRT.PAS');
+  StrList.Append(c.colFiles.items, 'TURBO3.TPU');
+  StrList.Append(c.colFiles.items, 'COMPUTER.TPU');
+  StrList.Append(c.colFiles.items, 'TEXTVIEW.TPU');
+  StrList.Append(c.colFiles.items, 'HISTLIST.TPU');
+  StrList.Append(c.colFiles.items, 'VALIDATE.TPU');
+  StrList.Append(c.colFiles.items, 'STRINGS.TPU');
+  StrList.Append(c.colFiles.items, 'MSGBOX.TPU');
+  StrList.Append(c.colFiles.items, 'OPENGL.TPU');
+  StrList.Append(c.colFiles.items, 'SDL2.TPU');
+  OV.Add(c, c.colFiles)
 END InitFileDialog;
 
 PROCEDURE NewFileDialog*(type: INTEGER): FileDialog;

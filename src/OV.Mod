@@ -575,6 +575,7 @@ TYPE
     x*, y*, w*, h*: INTEGER;
     default*: BOOLEAN;
     focused*: BOOLEAN;
+    mouseActive*: BOOLEAN; (* FALSE if control does not capture mouse events *)
     status*: INTEGER;
     caption*: ARRAY 256 OF CHAR;
     onClick*: ClickHandler;
@@ -614,18 +615,27 @@ TYPE
   WinBtn* = POINTER TO WinBtnDesc;
   WinBtnDesc* = EXTENSIBLE RECORD(ButtonDesc) END;
 
+  Scrollbar* = POINTER TO ScrollbarDesc;
+  ScrollbarDesc* = EXTENSIBLE RECORD(ControlDesc)
+    max*, cur*, step*: INTEGER; (* cur is runner position in range 0..max *)
+    runnerOffset*: INTEGER; (* Current visual position of runner *)
+    runnerW*: INTEGER; (* Visual width of runner *)
+    onScrollbar*: PROCEDURE (c: Control)
+  END;
+
   Edit* = POINTER TO EditDesc;
   EditDesc* = EXTENSIBLE RECORD(ControlDesc)
     len*: INTEGER; (* Actual amount of characters before 0X *)
     pos*: INTEGER
   END;
 
-  ColumnSelection* = POINTER TO ColumnSelectionDesc;
-  ColumnSelectionDesc* = EXTENSIBLE RECORD(ControlDesc)
+  ColumnList* = POINTER TO ColumnListDesc;
+  ColumnListDesc* = EXTENSIBLE RECORD(ControlDesc)
     cols*: INTEGER; (* Column count *)
     items*: StrList.List;
     begin*: INTEGER; (* What index list begins with visually *)
-    cur*: INTEGER
+    cur*: INTEGER;
+    scrollbar: Scrollbar;
   END;
 
   Window* = POINTER TO WindowDesc;
@@ -656,8 +666,9 @@ VAR
   controlMethod-: ControlMethod;
   buttonMethod-: ControlMethod;
   winBtnMethod-: ControlMethod;
+  scrollbarMethod-: ControlMethod;
   editMethod-: ControlMethod;
-  columnSelectionMethod-: ControlMethod;
+  columnListMethod-: ControlMethod;
   windowMethod-: ControlMethod;
   menuMethod-: ControlMethod;
   quickBtnMethod-: ControlMethod;
@@ -785,7 +796,7 @@ BEGIN single := moving OR inactive;
   END;
   IF single THEN ch := 0B3X(*|*) ELSE ch := 0BAX(*||*) END;
   FOR i := y + 1 TO y2 - 1 DO T.PutChar(x, i, ch, fg, bg) END;
-  IF resizable & ~inactive THEN (* Vertical Scrollbar: *)
+  IF resizable & ~inactive THEN (* Vertical Scrollbarbar: *)
     FOR i := y + 2 TO y2 - 2 DO T.PutChar(x2, i, 0B1X, bg, 3) END;
     T.PutChar(x2, y + 1, 01EX, bg, 3);
     T.PutChar(x2, y2 - 1, 01FX, bg, 3)
@@ -833,13 +844,41 @@ BEGIN single := moving OR inactive;
   END
 END DrawWindowBorder;
 
+PROCEDURE FindChildAt*(c: Control; x, y: INTEGER): Control;
+VAR p, br: Control;
+BEGIN
+  p := c.children; br := p;
+  WHILE (p # NIL) &
+    ~(p.mouseActive &
+      (p.x <= x) & (x < p.x + p.w) &
+      (p.y <= y) & (y < p.y + p.h)) DO
+    IF p.next = br THEN p := NIL ELSE p := p.next END
+  END ;
+RETURN p END FindChildAt;
+
+PROCEDURE PassMouseDown*(c: Control; x, y, button: INTEGER): BOOLEAN;
+VAR p: Control;
+BEGIN p := FindChildAt(c, x, y);
+  IF (p # NIL) & (p.do.mouseDown # NIL) THEN
+    p.do.mouseDown(p, x - p.x, y - p.y, button)
+  END ;
+RETURN p # NIL END PassMouseDown;
+
+PROCEDURE PassMouseMove*(c: Control; x, y: INTEGER; buttons: SET): BOOLEAN;
+VAR p: Control;
+BEGIN p := FindChildAt(c, x, y);
+  IF (p # NIL) & (p.do.mouseMove # NIL) THEN
+    p.do.mouseMove(p, x - p.x, y - p.y, buttons)
+  END ;
+RETURN p # NIL END PassMouseMove;
+
 (* Control *)
 
 PROCEDURE InitControl*(c: Control);
 BEGIN
   c.x := 0; c.y := 0; c.w := 0; c.h := 0;
-  c.parent := NIL; c.children := NIL;
-  c.prev := NIL; c.next := NIL; c.default := FALSE; c.focused := FALSE;
+  c.parent := NIL; c.children := NIL; c.prev := NIL; c.next := NIL;
+  c.default := FALSE; c.focused := FALSE; c.mouseActive := TRUE;
   c.status := 0; c.caption[0] := 0X;
   c.do := controlMethod
 END InitControl;
@@ -880,10 +919,20 @@ BEGIN
   IF c.children # NIL THEN
     INC(x, c.x); INC(y, c.y);
     p := c.children.prev; br := p;
-    REPEAT p.do.draw(p, x, y); p := p.prev
-    UNTIL p = br
+    REPEAT p.do.draw(p, x, y); p := p.prev UNTIL p = br
   END
 END DrawChildren;
+
+PROCEDURE SetDragged*(app: App; c: Control);
+VAR x, y: INTEGER;
+BEGIN
+  app.dragged := c; x := 0; y := 0;
+  WHILE c # NIL DO
+    INC(x, c.x); INC(y, c.y);
+    c := c.parent
+  END;
+  app.dragX := x; app.dragY := y
+END SetDragged;
 
 (* ControlMethod *)
 
@@ -1130,7 +1179,7 @@ BEGIN
   NeedRedraw(c.app)
 END MenuClick;
 
-PROCEDURE GetMenuUnderMouse(app: App; x, y: INTEGER): Control;
+PROCEDURE GetMenuAt(app: App; x, y: INTEGER): Control;
 VAR menu, p, br: Control;
   count: INTEGER;
 BEGIN p := NIL;
@@ -1172,9 +1221,9 @@ BEGIN p := NIL;
     END
   END;
   RETURN p
-END GetMenuUnderMouse;
+END GetMenuAt;
 
-PROCEDURE GetStatusbarUnderMouse(app: App; x, y: INTEGER): Control;
+PROCEDURE GetStatusbarAt(app: App; x, y: INTEGER): Control;
 VAR p, br: Control;
 BEGIN
   IF y = T.charsY - 1 THEN
@@ -1185,13 +1234,13 @@ BEGIN
   ELSE p := NIL
   END;
   RETURN p
-END GetStatusbarUnderMouse;
+END GetStatusbarAt;
 
 PROCEDURE MenuMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
 VAR p: Control;
 BEGIN p := c;
-  IF c = c.app.menu THEN c := GetMenuUnderMouse(c.app, x, y)
-  ELSIF c = c.app.statusbar THEN c := GetStatusbarUnderMouse(c.app, x, y)
+  IF c = c.app.menu THEN c := GetMenuAt(c.app, x, y)
+  ELSIF c = c.app.statusbar THEN c := GetStatusbarAt(c.app, x, y)
   END;
   IF (c = NIL) & (p = p.app.statusbar) THEN SetFocus(p.app, NIL);
   ELSIF (c # NIL) & (buttons = {G.btnLeft}) & (c.status = normal) THEN
@@ -1231,8 +1280,8 @@ PROCEDURE MenuMouseUp*(c: Control; x, y, button: INTEGER);
 VAR p: Control;
 BEGIN
   IF button = G.btnLeft THEN
-    IF c = c.app.menu THEN p := GetMenuUnderMouse(c.app, x, y)
-    ELSIF c = c.app.statusbar THEN p := GetStatusbarUnderMouse(c.app, x, y)
+    IF c = c.app.menu THEN p := GetMenuAt(c.app, x, y)
+    ELSIF c = c.app.statusbar THEN p := GetStatusbarAt(c.app, x, y)
     ELSE p := c
     END;
     IF p = NIL THEN SetFocus(c.app, NIL) ELSE p.do.click(p) END
@@ -1364,9 +1413,7 @@ PROCEDURE ButtonMouseDown*(c: Control; x, y, button: INTEGER);
 BEGIN
   IF (c.parent # NIL) & (c.parent IS Window) THEN
     c.status := selected;
-    c.app.dragged := c;
-    c.app.dragX := c.x + c.parent.x;
-    c.app.dragY := c.y + c.parent.y;
+    SetDragged(c.app, c);
     NeedRedraw(c.app)
   END
 END ButtonMouseDown;
@@ -1442,12 +1489,79 @@ BEGIN InitButtonMethod(m);
   m.mouseMove := WinBtnMouseMove
 END InitWinBtnMethod;
 
+(* Scrollbar *)
+
+PROCEDURE InitScrollbar*(c: Scrollbar);
+BEGIN InitControl(c); c.max := 100; c.runnerOffset := 1; c.runnerW := 5;
+  c.step := 1; c.w := 30; c.h := 1; c.cur := 0; c.onScrollbar := NIL;
+  c.do := scrollbarMethod
+END InitScrollbar;
+
+PROCEDURE NewScrollbar*(): Scrollbar;
+VAR c: Scrollbar;
+BEGIN NEW(c); InitScrollbar(c); RETURN c
+END NewScrollbar;
+
+(* Scrollbar Method *)
+
+PROCEDURE ScrollbarDraw*(c: Control; x, y: INTEGER);
+VAR S: Scrollbar;
+  w, fg, bg: INTEGER;
+BEGIN S := c(Scrollbar); INC(x, S.x); INC(y, S.y); fg := 3; bg := 1;
+  T.CharFill(x + 1, y, S.w - 1, 1, 0B0X, fg, bg);
+  T.PutChar(x, y, 11X, fg, bg);
+  T.PutChar(x + S.w - 1, y, 10X, fg, bg);
+  T.CharFill(x + S.runnerOffset, y, S.runnerW, 1, 0B1X, fg, bg)
+END ScrollbarDraw;
+
+PROCEDURE ScrollbarUpdateCur*(c: Control; x, y: INTEGER);
+VAR S: Scrollbar; w, oldCur: INTEGER;
+BEGIN S := c(Scrollbar); oldCur := S.cur; w := S.w - S.runnerW - 2;
+  (* Horizontal scrollbar *)
+  DEC(x, S.runnerW DIV 2 + 1);
+  IF x < 0 THEN x := 0 ELSIF x > w THEN x := w END;
+  S.runnerOffset := x + 1; S.cur := (x * S.max + w DIV 2) DIV w;
+  IF S.cur # oldCur THEN
+    NeedRedraw(S.app);
+    IF S.onScrollbar # NIL THEN S.onScrollbar(S) END
+  END
+END ScrollbarUpdateCur;
+
+PROCEDURE ScrollbarMouseDown*(c: Control; x, y, button: INTEGER);
+VAR S: Scrollbar;
+  col, colw: INTEGER;
+BEGIN S := c(Scrollbar);
+  IF button = G.btnLeft THEN
+    SetDragged(S.app, S);
+    ScrollbarUpdateCur(S, x, y)
+  END
+END ScrollbarMouseDown;
+
+PROCEDURE ScrollbarMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
+VAR S: Scrollbar;
+  oldCur, col, colw: INTEGER;
+BEGIN S := c(Scrollbar);
+  IF buttons = {G.btnLeft} THEN ScrollbarUpdateCur(S, x, y) END
+END ScrollbarMouseMove;
+
+PROCEDURE ScrollbarClick*(c: Control);
+BEGIN
+  IF c.onClick # NIL THEN c.onClick(c) END
+END ScrollbarClick;
+
+PROCEDURE InitScrollbarMethod*(m: ControlMethod);
+BEGIN InitControlMethod(m);
+  m.draw := ScrollbarDraw;
+  m.mouseDown := ScrollbarMouseDown;
+  m.mouseMove := ScrollbarMouseMove;
+  m.click := ScrollbarClick
+END InitScrollbarMethod;
+
 (* Edit *)
 
 PROCEDURE InitEdit*(c: Edit);
 BEGIN InitControl(c);
-  c.w := 10; c.h := 1;
-  c.caption[0] := 0X; c.len := 0; c.pos := 0;
+  c.w := 10; c.h := 1; c.len := 0; c.pos := 0;
   c.do := editMethod
 END InitEdit;
 
@@ -1544,35 +1658,32 @@ BEGIN InitControlMethod(m);
   m.textInput := EditTextInput
 END InitEditMethod;
 
-(* ColumnSelection *)
+(* ColumnList *)
 
-PROCEDURE InitColumnSelection*(c: ColumnSelection);
+PROCEDURE InitColumnList*(c: ColumnList);
 BEGIN InitControl(c); c.cols := 2; c.items := StrList.New();
-  c.w := 30; c.h := 6; c.caption[0] := 0X; c.cur := 0;
-  c.do := columnSelectionMethod
-END InitColumnSelection;
+  c.w := 30; c.h := 6; c.cur := 0;
+  c.scrollbar := NewScrollbar();
+  Add(c, c.scrollbar);
+  c.do.resize(c, 0, c.h - 1, c.w, 1);
+  c.do := columnListMethod
+END InitColumnList;
 
-PROCEDURE NewColumnSelection*(): ColumnSelection;
-VAR c: ColumnSelection;
-BEGIN NEW(c); InitColumnSelection(c); RETURN c
-END NewColumnSelection;
+PROCEDURE NewColumnList*(): ColumnList;
+VAR c: ColumnList;
+BEGIN NEW(c); InitColumnList(c); RETURN c
+END NewColumnList;
 
-(* ColumnSelection Method *)
+(* ColumnList Method *)
 
-PROCEDURE ColumnSelectionDraw*(c: Control; x, y: INTEGER);
+PROCEDURE ColumnListDraw*(c: Control; x, y: INTEGER);
 VAR i, x2, y2, colw, fg, bg: INTEGER;
-  C: ColumnSelection;
+  C: ColumnList;
   s: ARRAY 256 OF CHAR;
-BEGIN C := c(ColumnSelection); INC(x, C.x); INC(y, C.y);
+BEGIN C := c(ColumnList); INC(x, C.x); INC(y, C.y);
   bg := 3; x2 := x + 1; y2 := y;
   colw := (C.w - C.cols + 1) DIV C.cols;
   T.CharFill(x, y, C.w, C.h - 1, ' ', 0, bg);
-
-  (* Scroll bars *)
-  T.CharFill(x + 1, y + C.h - 1, C.w - 1, 1, 0B1X, bg, 1);
-  T.PutChar(x, y + C.h - 1, 11X, bg, 1);
-  T.PutChar(x + C.w - 1, y + C.h - 1, 10X, bg, 1);
-  T.PutChar(x + 1, y + C.h - 1, 0FEX, bg, 1);
 
   (* Column separators *)
   i := x + colw;
@@ -1592,23 +1703,25 @@ BEGIN C := c(ColumnSelection); INC(x, C.x); INC(y, C.y);
     T.PutString(x2, y2, s, fg, bg, x2 + colw - 1);
     IF y2 < y + C.h - 2 THEN INC(y2) ELSE y2 := y; INC(x2, colw + 1) END;
     StrList.Next(C.items, s); INC(i)
-  END
-END ColumnSelectionDraw;
+  END;
 
-PROCEDURE ColumnSelectionGetFocus*(c: Control);
+  DrawChildren(c, x - C.x, y - C.y)
+END ColumnListDraw;
+
+PROCEDURE ColumnListGetFocus*(c: Control);
 BEGIN ControlGetFocus(c); G.StartTextInput
-END ColumnSelectionGetFocus;
+END ColumnListGetFocus;
 
-PROCEDURE ColumnSelectionUpdateCur*(C: ColumnSelection; x, y: INTEGER);
+PROCEDURE ColumnListUpdateCur*(C: ColumnList; x, y: INTEGER);
 VAR oldCur, col, colw, count: INTEGER;
 BEGIN
   IF (x < 0) OR (x >= C.w) THEN
-    (*!TODO scroll*)
+    (*!TODO scrollbar*)
     (*IF ... THEN NeedRedraw(C.app) END*)
   ELSIF y # C.h - 1 THEN oldCur := C.cur;
-    IF y < 0 THEN (* Scroll to top within column *)
+    IF y < 0 THEN (* Scrollbar to top within column *)
       C.cur := C.cur DIV (C.h - 1) * (C.h - 1)
-    ELSIF y >= C.h THEN (* Scroll to bottom within column *)
+    ELSIF y >= C.h THEN (* Scrollbar to bottom within column *)
       C.cur := C.cur DIV (C.h - 1) * (C.h - 1) + C.h - 2
     ELSE
       colw := (C.w - C.cols + 1) DIV C.cols;
@@ -1619,48 +1732,55 @@ BEGIN
     IF C.cur >= count THEN C.cur := count - 1 END;
     IF C.cur # oldCur THEN NeedRedraw(C.app) END
   END
-END ColumnSelectionUpdateCur;
+END ColumnListUpdateCur;
 
-PROCEDURE ColumnSelectionMouseDown*(c: Control; x, y, button: INTEGER);
-VAR C: ColumnSelection;
+PROCEDURE ColumnListMouseDown*(c: Control; x, y, button: INTEGER);
+VAR C: ColumnList;
   col, colw: INTEGER;
-BEGIN C := c(ColumnSelection);
-  IF (c.parent # NIL) & (c.parent IS Window) THEN
-    c.status := selected;
-    c.app.dragged := c;
-    c.app.dragX := c.x + c.parent.x;
-    c.app.dragY := c.y + c.parent.y;
-    ColumnSelectionUpdateCur(C, x, y);
-    NeedRedraw(c.app)
+BEGIN C := c(ColumnList);
+  IF ~PassMouseDown(C, x, y, button) &
+      (C.parent # NIL) & (C.parent IS Window) THEN
+    C.status := selected;
+    SetDragged(C.app, C);
+    ColumnListUpdateCur(C, x, y);
+    NeedRedraw(C.app)
   END
-END ColumnSelectionMouseDown;
+END ColumnListMouseDown;
 
-PROCEDURE ColumnSelectionMouseUp*(c: Control; x, y, button: INTEGER);
+PROCEDURE ColumnListMouseUp*(c: Control; x, y, button: INTEGER);
 BEGIN
   IF (c.status = selected) & (c.do.click # NIL) THEN c.do.click(c) END
-END ColumnSelectionMouseUp;
+END ColumnListMouseUp;
 
-PROCEDURE ColumnSelectionMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
-VAR C: ColumnSelection;
+PROCEDURE ColumnListMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
+VAR C: ColumnList;
   oldCur, col, colw: INTEGER;
-BEGIN C := c(ColumnSelection);
-  IF buttons = {G.btnLeft} THEN ColumnSelectionUpdateCur(C, x, y) END
-END ColumnSelectionMouseMove;
+BEGIN C := c(ColumnList);
+  IF buttons = {G.btnLeft} THEN ColumnListUpdateCur(C, x, y) END
+END ColumnListMouseMove;
 
-PROCEDURE ColumnSelectionClick*(c: Control);
+PROCEDURE ColumnListClick*(c: Control);
 BEGIN
   IF c.onClick # NIL THEN c.onClick(c) END
-END ColumnSelectionClick;
+END ColumnListClick;
 
-PROCEDURE InitColumnSelectionMethod*(m: ControlMethod);
+PROCEDURE ColumnListResize*(c: Control; x, y, w, h: INTEGER);
+VAR C: ColumnList;
+BEGIN C := c(ColumnList);
+  ControlResize(c, x, y, w, h);
+  C.scrollbar.do.resize(C.scrollbar, 0, C.h - 1, w, 1)
+END ColumnListResize;
+
+PROCEDURE InitColumnListMethod*(m: ControlMethod);
 BEGIN InitControlMethod(m);
-  m.draw := ColumnSelectionDraw;
-  m.getFocus := ColumnSelectionGetFocus;
-  m.mouseDown := ColumnSelectionMouseDown;
-  m.mouseUp := ColumnSelectionMouseUp;
-  m.mouseMove := ColumnSelectionMouseMove;
-  m.click := ColumnSelectionClick
-END InitColumnSelectionMethod;
+  m.draw := ColumnListDraw;
+  m.getFocus := ColumnListGetFocus;
+  m.mouseDown := ColumnListMouseDown;
+  m.mouseUp := ColumnListMouseUp;
+  m.mouseMove := ColumnListMouseMove;
+  m.click := ColumnListClick;
+  m.resize := ColumnListResize
+END InitColumnListMethod;
 
 (* Standard Click Handlers *)
 
@@ -2041,7 +2161,7 @@ BEGIN
   END
 END OnTextInput;
 
-PROCEDURE GetWindowUnderMouse(app: App; x, y: INTEGER): Control;
+PROCEDURE GetWindowAt(app: App; x, y: INTEGER): Control;
 VAR p, br: Control;
 BEGIN
   IF app.windows = NIL THEN p := NIL
@@ -2053,19 +2173,19 @@ BEGIN
     END
   END;
   RETURN p
-END GetWindowUnderMouse;
+END GetWindowAt;
 
-PROCEDURE GetControlUnderMouse*(app: App; x, y: INTEGER): Control;
+PROCEDURE GetControlAt*(app: App; x, y: INTEGER): Control;
 VAR c: Control;
-BEGIN c := GetMenuUnderMouse(app, x, y);
+BEGIN c := GetMenuAt(app, x, y);
   IF c = NIL THEN
-    c := GetStatusbarUnderMouse(app, x, y);
+    c := GetStatusbarAt(app, x, y);
     IF c = NIL THEN
-      c := GetWindowUnderMouse(app, x, y)
+      c := GetWindowAt(app, x, y)
     END
   END;
   RETURN c
-END GetControlUnderMouse;
+END GetControlAt;
 
 PROCEDURE OnMouseMove(app: App; VAR event: G.Event);
 VAR x, y: INTEGER;
@@ -2088,11 +2208,11 @@ VAR x, y: INTEGER;
 BEGIN
   IF app.dragged = NIL THEN
     x := event.x DIV T.charW; y := event.y DIV T.charH;
-    c := GetControlUnderMouse(app, x, y);
+    c := GetControlAt(app, x, y);
     IF c = NIL THEN SetFocus(app, NIL)
     ELSIF (c.do.mouseDown # NIL) &
           (~HasModalWindow(app) OR (c = app.windows)) THEN
-      app.dragged := c; app.dragX := c.x; app.dragY := c.y;
+      SetDragged(app, c);
       c.do.mouseDown(c, x - c.x, y - c.y, event.button)
     END
   END
@@ -2103,7 +2223,7 @@ VAR x, y: INTEGER;
   c: Control;
 BEGIN x := event.x DIV T.charW; y := event.y DIV T.charH;
   IF app.dragged # NIL THEN c := app.dragged
-  ELSE c := GetControlUnderMouse(app, x, y);
+  ELSE c := GetControlAt(app, x, y);
     IF HasModalWindow(app) & (c # app.windows) THEN c := NIL END
   END;
   app.dragged := NIL;
@@ -2141,8 +2261,9 @@ BEGIN
   NEW(controlMethod); InitControlMethod(controlMethod);
   NEW(buttonMethod); InitButtonMethod(buttonMethod);
   NEW(winBtnMethod); InitWinBtnMethod(winBtnMethod);
+  NEW(scrollbarMethod); InitScrollbarMethod(scrollbarMethod);
   NEW(editMethod); InitEditMethod(editMethod);
-  NEW(columnSelectionMethod); InitColumnSelectionMethod(columnSelectionMethod);
+  NEW(columnListMethod); InitColumnListMethod(columnListMethod);
   NEW(windowMethod); InitWindowMethod(windowMethod);
   NEW(menuMethod); InitMenuMethod(menuMethod);
   NEW(quickBtnMethod); InitQuickBtnMethod(quickBtnMethod)

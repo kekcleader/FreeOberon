@@ -13,17 +13,29 @@ SET CCFULL=%CC% -g3 -O0 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Li
 
 ECHO ON
 %OFR% -C Config_win32.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -C Int.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7 StrList.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7 Dir.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -C -i SDL2.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -C Graph.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -C Terminal.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -C Term.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -C OV.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -C EditorText.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -C Editor.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -C -m FreeOberon.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 
 windres resources.rc resources.o
 
@@ -43,3 +55,8 @@ windres resources.rc resources.o
   resources.o ^
   %OFRDIR%\Lib\Ofront.a ^
   %SDL2Opts% -lSDL2_image
+
+@GOTO QUIT
+:ERR
+@EXIT/B 1
+:QUIT
