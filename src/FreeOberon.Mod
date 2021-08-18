@@ -212,7 +212,7 @@ BEGIN
     IF e.next = f THEN e := NIL ELSE e := e.next(Editor.Editor) END
   END;
   IF e = NIL THEN DoOpenFile(filename)
-  ELSE app.windows := e; OV.SetFocus(app, e)
+  ELSE app.windows := e; OV.SetFocus(e)
   END;
   OV.DrawApp(app)
 END FocusOrOpenFile;

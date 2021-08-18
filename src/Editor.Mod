@@ -125,6 +125,20 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   StrList.Append(c.colFiles.items, 'MSGBOX.TPU');
   StrList.Append(c.colFiles.items, 'OPENGL.TPU');
   StrList.Append(c.colFiles.items, 'SDL2.TPU');
+  StrList.Append(c.colFiles.items, 'LIFE.PAS');
+  StrList.Append(c.colFiles.items, 'LIFE2.PAS');
+  StrList.Append(c.colFiles.items, 'MANDELBROT.MOD');
+  StrList.Append(c.colFiles.items, 'MANDELBROT.PAS');
+  StrList.Append(c.colFiles.items, 'GUI.PAS');
+  StrList.Append(c.colFiles.items, 'GRAPH.PAS');
+  StrList.Append(c.colFiles.items, 'GTK.PAS');
+  StrList.Append(c.colFiles.items, 'GTK+.PAS');
+  StrList.Append(c.colFiles.items, 'OpenGL.Mod');
+  StrList.Append(c.colFiles.items, 'JSON.Mod');
+  StrList.Append(c.colFiles.items, 'Lists.Mod');
+  StrList.Append(c.colFiles.items, 'Papers.Mod');
+  StrList.Append(c.colFiles.items, 'Game.Mod');
+  OV.Refresh(c.colFiles);
   OV.Add(c, c.colFiles)
 END InitFileDialog;
 

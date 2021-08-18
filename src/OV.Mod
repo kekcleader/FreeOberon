@@ -573,6 +573,7 @@ TYPE
     parent*, children*: Control;
     prev*, next*: Control;
     x*, y*, w*, h*: INTEGER;
+    enabled*: BOOLEAN;
     default*: BOOLEAN;
     focused*: BOOLEAN;
     mouseActive*: BOOLEAN; (* FALSE if control does not capture mouse events *)
@@ -725,7 +726,7 @@ END NeedRedraw;
    notify previously focused element and all its (grand-)parents with
    lostFocus, up to but not including the closest common parent.
    If c is NIL, use main window if it exists. *)
-PROCEDURE SetFocus*(app: App; c: Control);
+PROCEDURE SetAppFocus*(app: App; c: Control);
 VAR p, common: Control;
 BEGIN
   p := app.cur;
@@ -748,6 +749,16 @@ BEGIN
     ELSIF c.do.getFocus # NIL THEN c.do.getFocus(c)
     END
   END
+END SetAppFocus;
+
+PROCEDURE UnsetFocus*(app: App);
+BEGIN
+  SetAppFocus(app, NIL)
+END UnsetFocus;
+
+PROCEDURE SetFocus*(c: Control);
+BEGIN
+  SetAppFocus(c.app, c)
 END SetFocus;
 
 (* Sets c.app for the control and all his children recursively. *)
@@ -760,6 +771,11 @@ BEGIN c.app := app; p := c.children;
 END SetApp;
 
 (* Common *)
+
+PROCEDURE Refresh*(c: Control);
+BEGIN
+  IF c.do.refresh # NIL THEN c.do.refresh(c) END
+END Refresh;
 
 (** fg2 is a color of marked letters, that are escaped with '&'. *)
 PROCEDURE PutMarkedString*(x, y: INTEGER; s: ARRAY OF CHAR; fg, fg2, bg, limit: INTEGER);
@@ -872,14 +888,18 @@ BEGIN p := FindChildAt(c, x, y);
   END ;
 RETURN p # NIL END PassMouseMove;
 
+PROCEDURE SetEnabled*(c: Control; enabled: BOOLEAN);
+BEGIN c.enabled := enabled
+END SetEnabled;
+
 (* Control *)
 
 PROCEDURE InitControl*(c: Control);
 BEGIN
   c.x := 0; c.y := 0; c.w := 0; c.h := 0;
   c.parent := NIL; c.children := NIL; c.prev := NIL; c.next := NIL;
-  c.default := FALSE; c.focused := FALSE; c.mouseActive := TRUE;
-  c.status := 0; c.caption[0] := 0X;
+  c.enabled := TRUE; c.default := FALSE; c.focused := FALSE;
+  c.mouseActive := TRUE; c.status := 0; c.caption[0] := 0X;
   c.do := controlMethod
 END InitControl;
 
@@ -926,6 +946,7 @@ END DrawChildren;
 PROCEDURE SetDragged*(app: App; c: Control);
 VAR x, y: INTEGER;
 BEGIN
+  SetFocus(c);
   app.dragged := c; x := 0; y := 0;
   WHILE c # NIL DO
     INC(x, c.x); INC(y, c.y);
@@ -1122,7 +1143,7 @@ BEGIN
       REPEAT
         IF key.code = G.kUp THEN p := p.prev ELSE p := p.next END
       UNTIL (p = c) OR (p.caption # '-') & (p.status # disabled);
-      c.status := normal; p.status := selected; SetFocus(c.app, p);
+      c.status := normal; p.status := selected; SetFocus(p);
       NeedRedraw(c.app)
     END
   | G.kLeft, G.kRight: p := c;
@@ -1131,14 +1152,14 @@ BEGIN
     p.status := open;
     p2 := FindSelectedChild(p);
     IF p2 = NIL THEN p2 := p END;
-    SetFocus(c.app, p2);
+    SetFocus(p2);
     NeedRedraw(c.app)
   | G.kEnter: c.do.click(c)
   | G.kEsc:
     IF c.parent.parent = c.app.menu THEN
-      c.parent.status := normal; SetFocus(c.app, NIL)
+      c.parent.status := normal; UnsetFocus(c.app)
     ELSE
-      c.parent.status := selected; SetFocus(c.app, c.parent)
+      c.parent.status := selected; SetFocus(c.parent)
     END;
     NeedRedraw(c.app)
   ELSE p := c;
@@ -1168,13 +1189,13 @@ VAR p: Control;
 BEGIN
   IF c.children = NIL THEN
     IF c.status # disabled THEN
-      SetFocus(c.app, NIL);
+      UnsetFocus(c.app);
       IF c.onClick # NIL THEN c.onClick(c) END
     END
   ELSE c.status := open;
     p := FindSelectedChild(c);
     IF p = NIL THEN p := c END;
-    SetFocus(c.app, p)
+    SetFocus(p)
   END;
   NeedRedraw(c.app)
 END MenuClick;
@@ -1242,7 +1263,7 @@ BEGIN p := c;
   IF c = c.app.menu THEN c := GetMenuAt(c.app, x, y)
   ELSIF c = c.app.statusbar THEN c := GetStatusbarAt(c.app, x, y)
   END;
-  IF (c = NIL) & (p = p.app.statusbar) THEN SetFocus(p.app, NIL);
+  IF (c = NIL) & (p = p.app.statusbar) THEN UnsetFocus(c.app);
   ELSIF (c # NIL) & (buttons = {G.btnLeft}) & (c.status = normal) THEN
     IF c.parent.parent = NIL THEN (* Top level menu *)
       IF c.do.mouseDown # NIL THEN c.do.mouseDown(c, x, y, G.btnLeft) END
@@ -1251,7 +1272,7 @@ BEGIN p := c;
         c.app.cur.status := selected;
         NeedRedraw(c.app)
       END;
-      SetFocus(c.app, c)
+      SetFocus(c)
     END
   END
 END MenuMouseMove;
@@ -1260,17 +1281,17 @@ PROCEDURE MenuMouseDown*(c: Control; x, y, button: INTEGER);
 VAR p: Control;
 BEGIN
   IF (button = G.btnLeft) & (c.status # disabled) THEN
-    SetFocus(c.app, c);
+    SetFocus(c);
     p := c; WHILE p.parent # NIL DO p := p.parent END;
     c.app.dragged := p; c.app.dragX := p.x; c.app.dragY := p.y;
-    IF c.children = NIL THEN SetFocus(c.app, c)
+    IF c.children = NIL THEN SetFocus(c)
     ELSE c.status := open; p := FindSelectedChild(c);
       IF p = NIL THEN p := c END;
-      SetFocus(c.app, p); p.status := normal
+      SetFocus(p); p.status := normal
     END;
     IF c.parent # c.app.menu THEN
       IF c.app.cur # NIL THEN c.app.cur.status := normal END;
-      c.status := selected; SetFocus(c.app, c)
+      c.status := selected; SetFocus(c)
     END;
     NeedRedraw(c.app)
   END
@@ -1284,7 +1305,7 @@ BEGIN
     ELSIF c = c.app.statusbar THEN p := GetStatusbarAt(c.app, x, y)
     ELSE p := c
     END;
-    IF p = NIL THEN SetFocus(c.app, NIL) ELSE p.do.click(p) END
+    IF p = NIL THEN UnsetFocus(c.app) ELSE p.do.click(p) END
   END
 END MenuMouseUp;
 
@@ -1507,21 +1528,28 @@ END NewScrollbar;
 PROCEDURE ScrollbarDraw*(c: Control; x, y: INTEGER);
 VAR S: Scrollbar;
   w, fg, bg: INTEGER;
+  ch: CHAR;
 BEGIN S := c(Scrollbar); INC(x, S.x); INC(y, S.y); fg := 3; bg := 1;
-  T.CharFill(x + 1, y, S.w - 1, 1, 0B0X, fg, bg);
+  IF S.enabled THEN ch := 0B0X ELSE ch := 0B1X END;
+  T.CharFill(x + 1, y, S.w - 1, 1, ch, fg, bg);
   T.PutChar(x, y, 11X, fg, bg);
   T.PutChar(x + S.w - 1, y, 10X, fg, bg);
-  T.CharFill(x + S.runnerOffset, y, S.runnerW, 1, 0B1X, fg, bg)
+  IF S.enabled THEN
+    T.CharFill(x + S.runnerOffset, y, S.runnerW, 1, 0B1X, fg, bg)
+  END
 END ScrollbarDraw;
 
-PROCEDURE ScrollbarUpdateCur*(c: Control; x, y: INTEGER);
-VAR S: Scrollbar; w, oldCur: INTEGER;
-BEGIN S := c(Scrollbar); oldCur := S.cur; w := S.w - S.runnerW - 2;
+PROCEDURE ScrollbarUpdateCur*(c: Control; x, y: INTEGER; end: BOOLEAN);
+VAR S: Scrollbar; w, oldOff: INTEGER;
+BEGIN S := c(Scrollbar); oldOff := S.runnerOffset; w := S.w - S.runnerW - 2;
   (* Horizontal scrollbar *)
   DEC(x, S.runnerW DIV 2 + 1);
   IF x < 0 THEN x := 0 ELSIF x > w THEN x := w END;
-  S.runnerOffset := x + 1; S.cur := (x * S.max + w DIV 2) DIV w;
-  IF S.cur # oldCur THEN
+  S.cur := (x * S.max + w DIV 2) DIV w;
+  IF end THEN S.runnerOffset := S.cur * w DIV S.max + 1
+  ELSE S.runnerOffset := x + 1
+  END;
+  IF S.runnerOffset # oldOff THEN
     NeedRedraw(S.app);
     IF S.onScrollbar # NIL THEN S.onScrollbar(S) END
   END
@@ -1531,30 +1559,34 @@ PROCEDURE ScrollbarMouseDown*(c: Control; x, y, button: INTEGER);
 VAR S: Scrollbar;
   col, colw: INTEGER;
 BEGIN S := c(Scrollbar);
-  IF button = G.btnLeft THEN
+  IF S.enabled & (button = G.btnLeft) THEN
     SetDragged(S.app, S);
-    ScrollbarUpdateCur(S, x, y)
+    ScrollbarUpdateCur(S, x, y, FALSE)
   END
 END ScrollbarMouseDown;
+
+PROCEDURE ScrollbarMouseUp*(c: Control; x, y, button: INTEGER);
+VAR S: Scrollbar;
+  col, colw: INTEGER;
+BEGIN S := c(Scrollbar);
+  IF S.enabled & (button = G.btnLeft) THEN
+    ScrollbarUpdateCur(S, x, y, TRUE)
+  END
+END ScrollbarMouseUp;
 
 PROCEDURE ScrollbarMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
 VAR S: Scrollbar;
   oldCur, col, colw: INTEGER;
 BEGIN S := c(Scrollbar);
-  IF buttons = {G.btnLeft} THEN ScrollbarUpdateCur(S, x, y) END
+  IF buttons = {G.btnLeft} THEN ScrollbarUpdateCur(S, x, y, FALSE) END
 END ScrollbarMouseMove;
-
-PROCEDURE ScrollbarClick*(c: Control);
-BEGIN
-  IF c.onClick # NIL THEN c.onClick(c) END
-END ScrollbarClick;
 
 PROCEDURE InitScrollbarMethod*(m: ControlMethod);
 BEGIN InitControlMethod(m);
   m.draw := ScrollbarDraw;
   m.mouseDown := ScrollbarMouseDown;
-  m.mouseMove := ScrollbarMouseMove;
-  m.click := ScrollbarClick
+  m.mouseUp := ScrollbarMouseUp;
+  m.mouseMove := ScrollbarMouseMove
 END InitScrollbarMethod;
 
 (* Edit *)
@@ -1623,7 +1655,7 @@ PROCEDURE EditKeyDown*(c: Control; key: G.Key);
 VAR e: Edit; redraw: BOOLEAN;
 BEGIN e := c(Edit); redraw := TRUE;
   CASE key.code OF
-    G.kLeft : IF e.pos > 0 THEN DEC(e.pos) END
+    G.kLeft: IF e.pos > 0 THEN DEC(e.pos) END
   | G.kRight: IF e.pos < e.len THEN INC(e.pos) END
   | G.kBackspace:
     IF e.pos > 0 THEN DeleteChar(e.caption, e.pos - 1, e.len); DEC(e.pos) END
@@ -1691,9 +1723,10 @@ BEGIN C := c(ColumnList); INC(x, C.x); INC(y, C.y);
     T.CharFill(i, y, 1, C.h - 1, 0B3X, 1, bg); INC(i, colw + 1)
   END;
 
-  StrList.First(C.items, s);
-  i := 0;
-  WHILE ~C.items.eol DO fg := 0; bg := 3;
+  i := C.scrollbar.cur * (C.h - 1);
+  StrList.SetPos(C.items, i);
+  StrList.Next(C.items, s);
+  WHILE ~C.items.eol & (x2 + colw <= x + C.w) DO fg := 0; bg := 3;
     IF i = C.cur THEN
       IF C.status = selected THEN fg := 15; bg := 2;
         T.CharFill(x2 - 1, y2, colw, 1, ' ', fg, bg)
@@ -1710,6 +1743,7 @@ END ColumnListDraw;
 
 PROCEDURE ColumnListGetFocus*(c: Control);
 BEGIN ControlGetFocus(c); G.StartTextInput
+  ;Out.String('GET FOCUS CL'); Out.Ln
 END ColumnListGetFocus;
 
 PROCEDURE ColumnListUpdateCur*(C: ColumnList; x, y: INTEGER);
@@ -1759,16 +1793,56 @@ BEGIN C := c(ColumnList);
   IF buttons = {G.btnLeft} THEN ColumnListUpdateCur(C, x, y) END
 END ColumnListMouseMove;
 
+PROCEDURE ColumnListKeyDown*(c: Control; key: G.Key);
+VAR C: ColumnList; sb: Scrollbar;
+  h, count, cur, oldCur: INTEGER;
+BEGIN C := c(ColumnList); sb := C.scrollbar; cur := C.cur; oldCur := cur;
+  h := C.h - 1; count := StrList.Count(C.items);
+  CASE key.code OF
+    G.kLeft: DEC(cur, h)
+  | G.kRight: INC(cur, h)
+  | G.kUp: DEC(cur)
+  | G.kDown: INC(cur)
+  | G.kHome: cur := sb.cur * h
+  | G.kEnd: cur := (sb.cur + C.cols) * h - 1
+  | G.kPgUp: DEC(cur, C.cols * h); DEC(sb.cur, C.cols)
+  | G.kPgDn: INC(cur, C.cols * h); INC(sb.cur, C.cols)
+  ELSE END;
+  IF cur < 0 THEN cur := 0 ELSIF cur >= count THEN cur := count - 1 END;
+  IF sb.cur * h > cur THEN sb.cur := cur DIV h
+  ELSIF (sb.cur + C.cols - 1) * h <= cur THEN sb.cur := cur DIV h - C.cols + 1
+  END;
+  IF sb.cur < 0 THEN sb.cur := 0 ELSIF sb.cur > sb.max THEN sb.cur := sb.max END;
+  IF cur # oldCur THEN C.cur := cur; NeedRedraw(c.app) END
+END ColumnListKeyDown;
+
 PROCEDURE ColumnListClick*(c: Control);
 BEGIN
   IF c.onClick # NIL THEN c.onClick(c) END
 END ColumnListClick;
 
+PROCEDURE ColumnListRefresh*(c: Control);
+VAR C: ColumnList;
+  cols, w: INTEGER; (* Total amount of columns in the list *)
+BEGIN C := c(ColumnList);
+  Out.String('ITEMS = ');Out.Int(StrList.Count(C.items), 0); Out.Ln;
+  cols := StrList.Count(C.items) DIV (C.h - 1) + 1;
+  Out.String('cols = ');Out.Int(cols, 0); Out.Ln;
+  IF cols > C.cols THEN
+    C.scrollbar.max := cols - C.cols;
+    w := (C.w - 2) DIV (C.scrollbar.max + 1);
+    IF w < 3 THEN w := 3 END;
+    C.scrollbar.runnerW := w
+  END;
+  SetEnabled(C.scrollbar, cols > C.cols)
+END ColumnListRefresh;
+
 PROCEDURE ColumnListResize*(c: Control; x, y, w, h: INTEGER);
 VAR C: ColumnList;
 BEGIN C := c(ColumnList);
   ControlResize(c, x, y, w, h);
-  C.scrollbar.do.resize(C.scrollbar, 0, C.h - 1, w, 1)
+  C.scrollbar.do.resize(C.scrollbar, 0, C.h - 1, w, 1);
+  C.do.refresh(C)
 END ColumnListResize;
 
 PROCEDURE InitColumnListMethod*(m: ControlMethod);
@@ -1778,7 +1852,9 @@ BEGIN InitControlMethod(m);
   m.mouseDown := ColumnListMouseDown;
   m.mouseUp := ColumnListMouseUp;
   m.mouseMove := ColumnListMouseMove;
+  m.keyDown := ColumnListKeyDown;
   m.click := ColumnListClick;
+  m.refresh := ColumnListRefresh;
   m.resize := ColumnListResize
 END InitColumnListMethod;
 
@@ -1792,7 +1868,7 @@ PROCEDURE NextWindow*(c: Control);
 BEGIN
   IF c.app.windows # NIL THEN
     c.app.windows := c.app.windows.next(Window);
-    SetFocus(c.app, c.app.windows);
+    SetFocus(c.app.windows);
     NeedRedraw(c.app)
   END
 END NextWindow;
@@ -1801,7 +1877,7 @@ PROCEDURE PrevWindow*(c: Control);
 BEGIN
   IF c.app.windows # NIL THEN
     c.app.windows := c.app.windows.prev(Window);
-    SetFocus(c.app, c.app.windows);
+    SetFocus(c.app.windows);
     NeedRedraw(c.app)
   END
 END PrevWindow;
@@ -1831,7 +1907,7 @@ BEGIN
       c.app.windows.next.prev := c.app.windows.prev;
       c.app.windows := c.app.windows.prev(Window)
     END;
-    SetFocus(c.app, c.app.windows);
+    SetFocus(c.app.windows);
     NeedRedraw(c.app)
   END
 END CloseCurWindow;
@@ -1947,7 +2023,7 @@ BEGIN c.prev.next := c.next; c.next.prev := c.prev;
   c.app.windows.next.prev := c; c.next := c.app.windows.next;
   c.app.windows.next := c; c.prev := c.app.windows;
   c.app.windows := c(Window);
-  SetFocus(c.app, c);
+  SetFocus(c);
   NeedRedraw(c.app)
 END BringToFront;
 
@@ -1955,7 +2031,7 @@ PROCEDURE WindowMouseDown*(c: Control; x, y, button: INTEGER);
 VAR p, br: Control;
 BEGIN
   IF button # G.btnRight THEN
-    SetFocus(c.app, c);
+    SetFocus(c);
     IF c.app.windows # c THEN BringToFront(c)
     ELSIF y = 0 THEN
       IF c(Window).closeable & (2 <= x) & (x <= 4) THEN
@@ -2010,7 +2086,7 @@ END WindowMouseMove;
 
 PROCEDURE WindowGetFocus*(c: Control);
 BEGIN ControlGetFocus(c);
-  IF c(Window).cur # NIL THEN SetFocus(c.app, c(Window).cur) END
+  IF c(Window).cur # NIL THEN SetFocus(c(Window).cur) END
 END WindowGetFocus;
 
 PROCEDURE InitWindowMethod*(m: ControlMethod);
@@ -2072,7 +2148,7 @@ BEGIN SetApp(w, app);
     app.windows.prev := w;*)
     app.windows := w
   END;
-  SetFocus(app, w)
+  SetFocus(w)
 END AddWindow;
 
 PROCEDURE AddStatusbar*(app: App; c: Control);
@@ -2094,7 +2170,7 @@ BEGIN found := FALSE;
     p := app.menu.children.prev; br := p;
     REPEAT p := p.next; found := MenuHotkey(p(Menu), CHR(key.sym))
     UNTIL found OR (p = br); (* !FIXME use loop pattern *)
-    IF found THEN SetFocus(app, NIL); p.do.click(p) END
+    IF found THEN UnsetFocus(app); p.do.click(p) END
   END;
   RETURN found
 END CheckMenuOpenKey;
@@ -2209,7 +2285,7 @@ BEGIN
   IF app.dragged = NIL THEN
     x := event.x DIV T.charW; y := event.y DIV T.charH;
     c := GetControlAt(app, x, y);
-    IF c = NIL THEN SetFocus(app, NIL)
+    IF c = NIL THEN UnsetFocus(app)
     ELSIF (c.do.mouseDown # NIL) &
           (~HasModalWindow(app) OR (c = app.windows)) THEN
       SetDragged(app, c);

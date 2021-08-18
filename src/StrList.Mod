@@ -46,11 +46,13 @@ BEGIN
 END GetCur;
 
 PROCEDURE First*(L: List; VAR s: ARRAY OF CHAR);
-BEGIN L.cur := L.first; GetCur(L, s)
+BEGIN L.cur := L.first; GetCur(L, s);
+  IF L.cur # NIL THEN L.cur := L.cur.next END
 END First;
 
 PROCEDURE Next*(L: List; VAR s: ARRAY OF CHAR);
-BEGIN L.cur := L.cur.next; GetCur(L, s)
+BEGIN GetCur(L, s);
+  IF L.cur # NIL THEN L.cur := L.cur.next END
 END Next;
 
 PROCEDURE SetPos*(L: List; pos: INTEGER);
