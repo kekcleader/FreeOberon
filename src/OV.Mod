@@ -966,8 +966,7 @@ BEGIN c.focused := TRUE
 END ControlGetFocus;
 
 PROCEDURE ControlLostFocus*(c: Control);
-BEGIN c.focused := FALSE;
-  G.StopTextInput
+BEGIN c.focused := FALSE; G.StopTextInput; T.ShowCursor(FALSE)
 END ControlLostFocus;
 
 PROCEDURE InitControlMethod*(m: ControlMethod);
@@ -1523,6 +1522,31 @@ VAR c: Scrollbar;
 BEGIN NEW(c); InitScrollbar(c); RETURN c
 END NewScrollbar;
 
+PROCEDURE ScrollbarUpdateCur*(S: Scrollbar; x, y: INTEGER; end: BOOLEAN);
+VAR w, oldOff: INTEGER;
+BEGIN oldOff := S.runnerOffset; w := S.w - S.runnerW - 2;
+  (* Horizontal scrollbar *)
+  DEC(x, S.runnerW DIV 2 + 1);
+  IF x < 0 THEN x := 0 ELSIF x > w THEN x := w END;
+  S.cur := (x * S.max + w DIV 2) DIV w;
+  IF end THEN S.runnerOffset := S.cur * w DIV S.max + 1
+  ELSE S.runnerOffset := x + 1
+  END;
+  IF S.runnerOffset # oldOff THEN
+    NeedRedraw(S.app);
+    IF S.onScrollbar # NIL THEN S.onScrollbar(S) END
+  END
+END ScrollbarUpdateCur;
+
+PROCEDURE SetScrollbarCur*(S: Scrollbar; cur: INTEGER);
+BEGIN
+  IF cur < 0 THEN cur := 0 ELSIF cur > S.max THEN cur := S.max END;
+  IF S.cur # cur THEN
+    S.cur := cur;
+    S.runnerOffset := cur * (S.w - S.runnerW - 2) DIV S.max + 1
+  END
+END SetScrollbarCur;
+
 (* Scrollbar Method *)
 
 PROCEDURE ScrollbarDraw*(c: Control; x, y: INTEGER);
@@ -1538,22 +1562,6 @@ BEGIN S := c(Scrollbar); INC(x, S.x); INC(y, S.y); fg := 3; bg := 1;
     T.CharFill(x + S.runnerOffset, y, S.runnerW, 1, 0B1X, fg, bg)
   END
 END ScrollbarDraw;
-
-PROCEDURE ScrollbarUpdateCur*(c: Control; x, y: INTEGER; end: BOOLEAN);
-VAR S: Scrollbar; w, oldOff: INTEGER;
-BEGIN S := c(Scrollbar); oldOff := S.runnerOffset; w := S.w - S.runnerW - 2;
-  (* Horizontal scrollbar *)
-  DEC(x, S.runnerW DIV 2 + 1);
-  IF x < 0 THEN x := 0 ELSIF x > w THEN x := w END;
-  S.cur := (x * S.max + w DIV 2) DIV w;
-  IF end THEN S.runnerOffset := S.cur * w DIV S.max + 1
-  ELSE S.runnerOffset := x + 1
-  END;
-  IF S.runnerOffset # oldOff THEN
-    NeedRedraw(S.app);
-    IF S.onScrollbar # NIL THEN S.onScrollbar(S) END
-  END
-END ScrollbarUpdateCur;
 
 PROCEDURE ScrollbarMouseDown*(c: Control; x, y, button: INTEGER);
 VAR S: Scrollbar;
@@ -1728,7 +1736,7 @@ BEGIN C := c(ColumnList); INC(x, C.x); INC(y, C.y);
   StrList.Next(C.items, s);
   WHILE ~C.items.eol & (x2 + colw <= x + C.w) DO fg := 0; bg := 3;
     IF i = C.cur THEN
-      IF C.status = selected THEN fg := 15; bg := 2;
+      IF C.focused THEN fg := 15; bg := 2;
         T.CharFill(x2 - 1, y2, colw, 1, ' ', fg, bg)
       ELSE fg := 14
       END
@@ -1743,7 +1751,6 @@ END ColumnListDraw;
 
 PROCEDURE ColumnListGetFocus*(c: Control);
 BEGIN ControlGetFocus(c); G.StartTextInput
-  ;Out.String('GET FOCUS CL'); Out.Ln
 END ColumnListGetFocus;
 
 PROCEDURE ColumnListUpdateCur*(C: ColumnList; x, y: INTEGER);
@@ -1795,8 +1802,10 @@ END ColumnListMouseMove;
 
 PROCEDURE ColumnListKeyDown*(c: Control; key: G.Key);
 VAR C: ColumnList; sb: Scrollbar;
-  h, count, cur, oldCur: INTEGER;
-BEGIN C := c(ColumnList); sb := C.scrollbar; cur := C.cur; oldCur := cur;
+  h, count, cur, oldCur, sbCur, oldSbCur: INTEGER;
+BEGIN C := c(ColumnList); sb := C.scrollbar;
+  cur := C.cur; oldCur := cur;
+  sbCur := sb.cur; oldSbCur := sbCur;
   h := C.h - 1; count := StrList.Count(C.items);
   CASE key.code OF
     G.kLeft: DEC(cur, h)
@@ -1809,10 +1818,11 @@ BEGIN C := c(ColumnList); sb := C.scrollbar; cur := C.cur; oldCur := cur;
   | G.kPgDn: INC(cur, C.cols * h); INC(sb.cur, C.cols)
   ELSE END;
   IF cur < 0 THEN cur := 0 ELSIF cur >= count THEN cur := count - 1 END;
-  IF sb.cur * h > cur THEN sb.cur := cur DIV h
-  ELSIF (sb.cur + C.cols - 1) * h <= cur THEN sb.cur := cur DIV h - C.cols + 1
+  IF cur < sbCur * h THEN sbCur := cur DIV h
+  ELSIF cur >= (sbCur + C.cols - 1) * h THEN sbCur := cur DIV h - C.cols + 1
   END;
-  IF sb.cur < 0 THEN sb.cur := 0 ELSIF sb.cur > sb.max THEN sb.cur := sb.max END;
+  IF sbCur < 0 THEN sbCur := 0 ELSIF sbCur > sb.max THEN sbCur := sb.max END;
+  IF sbCur # oldSbCur THEN SetScrollbarCur(sb, sbCur) END;
   IF cur # oldCur THEN C.cur := cur; NeedRedraw(c.app) END
 END ColumnListKeyDown;
 
@@ -1825,9 +1835,7 @@ PROCEDURE ColumnListRefresh*(c: Control);
 VAR C: ColumnList;
   cols, w: INTEGER; (* Total amount of columns in the list *)
 BEGIN C := c(ColumnList);
-  Out.String('ITEMS = ');Out.Int(StrList.Count(C.items), 0); Out.Ln;
   cols := StrList.Count(C.items) DIV (C.h - 1) + 1;
-  Out.String('cols = ');Out.Int(cols, 0); Out.Ln;
   IF cols > C.cols THEN
     C.scrollbar.max := cols - C.cols;
     w := (C.w - 2) DIV (C.scrollbar.max + 1);
@@ -2046,12 +2054,7 @@ BEGIN
       END
     ELSIF x = c.w - 1 THEN
     ELSIF (x # 0) & (c.children # NIL) THEN
-      p := c.children; br := p;
-      WHILE (p # NIL) &
-        ~((p.x <= x) & (x < p.x + p.w) &
-          (p.y <= y) & (y < p.y + p.h)) DO
-        IF p.next = br THEN p := NIL ELSE p := p.next END
-      END;
+      p := FindChildAt(c, x, y);
       IF (p # NIL) & (p.do.mouseDown # NIL) THEN
         p.do.mouseDown(p, x - p.x, y - p.y, button)
       END
