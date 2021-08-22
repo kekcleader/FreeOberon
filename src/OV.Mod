@@ -966,7 +966,8 @@ BEGIN c.focused := TRUE
 END ControlGetFocus;
 
 PROCEDURE ControlLostFocus*(c: Control);
-BEGIN c.focused := FALSE; G.StopTextInput; T.ShowCursor(FALSE)
+BEGIN c.focused := FALSE; G.StopTextInput;
+  T.ShowCursor(FALSE); NeedRedraw(c.app)
 END ControlLostFocus;
 
 PROCEDURE InitControlMethod*(m: ControlMethod);
@@ -1754,20 +1755,20 @@ BEGIN ControlGetFocus(c); G.StartTextInput
 END ColumnListGetFocus;
 
 PROCEDURE ColumnListUpdateCur*(C: ColumnList; x, y: INTEGER);
-VAR oldCur, col, colw, count: INTEGER;
-BEGIN
+VAR h, oldCur, col, colw, count: INTEGER;
+BEGIN h := C.h - 1;
   IF (x < 0) OR (x >= C.w) THEN
-    (*!TODO scrollbar*)
+    (*!TODO autoscroll*)
     (*IF ... THEN NeedRedraw(C.app) END*)
-  ELSIF y # C.h - 1 THEN oldCur := C.cur;
-    IF y < 0 THEN (* Scrollbar to top within column *)
-      C.cur := C.cur DIV (C.h - 1) * (C.h - 1)
-    ELSIF y >= C.h THEN (* Scrollbar to bottom within column *)
-      C.cur := C.cur DIV (C.h - 1) * (C.h - 1) + C.h - 2
+  ELSIF y # h THEN oldCur := C.cur;
+    IF y < 0 THEN (* Scroll to top within column *)
+      C.cur := (C.cur DIV h) * h
+    ELSIF y >= C.h THEN (* Scroll to bottom within column *)
+      C.cur := C.cur DIV h * h + h - 1
     ELSE
       colw := (C.w - C.cols + 1) DIV C.cols;
       col := x DIV (colw + 1);
-      C.cur := col * (C.h - 1) + y
+      C.cur := col * h + y + C.scrollbar.cur * h
     END;
     count := StrList.Count(C.items);
     IF C.cur >= count THEN C.cur := count - 1 END;
