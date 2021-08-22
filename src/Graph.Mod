@@ -261,7 +261,8 @@ TYPE
     button*: INTEGER;
     buttons*: SET; (* What mouse buttons are pressed *)
     down*: BOOLEAN;
-    s*: ARRAY 140(*32*) OF CHAR
+    s*: ARRAY 32 OF CHAR;
+    ch*: INTEGER(*SHOULD BE 2-byte CHAR*)
   END;
 
   EventQueue* = RECORD
@@ -779,6 +780,21 @@ BEGIN
   END
 END PumpKeyDown;
 
+PROCEDURE DecodeChar(IN s: ARRAY OF CHAR): INTEGER;
+VAR i, x, c: INTEGER;
+BEGIN c := ORD(s[0]);
+  IF c > 80H THEN x := ORD(s[1]) MOD 64; (* Not 1 byte *)
+    IF c DIV 32 = 6 THEN (* 2 bytes *)
+      c := c MOD 32 * 64 + x
+    ELSIF c DIV 16 = 14 THEN (* 3 bytes *)
+      c := (c MOD 16 * 64 + x) * 64 + ORD(s[2]) MOD 64
+    ELSIF c DIV 8 = 30 THEN (* 4 bytes *)
+      c := ((c MOD 8 * 64 + x) * 64 + ORD(s[2]) MOD 64) * 64 + ORD(s[3]) MOD 64
+    ELSE c := 0
+    END
+  END ;
+RETURN c END DecodeChar;
+
 PROCEDURE PumpTextEvent(event: SDL.Event);
 VAR sym: INTEGER;
     e: SDL.TextInputEvent;
@@ -804,8 +820,8 @@ BEGIN
     END;
     QueueEvent;
     events.buf[events.last].type := textInput;
-    events.buf[events.last].key.sym := sym; (*!FIXME sym needed?*)
-    events.buf[events.last].s := e.text$
+    events.buf[events.last].s := e.text$;
+    events.buf[events.last].ch := DecodeChar(e.text)
   END
 END PumpTextEvent;
 

@@ -851,9 +851,9 @@ BEGIN
   OV.WindowMouseMove(c, x, y, buttons)
 END EditorMouseMove;
 
-PROCEDURE EditorTextInput(c: OV.Control; s: ARRAY OF CHAR; sym: INTEGER);
+PROCEDURE EditorTextInput(c: OV.Control; ch: INTEGER);
 BEGIN
-  IF sym # 0 THEN c(Editor).text.InsertChar(CHR(sym)); T.ResetCursorBlink;
+  IF ch # 0 THEN c(Editor).text.InsertChar(OV.ToCP866(ch)); T.ResetCursorBlink;
     c(Editor).text.selected := FALSE; PrintText(c(Editor))
   END
 END EditorTextInput;

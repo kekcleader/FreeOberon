@@ -590,7 +590,7 @@ TYPE
     refresh*: PROCEDURE (c: Control);
     click*: PROCEDURE (c: Control);
     keyDown*: PROCEDURE (c: Control; key: G.Key);
-    textInput*: PROCEDURE (c: Control; s: ARRAY OF CHAR; sym: INTEGER);
+    textInput*: PROCEDURE (c: Control; ch: INTEGER);
     getFocus*: PROCEDURE (c: Control);
     lostFocus*: PROCEDURE (c: Control);
     mouseMove*: PROCEDURE (c: Control; x, y: INTEGER; buttons: SET);
@@ -771,6 +771,27 @@ BEGIN c.app := app; p := c.children;
 END SetApp;
 
 (* Common *)
+
+PROCEDURE Cap*(ch: CHAR): CHAR;
+BEGIN
+  IF ('a' <= ch) & (ch <= 'z') THEN ch := CAP(ch) END ;
+RETURN ch END Cap;
+
+PROCEDURE ToCP866*(n: INTEGER): CHAR;
+BEGIN
+  IF n >= 80H THEN
+    IF (410H(*A*) <= n) & (n <= 42FH(*YA*)) THEN n := n - 410H + 80H
+    ELSIF (430H(*a*) <= n) & (n <= 44FH(*ya*)) THEN
+      IF n <= 43FH(*p*) THEN n := n - 430H + 0A0H (*a..p*)
+      ELSE n := n - 440H + 0E0H (*r..ya*)
+      END
+    ELSIF n = 401H(*YO*) THEN n := 0F0H
+    ELSIF n = 451H(*yo*) THEN n := 0F1H
+    ELSIF n = 2116H(*No*) THEN n := 0FCH
+    ELSE n := 0
+    END
+  END ;
+RETURN CHR(n) END ToCP866;
 
 PROCEDURE Refresh*(c: Control);
 BEGIN
@@ -1676,11 +1697,11 @@ BEGIN e := c(Edit); redraw := TRUE;
   IF redraw THEN NeedRedraw(c.app); T.ResetCursorBlink END
 END EditKeyDown;
 
-PROCEDURE EditTextInput*(c: Control; s: ARRAY OF CHAR; sym: INTEGER);
+PROCEDURE EditTextInput*(c: Control; ch: INTEGER);
 VAR e: Edit;
 BEGIN
-  IF sym # 0 THEN e := c(Edit);
-    InsertChar(CHR(sym), e.pos, e.caption, e.len);
+  IF ch # 0 THEN e := c(Edit);
+    InsertChar(ToCP866(ch), e.pos, e.caption, e.len);
     IF e.pos < e.len THEN INC(e.pos) END;
     NeedRedraw(c.app); T.ResetCursorBlink
   END
@@ -1801,13 +1822,25 @@ BEGIN C := c(ColumnList);
   IF buttons = {G.btnLeft} THEN ColumnListUpdateCur(C, x, y) END
 END ColumnListMouseMove;
 
-PROCEDURE ColumnListKeyDown*(c: Control; key: G.Key);
-VAR C: ColumnList; sb: Scrollbar;
-  h, count, cur, oldCur, sbCur, oldSbCur: INTEGER;
-BEGIN C := c(ColumnList); sb := C.scrollbar;
-  cur := C.cur; oldCur := cur;
+PROCEDURE ColumnListSetCur*(C: ColumnList; cur: INTEGER);
+VAR sb: Scrollbar;
+  h, count, oldCur, sbCur, oldSbCur: INTEGER;
+BEGIN sb := C.scrollbar;
   sbCur := sb.cur; oldSbCur := sbCur;
   h := C.h - 1; count := StrList.Count(C.items);
+  IF cur < 0 THEN cur := 0 ELSIF cur >= count THEN cur := count - 1 END;
+  IF cur < sbCur * h THEN sbCur := cur DIV h
+  ELSIF cur >= (sbCur + C.cols - 1) * h THEN sbCur := cur DIV h - C.cols + 1
+  END;
+  IF sbCur < 0 THEN sbCur := 0 ELSIF sbCur > sb.max THEN sbCur := sb.max END;
+  IF sbCur # oldSbCur THEN SetScrollbarCur(sb, sbCur) END;
+  IF C.cur # cur THEN C.cur := cur; NeedRedraw(C.app) END
+END ColumnListSetCur;
+
+PROCEDURE ColumnListKeyDown*(c: Control; key: G.Key);
+VAR C: ColumnList; sb: Scrollbar;
+  h, cur: INTEGER;
+BEGIN C := c(ColumnList); sb := C.scrollbar; cur := C.cur; h := C.h - 1;
   CASE key.code OF
     G.kLeft: DEC(cur, h)
   | G.kRight: INC(cur, h)
@@ -1818,13 +1851,7 @@ BEGIN C := c(ColumnList); sb := C.scrollbar;
   | G.kPgUp: DEC(cur, C.cols * h); DEC(sb.cur, C.cols)
   | G.kPgDn: INC(cur, C.cols * h); INC(sb.cur, C.cols)
   ELSE END;
-  IF cur < 0 THEN cur := 0 ELSIF cur >= count THEN cur := count - 1 END;
-  IF cur < sbCur * h THEN sbCur := cur DIV h
-  ELSIF cur >= (sbCur + C.cols - 1) * h THEN sbCur := cur DIV h - C.cols + 1
-  END;
-  IF sbCur < 0 THEN sbCur := 0 ELSIF sbCur > sb.max THEN sbCur := sb.max END;
-  IF sbCur # oldSbCur THEN SetScrollbarCur(sb, sbCur) END;
-  IF cur # oldCur THEN C.cur := cur; NeedRedraw(c.app) END
+  ColumnListSetCur(C, cur)
 END ColumnListKeyDown;
 
 PROCEDURE ColumnListClick*(c: Control);
@@ -1854,6 +1881,22 @@ BEGIN C := c(ColumnList);
   C.do.refresh(C)
 END ColumnListResize;
 
+PROCEDURE FindFirstLetterInList(L: StrList.List; ch: CHAR): INTEGER;
+VAR s: ARRAY 2 OF CHAR; n: INTEGER;
+BEGIN StrList.First(L, s); n := 0;
+  WHILE ~L.eol & (Cap(s[0]) # ch) DO StrList.Next(L, s); INC(n) END;
+  IF L.eol THEN n := -1 END ;
+RETURN n END FindFirstLetterInList;
+
+PROCEDURE ColumnListTextInput*(c: Control; ch: INTEGER);
+VAR C: ColumnList; n: INTEGER;
+BEGIN C := c(ColumnList);
+  IF ch # 0 THEN
+    n := FindFirstLetterInList(C.items, Cap(ToCP866(ch)));
+    IF n # -1 THEN ColumnListSetCur(C, n) END
+  END
+END ColumnListTextInput;
+
 PROCEDURE InitColumnListMethod*(m: ControlMethod);
 BEGIN InitControlMethod(m);
   m.draw := ColumnListDraw;
@@ -1862,6 +1905,7 @@ BEGIN InitControlMethod(m);
   m.mouseUp := ColumnListMouseUp;
   m.mouseMove := ColumnListMouseMove;
   m.keyDown := ColumnListKeyDown;
+  m.textInput := ColumnListTextInput;
   m.click := ColumnListClick;
   m.refresh := ColumnListRefresh;
   m.resize := ColumnListResize
@@ -2234,10 +2278,10 @@ BEGIN handled := FALSE; p := app.cur;
   END
 END OnKeyDown;
 
-PROCEDURE OnTextInput(app: App; s: ARRAY OF CHAR; sym: INTEGER);
+PROCEDURE OnTextInput(app: App; ch: INTEGER);
 BEGIN
   IF (app.cur # NIL) & (app.cur.do.textInput # NIL) THEN
-    app.cur.do.textInput(app.cur, s, sym)
+    app.cur.do.textInput(app.cur, ch)
   END
 END OnTextInput;
 
@@ -2326,7 +2370,7 @@ BEGIN
       | G.mouseDown: OnMouseDown(app, event)
       | G.mouseUp: OnMouseUp(app, event)
       | G.keyDown: OnKeyDown(app, event.key)
-      | G.textInput: OnTextInput(app, event.s, event.key.sym(*!FIXME*))
+      | G.textInput: OnTextInput(app, event.ch)
       | G.quit: app.quit := TRUE
       ELSE
       END
