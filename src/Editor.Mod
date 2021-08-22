@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT OV, T := Terminal, G := Graph, Text := EditorText,
-  Strings, StrList, Out;
+  Strings, StrList, Dir, Out;
 CONST
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -52,6 +52,7 @@ TYPE
     type*: INTEGER; (* open or save *)
     edtFilename*: OV.Edit;
     btnOk*, btnCancel*: OV.Button;
+    path*: ARRAY 1024 OF CHAR;
     colFiles*: OV.ColumnList;
     onFileOk*: PROCEDURE (c: OV.Control; filename: ARRAY OF CHAR)
   END;
@@ -89,6 +90,23 @@ BEGIN C := c(OV.ColumnList); w := C.parent(FileDialog);
   OV.EditSetCaption(w.edtFilename, s)
 END FileDialogListChange;
 
+PROCEDURE FileDialogUpdateFileList*(c: FileDialog);
+VAR L: StrList.List;
+  r: Dir.Rec;
+  s: ARRAY 512 OF CHAR;
+BEGIN L := c.colFiles.items;
+  StrList.Clear(L);
+  Dir.First(r, c.path);
+  WHILE ~r.eod DO
+    IF r.isDir THEN s := r.name$;
+      Strings.Insert('[', 0, s); Strings.Append(']', s);
+      StrList.Append(L, s)
+    ELSE StrList.Append(L, r.name)
+    END;
+    Dir.Next(r)
+  END;
+END FileDialogUpdateFileList;
+
 PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER);
 BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   IF type = open THEN c.caption := 'Open a File'
@@ -116,40 +134,14 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.btnCancel.do.resize(c.btnCancel, c.w - 13, 11, 9, 1);
   OV.Add(c, c.btnCancel);
 
+  c.path := 'Programs/';
+
   (* ColumnList *)
   c.colFiles := OV.NewColumnList();
   (*c.colFiles.onClick := FileDialogOkClick;*)
   c.colFiles.onChange := FileDialogListChange;
   c.colFiles.do.resize(c.colFiles, 3, 6, c.w - 18, c.h - 8);
-  StrList.Append(c.colFiles.items, '[..]');
-  StrList.Append(c.colFiles.items, '[EGABGI]');
-  StrList.Append(c.colFiles.items, '[Program Files]');
-  StrList.Append(c.colFiles.items, 'GRAPH3.TPU');
-  StrList.Append(c.colFiles.items, 'MEMORY.TPU');
-  StrList.Append(c.colFiles.items, 'MENUS.TPU');
-  StrList.Append(c.colFiles.items, 'CRT.PAS');
-  StrList.Append(c.colFiles.items, 'TURBO3.TPU');
-  StrList.Append(c.colFiles.items, 'COMPUTER.TPU');
-  StrList.Append(c.colFiles.items, 'TEXTVIEW.TPU');
-  StrList.Append(c.colFiles.items, 'HISTLIST.TPU');
-  StrList.Append(c.colFiles.items, 'VALIDATE.TPU');
-  StrList.Append(c.colFiles.items, 'STRINGS.TPU');
-  StrList.Append(c.colFiles.items, 'MSGBOX.TPU');
-  StrList.Append(c.colFiles.items, 'OPENGL.TPU');
-  StrList.Append(c.colFiles.items, 'SDL2.TPU');
-  StrList.Append(c.colFiles.items, 'LIFE.PAS');
-  StrList.Append(c.colFiles.items, 'LIFE2.PAS');
-  StrList.Append(c.colFiles.items, 'MANDELBROT.MOD');
-  StrList.Append(c.colFiles.items, 'MANDELBROT.PAS');
-  StrList.Append(c.colFiles.items, 'GUI.PAS');
-  StrList.Append(c.colFiles.items, 'GRAPH.PAS');
-  StrList.Append(c.colFiles.items, 'GTK.PAS');
-  StrList.Append(c.colFiles.items, 'GTK+.PAS');
-  StrList.Append(c.colFiles.items, 'OpenGL.Mod');
-  StrList.Append(c.colFiles.items, 'JSON.Mod');
-  StrList.Append(c.colFiles.items, 'Lists.Mod');
-  StrList.Append(c.colFiles.items, 'Papers.Mod');
-  StrList.Append(c.colFiles.items, 'Game.Mod');
+  FileDialogUpdateFileList(c);
   OV.Refresh(c.colFiles);
   OV.Add(c, c.colFiles)
 END InitFileDialog;
