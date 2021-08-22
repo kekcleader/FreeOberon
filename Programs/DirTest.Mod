@@ -3,7 +3,6 @@ IMPORT Dir, Out;
 
 PROCEDURE Do;
 VAR r: Dir.Rec;
-  name: ARRAY 512 OF CHAR;
 BEGIN
   Dir.First(r, 'C:\');
   IF r.res = 0 THEN (* Есть такой каталог *)
