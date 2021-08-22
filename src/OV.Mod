@@ -1600,7 +1600,8 @@ VAR S: Scrollbar;
   col, colw: INTEGER;
 BEGIN S := c(Scrollbar);
   IF S.enabled & (button = G.btnLeft) THEN
-    ScrollbarUpdateCur(S, x, y, TRUE)
+    ScrollbarUpdateCur(S, x, y, TRUE);
+    SetFocus(S.parent)
   END
 END ScrollbarMouseUp;
 
@@ -1882,9 +1883,11 @@ BEGIN C := c(ColumnList);
 END ColumnListResize;
 
 PROCEDURE FindFirstLetterInList(L: StrList.List; ch: CHAR): INTEGER;
-VAR s: ARRAY 2 OF CHAR; n: INTEGER;
+VAR s: ARRAY 3 OF CHAR; n: INTEGER;
 BEGIN StrList.First(L, s); n := 0;
-  WHILE ~L.eol & (Cap(s[0]) # ch) DO StrList.Next(L, s); INC(n) END;
+  WHILE ~L.eol & ~((Cap(s[0]) = ch) OR (s[0] = '[') & (Cap(s[1]) = ch)) DO
+    StrList.Next(L, s); INC(n)
+  END;
   IF L.eol THEN n := -1 END ;
 RETURN n END FindFirstLetterInList;
 
