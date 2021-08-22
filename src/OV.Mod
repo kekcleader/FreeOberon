@@ -567,6 +567,7 @@ TYPE
   ControlMethod* = POINTER TO ControlMethodDesc;
 
   ClickHandler* = PROCEDURE (c: Control);
+  ChangeHandler* = ClickHandler;
   
   ControlDesc* = EXTENSIBLE RECORD
     app*: App;
@@ -580,6 +581,7 @@ TYPE
     status*: INTEGER;
     caption*: ARRAY 256 OF CHAR;
     onClick*: ClickHandler;
+    onChange*: ChangeHandler;
     do*: ControlMethod
   END;
 
@@ -916,12 +918,11 @@ END SetEnabled;
 (* Control *)
 
 PROCEDURE InitControl*(c: Control);
-BEGIN
-  c.x := 0; c.y := 0; c.w := 0; c.h := 0;
+BEGIN c.x := 0; c.y := 0; c.w := 0; c.h := 0;
   c.parent := NIL; c.children := NIL; c.prev := NIL; c.next := NIL;
   c.enabled := TRUE; c.default := FALSE; c.focused := FALSE;
   c.mouseActive := TRUE; c.status := 0; c.caption[0] := 0X;
-  c.do := controlMethod
+  c.onClick := NIL; c.onChange := NIL; c.do := controlMethod
 END InitControl;
 
 PROCEDURE NewControl*(): Control;
@@ -1641,7 +1642,8 @@ BEGIN i := 0;
   WHILE (s[i] # 0X) & (i < LEN(c.caption) - 1) DO
     c.caption[i] := s[i]; INC(i)
   END;
-  c.caption[i] := 0X; c.len := i; c.pos := i
+  c.caption[i] := 0X; c.len := i; c.pos := i;
+  NeedRedraw(c.app)
 END EditSetCaption;
 
 PROCEDURE InsertChar(ch: CHAR; pos: INTEGER;
@@ -1739,6 +1741,24 @@ END NewColumnList;
 
 (* ColumnList Method *)
 
+PROCEDURE ColumnListSetCur*(C: ColumnList; cur: INTEGER);
+VAR sb: Scrollbar;
+  h, count, oldCur, sbCur, oldSbCur: INTEGER;
+BEGIN sb := C.scrollbar;
+  sbCur := sb.cur; oldSbCur := sbCur;
+  h := C.h - 1; count := StrList.Count(C.items);
+  IF cur < 0 THEN cur := 0 ELSIF cur >= count THEN cur := count - 1 END;
+  IF cur < sbCur * h THEN sbCur := cur DIV h
+  ELSIF cur >= (sbCur + C.cols - 1) * h THEN sbCur := cur DIV h - C.cols + 1
+  END;
+  IF sbCur < 0 THEN sbCur := 0 ELSIF sbCur > sb.max THEN sbCur := sb.max END;
+  IF sbCur # oldSbCur THEN SetScrollbarCur(sb, sbCur) END;
+  IF C.cur # cur THEN C.cur := cur;
+    IF C.onChange # NIL THEN C.onChange(C) END;
+    NeedRedraw(C.app)
+  END
+END ColumnListSetCur;
+
 PROCEDURE ColumnListDraw*(c: Control; x, y: INTEGER);
 VAR i, x2, y2, colw, fg, bg: INTEGER;
   C: ColumnList;
@@ -1777,24 +1797,24 @@ BEGIN ControlGetFocus(c); G.StartTextInput
 END ColumnListGetFocus;
 
 PROCEDURE ColumnListUpdateCur*(C: ColumnList; x, y: INTEGER);
-VAR h, oldCur, col, colw, count: INTEGER;
+VAR h, cur, col, colw, count: INTEGER;
 BEGIN h := C.h - 1;
   IF (x < 0) OR (x >= C.w) THEN
     (*!TODO autoscroll*)
     (*IF ... THEN NeedRedraw(C.app) END*)
-  ELSIF y # h THEN oldCur := C.cur;
+  ELSIF y # h THEN cur := C.cur;
     IF y < 0 THEN (* Scroll to top within column *)
-      C.cur := (C.cur DIV h) * h
+      cur := (cur DIV h) * h
     ELSIF y >= C.h THEN (* Scroll to bottom within column *)
-      C.cur := C.cur DIV h * h + h - 1
+      cur := cur DIV h * h + h - 1
     ELSE
       colw := (C.w - C.cols + 1) DIV C.cols;
       col := x DIV (colw + 1);
-      C.cur := col * h + y + C.scrollbar.cur * h
+      cur := col * h + y + C.scrollbar.cur * h
     END;
     count := StrList.Count(C.items);
-    IF C.cur >= count THEN C.cur := count - 1 END;
-    IF C.cur # oldCur THEN NeedRedraw(C.app) END
+    IF cur >= count THEN cur := count - 1 END;
+    ColumnListSetCur(C, cur)
   END
 END ColumnListUpdateCur;
 
@@ -1822,21 +1842,6 @@ VAR C: ColumnList;
 BEGIN C := c(ColumnList);
   IF buttons = {G.btnLeft} THEN ColumnListUpdateCur(C, x, y) END
 END ColumnListMouseMove;
-
-PROCEDURE ColumnListSetCur*(C: ColumnList; cur: INTEGER);
-VAR sb: Scrollbar;
-  h, count, oldCur, sbCur, oldSbCur: INTEGER;
-BEGIN sb := C.scrollbar;
-  sbCur := sb.cur; oldSbCur := sbCur;
-  h := C.h - 1; count := StrList.Count(C.items);
-  IF cur < 0 THEN cur := 0 ELSIF cur >= count THEN cur := count - 1 END;
-  IF cur < sbCur * h THEN sbCur := cur DIV h
-  ELSIF cur >= (sbCur + C.cols - 1) * h THEN sbCur := cur DIV h - C.cols + 1
-  END;
-  IF sbCur < 0 THEN sbCur := 0 ELSIF sbCur > sb.max THEN sbCur := sb.max END;
-  IF sbCur # oldSbCur THEN SetScrollbarCur(sb, sbCur) END;
-  IF C.cur # cur THEN C.cur := cur; NeedRedraw(C.app) END
-END ColumnListSetCur;
 
 PROCEDURE ColumnListKeyDown*(c: Control; key: G.Key);
 VAR C: ColumnList; sb: Scrollbar;

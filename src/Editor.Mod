@@ -78,6 +78,17 @@ BEGIN OV.CloseCurWindow(c);
   END
 END FileDialogOkClick;
 
+PROCEDURE FileDialogListChange*(c: OV.Control);
+VAR C: OV.ColumnList; w: FileDialog;
+  s: ARRAY 256 OF CHAR;
+BEGIN C := c(OV.ColumnList); w := C.parent(FileDialog);
+  StrList.SetPos(C.items, C.cur); StrList.Next(C.items, s);
+  IF s[0] = '[' THEN Strings.Delete(s, 0, 1);
+    s[Strings.Length(s) - 1] := '/'
+  END;
+  OV.EditSetCaption(w.edtFilename, s)
+END FileDialogListChange;
+
 PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER);
 BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   IF type = open THEN c.caption := 'Open a File'
@@ -108,6 +119,7 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   (* ColumnList *)
   c.colFiles := OV.NewColumnList();
   (*c.colFiles.onClick := FileDialogOkClick;*)
+  c.colFiles.onChange := FileDialogListChange;
   c.colFiles.do.resize(c.colFiles, 3, 6, c.w - 18, c.h - 8);
   StrList.Append(c.colFiles.items, '[..]');
   StrList.Append(c.colFiles.items, '[EGABGI]');
