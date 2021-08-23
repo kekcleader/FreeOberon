@@ -95,8 +95,9 @@ VAR r, i: INTEGER;
 BEGIN
   IF (a[0] = '[') & (b[0] # '[') OR (a = '[..]') THEN r := -1
   ELSIF (a[0] # '[') & (b[0] = '[') OR (b = '[..]') THEN r := 1
-  ELSE
-    IF a < b THEN i := -1 ELSIF a = b THEN i := 0 ELSE i := 1 END
+  ELSIF a < b THEN i := -1
+  ELSIF a = b THEN i := 0
+  ELSE i := 1
   END ;
 RETURN r END FileNamesCmp;
 
