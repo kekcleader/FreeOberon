@@ -184,8 +184,7 @@ BEGIN
   CASE key.code OF
     G.kEsc: OV.CloseCurWindow(c)
   | G.kEnter: c(FileDialog).btnOk.do.click(c(FileDialog).btnOk)
-  ELSE
-  END
+  ELSE END
 END FileDialogKeyDown;
 
 PROCEDURE InitFileDialogMethod*(m: OV.ControlMethod);
@@ -592,8 +591,7 @@ BEGIN
         IF c.text.selL > c.text.cur.next.len
         THEN c.text.selL := c.text.cur.next.len END
       END
-    ELSE
-    END;
+    ELSE END;
     IF ((c.text.selT >= c.text.selB) & (c.text.selL >= c.text.selR)) OR
        (c.text.selT > c.text.selB) THEN
       c.text.selected := FALSE
@@ -889,8 +887,7 @@ BEGIN
   | G.kDel:       HandleDelete(c(Editor))
   | G.kEnter, G.kEnterPad: HandleEnter(c(Editor))
   | G.kTab:       HandleTab(c(Editor), key.mod * G.mShift # {})
-  ELSE
-  END
+  ELSE END
 END EditorKeyDown;
 
 PROCEDURE EditorGetFocus*(c: OV.Control);
