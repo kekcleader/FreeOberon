@@ -91,13 +91,13 @@ BEGIN C := c(OV.ColumnList); w := C.parent(FileDialog);
 END FileDialogListChange;
 
 PROCEDURE FileNamesCmp(IN a, b: ARRAY OF CHAR): INTEGER;
-VAR r, i: INTEGER;
+VAR r: INTEGER;
 BEGIN
   IF (a[0] = '[') & (b[0] # '[') OR (a = '[..]') THEN r := -1
   ELSIF (a[0] # '[') & (b[0] = '[') OR (b = '[..]') THEN r := 1
-  ELSIF a < b THEN i := -1
-  ELSIF a = b THEN i := 0
-  ELSE i := 1
+  ELSIF a < b THEN r := -1
+  ELSIF a = b THEN r := 0
+  ELSE r := 1
   END ;
 RETURN r END FileNamesCmp;
 
