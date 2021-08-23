@@ -3,10 +3,10 @@ SET PROG=FreeOberon
 SET OFRDIR=C:\prg\OfrontPlus\Target\Win64
 SET GCCDIR=C:\prg\mingw-w64\mingw64\bin
 SET PATH=%GCCDIR%;%OFRDIR%;%PATH%
+SET OBERON=.;%OFRDIR%\Lib\Sym
 REM SET SDL2Opts=-w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2
 SET SDL2Opts=-lmingw32 -lSDL2main -lSDL2
 SET OFR=ofront+ -s -88
-SET OBERON=.;%OFRDIR%\Lib\Sym
 SET CC=gcc
 SET AR=ar
 SET CCFULL=%CC% -g3 -O0 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Lib\Obj
@@ -36,11 +36,8 @@ ECHO ON
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -C -m FreeOberon.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-
 windres resources.rc resources.o
-
 @REM                        -O0 change to -Os (?)   add -s (?)
-
 %CCFULL% -c Int.c
 %CCFULL% -c StrList.c
 %CCFULL% -c Dir.c
@@ -51,8 +48,7 @@ windres resources.rc resources.o
 %CCFULL% Config.c term\term_win32.c ^
   Int.o StrList.o Dir.o SDL2.o Graph.o ^
   Term.c Terminal.c OV.c EditorText.c Editor.c ^
-  %PROG%.c -o ..\%PROG%.exe ^
-  resources.o ^
+  %PROG%.c -o ..\%PROG%.exe resources.o ^
   %OFRDIR%\Lib\Ofront.a ^
   %SDL2Opts% -lSDL2_image
 
