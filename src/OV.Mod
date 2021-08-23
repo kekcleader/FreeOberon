@@ -754,13 +754,11 @@ BEGIN
 END SetAppFocus;
 
 PROCEDURE UnsetFocus*(app: App);
-BEGIN
-  SetAppFocus(app, NIL)
+BEGIN SetAppFocus(app, NIL)
 END UnsetFocus;
 
 PROCEDURE SetFocus*(c: Control);
-BEGIN
-  SetAppFocus(c.app, c)
+BEGIN IF (c # NIL) & (c.app # NIL) THEN SetAppFocus(c.app, c) END
 END SetFocus;
 
 (* Sets c.app for the control and all his children recursively. *)
@@ -927,8 +925,8 @@ END InitControl;
 
 PROCEDURE NewControl*(): Control;
 VAR c: Control;
-BEGIN NEW(c); InitControl(c); RETURN c
-END NewControl;
+BEGIN NEW(c); InitControl(c) ;
+RETURN c END NewControl;
 
 PROCEDURE Add*(c, child: Control);
 BEGIN
@@ -1024,8 +1022,8 @@ END InitMenu;
 PROCEDURE NewMenu*(caption, hint: ARRAY OF CHAR;
     hotkey: INTEGER; onClick: ClickHandler): Menu;
 VAR m: Menu;
-BEGIN NEW(m); InitMenu(m, caption, hint, hotkey, onClick); RETURN m
-END NewMenu;
+BEGIN NEW(m); InitMenu(m, caption, hint, hotkey, onClick) ;
+RETURN m END NewMenu;
 
 PROCEDURE DrawMenuCaption(m: Control; x, y: INTEGER);
 VAR i, w, bg, fg: INTEGER;
@@ -1140,9 +1138,8 @@ BEGIN p := c.children;
       IF p.next = c.children THEN p := NIL ELSE p := p.next END
     END
   END;
-  IF p # NIL THEN p.status := selected END;
-  RETURN p
-END FindSelectedChild;
+  IF p # NIL THEN p.status := selected END ;
+RETURN p END FindSelectedChild;
 
 PROCEDURE MenuHotkey*(c: Control; ch: CHAR): BOOLEAN;
 VAR i: INTEGER; x: CHAR;
@@ -1151,9 +1148,8 @@ BEGIN i := 0; x := c.caption[0];
         ~((x = '&') & (c.caption[i + 1] # '&')) DO
     IF (x = '&') & (c.caption[i + 1] = '&') THEN INC(i, 2) ELSE INC(i) END;
     x := c.caption[i]
-  END;
-  RETURN (c.caption[i] # 0X) & (CAP(c.caption[i + 1]) = CAP(ch))
-END MenuHotkey;
+  END ;
+RETURN (c.caption[i] # 0X) & (CAP(c.caption[i + 1]) = CAP(ch)) END MenuHotkey;
 
 PROCEDURE MenuKeyDown*(c: Control; key: G.Key);
 VAR p, p2, br: Control; found: BOOLEAN;
@@ -1247,24 +1243,15 @@ BEGIN p := NIL;
       IF menu # app.menu THEN
         REPEAT p := menu.children; br := p;
           WHILE (p # NIL) & ~((x >= p.x) & (x < p.x + p.w) & (y = p.y)) DO
-            (*Out.String('x=');Out.Int(x,2); Out.String(' y=');Out.Int(x,2);
-            Out.String(' p.x=');Out.Int(p.x,2); Out.String(' p.w=');Out.Int(p.w,2);
-            Out.String(' p.y=');Out.Int(p.y,2); Out.String(' p.h=');Out.Int(p.h,2); Out.Ln;*)
             IF p.next = br THEN p := NIL ELSE p := p.next END
           END;
-          (*IF p # NIL THEN 
-            Out.String('x=');Out.Int(x,2); Out.String(' y=');Out.Int(x,2);
-            Out.String(' p.x=');Out.Int(p.x,2); Out.String(' p.w=');Out.Int(p.w,2);
-            Out.String(' p.y=');Out.Int(p.y,2); Out.String(' p.h=');Out.Int(p.h,2); Out.String(' - FOUND');Out.Ln;
-          END;*)
           IF p = NIL THEN menu := menu.parent; INC(y, menu.h) END
         UNTIL (menu = app.menu) OR (p # NIL);
         IF p # NIL THEN DEC(x, p.x); DEC(y, p.y) END
       END
     END
-  END;
-  RETURN p
-END GetMenuAt;
+  END ;
+RETURN p END GetMenuAt;
 
 PROCEDURE GetStatusbarAt(app: App; x, y: INTEGER): Control;
 VAR p, br: Control;
@@ -1275,9 +1262,8 @@ BEGIN
       IF p.next = br THEN p := NIL ELSE p := p.next END
     END
   ELSE p := NIL
-  END;
-  RETURN p
-END GetStatusbarAt;
+  END ;
+RETURN p END GetStatusbarAt;
 
 PROCEDURE MenuMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
 VAR p: Control;
@@ -1379,8 +1365,8 @@ END InitQuickBtn;
 PROCEDURE NewQuickBtn*(caption, hint: ARRAY OF CHAR;
     hotkey: INTEGER; onClick: ClickHandler): QuickBtn;
 VAR c: QuickBtn;
-BEGIN NEW(c); InitQuickBtn(c, caption, hint, hotkey, onClick); RETURN c
-END NewQuickBtn;
+BEGIN NEW(c); InitQuickBtn(c, caption, hint, hotkey, onClick) ;
+RETURN c END NewQuickBtn;
 
 PROCEDURE QuickBtnDraw(c: Control; x, y: INTEGER);
 VAR i, w, bg, fg: INTEGER;
@@ -1427,8 +1413,8 @@ END InitButton;
 
 PROCEDURE NewButton*(caption: ARRAY OF CHAR): Button;
 VAR c: Button;
-BEGIN NEW(c); InitButton(c, caption); RETURN c
-END NewButton;
+BEGIN NEW(c); InitButton(c, caption) ;
+RETURN c END NewButton;
 
 (* Button Method *)
 
@@ -1501,8 +1487,8 @@ END InitWinBtn;
 
 PROCEDURE NewWinBtn*(ch: CHAR): WinBtn;
 VAR c: WinBtn;
-BEGIN NEW(c); InitWinBtn(c, ch); RETURN c
-END NewWinBtn;
+BEGIN NEW(c); InitWinBtn(c, ch) ;
+RETURN c END NewWinBtn;
 
 (* WinBtn Method *)
 
@@ -1542,8 +1528,8 @@ END InitScrollbar;
 
 PROCEDURE NewScrollbar*(): Scrollbar;
 VAR c: Scrollbar;
-BEGIN NEW(c); InitScrollbar(c); RETURN c
-END NewScrollbar;
+BEGIN NEW(c); InitScrollbar(c) ;
+RETURN c END NewScrollbar;
 
 PROCEDURE ScrollbarUpdateCur*(S: Scrollbar; x, y: INTEGER; end: BOOLEAN);
 VAR w, oldOff: INTEGER;
@@ -1631,8 +1617,8 @@ END InitEdit;
 
 PROCEDURE NewEdit*(): Edit;
 VAR c: Edit;
-BEGIN NEW(c); InitEdit(c); RETURN c
-END NewEdit;
+BEGIN NEW(c); InitEdit(c) ;
+RETURN c END NewEdit;
 
 (* Edit Method *)
 
@@ -1736,8 +1722,8 @@ END InitColumnList;
 
 PROCEDURE NewColumnList*(): ColumnList;
 VAR c: ColumnList;
-BEGIN NEW(c); InitColumnList(c); RETURN c
-END NewColumnList;
+BEGIN NEW(c); InitColumnList(c) ;
+RETURN c END NewColumnList;
 
 (* ColumnList Method *)
 
@@ -1968,7 +1954,7 @@ BEGIN
       c.app.windows.next.prev := c.app.windows.prev;
       c.app.windows := c.app.windows.prev(Window)
     END;
-    SetFocus(c.app.windows);
+    SetAppFocus(c.app, c.app.windows);
     NeedRedraw(c.app)
   END
 END CloseCurWindow;
