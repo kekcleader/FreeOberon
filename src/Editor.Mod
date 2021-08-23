@@ -151,7 +151,7 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
 
   (* ColumnList *)
   c.colFiles := OV.NewColumnList();
-  (*c.colFiles.onClick := FileDialogOkClick;*)
+  c.colFiles.onDblClick := FileDialogOkClick;
   c.colFiles.onChange := FileDialogListChange;
   c.colFiles.do.resize(c.colFiles, 3, 6, c.w - 18, c.h - 8);
   FileDialogUpdateFileList(c);

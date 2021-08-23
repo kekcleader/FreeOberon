@@ -18,6 +18,8 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT G := Graph, T := Terminal, Strings, StrList, Out, SYSTEM;
 CONST
+  dblClickDelay* = 500;
+
   (* ControlDesc.status possible values *)
   normal*   = 0;
   disabled* = 1;
@@ -581,6 +583,7 @@ TYPE
     status*: INTEGER;
     caption*: ARRAY 256 OF CHAR;
     onClick*: ClickHandler;
+    onDblClick*: ClickHandler;
     onChange*: ChangeHandler;
     do*: ControlMethod
   END;
@@ -591,6 +594,7 @@ TYPE
     resize*: PROCEDURE (c: Control; x, y, w, h: INTEGER);
     refresh*: PROCEDURE (c: Control);
     click*: PROCEDURE (c: Control);
+    dblClick*: PROCEDURE (c: Control);
     keyDown*: PROCEDURE (c: Control; key: G.Key);
     textInput*: PROCEDURE (c: Control; ch: INTEGER);
     getFocus*: PROCEDURE (c: Control);
@@ -638,6 +642,7 @@ TYPE
     items*: StrList.List;
     begin*: INTEGER; (* What index list begins with visually *)
     cur*: INTEGER;
+    lastMouseDownItem*: INTEGER;
     scrollbar: Scrollbar;
   END;
 
@@ -661,6 +666,7 @@ TYPE
     cur*: Control;
     dragged*: Control;
     dragX*, dragY*: INTEGER;
+    lastMouseDownTime*: INTEGER;
     quit*: BOOLEAN;
     needRedraw*: BOOLEAN
   END;
@@ -920,7 +926,8 @@ BEGIN c.x := 0; c.y := 0; c.w := 0; c.h := 0;
   c.parent := NIL; c.children := NIL; c.prev := NIL; c.next := NIL;
   c.enabled := TRUE; c.default := FALSE; c.focused := FALSE;
   c.mouseActive := TRUE; c.status := 0; c.caption[0] := 0X;
-  c.onClick := NIL; c.onChange := NIL; c.do := controlMethod
+  c.onClick := NIL; c.onDblClick := NIL; c.onChange := NIL;
+  c.do := controlMethod
 END InitControl;
 
 PROCEDURE NewControl*(): Control;
@@ -990,19 +997,46 @@ BEGIN c.focused := FALSE; G.StopTextInput;
   T.ShowCursor(FALSE); NeedRedraw(c.app)
 END ControlLostFocus;
 
+PROCEDURE ControlClick*(c: Control);
+BEGIN IF c.onClick # NIL THEN c.onClick(c) END
+END ControlClick;
+
+PROCEDURE ControlDblClick*(c: Control);
+BEGIN IF c.onDblClick # NIL THEN c.onDblClick(c) END
+END ControlDblClick;
+
+PROCEDURE ControlMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
+BEGIN
+END ControlMouseMove;
+
+PROCEDURE ControlMouseDown*(c: Control; x, y, button: INTEGER);
+VAR n: INTEGER;
+BEGIN n := G.GetTicks();
+  IF n - c.app.lastMouseDownTime <= dblClickDelay THEN
+    IF c.do.dblClick # NIL THEN c.do.dblClick(c) END;
+    c.app.lastMouseDownTime := 0
+  ELSE c.app.lastMouseDownTime := n
+  END
+END ControlMouseDown;
+
+PROCEDURE ControlMouseUp*(c: Control; x, y, button: INTEGER);
+BEGIN
+END ControlMouseUp;
+
 PROCEDURE InitControlMethod*(m: ControlMethod);
 BEGIN
   m.added := NIL;
   m.draw := NIL;
   m.resize := ControlResize;
   m.refresh := NIL;
-  m.click := NIL;
+  m.click := ControlClick;
+  m.dblClick := ControlDblClick;
   m.keyDown := NIL;
   m.getFocus := ControlGetFocus;
   m.lostFocus := ControlLostFocus;
-  m.mouseMove := NIL;
-  m.mouseDown := NIL;
-  m.mouseUp := NIL
+  m.mouseMove := ControlMouseMove;
+  m.mouseDown := ControlMouseDown;
+  m.mouseUp := ControlMouseUp
 END InitControlMethod;
 
 (* Menu *)
@@ -1713,7 +1747,7 @@ END InitEditMethod;
 
 PROCEDURE InitColumnList*(c: ColumnList);
 BEGIN InitControl(c); c.cols := 2; c.items := StrList.New();
-  c.w := 30; c.h := 6; c.cur := 0;
+  c.w := 30; c.h := 6; c.cur := 0; c.lastMouseDownItem := -1;
   c.scrollbar := NewScrollbar();
   Add(c, c.scrollbar);
   c.do.resize(c, 0, c.h - 1, c.w, 1);
@@ -1806,26 +1840,37 @@ END ColumnListUpdateCur;
 
 PROCEDURE ColumnListMouseDown*(c: Control; x, y, button: INTEGER);
 VAR C: ColumnList;
-  col, colw: INTEGER;
+  col, colw, n: INTEGER;
 BEGIN C := c(ColumnList);
   IF ~PassMouseDown(C, x, y, button) &
       (C.parent # NIL) & (C.parent IS Window) THEN
     C.status := selected;
     SetDragged(C.app, C);
     ColumnListUpdateCur(C, x, y);
-    NeedRedraw(C.app)
+
+    n := G.GetTicks();
+    IF (n - C.app.lastMouseDownTime <= dblClickDelay) &
+       (C.lastMouseDownItem = C.cur)
+    THEN
+      IF C.do.dblClick # NIL THEN C.do.dblClick(C) END;
+      C.app.lastMouseDownTime := 0
+    ELSE C.app.lastMouseDownTime := n;
+      C.lastMouseDownItem := C.cur;
+      NeedRedraw(C.app)
+    END
+
   END
 END ColumnListMouseDown;
 
 PROCEDURE ColumnListMouseUp*(c: Control; x, y, button: INTEGER);
-BEGIN
+BEGIN ControlMouseUp(c, x, y, button);
   IF (c.status = selected) & (c.do.click # NIL) THEN c.do.click(c) END
 END ColumnListMouseUp;
 
 PROCEDURE ColumnListMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
 VAR C: ColumnList;
   oldCur, col, colw: INTEGER;
-BEGIN C := c(ColumnList);
+BEGIN ControlMouseMove(c, x, y, buttons); C := c(ColumnList);
   IF buttons = {G.btnLeft} THEN ColumnListUpdateCur(C, x, y) END
 END ColumnListMouseMove;
 
@@ -1845,11 +1890,6 @@ BEGIN C := c(ColumnList); sb := C.scrollbar; cur := C.cur; h := C.h - 1;
   ELSE END;
   ColumnListSetCur(C, cur)
 END ColumnListKeyDown;
-
-PROCEDURE ColumnListClick*(c: Control);
-BEGIN
-  IF c.onClick # NIL THEN c.onClick(c) END
-END ColumnListClick;
 
 PROCEDURE ColumnListRefresh*(c: Control);
 VAR C: ColumnList;
@@ -1900,7 +1940,6 @@ BEGIN InitControlMethod(m);
   m.mouseMove := ColumnListMouseMove;
   m.keyDown := ColumnListKeyDown;
   m.textInput := ColumnListTextInput;
-  m.click := ColumnListClick;
   m.refresh := ColumnListRefresh;
   m.resize := ColumnListResize
 END InitColumnListMethod;
@@ -2152,6 +2191,7 @@ BEGIN app.windows := NIL;
   app.statusText[0] := 0X;
   app.dragged := NIL; app.dragX := 0; app.dragY := 0;
   app.cur := NIL;
+  app.lastMouseDownTime := 0;
   app.quit := FALSE;
   app.needRedraw := TRUE
 END InitApp;
