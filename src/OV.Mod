@@ -727,7 +727,7 @@ BEGIN
 END DrawApp;
 
 PROCEDURE NeedRedraw*(app: App);
-BEGIN app.needRedraw := TRUE
+BEGIN IF app # NIL THEN app.needRedraw := TRUE END
 END NeedRedraw;
 
 (* Set the given element as currently focused, notify it with getFocus,

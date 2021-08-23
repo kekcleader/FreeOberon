@@ -70,26 +70,6 @@ VAR
 
 (* FileDialog *)
 
-PROCEDURE FileDialogOkClick*(c: OV.Control);
-VAR w: FileDialog;
-BEGIN OV.CloseCurWindow(c);
-  w := c.parent(FileDialog);
-  IF w.onFileOk # NIL THEN
-    w.onFileOk(c, w.edtFilename.caption)
-  END
-END FileDialogOkClick;
-
-PROCEDURE FileDialogListChange*(c: OV.Control);
-VAR C: OV.ColumnList; w: FileDialog;
-  s: ARRAY 256 OF CHAR;
-BEGIN C := c(OV.ColumnList); w := C.parent(FileDialog);
-  StrList.SetPos(C.items, C.cur); StrList.Next(C.items, s);
-  IF s[0] = '[' THEN Strings.Delete(s, 0, 1);
-    s[Strings.Length(s) - 1] := '/'
-  END;
-  OV.EditSetCaption(w.edtFilename, s)
-END FileDialogListChange;
-
 PROCEDURE FileNamesCmp(IN a, b: ARRAY OF CHAR): INTEGER;
 VAR r: INTEGER;
 BEGIN
@@ -117,8 +97,57 @@ BEGIN L := c.colFiles.items;
     END;
     Dir.Next(r)
   END;
-  StrList.Sort(L, FileNamesCmp)
+  StrList.Sort(L, FileNamesCmp);
+  c.colFiles.cur := 0; OV.EditSetCaption(c.edtFilename, '../');
+  OV.NeedRedraw(c.app)
 END FileDialogUpdateFileList;
+
+PROCEDURE FileDialogApplyDir*(c: FileDialog; s: ARRAY OF CHAR);
+VAR L, i: INTEGER;
+  path: ARRAY 1024 OF CHAR;
+BEGIN
+  IF (s[0] = '/') OR (* Asbolute path *)
+     ('A' <= CAP(s[0])) & (CAP(s[0]) <= 'Z') & (s[1] = ':')
+  THEN path := s$
+  ELSE path := c.path$; L := Strings.Length(s);
+    WHILE (s[0] = '.') & (s[1] = '.') & (s[2] = '/') DO
+      Strings.Delete(s, 0, 3); i := Strings.Length(path) - 2;
+      WHILE (i >= 0) & (path[i] # '/') DO DEC(i) END;
+      IF i >= 0 THEN path[i + 1] := 0X ELSE path := '' END
+    END;
+    IF s # '' THEN Strings.Append(s, path) END
+  END;
+  IF Dir.IsDir(path) THEN c.path := path$ END
+END FileDialogApplyDir;
+
+PROCEDURE FileDialogOkClick*(c: OV.Control);
+VAR w: FileDialog;
+  s: ARRAY 256 OF CHAR;
+  L: INTEGER;
+BEGIN w := c.parent(FileDialog);
+  s := w.edtFilename.caption$;
+  (* Replace all \ with / *)
+  L := 0; WHILE s[L] # 0X DO IF s[L] = '\' THEN s[L] := '/' END; INC(L) END;
+  IF L > 0 THEN
+    IF s[L - 1] = '/' THEN
+      FileDialogApplyDir(w, s);
+      FileDialogUpdateFileList(w)
+    ELSE OV.CloseCurWindow(c);
+      IF w.onFileOk # NIL THEN w.onFileOk(c, s) END
+    END
+  END
+END FileDialogOkClick;
+
+PROCEDURE FileDialogListChange*(c: OV.Control);
+VAR C: OV.ColumnList; w: FileDialog;
+  s: ARRAY 256 OF CHAR;
+BEGIN C := c(OV.ColumnList); w := C.parent(FileDialog);
+  StrList.SetPos(C.items, C.cur); StrList.Next(C.items, s);
+  IF s[0] = '[' THEN Strings.Delete(s, 0, 1);
+    s[Strings.Length(s) - 1] := '/'
+  END;
+  OV.EditSetCaption(w.edtFilename, s)
+END FileDialogListChange;
 
 PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER);
 BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
@@ -131,6 +160,7 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.edtFilename := OV.NewEdit();
   c.edtFilename.do.resize(c.edtFilename, 3, 3, c.w - 18, 1);
   OV.Add(c, c.edtFilename);
+  OV.EditSetCaption(c.edtFilename, '../');
 
   (* Open/Save (Ok) button *)
   IF type = open THEN c.btnOk := OV.NewButton('&Open')

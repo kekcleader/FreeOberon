@@ -44,8 +44,8 @@ BEGIN
     IF ent # 0 THEN
       arCString.CopyToArray(getdirname(ent), r.name);
 
-      (* To set the value of r.isDir, we append '/' and name to path, pass
-         it to DirExists and then restore the original value of path. *)
+      (* To set the value of r.isDir, we (maybe) append '/' and name to path,
+         pass it to DirExists and then restore the original value of path. *)
 
       i := 0; j := r.pathlen;
       IF r.path[j] # Platform.PathDelimiter THEN
@@ -69,12 +69,13 @@ END Next;
 
 PROCEDURE First*(VAR r: Rec; path: ARRAY OF CHAR);
 VAR i: INTEGER;
-BEGIN
-  r.isDir := FALSE; r.name[0] := 0X;
+BEGIN r.isDir := FALSE; r.name[0] := 0X;
   i := 0; WHILE path[i] # 0X DO INC(i) END;
   IF i < LEN(r.path) - 13 THEN
-    r.pathlen := i; r.dir := opendir(path);
-    IF r.dir # 0 THEN r.eod := FALSE; r.path := path; Next(r)
+    IF path = '' THEN r.dir := opendir('.'); r.path := './'; r.pathlen := 2
+    ELSE r.dir := opendir(path); r.path := path; r.pathlen := i
+    END;
+    IF r.dir # 0 THEN r.eod := FALSE; Next(r)
     ELSE r.res := 1; r.eod := TRUE; r.path[0] := 0X
     END
   ELSE r.res := 2; r.eod := TRUE; r.path[0] := 0X
@@ -89,6 +90,6 @@ BEGIN
 END Rewind;
 
 PROCEDURE IsDir*(name: ARRAY OF CHAR): BOOLEAN;
-RETURN Platform.DirExists(name) END IsDir;
+RETURN (name = '') OR Platform.DirExists(name) END IsDir;
 
 END Dir.
