@@ -90,6 +90,16 @@ BEGIN C := c(OV.ColumnList); w := C.parent(FileDialog);
   OV.EditSetCaption(w.edtFilename, s)
 END FileDialogListChange;
 
+PROCEDURE FileNamesCmp(IN a, b: ARRAY OF CHAR): INTEGER;
+VAR r, i: INTEGER;
+BEGIN
+  IF (a[0] = '[') & (b[0] # '[') OR (a = '[..]') THEN r := -1
+  ELSIF (a[0] # '[') & (b[0] = '[') OR (b = '[..]') THEN r := 1
+  ELSE
+    IF a < b THEN i := -1 ELSIF a = b THEN i := 0 ELSE i := 1 END
+  END ;
+RETURN r END FileNamesCmp;
+
 PROCEDURE FileDialogUpdateFileList*(c: FileDialog);
 VAR L: StrList.List;
   r: Dir.Rec;
@@ -98,13 +108,15 @@ BEGIN L := c.colFiles.items;
   StrList.Clear(L);
   Dir.First(r, c.path);
   WHILE ~r.eod DO
-    IF r.isDir THEN s := r.name$;
+    IF ~r.isDir THEN StrList.Append(L, r.name)
+    ELSIF r.name # '.' THEN
+      s := r.name$;
       Strings.Insert('[', 0, s); Strings.Append(']', s);
       StrList.Append(L, s)
-    ELSE StrList.Append(L, r.name)
     END;
     Dir.Next(r)
   END;
+  StrList.Sort(L, FileNamesCmp)
 END FileDialogUpdateFileList;
 
 PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER);

@@ -1,4 +1,5 @@
 MODULE StrList;
+IMPORT Out;
 
 TYPE
   Item = POINTER TO ItemDesc;
@@ -13,6 +14,8 @@ TYPE
     first, last, cur: Item;
     count: INTEGER
   END;
+
+  CmpProc* = PROCEDURE (a, b: ARRAY OF CHAR): INTEGER;
 
 PROCEDURE Clear*(L: List);
 BEGIN L.first := NIL; L.last := NIL; L.cur := NIL;
@@ -61,5 +64,26 @@ BEGIN p := L.first;
   WHILE (pos > 0) & (p # NIL) DO p := p.next; DEC(pos) END;
   L.cur := p
 END SetPos;
+
+PROCEDURE Sort*(L: List; cmp: CmpProc);
+VAR next, first, last, p, t: Item;
+BEGIN NEW(first); first.next := NIL;
+  p := L.first;
+  WHILE p # NIL DO (* Loop body works with p.next *)
+    next := p.next;
+    Out.String(p.s);Out.Ln;
+
+    (* Find place for item q in list [first] *)
+    t := first;
+    WHILE (t.next # NIL) & (cmp(t.next.s, p.s) < 0) DO t := t.next END;
+    (* Insert q before t.next *)
+    p.next := t.next; t.next := p;
+
+    p := next
+  END;
+
+  IF first.next = NIL THEN last := NIL ELSE last := p END;
+  L.first := first.next; L.last := last; L.cur := NIL; L.eol := FALSE
+END Sort;
 
 END StrList.
