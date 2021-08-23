@@ -393,9 +393,8 @@ PROCEDURE MakeCol*(r, g, b: INTEGER): INTEGER;
 BEGIN
   r := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, r) * {0..7});
   g := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, g) * {0..7});
-  b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, b) * {0..7});
-  RETURN SYSTEM.LSH(SYSTEM.LSH(0FF00H + b, 8) + g, 8) + r
-END MakeCol;
+  b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, b) * {0..7}) ;
+RETURN SYSTEM.LSH(SYSTEM.LSH(0FF00H + b, 8) + g, 8) + r END MakeCol;
 
 PROCEDURE ColorToRGB*(color: INTEGER; VAR r, g, b: INTEGER);
 BEGIN
@@ -405,8 +404,7 @@ BEGIN
 END ColorToRGB;
 
 PROCEDURE BmpCol*(bmp: Bitmap; r, g, b: INTEGER): INTEGER;
-BEGIN
-  RETURN SDL.MapRGB(bmp.surface.format, SHORT(r), SHORT(g), SHORT(b))
+BEGIN RETURN SDL.MapRGB(bmp.surface.format, SHORT(r), SHORT(g), SHORT(b))
 END BmpCol;
 
 PROCEDURE ClearToColor*(bmp: Bitmap; color: INTEGER);
@@ -470,9 +468,9 @@ BEGIN
     INC(n, (y * bmp.w + x) * 4);
     SYSTEM.GET(n, color);
     SDL.UnlockSurface(bmp.surface)
-  ELSE color := 0 END;
-  RETURN color
-END GetPixel;
+  ELSE color := 0
+  END ;
+RETURN color END GetPixel;
 
 PROCEDURE HLine*(bmp: Bitmap; x1, y, x2, color: INTEGER);
 VAR rect: SDL.Rect; t: INTEGER;
@@ -604,17 +602,15 @@ END Finalize;
 
 PROCEDURE CreateBitmap*(w, h: INTEGER): Bitmap;
 VAR bmp: Bitmap;
-    s: ARRAY 2560 OF CHAR;
-BEGIN
-  NEW(bmp);
+  s: ARRAY 2560 OF CHAR;
+BEGIN NEW(bmp);
   bmp.surface := SDL.CreateRGBSurface(0, w, h, 32,
     000000FFH, 0000FF00H, 00FF0000H, -1000000H);
   IF bmp.surface = NIL THEN
     GetError(s); Out.String(s); Out.Ln
   END;
-  bmp.w := w;  bmp.h := h;
-  RETURN bmp
-END CreateBitmap;
+  bmp.w := w; bmp.h := h ;
+RETURN bmp END CreateBitmap;
 
 PROCEDURE DestroyBitmap*(bmp: Bitmap);
 BEGIN
@@ -626,9 +622,8 @@ VAR bmp: Bitmap;
 BEGIN
   NEW(bmp); bmp.surface := SDL.ImgLoad(filename);
   IF bmp.surface = NIL THEN bmp := NIL
-  ELSE bmp.w := bmp.surface.w; bmp.h := bmp.surface.h END;
-  RETURN bmp
-END LoadBitmap;
+  ELSE bmp.w := bmp.surface.w; bmp.h := bmp.surface.h END ;
+RETURN bmp END LoadBitmap;
 
 PROCEDURE SaveBmp*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
 BEGIN
@@ -637,13 +632,11 @@ END SaveBmp;
 
 PROCEDURE SavePng*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
 BEGIN
-  RETURN SDL.ImgSavePng(bmp.surface, filename) = 0
-END SavePng;
+RETURN SDL.ImgSavePng(bmp.surface, filename) = 0 END SavePng;
 
 PROCEDURE SaveJpg*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
 BEGIN
-  RETURN SDL.ImgSaveJpg(bmp.surface, filename) = 0
-END SaveJpg;
+RETURN SDL.ImgSaveJpg(bmp.surface, filename) = 0 END SaveJpg;
 
 PROCEDURE Blit*(src, dest: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER);
 VAR a, b: SDL.Rect;
@@ -721,9 +714,8 @@ BEGIN
       END;
       INC(sy, charH)
     END
-  END;
-  RETURN font
-END LoadFont;
+  END ;
+RETURN font END LoadFont;
 
 PROCEDURE DrawCharacter*(dest: Bitmap; font: Font;
   x, y: INTEGER; ch: CHAR; fg: INTEGER);
@@ -844,54 +836,41 @@ END UpdateMousePos;
 
 PROCEDURE GetKeyArray(): KeyArray;
 BEGIN
-  RETURN SYSTEM.VAL(KeyArray, SDL.GetKeyboardStateNil())
-END GetKeyArray;
+RETURN SYSTEM.VAL(KeyArray, SDL.GetKeyboardStateNil()) END GetKeyArray;
 
 PROCEDURE KeyDown*(key: INTEGER): BOOLEAN;
 VAR keys: KeyArray;
-BEGIN
-  keys := GetKeyArray();
-  RETURN keys[key]
-END KeyDown;
+BEGIN keys := GetKeyArray() ;
+RETURN keys[key] END KeyDown;
 
 PROCEDURE AltPressed*(): BOOLEAN;
 VAR keys: KeyArray;
-BEGIN
-  keys := GetKeyArray();
-  RETURN keys[kAlt] OR keys[kAltGr]
-END AltPressed;
+BEGIN keys := GetKeyArray() ;
+RETURN keys[kAlt] OR keys[kAltGr] END AltPressed;
 
 PROCEDURE ShiftPressed*(): BOOLEAN;
 VAR keys: KeyArray;
-BEGIN
-  keys := GetKeyArray();
-  RETURN keys[kLShift] OR keys[kRShift]
-END ShiftPressed;
+BEGIN keys := GetKeyArray() ;
+RETURN keys[kLShift] OR keys[kRShift] END ShiftPressed;
 
 PROCEDURE CtrlPressed*(): BOOLEAN;
 VAR keys: KeyArray;
-BEGIN
-  keys := GetKeyArray();
-  RETURN keys[kLCtrl] OR keys[kRCtrl]
-END CtrlPressed;
+BEGIN keys := GetKeyArray() ;
+RETURN keys[kLCtrl] OR keys[kRCtrl] END CtrlPressed;
 
 (* Mouse *)
 
 PROCEDURE MouseOnScreen*(): BOOLEAN;
 VAR flags: SET;
-BEGIN
-  flags := SDL.GetWindowFlags(window);
-  RETURN SDL.windowMouseFocus IN flags
-END MouseOnScreen;
+BEGIN flags := SDL.GetWindowFlags(window);
+RETURN SDL.windowMouseFocus IN flags END MouseOnScreen;
 
 PROCEDURE ShowMouse*(show: BOOLEAN);
-BEGIN
-  showMouse := show
+BEGIN showMouse := show
 END ShowMouse;
 
 PROCEDURE GetRealMousePos*(VAR x, y: INTEGER);
-BEGIN
-  IF SDL.GetMouseState(x, y) = 0 THEN END
+BEGIN IF SDL.GetMouseState(x, y) = 0 THEN END
 END GetRealMousePos;
 
 PROCEDURE GetMousePos*(VAR x, y: INTEGER);
@@ -901,8 +880,8 @@ END GetMousePos;
 
 PROCEDURE GetMouseButtons*(): SET;
 VAR x, y: INTEGER;
-BEGIN RETURN SYSTEM.VAL(SET32, SDL.GetMouseState(x, y))
-END GetMouseButtons;
+BEGIN
+RETURN SYSTEM.VAL(SET32, SDL.GetMouseState(x, y)) END GetMouseButtons;
 
 PROCEDURE CreateStdMousePointer*;
 VAR b: Bitmap; fg, bg: INTEGER;
@@ -942,8 +921,7 @@ END SetMousePointer;
 
 PROCEDURE GetMousePointer*(): Bitmap;
 BEGIN
-  RETURN mousePointer
-END GetMousePointer;
+RETURN mousePointer END GetMousePointer;
 
 PROCEDURE SetStdMousePointer*;
 BEGIN
@@ -1104,15 +1082,12 @@ BEGIN
     IF events.first = LEN(events.buf) THEN events.first := 0 END;
     hasEvent := TRUE
   ELSE hasEvent := FALSE
-  END;
-  RETURN hasEvent
-END PollEvent;
+  END ;
+RETURN hasEvent END PollEvent;
 
 PROCEDURE KeyPressed*(): BOOLEAN;
-BEGIN
-  WaitEvents(0);
-  RETURN keyPressed > 0
-END KeyPressed;
+BEGIN WaitEvents(0) ;
+RETURN keyPressed > 0 END KeyPressed;
 
 PROCEDURE ReadKey*(): CHAR;
 VAR event: Event; done: BOOLEAN; ch: CHAR;
@@ -1126,9 +1101,8 @@ BEGIN done := FALSE;
       ELSE
       END
     END
-  UNTIL done;
-  RETURN ch
-END ReadKey;
+  UNTIL done ;
+RETURN ch END ReadKey;
 
 PROCEDURE Pause*;
 BEGIN IF ReadKey() = 0X THEN END
@@ -1136,15 +1110,12 @@ END Pause;
 
 PROCEDURE WindowShown*(): BOOLEAN;
 VAR flags: SET;
-BEGIN
-  flags := SDL.GetWindowFlags(window);
-  RETURN SDL.windowShown IN flags
-END WindowShown;
+BEGIN flags := SDL.GetWindowFlags(window) ;
+RETURN SDL.windowShown IN flags END WindowShown;
 
 PROCEDURE GetTicks*(): INTEGER;
 BEGIN
-  RETURN SDL.GetTicks()
-END GetTicks;
+RETURN SDL.GetTicks() END GetTicks;
 
 PROCEDURE Flip*;
 VAR mx, my: INTEGER; (* Mouse bitmap X Y *)
@@ -1204,37 +1175,31 @@ END Flip;
 (*
 PROCEDURE LoadSample*(filename: ARRAY OF CHAR): Sample;
 VAR spl: Sample;
-BEGIN
-  NEW(spl);
+BEGIN NEW(spl);
   spl.chunk := Mix.LoadWavRW(SDL.RWFromFile(filename, 'rb'), 1);
-  IF spl.chunk = NIL THEN spl := NIL END;
-  RETURN spl
-END LoadSample;
+  IF spl.chunk = NIL THEN spl := NIL END ;
+RETURN spl END LoadSample;
 
 PROCEDURE PlayChannel*(spl: Sample; channel: INTEGER);
 BEGIN
-  IF spl # NIL THEN
-    IF Mix.PlayChannelTimed(channel, spl.chunk, 0, -1) = 0 THEN END
+  IF (spl # NIL) & (Mix.PlayChannelTimed(channel, spl.chunk, 0, -1) = 0) THEN
   END
 END PlayChannel;
 
 PROCEDURE PlaySample*(spl: Sample);
-BEGIN
-  IF spl # NIL THEN PlayChannel(spl, -1) END
+BEGIN IF spl # NIL THEN PlayChannel(spl, -1) END
 END PlaySample;
 
 PROCEDURE StopSample*(spl: Sample);
-BEGIN
-  (*SDL.StopSample(spl)*)
+BEGIN (*SDL.StopSample(spl)*)
 END StopSample;
 
 PROCEDURE LoadMusic*(filename: ARRAY OF CHAR): Music;
 VAR mus: Music;
 BEGIN
   NEW(mus); mus.music := Mix.LoadMus(filename);
-  IF mus.music = NIL THEN mus := NIL END;
-  RETURN mus
-END LoadMusic;
+  IF mus.music = NIL THEN mus := NIL END ;
+RETURN mus END LoadMusic;
 
 PROCEDURE PlayMusic*(mus: Music);
 BEGIN
@@ -1244,8 +1209,7 @@ BEGIN
 END PlayMusic;
 
 PROCEDURE StopMusic*;
-BEGIN
-  Mix.HaltMusic
+BEGIN Mix.HaltMusic
 END StopMusic;
 *)
 
@@ -1257,64 +1221,55 @@ VAR addr: IPAddress; socket: Socket;
 BEGIN
   IF Net.ResolveHost(addr, NIL, SHORT(port)) = 0
   THEN socket := Net.TCPOpen(addr)
-  ELSE socket := NIL END;
-  RETURN socket
-END OpenServer;
+  ELSE socket := NIL END ;
+RETURN socket END OpenServer;
 
 PROCEDURE CloseConn*(VAR socket: Socket);
-BEGIN
-  IF Net.TCPClose(socket) = 0 THEN socket := NIL END
+BEGIN IF Net.TCPClose(socket) = 0 THEN socket := NIL END
 END CloseConn;
 
 PROCEDURE Accept*(server: Socket): Socket;
 BEGIN
-  RETURN Net.TCPAccept(server)
-END Accept;
+RETURN Net.TCPAccept(server) END Accept;
 
 PROCEDURE ConnectTo*(ip: ARRAY OF CHAR; port: INTEGER): Socket;
 VAR addr: IPAddress; socket: Socket;
 BEGIN
-  IF Net.ResolveHost(addr, ip, SHORT(port)) = 0
-  THEN socket := Net.TCPOpen(addr)
-  ELSE socket := NIL END;
-  RETURN socket
-END ConnectTo;
+  IF Net.ResolveHost(addr, ip, SHORT(port)) = 0 THEN
+    socket := Net.TCPOpen(addr)
+  ELSE socket := NIL
+  END ;
+RETURN socket END ConnectTo;
 
 PROCEDURE SocketReady*(socket: Socket): BOOLEAN;
 BEGIN
-  RETURN (socket # NIL) & (socket.ready # 0)
-END SocketReady;
+RETURN (socket # NIL) & (socket.ready # 0) END SocketReady;
 
 PROCEDURE Send*(socket: Socket;
   data: ARRAY OF CHAR; len: INTEGER): INTEGER;
 BEGIN
-  RETURN Net.TCPSend(socket, data, len)
-END Send;
+RETURN Net.TCPSend(socket, data, len) END Send;
 
 PROCEDURE SendStr*(socket: Socket; s: ARRAY OF CHAR): INTEGER;
 VAR len: INTEGER;
 BEGIN len := 0;
-  WHILE (len < LEN(s)) & (s[len] # 0X) DO INC(len) END;
-  RETURN Net.TCPSend(socket, s, len)
-END SendStr;
+  WHILE (len < LEN(s)) & (s[len] # 0X) DO INC(len) END ;
+RETURN Net.TCPSend(socket, s, len) END SendStr;
 
 PROCEDURE Recv*(socket: Socket;
   VAR data: ARRAY OF CHAR; len: INTEGER): INTEGER;
 BEGIN
-  RETURN Net.TCPRecv(socket,
-    SYSTEM.VAL(ADRINT, SYSTEM.ADR(data[0])), len)
+RETURN Net.TCPRecv(socket, SYSTEM.VAL(ADRINT, SYSTEM.ADR(data[0])), len)
 END Recv;
 
 PROCEDURE RecvStr*(socket: Socket; VAR s: ARRAY OF CHAR): INTEGER;
 VAR n: INTEGER;
-BEGIN
-  n := Recv(socket, s, LEN(s) - 1);
+BEGIN n := Recv(socket, s, LEN(s) - 1);
   IF n >= 0 THEN
     IF n >= LEN(s) THEN n := LEN(s) END;
     s[n] := 0X
-  END;
-  RETURN n
-END RecvStr;
+  END ;
+RETURN n END RecvStr;
 *)
 
 (* Socket Set *)
@@ -1388,17 +1343,15 @@ BEGIN i := SHORT(buf.lastLen);
     S.Extract(buf.s^, 0, i, s);
     S.Delete(buf.s^, 0, i + 1);
     DEC(buf.len, i + 1); buf.lastLen := 0
-  END;
-  RETURN found
-END BufGet;
+  END ;
+RETURN found END BufGet;
 *)
 
 (* Random *)
 
 PROCEDURE Time(): INTEGER;
 BEGIN
-  RETURN SHORT(Platform.Time())
-END Time;
+RETURN SHORT(Platform.Time()) END Time;
 
 (* Set random seed value. Any values are allowed, although
    values not in [1..2^31-2] will be mapped into this range. *)
@@ -1429,21 +1382,16 @@ END NextRND;
 (* Calculates a new number. range has to be in the intervall
    [1..2^31-2]. Result is a number from 0, 1, ... , range-1. *)
 PROCEDURE Random*(range: INTEGER): INTEGER;
-BEGIN
-  NextRND;
-  RETURN randomSeed MOD range
-END Random;
+BEGIN NextRND ;
+RETURN randomSeed MOD range END Random;
 
 (* Calculates a number x with 0.0 <= x < 1.0. *)
 PROCEDURE Uniform*(): REAL;
-BEGIN
-  NextRND;
-  RETURN (randomSeed - 1) * (1 / (randomModulo - 1))
-END Uniform;
+BEGIN NextRND ;
+RETURN (randomSeed - 1) * (1 / (randomModulo - 1)) END Uniform;
 
 PROCEDURE Randomize*;
-BEGIN
-  PutSeed(Time())
+BEGIN PutSeed(Time())
 END Randomize;
 
 (* Init *)
@@ -1516,9 +1464,8 @@ BEGIN screen := NIL;
       keyPressed := 0;
       lastFlip := -1
     END
-  END;
-  RETURN screen
-END Init;
+  END ;
+RETURN screen END Init;
 
 PROCEDURE Close*;
 BEGIN

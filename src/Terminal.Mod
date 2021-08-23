@@ -77,17 +77,15 @@ BEGIN
   | 14: b :=  85; g := 255; r := 255
   | 15: b := 255; g := 255; r := 255
   ELSE  b :=  85; g :=   0; r := 255
-  END;
-  RETURN G.MakeCol(r, g, b)
-END ExpandColor;
+  END ;
+RETURN G.MakeCol(r, g, b) END ExpandColor;
 
 PROCEDURE InvertColor*(color: INTEGER): INTEGER;
 BEGIN
   ASSERT((color >= 0) & (color < 16), 59);
   IF color >= 8 THEN color := color - 8 END; (* Darken *)
-  color := 7 - color; (* Invert *)
-  RETURN color
-END InvertColor;
+  color := 7 - color ; (* Invert *)
+RETURN color END InvertColor;
 
 PROCEDURE DrawChar*(ch: CHAR; x, y, fg, bg: INTEGER);
 VAR color: INTEGER;
@@ -143,9 +141,8 @@ BEGIN
       END
     END;
     DrawMouse
-  END;
-  RETURN drawn
-END Draw;
+  END ;
+RETURN drawn END Draw;
 
 PROCEDURE Act*;
 BEGIN
@@ -317,12 +314,8 @@ BEGIN i := 0; needRedraw := TRUE;
 END WriteString;
 
 PROCEDURE LoadMedia(): BOOLEAN;
-VAR success: BOOLEAN;
-BEGIN
-  font := G.LoadFont('data/images/font.bmp', charW, charH);
-  success := font # NIL;
-  RETURN success
-END LoadMedia;
+BEGIN font := G.LoadFont('data/images/font.bmp', charW, charH) ;
+RETURN font # NIL END LoadMedia;
 
 PROCEDURE Init*(fullscreen, software: BOOLEAN): BOOLEAN;
 VAR success: BOOLEAN; options: SET;
@@ -349,8 +342,7 @@ BEGIN
       mouseX := 0; mouseY := 0;
       ResizeScreen
     END
-  END;
-  RETURN success
-END Init;
+  END ;
+RETURN success END Init;
 
 END Terminal.

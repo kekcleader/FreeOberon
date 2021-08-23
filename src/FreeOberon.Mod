@@ -101,9 +101,8 @@ BEGIN
       END
     END;
     INC(i)
-  END;
-  RETURN lines
-END CountLines;
+  END ;
+RETURN lines END CountLines;
 
 PROCEDURE ShowErrors(s: ARRAY OF CHAR);
 VAR lines, width, x0, x, y, i: INTEGER;
@@ -401,9 +400,8 @@ END RunTerminal;
 PROCEDURE IsSysModule(name: ARRAY OF CHAR): BOOLEAN;
 VAR p: StrList;
 BEGIN p := sysModules;
-  WHILE (p # NIL) & (p.s # name) DO p := p.next END;
-  RETURN p # NIL
-END IsSysModule;
+  WHILE (p # NIL) & (p.s # name) DO p := p.next END ;
+RETURN p # NIL END IsSysModule;
 
 PROCEDURE ModuleExists(s: ARRAY OF CHAR): BOOLEAN;
 VAR fname: ARRAY 120 OF CHAR;
@@ -477,12 +475,9 @@ BEGIN
     ELSIF link THEN buf := 'Linking failed.'
     ELSE buf := 'Compilation failed.'
     END;
-    IF buf[0] = 0X THEN ShowErrors(s)
-    ELSE ShowErrors(buf)
-    END
-  END;
-  RETURN success
-END RunCommand;
+    IF buf[0] = 0X THEN ShowErrors(s) ELSE ShowErrors(buf) END
+  END ;
+RETURN success END RunCommand;
 
 PROCEDURE Compile(filename: ARRAY OF CHAR; main: BOOLEAN): BOOLEAN;
 BEGIN RETURN RunCommand(filename, FALSE, FALSE, main, NIL)
@@ -530,7 +525,7 @@ BEGIN
       IF ok & ~Link(p.s, graph, modules) THEN ok := FALSE END
     END
   ELSE ok := FALSE
-  END;
+  END ;
 RETURN ok END CompileAll;
 
 PROCEDURE RunProgram(prg: ARRAY OF CHAR);
@@ -686,7 +681,7 @@ BEGIN NEW(top); top.next := NIL; p := top;
         END
       END
     END
-  END;
+  END ;
 RETURN top.next END GetImportedModules;
 
 PROCEDURE AddUniqueToList(what: StrList; VAR where: StrList);
@@ -717,12 +712,12 @@ BEGIN res := NIL;
     AddUniqueToList(list2, res);
     p := p.next
   END;
-  NEW(p); p.s := modname$; p.next := NIL; AddUniqueToList(p, res);
+  NEW(p); p.s := modname$; p.next := NIL; AddUniqueToList(p, res) ;
 RETURN res END UsedModuleList;
 
 PROCEDURE ImportsGraph(p: StrList): BOOLEAN;
 BEGIN 
-  WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END;
+  WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END ;
 RETURN p # NIL END ImportsGraph;
 
 (* "Module.Mod" -> "Module" *)
@@ -1011,9 +1006,8 @@ BEGIN
     OpenFiles(fnames);
     success := TRUE
   ELSE Out.String('Terminal init failed.'); Out.Ln
-  END;
-  RETURN success
-END Init;
+  END ;
+RETURN success END Init;
 
 BEGIN
   IF ~Init() THEN Out.String('Could not initialize.'); Out.Ln

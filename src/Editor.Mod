@@ -160,8 +160,8 @@ END InitFileDialog;
 
 PROCEDURE NewFileDialog*(type: INTEGER): FileDialog;
 VAR c: FileDialog;
-BEGIN NEW(c); InitFileDialog(c, type); RETURN c
-END NewFileDialog;
+BEGIN NEW(c); InitFileDialog(c, type) ;
+RETURN c END NewFileDialog;
 
 (* FileDialog Method *)
 
@@ -271,24 +271,21 @@ BEGIN
   | '-', '+': class := charMinusPlus
   | '"', "'": class := charQuote
   | '(': class := charOpenBracket
-  ELSE class := charOther END;
-  RETURN class
-END GetCharClass;
+  ELSE class := charOther END ;
+RETURN class END GetCharClass;
 
 PROCEDURE IsHexDigit(ch: CHAR): BOOLEAN;
 VAR result: BOOLEAN;
 BEGIN
   CASE ch OF
     'A'..'F': result := TRUE
-  ELSE result := FALSE END;
-  RETURN result
-END IsHexDigit;
+  ELSE result := FALSE END ;
+RETURN result END IsHexDigit;
 
 PROCEDURE IsKeywordInString(s: ARRAY OF CHAR; x, len: INTEGER): BOOLEAN;
 VAR part: ARRAY 32 OF CHAR; result: BOOLEAN;
   PROCEDURE KW(keyword: ARRAY OF CHAR): BOOLEAN;
-  BEGIN
-    RETURN keyword = part
+  BEGIN RETURN keyword = part
   END KW;
 BEGIN
   IF (s[x] >= 'A') & (s[x] <= 'Z') THEN
@@ -309,9 +306,8 @@ BEGIN
       KW('ELSE') OR KW('OF') OR KW('WITH') OR KW('LONGSET') OR
       KW('UNTIL') OR KW('CONST') OR KW('MOD') OR KW('FLOOR')
   ELSE result := FALSE
-  END;
-  RETURN result
-END IsKeywordInString;
+  END ;
+RETURN result END IsKeywordInString;
 
 PROCEDURE GetToken(s: ARRAY OF CHAR; x: INTEGER;
   VAR class, len, comLevel: INTEGER);
@@ -418,9 +414,8 @@ BEGIN
   | tokenNumber:  color := 3
   | tokenString:  color := 11
   | tokenComment: color := 7
-  ELSE color := 14 END;
-  RETURN color
-END GetTokenColor;
+  ELSE color := 14 END ;
+RETURN color END GetTokenColor;
 
 (* Like T.PutString, but highlighted *)
 PROCEDURE PutStringH*(x, y: INTEGER; s: ARRAY OF CHAR;
@@ -469,8 +464,7 @@ BEGIN
 END PutSelStringH;
 
 PROCEDURE TextChanged*(c: Editor): BOOLEAN;
-BEGIN
-  RETURN c.text.changed
+BEGIN RETURN c.text.changed
 END TextChanged;
 
 PROCEDURE PrintText*(c: Editor);
@@ -770,8 +764,8 @@ END InitEditor;
 
 PROCEDURE NewEditor*(): Editor;
 VAR w: Editor;
-BEGIN NEW(w); InitEditor(w); RETURN w
-END NewEditor;
+BEGIN NEW(w); InitEditor(w) ;
+RETURN w END NewEditor;
 
 (* Standard Menu Hanlders *)
 
