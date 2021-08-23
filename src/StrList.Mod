@@ -1,5 +1,4 @@
 MODULE StrList;
-IMPORT Out;
 
 TYPE
   Item = POINTER TO ItemDesc;
@@ -71,7 +70,6 @@ BEGIN NEW(first); first.next := NIL;
   p := L.first;
   WHILE p # NIL DO (* Loop body works with p.next *)
     next := p.next;
-    Out.String(p.s);Out.Ln;
 
     (* Find place for item q in list [first] *)
     t := first;
