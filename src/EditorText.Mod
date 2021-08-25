@@ -55,9 +55,8 @@ END InitLine;
 
 PROCEDURE NewLine*(): Line;
 VAR L: Line;
-BEGIN
-  NEW(L); InitLine(L); RETURN L
-END NewLine;
+BEGIN NEW(L); InitLine(L) ;
+RETURN L END NewLine;
 
 PROCEDURE (L: Line) InsertChar*(ch: CHAR; pos: INTEGER), NEW;
 VAR i: INTEGER;
@@ -97,9 +96,8 @@ END InitText;
 
 PROCEDURE NewText*(): Text;
 VAR t: Text;
-BEGIN
-  NEW(t); InitText(t); RETURN t
-END NewText;
+BEGIN NEW(t); InitText(t) ;
+RETURN t END NewText;
 
 PROCEDURE (t: Text) RemoveLine(L: Line), NEW;
 BEGIN
@@ -122,12 +120,10 @@ END Combine2Lines;
 
 PROCEDURE (t: Text) GetFirstSelLine*(): Line, NEW;
 VAR y: INTEGER; L: Line;
-BEGIN
-  y := t.y; L := t.cur;
+BEGIN y := t.y; L := t.cur;
   WHILE y > t.selT DO L := L.prev; DEC(y) END;
-  WHILE y < t.selT DO L := L.next; INC(y) END;
-  RETURN L
-END GetFirstSelLine;
+  WHILE y < t.selT DO L := L.next; INC(y) END ;
+RETURN L END GetFirstSelLine;
 
 PROCEDURE (t: Text) SelectAll*, NEW;
 VAR count: INTEGER; L: Line;
@@ -155,7 +151,7 @@ BEGIN res := FALSE;
         IF i = t.selL THEN res := TRUE END
       END
     END
-  END;
+  END ;
 RETURN res END WholeLineSelected;
 
 PROCEDURE (t: Text) RemoveIndent*, NEW;
@@ -387,9 +383,8 @@ BEGIN
     Files.Close(f);
     t.changed := FALSE;
     success := TRUE
-  END;
-  RETURN success
-END SaveToFile;
+  END ;
+RETURN success END SaveToFile;
 
 PROCEDURE ReadLine(VAR r: Files.Rider; L: Line);
 VAR ch: CHAR; i: INTEGER;
@@ -447,9 +442,8 @@ BEGIN
       t.changed := FALSE;
       success := TRUE
     END
-  END;
-  RETURN success
-END LoadFromFile; 
+  END ;
+RETURN success END LoadFromFile; 
 
 PROCEDURE (t: Text) MoveToPos*(pos, winH: INTEGER), NEW;
 CONST pad = 3;
