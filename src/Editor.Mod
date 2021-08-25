@@ -192,12 +192,14 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   ELSE c.btnOk := OV.NewButton('O&K')
   END;
   c.btnOk.default := TRUE;
-  c.btnOk.do.resize(c.btnOk, c.w - 13, 3, 9, 1);
+  c.btnOk.tabIndex := 2;
   c.btnOk.onClick := FileDialogOkClick;
+  c.btnOk.do.resize(c.btnOk, c.w - 13, 3, 9, 1);
   OV.Add(c, c.btnOk);
 
   (* Cancel button *)
   c.btnCancel := OV.NewButton('Cancel');
+  c.btnCancel.tabIndex := 3;
   c.btnCancel.onClick := OV.CloseCurWindow;
   c.btnCancel.do.resize(c.btnCancel, c.w - 13, 11, 9, 1);
   OV.Add(c, c.btnCancel);
@@ -206,8 +208,9 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
 
   (* ColumnList *)
   c.colFiles := OV.NewColumnList();
-  c.colFiles.onDblClick := FileDialogOkClick;
+  c.colFiles.tabIndex := 1;
   c.colFiles.onChange := FileDialogListChange;
+  c.colFiles.onDblClick := FileDialogOkClick;
   c.colFiles.do.resize(c.colFiles, 3, 6, c.w - 18, c.h - 8);
   FileDialogUpdateFileList(c);
   OV.Refresh(c.colFiles);

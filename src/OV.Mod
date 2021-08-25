@@ -576,6 +576,7 @@ TYPE
     parent*, children*: Control;
     prev*, next*: Control;
     x*, y*, w*, h*: INTEGER;
+    tabIndex*: INTEGER;
     enabled*: BOOLEAN;
     default*: BOOLEAN;
     focused*: BOOLEAN;
@@ -922,7 +923,7 @@ END SetEnabled;
 (* Control *)
 
 PROCEDURE InitControl*(c: Control);
-BEGIN c.x := 0; c.y := 0; c.w := 0; c.h := 0;
+BEGIN c.x := 0; c.y := 0; c.w := 0; c.h := 0; c.tabIndex := 0;
   c.parent := NIL; c.children := NIL; c.prev := NIL; c.next := NIL;
   c.enabled := TRUE; c.default := FALSE; c.focused := FALSE;
   c.mouseActive := TRUE; c.status := 0; c.caption[0] := 0X;
@@ -2288,6 +2289,44 @@ BEGIN handled := FALSE; hotkey := key.code;
   RETURN handled
 END CheckHotkey;
 
+PROCEDURE FindNextTabControl(p: Control; back: BOOLEAN): Control;
+VAR br, next: Control;
+  t, nextT: INTEGER;
+BEGIN t := p.tabIndex; next := NIL;
+  IF back THEN nextT := MIN(INTEGER) ELSE nextT := MAX(INTEGER) END;
+  br := p; p := p.next;
+  WHILE p # br DO
+    IF ~back & (p.tabIndex >= t) & (p.tabIndex < nextT) OR
+        back & (p.tabIndex <= t) & (p.tabIndex > nextT)
+    THEN next := p; nextT := p.tabIndex
+    END;
+    p := p.next
+  END;
+  IF next = NIL THEN
+    IF back THEN
+      nextT := MIN(INTEGER);
+      REPEAT
+        IF p.tabIndex > nextT THEN next := p; nextT := p.tabIndex END;
+        p := p.next
+      UNTIL p = br
+    ELSE
+      nextT := MAX(INTEGER);
+      REPEAT
+        IF p.tabIndex < nextT THEN next := p; nextT := p.tabIndex END;
+        p := p.next
+      UNTIL p = br
+    END
+  END ;
+RETURN next END FindNextTabControl;
+
+PROCEDURE OnTabPress(app: App; back: BOOLEAN);
+VAR p: Control;
+BEGIN p := app.cur;
+  IF p # NIL THEN p := FindNextTabControl(p, back);
+    IF p # NIL THEN SetAppFocus(app, p) END
+  END
+END OnTabPress;
+
 PROCEDURE OnKeyDown(app: App; key: G.Key);
 VAR handled: BOOLEAN; p: Control;
 BEGIN handled := FALSE; p := app.cur;
@@ -2302,6 +2341,8 @@ BEGIN handled := FALSE; p := app.cur;
   IF ~handled THEN
     IF (key.code = G.kEnter) & (key.mod * G.mAlt # {}) THEN
       T.ToggleFullscreen
+    ELSIF (p # NIL) & (key.code = G.kTab) THEN
+      OnTabPress(app, key.mod * G.mShift # {})
     ELSIF p # NIL THEN
       IF p.do.keyDown # NIL THEN p.do.keyDown(p, key) END;
       IF (p.parent # NIL) & (p.parent IS Window) &
