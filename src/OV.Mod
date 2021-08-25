@@ -1463,7 +1463,7 @@ BEGIN INC(x, c.x); INC(y, c.y);
   T.CharFill(x, y, c.w, c.h, ' ', 0, 2);
   i := 0; WHILE c.caption[i] # 0X DO INC(i) END;
   IF i > c.w THEN i := c.w END;
-  IF c.default THEN fg := 11 ELSE fg := 0 END;
+  IF c.focused THEN fg := 15 ELSIF c.default THEN fg := 11 ELSE fg := 0 END;
   PutMarkedString(x + (c.w - i) DIV 2, y + c.h DIV 2,
     c.caption, fg, 14, 2, x + c.w - 1);
   IF c.status # selected THEN
