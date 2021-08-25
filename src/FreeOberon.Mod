@@ -188,7 +188,16 @@ BEGIN e := Editor.NewEditor();
   OV.AddWindow(app, e)
 END FileNew;
 
-PROCEDURE DoOpenFile(filename: ARRAY OF CHAR);
+PROCEDURE FnameToCaption(IN fname: ARRAY OF CHAR; VAR caption: ARRAY OF CHAR);
+BEGIN
+  IF Strings.Pos(Editor.stdPath, fname, 0) = 0 THEN
+    Strings.Extract(fname, Strings.Length(Editor.stdPath),
+      LEN(caption), caption)
+  ELSE caption := fname$
+  END
+END FnameToCaption;
+
+PROCEDURE DoOpenFile(IN fname: ARRAY OF CHAR);
 VAR e: Editor.Editor; newWin: BOOLEAN;
 BEGIN
   IF (app.windows # NIL) & (app.windows IS Editor.Editor) THEN
@@ -197,26 +206,28 @@ BEGIN
   END;
   newWin := (e = NIL) OR ~Editor.IsEmpty(e);
   IF newWin THEN e := Editor.NewEditor() END;
-  IF e.text.LoadFromFile(filename) THEN
-    e.caption := filename$; e.filename := filename$;
+  IF e.text.LoadFromFile(fname) THEN
+    e.fname := fname$;
+    FnameToCaption(fname, e.caption);
     IF newWin THEN OV.AddWindow(app, e) END
+  ELSE (*!FIXME*)
   END
 END DoOpenFile;
 
-PROCEDURE FocusOrOpenFile(filename: ARRAY OF CHAR);
+PROCEDURE FocusOrOpenFile(fname: ARRAY OF CHAR);
 VAR e, f: Editor.Editor;
 BEGIN
   e := app.windows(Editor.Editor); f := e;
-  WHILE (e # NIL) & (e.filename # filename) DO
+  WHILE (e # NIL) & (e.fname # fname) DO
     IF e.next = f THEN e := NIL ELSE e := e.next(Editor.Editor) END
   END;
-  IF e = NIL THEN DoOpenFile(filename)
+  IF e = NIL THEN DoOpenFile(fname)
   ELSE app.windows := e; OV.SetFocus(e)
   END;
   OV.DrawApp(app)
 END FocusOrOpenFile;
 
-PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; filename: ARRAY OF CHAR; VAR pos: INTEGER);
+PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; fname: ARRAY OF CHAR; VAR pos: INTEGER);
 VAR i, j, st, len, skip: INTEGER; found: BOOLEAN;
 BEGIN
   StringsFindNext(' pos ', s, 0, found, i);
@@ -408,14 +419,14 @@ VAR fname: ARRAY 120 OF CHAR;
   F: Files.File;
   exists: BOOLEAN;
 BEGIN
-  fname := 'Programs/'; Strings.Append(s, fname);
+  fname := Editor.stdPath; Strings.Append(s, fname);
   Strings.Append('.Mod', fname);
   F := Files.Old(fname);
   exists := F # NIL;
   IF F # NIL THEN Files.Close(F) END;
 RETURN exists END ModuleExists;
 
-PROCEDURE RunCommand(filename: ARRAY OF CHAR;
+PROCEDURE RunCommand(fname: ARRAY OF CHAR;
     link, graph, main: BOOLEAN; list: StrList): BOOLEAN;
 CONST bufLen = 20480;
 VAR buf: ARRAY bufLen OF CHAR;
@@ -443,7 +454,7 @@ BEGIN
     cmd := 'data/bin/'; Strings.Append(command, cmd);
     Strings.Append('.sh ', cmd)
   END;
-  Strings.Append(filename, cmd);
+  Strings.Append(fname, cmd);
   IF main THEN Strings.Append(' -m', cmd)
   ELSIF link & (list # NIL) THEN
     p := list;
@@ -466,8 +477,8 @@ BEGIN
       ELSE buf[len] := 0X
       END;
 
-      ParseErrors(buf, filename, pos);
-      FocusOrOpenFile(filename);
+      ParseErrors(buf, fname, pos);
+      FocusOrOpenFile(fname);
       e := app.windows(Editor.Editor);
       e.text.MoveToPos(pos, e.h - 2);
       Editor.PrintText(app.windows(Editor.Editor));
@@ -479,13 +490,13 @@ BEGIN
   END ;
 RETURN success END RunCommand;
 
-PROCEDURE Compile(filename: ARRAY OF CHAR; main: BOOLEAN): BOOLEAN;
-BEGIN RETURN RunCommand(filename, FALSE, FALSE, main, NIL)
+PROCEDURE Compile(fname: ARRAY OF CHAR; main: BOOLEAN): BOOLEAN;
+BEGIN RETURN RunCommand(fname, FALSE, FALSE, main, NIL)
 END Compile;
 
-PROCEDURE Link(filename: ARRAY OF CHAR;
+PROCEDURE Link(fname: ARRAY OF CHAR;
     graph: BOOLEAN; list: StrList): BOOLEAN;
-BEGIN RETURN RunCommand(filename, TRUE, graph, FALSE, list)
+BEGIN RETURN RunCommand(fname, TRUE, graph, FALSE, list)
 END Link;
 
 PROCEDURE ResetSysModules;
@@ -552,17 +563,18 @@ BEGIN
   END
 END RunProgram;
 
-PROCEDURE OpenFileOkClick(c: OV.Control; filename: ARRAY OF CHAR);
-BEGIN DoOpenFile(filename)
+PROCEDURE OpenFileOkClick(c: OV.Control; fname: ARRAY OF CHAR);
+BEGIN DoOpenFile(fname)
 END OpenFileOkClick;
 
-PROCEDURE DoSaveFile(c: OV.Control; filename: ARRAY OF CHAR);
+PROCEDURE DoSaveFile(c: OV.Control; fname: ARRAY OF CHAR);
 VAR w: OV.Window; e: Editor.Editor;
 BEGIN
-  IF filename[0] # 0X THEN w := c.app.windows;
+  IF fname[0] # 0X THEN w := c.app.windows;
     IF (w # NIL) & (w IS Editor.Editor) THEN e := w(Editor.Editor);
-      IF e.text.SaveToFile(filename) THEN
-        e.caption := filename$; filename := e.filename$
+      IF e.text.SaveToFile(fname) THEN
+        e.fname := fname$;
+        FnameToCaption(fname, e.caption)
       END
     END
   END
@@ -581,8 +593,8 @@ VAR e: Editor.Editor;
 BEGIN
   IF (c.app.windows # NIL) & (c.app.windows IS Editor.Editor) THEN
     e := c.app.windows(Editor.Editor);
-    IF e.filename[0] # 0X THEN
-      IF e.text.LoadFromFile(e.filename) THEN (*!FIXME*) END
+    IF e.fname[0] # 0X THEN
+      IF e.text.LoadFromFile(e.fname) THEN (*!FIXME*) END
     END
   END
 END FileReload;
@@ -594,9 +606,7 @@ BEGIN d := Editor.NewFileDialog(Editor.save);
   d.onFileOk := DoSaveFile;
   w := c.app.windows;
   IF (w # NIL) & (w IS Editor.Editor) THEN e := w(Editor.Editor);
-    IF e.filename[0] # 0X THEN
-      OV.EditSetCaption(d.edtFilename, e.filename)
-    END
+    IF e.fname[0] # 0X THEN Editor.FileDialogSetFname(d, e.fname) END
   END;
   OV.AddWindow(app, d)
 END FileSaveAs;
@@ -605,8 +615,8 @@ PROCEDURE FileSave(c: OV.Control);
 VAR w: OV.Window;
 BEGIN w := c.app.windows;
   IF (w # NIL) & (w IS Editor.Editor) THEN
-    IF w(Editor.Editor).filename[0] = 0X THEN FileSaveAs(c)
-    ELSE DoSaveFile(c, w(Editor.Editor).filename)
+    IF w(Editor.Editor).fname[0] = 0X THEN FileSaveAs(c)
+    ELSE DoSaveFile(c, w(Editor.Editor).fname)
     END
   END
 END FileSave;
@@ -661,7 +671,7 @@ VAR F: Files.File;
   mod, s: ARRAY 256 OF CHAR;
   ok: BOOLEAN;
 BEGIN NEW(top); top.next := NIL; p := top;
-  s := 'Programs/'; Strings.Append(modname, s); Strings.Append('.Mod', s);
+  s := Editor.stdPath; Strings.Append(modname, s); Strings.Append('.Mod', s);
   F := Files.Old(s);
   IF F # NIL THEN
     Files.Set(R, F, 0); Files.ReadChar(R, ch); GetSym(R, ch, s);
@@ -721,11 +731,11 @@ BEGIN
 RETURN p # NIL END ImportsGraph;
 
 (* "Module.Mod" -> "Module" *)
-PROCEDURE GetModuleName(filename: ARRAY OF CHAR; VAR modname: ARRAY OF CHAR);
+PROCEDURE GetModuleName(fname: ARRAY OF CHAR; VAR modname: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN i := 0;
-  WHILE (filename[i] # 0X) & (filename[i] # '.') DO
-    modname[i] := filename[i]; INC(i)
+  WHILE (fname[i] # 0X) & (fname[i] # '.') DO
+    modname[i] := fname[i]; INC(i)
   END;
   modname[i] := 0X
 END GetModuleName;
@@ -737,8 +747,8 @@ VAR w: OV.Window; graph: BOOLEAN;
 BEGIN w := c.app.windows;
   IF (w # NIL) & (w IS Editor.Editor) THEN
     IF Editor.TextChanged(w(Editor.Editor)) THEN FileSave(c) END;
-    IF w(Editor.Editor).filename[0] # 0X THEN
-      primaryFile := w(Editor.Editor).filename$;
+    IF w(Editor.Editor).fname[0] # 0X THEN
+      primaryFile := w(Editor.Editor).fname$;
       GetModuleName(primaryFile, modname);
       modules := UsedModuleList(modname);
       graph := ImportsGraph(modules);
@@ -746,7 +756,7 @@ BEGIN w := c.app.windows;
       IF CompileAll(modules) THEN
         tempWindowed := needWindowed & T.isFullscreen;
         IF tempWindowed THEN G.SwitchToWindowed END;
-        RunProgram(w(Editor.Editor).filename)
+        RunProgram(w(Editor.Editor).fname)
       END
     END
   END
@@ -976,17 +986,36 @@ BEGIN i := 0;
   IF i # 0 THEN OV.NextWindow(app.windows) END
 END OpenFiles;
 
-PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN;
-    VAR fnames: Fnames);
+PROCEDURE ParseFileNameArg(VAR s: ARRAY OF CHAR);
+VAR L: INTEGER;
+  found: BOOLEAN;
+BEGIN
+  (* Replace all \ with / and set L to length of s *)
+  L := 0; found := FALSE;
+  WHILE s[L] # 0X DO
+    IF (s[L] = '\') OR (s[L] = '/') THEN s[L] := '/'; found := TRUE END;
+    INC(L)
+  END;
+
+  IF ~found THEN
+    IF Strings.Pos('.Mod', s, L - 4) = -1 THEN Strings.Append('.Mod', s) END;
+    Strings.Insert(Editor.stdPath, 0, s);
+  END
+END ParseFileNameArg;
+
+PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR fnames: Fnames);
 VAR i, nofnames: INTEGER;
   s: ARRAY 256 OF CHAR;
-BEGIN fs := TRUE; sw := FALSE; i := 0; nofnames := 0;
+BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0;
   WHILE i # Args.argc DO
     Args.Get(i, s);
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--software' THEN sw := TRUE
     ELSIF nofnames < LEN(fnames) THEN
-      fnames[nofnames] := s$; INC(nofnames)
+      ParseFileNameArg(s);
+      fnames[nofnames] := s$;
+      INC(nofnames)
+    ELSE Out.String('Too many files.'); Out.Ln
     END;
     INC(i)
   END;

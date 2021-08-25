@@ -19,6 +19,8 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 IMPORT OV, T := Terminal, G := Graph, Text := EditorText,
   Strings, StrList, Dir, Out;
 CONST
+  stdPath* = 'Programs/';
+
   (* Direction of Selection *)
   dirLeft  = 0;
   dirRight = 1;
@@ -54,13 +56,13 @@ TYPE
     btnOk*, btnCancel*: OV.Button;
     path*: ARRAY 1024 OF CHAR;
     colFiles*: OV.ColumnList;
-    onFileOk*: PROCEDURE (c: OV.Control; filename: ARRAY OF CHAR)
+    onFileOk*: PROCEDURE (c: OV.Control; fname: ARRAY OF CHAR)
   END;
 
   Editor* = POINTER TO EditorDesc;
   EditorDesc* = RECORD(OV.WindowDesc)
     text*: Text.Text;
-    filename*: ARRAY 1000 OF CHAR
+    fname*: ARRAY 1000 OF CHAR
   END;
 
 VAR
@@ -122,21 +124,44 @@ END FileDialogApplyDir;
 
 PROCEDURE FileDialogOkClick*(c: OV.Control);
 VAR w: FileDialog;
-  s: ARRAY 256 OF CHAR;
+  s, full: ARRAY 257 OF CHAR;
   L: INTEGER;
 BEGIN w := c.parent(FileDialog);
   s := w.edtFilename.caption$;
-  (* Replace all \ with / *)
+  (* Replace all \ with / and set L to length of s *)
   L := 0; WHILE s[L] # 0X DO IF s[L] = '\' THEN s[L] := '/' END; INC(L) END;
   IF L > 0 THEN
     IF s[L - 1] = '/' THEN
       FileDialogApplyDir(w, s);
       FileDialogUpdateFileList(w)
     ELSE OV.CloseCurWindow(c);
-      IF w.onFileOk # NIL THEN w.onFileOk(c, s) END
+      IF w.onFileOk # NIL THEN
+        full := w.path$; Strings.Append(s, full);
+        w.onFileOk(c, full)
+      END
     END
   END
 END FileDialogOkClick;
+
+PROCEDURE FileDialogSetFname*(F: FileDialog; fname: ARRAY OF CHAR);
+VAR s, path: ARRAY 256 OF CHAR;
+  L, last: INTEGER;
+BEGIN s := fname$; path[0] := 0X;
+  L := 0; last := -1; (* Position of the last / or \ *)
+  WHILE s[L] # 0X DO (* Change all \ to /, set L to length of s, set last *)
+    IF (s[L] = '\') OR (s[L] = '/') THEN s[L] := '/'; last := L END;
+    INC(L)
+  END;
+
+  IF last # -1 THEN (* Split path and fname (s) if there was / or \ *)
+    Strings.Extract(s, 0, last + 1, path);
+    Strings.Delete(s, 0, last + 1)
+  END;
+
+  F.path := path$;
+  FileDialogUpdateFileList(F);
+  OV.EditSetCaption(F.edtFilename, s)
+END FileDialogSetFname;
 
 PROCEDURE FileDialogListChange*(c: OV.Control);
 VAR C: OV.ColumnList; w: FileDialog;
@@ -177,7 +202,7 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.btnCancel.do.resize(c.btnCancel, c.w - 13, 11, 9, 1);
   OV.Add(c, c.btnCancel);
 
-  c.path := 'Programs/';
+  c.path := stdPath;
 
   (* ColumnList *)
   c.colFiles := OV.NewColumnList();
@@ -229,7 +254,7 @@ END InitFileDialogMethod;
 
 PROCEDURE IsEmpty*(e: Editor): BOOLEAN;
 BEGIN
-  RETURN (e.filename[0] = 0X) & (e.text.first = e.text.last) &
+  RETURN (e.fname[0] = 0X) & (e.text.first = e.text.last) &
          (e.text.first.len = 0)
 END IsEmpty;
 
@@ -787,7 +812,7 @@ END HandleEnter;
 
 PROCEDURE InitEditor*(c: Editor);
 BEGIN OV.InitWindow(c);
-  c.filename[0] := 0X;
+  c.fname[0] := 0X;
   c.bg := 1; c.resizable := TRUE; c.caption := 'NONAME';
   c.text := Text.NewText();
   c.do := editorMethod

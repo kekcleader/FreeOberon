@@ -48,9 +48,7 @@ TYPE
 (* Line *)
 
 PROCEDURE InitLine*(L: Line);
-BEGIN
-  L.s[0] := 0X; L.len := 0; L.comLevel := 0;
-  L.prev := NIL; L.next := NIL
+BEGIN L.s[0] := 0X; L.len := 0; L.comLevel := 0; L.prev := NIL; L.next := NIL
 END InitLine;
 
 PROCEDURE NewLine*(): Line;
@@ -86,8 +84,7 @@ END Delete;
 (* Text *)
 
 PROCEDURE InitText*(t: Text);
-BEGIN
-  t.cur := NewLine();
+BEGIN t.cur := NewLine();
   t.first := t.cur; t.last := t.cur;
   t.scrFirst := t.cur;
   t.x := 0; t.y := 0; t.scrY := 0;
@@ -109,9 +106,7 @@ END RemoveLine;
 (* Объединить данную строку со следующей, прицепив её к данной *)
 PROCEDURE (t: Text) Combine2Lines(L: Line), NEW;
 VAR i: INTEGER;
-BEGIN
-  ASSERT(L.next # NIL, 101);
-  i := 0;
+BEGIN ASSERT(L.next # NIL, 101); i := 0;
   WHILE i <= L.next.len DO L.s[i + L.len] := L.next.s[i]; INC(i) END;
   INC(L.len, L.next.len);
   IF L.next = t.last THEN t.last := L END;
@@ -157,9 +152,7 @@ RETURN res END WholeLineSelected;
 PROCEDURE (t: Text) RemoveIndent*, NEW;
 VAR L: Line;
   i, y, endY: INTEGER;
-BEGIN
-  L := t.GetFirstSelLine(); y := t.selT;
-  endY := t.selB;
+BEGIN L := t.GetFirstSelLine(); y := t.selT; endY := t.selB;
   IF t.selR = 0 THEN DEC(endY) END;
   WHILE y <= endY DO
     FOR i := 1 TO 2 DO
@@ -181,10 +174,8 @@ END RemoveIndent;
 PROCEDURE (t: Text) AddIndent*, NEW;
 VAR L: Line;
   i, y, endY: INTEGER;
-BEGIN
-  L := t.GetFirstSelLine();
-  y := t.selT;
-  endY := t.selB;
+BEGIN L := t.GetFirstSelLine();
+  y := t.selT; endY := t.selB;
   IF t.selR = 0 THEN DEC(endY) END;
   WHILE y <= endY DO
     FOR i := 1 TO 2 DO IF L.len # 0 THEN L.InsertChar(' ', 0) END END;
@@ -251,8 +242,7 @@ END HandleDelete;
 
 PROCEDURE (t: Text) HandleEnter*(autoIndent: BOOLEAN), NEW;
 VAR L: Line; i, spaces: INTEGER;
-BEGIN
-  L := NewLine(); spaces := 0;
+BEGIN L := NewLine(); spaces := 0;
   IF t.x = 0 THEN (* Начало строки *)
     IF t.cur.prev # NIL THEN t.cur.prev.next := L END;
     L.next := t.cur; L.prev := t.cur.prev;
@@ -282,10 +272,7 @@ BEGIN
 END HandleEnter;
 
 PROCEDURE (t: Text) InsertChar*(ch: CHAR), NEW;
-BEGIN
-  t.cur.InsertChar(ch, t.x);
-  INC(t.x);
-  t.changed := TRUE
+BEGIN t.cur.InsertChar(ch, t.x); INC(t.x); t.changed := TRUE
 END InsertChar;
 
 PROCEDURE (t: Text) Insert*(s: ARRAY OF CHAR; autoIndent: BOOLEAN), NEW;
@@ -303,8 +290,7 @@ BEGIN
 END Insert;
 
 PROCEDURE (t: Text) Clear*, NEW;
-BEGIN
-  t.cur := NewLine(); t.first := t.cur;
+BEGIN t.cur := NewLine(); t.first := t.cur;
   t.last := t.cur; t.scrFirst := t.cur;
   t.x := 0; t.y := 0;
   t.selected := FALSE;
@@ -356,17 +342,28 @@ BEGIN
   Files.WriteChar(r, 0AX)
 END WriteLn;
 
-PROCEDURE (t: Text) SaveToFile*(fName: ARRAY OF CHAR): BOOLEAN, NEW;
+PROCEDURE FixFname(VAR fname: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN
+  IF Config.isWindows THEN i := 0;
+    WHILE fname[i] # 0X DO
+      IF fname[i] = '/' THEN fname[i] := '\' END;
+      INC(i)
+    END
+  END
+END FixFname;
+
+PROCEDURE (t: Text) SaveToFile*(fname: ARRAY OF CHAR): BOOLEAN, NEW;
 VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
-  fPath: ARRAY 1024 OF CHAR;
   L: Line;
-BEGIN
-  success := FALSE;
-  fPath := 'Programs/';
-  Strings.Append(fName, fPath);
-  f := Files.New(fPath);
+BEGIN success := FALSE;
+  FixFname(fname);
+  Out.String('fname='); Out.String(fname);Out.Ln;
+  f := Files.New(fname);
+  Out.String('END?'); Out.Ln;
   IF f # NIL THEN (*!FIXME error checking is wrong *)
+    Out.String('f # NIL.'); Out.Ln;
     Files.Set(r, f, 0);
     L := t.first;
     WHILE L # NIL DO
@@ -384,12 +381,12 @@ BEGIN
     t.changed := FALSE;
     success := TRUE
   END ;
+  Out.String('End of proc.'); Out.Ln;
 RETURN success END SaveToFile;
 
 PROCEDURE ReadLine(VAR r: Files.Rider; L: Line);
 VAR ch: CHAR; i: INTEGER;
-BEGIN
-  i := 0;
+BEGIN i := 0;
   Files.ReadChar(r, ch);
   WHILE ~r.eof & (i < LEN(L.s) - 1) & (ch # 0AX) & (ch # 0DX) DO
     IF ORD(ch) < 128 THEN L.s[i] := ch
@@ -412,17 +409,14 @@ BEGIN
   END
 END ReadLine;
 
-PROCEDURE (t: Text) LoadFromFile*(fName: ARRAY OF CHAR): BOOLEAN, NEW;
+PROCEDURE (t: Text) LoadFromFile*(fname: ARRAY OF CHAR): BOOLEAN, NEW;
 VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
-  fPath: ARRAY 1024 OF CHAR;
   L: Line;
-BEGIN
-  success := FALSE;
-  IF fName[0] # 0X THEN
-    fPath := 'Programs/';
-    Strings.Append(fName, fPath);
-    f := Files.Old(fPath);
+BEGIN success := FALSE;
+  IF fname[0] # 0X THEN
+    FixFname(fname);
+    f := Files.Old(fname);
     IF f # NIL THEN
       Files.Set(r, f, 0);
       L := NewLine();
@@ -448,8 +442,7 @@ RETURN success END LoadFromFile;
 PROCEDURE (t: Text) MoveToPos*(pos, winH: INTEGER), NEW;
 CONST pad = 3;
 VAR i, centerY: INTEGER; L: Line;
-BEGIN
-  L := t.first; t.x := 0; t.y := 0;
+BEGIN L := t.first; t.x := 0; t.y := 0;
   REPEAT
     WHILE (L.s[t.x] # 0X) & (pos > 0) DO
       IF (ORD(L.s[t.x]) > 127) & (pos >= 2) THEN DEC(pos, 2)
