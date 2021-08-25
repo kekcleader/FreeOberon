@@ -100,7 +100,8 @@ BEGIN L := c.colFiles.items;
     Dir.Next(r)
   END;
   StrList.Sort(L, FileNamesCmp);
-  c.colFiles.cur := 0; OV.EditSetCaption(c.edtFilename, '../');
+  OV.ColumnListSetCur(c.colFiles, 0);
+  OV.EditSetCaption(c.edtFilename, '../');
   OV.NeedRedraw(c.app)
 END FileDialogUpdateFileList;
 
