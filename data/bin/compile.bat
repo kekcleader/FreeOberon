@@ -12,7 +12,7 @@ SET OBERON=.;%CURDIR%..\..\src;%OFRDIR%\Lib\Sym
 SET OFR=ofront+ -s -88 -7
 
 ECHO ON
-%OFR% %2 ..\Programs\%1
+@%OFR% %2 ..\Programs\%1
 @SET RETCODE=%ERRORLEVEL%
 @ECHO OFF
 EXIT /b %RETCODE%
