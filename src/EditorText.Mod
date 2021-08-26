@@ -359,11 +359,8 @@ VAR f: Files.File; r: Files.Rider;
   L: Line;
 BEGIN success := FALSE;
   FixFname(fname);
-  Out.String('fname='); Out.String(fname);Out.Ln;
   f := Files.New(fname);
-  Out.String('END?'); Out.Ln;
   IF f # NIL THEN (*!FIXME error checking is wrong *)
-    Out.String('f # NIL.'); Out.Ln;
     Files.Set(r, f, 0);
     L := t.first;
     WHILE L # NIL DO
@@ -381,7 +378,6 @@ BEGIN success := FALSE;
     t.changed := FALSE;
     success := TRUE
   END ;
-  Out.String('End of proc.'); Out.Ln;
 RETURN success END SaveToFile;
 
 PROCEDURE ReadLine(VAR r: Files.Rider; L: Line);

@@ -380,11 +380,11 @@ BEGIN
   END
 END HandleTerminalKeyDown;
 
-PROCEDURE HandleTerminalTextInput(s: ARRAY OF CHAR; sym: INTEGER);
+PROCEDURE HandleTerminalTextInput(s: ARRAY OF CHAR; ch: INTEGER);
 BEGIN
-  IF (sym # 0) & (inputBufLen < LEN(inputBuf)) THEN
-    inputBuf[inputBufLen] := CHR(sym); INC(inputBufLen);
-    T.Write(CHR(sym))
+  IF (ch # 0) & (inputBufLen < LEN(inputBuf)) THEN
+    inputBuf[inputBufLen] := OV.ToCP866(ch); INC(inputBufLen);
+    T.Write(OV.ToCP866(ch))
   END
 END HandleTerminalTextInput;
 
@@ -398,7 +398,7 @@ BEGIN quit := FALSE;
       CASE event.type OF
         G.mouseMove: HandleMouseMotion
       | G.keyDown: HandleTerminalKeyDown(event.key, quit)
-      | G.textInput: HandleTerminalTextInput(event.s, event.key.sym)
+      | G.textInput: HandleTerminalTextInput(event.s, event.ch)
       ELSE
       END
     END;
@@ -454,7 +454,13 @@ BEGIN
     cmd := 'data/bin/'; Strings.Append(command, cmd);
     Strings.Append('.sh ', cmd)
   END;
-  Strings.Append(fname, cmd);
+
+  IF Strings.Pos(Editor.stdPath, fname, 0) = 0 THEN
+    Strings.Extract(fname, Strings.Length(Editor.stdPath), LEN(s), s)
+  ELSE s := fname$
+  END;
+  Strings.Append(s, cmd);
+
   IF main THEN Strings.Append(' -m', cmd)
   ELSIF link & (list # NIL) THEN
     p := list;
@@ -732,12 +738,14 @@ RETURN p # NIL END ImportsGraph;
 
 (* "Module.Mod" -> "Module" *)
 PROCEDURE GetModuleName(fname: ARRAY OF CHAR; VAR modname: ARRAY OF CHAR);
-VAR i: INTEGER;
-BEGIN i := 0;
+VAR i, j: INTEGER;
+BEGIN i := 0; j := 0;
+  WHILE (fname[i] # 0X) & (fname[i] # '/') DO INC(i) END;
+  IF fname[i] = 0X THEN i := 0 ELSE INC(i) END;
   WHILE (fname[i] # 0X) & (fname[i] # '.') DO
-    modname[i] := fname[i]; INC(i)
+    modname[j] := fname[i]; INC(i); INC(j)
   END;
-  modname[i] := 0X
+  modname[j] := 0X
 END GetModuleName;
 
 PROCEDURE OnBuild(c: OV.Control);
