@@ -435,6 +435,21 @@ BEGIN success := FALSE;
   END ;
 RETURN success END LoadFromFile; 
 
+PROCEDURE (t: Text) MoveToLineCol*(line, col, winH: INTEGER), NEW;
+VAR i, centerY, tx, ty: INTEGER; L: Line;
+BEGIN L := t.first; tx := 0; ty := 0; DEC(line); DEC(col);
+  WHILE (L # NIL) & (ty # line) DO L := L.next; INC(ty) END;
+  IF L # NIL THEN
+    WHILE (L.s[tx] # 0X) & (col > 0) DO 
+      IF L.s[tx] < 80X THEN DEC(col) ELSE DEC(col, 2) END;
+      INC(tx)
+    END;
+    IF L.s[tx] # 0X THEN t.x := tx; t.y := ty; t.cur := L;
+      IF ty - t.scrY > winH - 4 THEN t.scrFirst := L; t.scrY := ty END
+    END
+  END
+END MoveToLineCol;
+
 PROCEDURE (t: Text) MoveToPos*(pos, winH: INTEGER), NEW;
 CONST pad = 3;
 VAR i, centerY: INTEGER; L: Line;

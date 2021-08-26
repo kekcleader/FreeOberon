@@ -26,7 +26,7 @@ CONST
   dirRight = 1;
   dirUp    = 2;
   dirDown  = 3;
-  
+
   (* States *)
   stateEditor   = 0;
   stateTerminal = 1;
@@ -73,7 +73,7 @@ VAR i, j: INTEGER; tmp: CHAR; neg: BOOLEAN;
 BEGIN
   IF n = 0 THEN
     s[0] := '0'; i := 1
-  ELSE i := 0; neg := n < 0; 
+  ELSE i := 0; neg := n < 0;
     IF neg THEN n := -n END;
     WHILE (n > 0) & (i < LEN(s) - 1) DO
       s[i] := CHR(ORD('0') + n MOD 10);
@@ -134,33 +134,30 @@ BEGIN
   IF T.Draw() THEN G.Flip; G.Pause END (*!FIXME*)
 END ShowErrors;
 
-PROCEDURE StringsFindNext* (pattern, stringToSearch: ARRAY OF CHAR; startPos: INTEGER;
-  VAR patternFound: BOOLEAN; VAR posOfPattern: INTEGER); (* !TODO move out *)
-VAR patternPos: INTEGER;
+(* !TODO move out, rewrite *)
+PROCEDURE StringsFindNext*(what, where: ARRAY OF CHAR;
+    begin: INTEGER; VAR found: BOOLEAN; VAR resultPos: INTEGER);
+VAR i: INTEGER;
 BEGIN
-  IF (startPos < Strings.Length (stringToSearch)) THEN
-    patternPos := 0;
+  IF begin < Strings.Length(where) THEN i := 0;
     LOOP
-      IF (pattern[patternPos] = 0X) THEN     
-        (* reached end of pattern *)
-        patternFound := TRUE;
-        posOfPattern := startPos - patternPos;
+      IF what[i] = 0X THEN
+        (* reached end of what *)
+        found := TRUE; resultPos := begin - i;
         EXIT
-      ELSIF (stringToSearch[startPos] = 0X) THEN 
-        (* end of string (but not of pattern) *)
-        patternFound := FALSE;
+      ELSIF where[begin] = 0X THEN
+        (* end of string (but not of what) *)
+        found := FALSE;
         EXIT
-      ELSIF (stringToSearch[startPos] = pattern[patternPos]) THEN  
+      ELSIF where[begin] = what[i] THEN
         (* characters identic, compare next one *)
-        INC (startPos); 
-        INC (patternPos)
-      ELSE                               
+        INC(begin); INC(i)
+      ELSE
         (* difference found: reset indices and restart *)
-        DEC(startPos, patternPos - 1);
-        patternPos := 0
+        DEC(begin, i - 1); i := 0
       END
     END
-  ELSE patternFound := FALSE
+  ELSE found := FALSE
   END
 END StringsFindNext;
 
@@ -168,7 +165,7 @@ PROCEDURE FileNew(c: OV.Control);
 VAR e: Editor.Editor;
   p, br: OV.Control;
   count: INTEGER;
-BEGIN e := Editor.NewEditor(); 
+BEGIN e := Editor.NewEditor();
   p := app.windows; br := p; count := 0;
   WHILE p # NIL DO INC(count);
     IF p.next = br THEN p := NIL ELSE p := p.next END
@@ -227,31 +224,34 @@ BEGIN
   OV.DrawApp(app)
 END FocusOrOpenFile;
 
-PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; fname: ARRAY OF CHAR; VAR pos: INTEGER);
+PROCEDURE ReadInt(IN s: ARRAY OF CHAR; VAR i, res: INTEGER);
+BEGIN res := 0;
+  WHILE ('0' <= s[i]) & (s[i] <= '9') DO
+    res := res * 10 + ORD(s[i]) - ORD('0');
+    INC(i)
+  END
+END ReadInt;
+
+PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; fname: ARRAY OF CHAR;
+    VAR line, col: INTEGER);
 VAR i, j, st, len, skip: INTEGER; found: BOOLEAN;
-BEGIN
-  StringsFindNext(' pos ', s, 0, found, i);
-  IF found THEN (* Read the position *)
-    WHILE (s[i] # 0X) & ((s[i] < '0') OR (s[i] > '9')) DO INC(i) END;
-    IF (s[i] >= '0') & (s[i] <= '9') THEN
-      pos := 0;
-      REPEAT pos := pos * 10 + ORD(s[i]) - ORD('0'); INC(i)
-      UNTIL (s[i] < '0') OR (s[i] > '9');
-      (* Skip spaces before 'err' *)
-      WHILE s[i] = ' ' DO INC(i) END;
-      IF s[i] = 'e' THEN (* Assume 'err' reached *)
-        skip := 3; (* Skip 3 characters *)
-        WHILE (skip > 0) & (s[i] # 0X) DO INC(i); DEC(skip) END;
-        WHILE s[i] = ' ' DO INC(i) END; (* Skip spaces *)
-        WHILE (s[i] >= '0') & (s[i] <= '9') DO INC(i) END; (* Skip numbers *)
-        WHILE s[i] = ' ' DO INC(i) END; (* Skip spaces *)
-        s[0] := ' '; j := 1;
-        WHILE s[i] >= ' ' DO s[j] := s[i]; INC(i); INC(j) END;
-        (* Remove trailing spaces *)
-        WHILE (j > 0) & (s[j - 1] = ' ') DO DEC(j) END;
-        s[j] := '.'; INC(j); s[j] := 0X;
-        (* Capitalize first letter (0th is a space). *)
-        IF (s[1] >= 'a') & (s[1] <= 'z') THEN s[1] := CAP(s[1]) END
+BEGIN fname[0] := 0X; line := 1; col := 1;
+  StringsFindNext(' translating ', s, 0, found, i);
+  IF found THEN INC(i, 13); j := 0; (* Read module name *)
+    WHILE (j < LEN(fname) - 1) & (s[i] > ' ') DO
+      fname[j] := s[i]; INC(i); INC(j)
+    END;
+    fname[j] := 0X;
+    (* Remove everything up to the following line *)
+    WHILE (s[i] # 0X) & (s[i] # 0AX) DO INC(i) END;
+    Strings.Delete(s, 0, i + 1); i := 0;
+    (* Read line and column numbers, i.e. '10:23' *)
+    WHILE (s[i] # 0X) & (s[i] <= ' ') DO INC(i) END;
+    IF ('0' <= s[i]) & (s[i] <= '9') THEN
+      ReadInt(s, i, line);
+      IF s[i] = ':' THEN INC(i) END;
+      IF ('0' <= s[i]) & (s[i] <= '9') THEN
+        ReadInt(s, i, col)
       END
     END
   END
@@ -432,7 +432,7 @@ CONST bufLen = 20480;
 VAR buf: ARRAY bufLen OF CHAR;
     e: Editor.Editor;
     p: StrList;
-    len, err, pos: INTEGER;
+    len, err, line, col: INTEGER;
     command: ARRAY 32 OF CHAR;
     cmd: ARRAY 1024 OF CHAR;
     s, sN: ARRAY 80 OF CHAR;
@@ -483,10 +483,10 @@ BEGIN
       ELSE buf[len] := 0X
       END;
 
-      ParseErrors(buf, fname, pos);
+      ParseErrors(buf, fname, line, col);
       FocusOrOpenFile(fname);
       e := app.windows(Editor.Editor);
-      e.text.MoveToPos(pos, e.h - 2);
+      e.text.MoveToLineCol(line, col, e.h - 2);
       Editor.PrintText(app.windows(Editor.Editor));
       T.ResetCursorBlink (* !FIXME *)
     ELSIF link THEN buf := 'Linking failed.'
@@ -732,7 +732,7 @@ BEGIN res := NIL;
 RETURN res END UsedModuleList;
 
 PROCEDURE ImportsGraph(p: StrList): BOOLEAN;
-BEGIN 
+BEGIN
   WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END ;
 RETURN p # NIL END ImportsGraph;
 
@@ -1006,7 +1006,9 @@ BEGIN
   END;
 
   IF ~found THEN
-    IF Strings.Pos('.Mod', s, L - 4) = -1 THEN Strings.Append('.Mod', s) END;
+    IF (L < 4) OR (Strings.Pos('.Mod', s, L - 4) = -1) THEN
+      Strings.Append('.Mod', s)
+    END;
     Strings.Insert(Editor.stdPath, 0, s);
   END
 END ParseFileNameArg;
