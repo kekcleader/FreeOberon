@@ -54,7 +54,8 @@ TYPE
     type*: INTEGER; (* open or save *)
     edtFilename*: OV.Edit;
     btnOk*, btnCancel*: OV.Button;
-    path*: ARRAY 1024 OF CHAR;
+    path*: ARRAY 1024 OF CHAR; (* full path to current chosen dir *)
+    home*: ARRAY 1024 OF CHAR; (* i.e. 'C:/FreeOberon/Programs' *)
     colFiles*: OV.ColumnList;
     onFileOk*: PROCEDURE (c: OV.Control; fname: ARRAY OF CHAR)
   END;
@@ -87,58 +88,88 @@ PROCEDURE FileDialogUpdateFileList*(c: FileDialog);
 VAR L: StrList.List;
   r: Dir.Rec;
   s: ARRAY 512 OF CHAR;
+  first: BOOLEAN;
+  n: INTEGER;
 BEGIN L := c.colFiles.items;
   StrList.Clear(L);
-  Dir.First(r, c.path);
+  Dir.First(r, c.path); first := TRUE;
   WHILE ~r.eod DO
-    IF ~r.isDir THEN StrList.Append(L, r.name)
-    ELSIF r.name # '.' THEN
-      s := r.name$;
-      Strings.Insert('[', 0, s); Strings.Append(']', s);
-      StrList.Append(L, s)
+    IF r.name # '.' THEN s := r.name$;
+      IF r.isDir THEN
+        IF first THEN n := Strings.Length(s);
+          s[n] := '/'; s[n + 1] := 0X;
+          OV.EditSetCaption(c.edtFilename, s);
+          s[n] := ']'; Strings.Insert('[', 0, s)
+        ELSE Strings.Insert('[', 0, s); Strings.Append(']', s)
+        END
+      ELSIF first THEN OV.EditSetCaption(c.edtFilename, s)
+      END;
+      StrList.Append(L, s); first := FALSE
     END;
     Dir.Next(r)
   END;
   StrList.Sort(L, FileNamesCmp);
   OV.ColumnListSetCur(c.colFiles, 0);
-  OV.EditSetCaption(c.edtFilename, '../');
   OV.NeedRedraw(c.app)
 END FileDialogUpdateFileList;
 
 PROCEDURE FileDialogApplyDir*(c: FileDialog; s: ARRAY OF CHAR);
-VAR L, i: INTEGER;
+VAR i: INTEGER;
   path: ARRAY 1024 OF CHAR;
 BEGIN
   IF (s[0] = '/') OR (* Asbolute path *)
      ('A' <= CAP(s[0])) & (CAP(s[0]) <= 'Z') & (s[1] = ':')
   THEN path := s$
-  ELSE path := c.path$; L := Strings.Length(s);
-    WHILE (s[0] = '.') & (s[1] = '.') & (s[2] = '/') DO
-      Strings.Delete(s, 0, 3); i := Strings.Length(path) - 2;
+  ELSE path := c.path$;
+    WHILE (s[0] = '.') & (s[1] = '.') & (s[2] = '/') &
+          ~((path[1] = ':') & (path[2] = '/') & (path[3] = 0X))
+    DO Strings.Delete(s, 0, 3); i := Strings.Length(path) - 2;
       WHILE (i >= 0) & (path[i] # '/') DO DEC(i) END;
       IF i >= 0 THEN path[i + 1] := 0X ELSE path := '' END
     END;
-    IF s # '' THEN Strings.Append(s, path) END
+    IF ~((s[0] = '.') & (s[1] = '.') & (s[2] = '/')) THEN
+      Strings.Append(s, path)
+    END
   END;
   IF Dir.IsDir(path) THEN c.path := path$ END
 END FileDialogApplyDir;
 
+PROCEDURE Match(IN what, where: ARRAY OF CHAR; off: INTEGER): BOOLEAN;
+VAR i, j: INTEGER;
+BEGIN i := 0; j := off;
+  WHILE (i < LEN(what)) & (what[i] # 0X) &
+        (j < LEN(where)) & (where[j] # 0X) &
+        (what[i] = where[j])
+  DO INC(i); INC(j)
+  END ;
+RETURN (i < LEN(what)) & (j < LEN(where)) & (what[i] = 0X) END Match;
+
 PROCEDURE FileDialogOkClick*(c: OV.Control);
 VAR w: FileDialog;
   s, full: ARRAY 257 OF CHAR;
-  L: INTEGER;
-BEGIN w := c.parent(FileDialog);
-  s := w.edtFilename.caption$;
+  i, L: INTEGER;
+BEGIN w := c.parent(FileDialog); s := w.edtFilename.caption$;
   (* Replace all \ with / and set L to length of s *)
   L := 0; WHILE s[L] # 0X DO IF s[L] = '\' THEN s[L] := '/' END; INC(L) END;
   IF L > 0 THEN
-    IF s[L - 1] = '/' THEN
-      FileDialogApplyDir(w, s);
-      FileDialogUpdateFileList(w)
-    ELSE OV.CloseCurWindow(c);
-      IF w.onFileOk # NIL THEN
-        full := w.path$; Strings.Append(s, full);
-        w.onFileOk(c, full)
+    IF (s[L - 1] = '/') OR (s[0] = '/') THEN
+      IF s[L - 1] # '/' THEN s[L] := '/'; INC(L); s[L] := 0X END;
+      FileDialogApplyDir(w, s); FileDialogUpdateFileList(w)
+    ELSE full := w.path$;
+      WHILE (s[0] = '.') & (s[1] = '.') & (s[2] = '/') &
+            ~((full[1] = ':') & (full[2] = '/') & (full[3] = 0X))
+      DO Strings.Delete(s, 0, 3); i := Strings.Length(full) - 2;
+        WHILE (i >= 0) & (full[i] # '/') DO DEC(i) END;
+        IF i >= 0 THEN full[i + 1] := 0X ELSE full := '' END
+      END;
+      IF ~((s[0] = '.') & (s[1] = '.') & (s[2] = '/')) THEN
+        Strings.Append(s, full);
+        IF Match(w.home, full, 0) THEN
+          Strings.Delete(full, 0, Strings.Length(w.home));
+          Strings.Insert(stdPath, 0, full)
+        END;
+        OV.CloseCurWindow(c);
+        IF w.onFileOk # NIL THEN w.onFileOk(c, full) END
       END
     END
   END
@@ -176,6 +207,7 @@ BEGIN C := c(OV.ColumnList); w := C.parent(FileDialog);
 END FileDialogListChange;
 
 PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER);
+VAR L: INTEGER;
 BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   IF type = open THEN c.caption := 'Open a File'
   ELSE c.caption := 'Save File As'
@@ -186,7 +218,6 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.edtFilename := OV.NewEdit();
   c.edtFilename.do.resize(c.edtFilename, 3, 3, c.w - 18, 1);
   OV.Add(c, c.edtFilename);
-  OV.EditSetCaption(c.edtFilename, '../');
 
   (* Open/Save (Ok) button *)
   IF type = open THEN c.btnOk := OV.NewButton('&Open')
@@ -205,7 +236,12 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.btnCancel.do.resize(c.btnCancel, c.w - 13, 11, 9, 1);
   OV.Add(c, c.btnCancel);
 
-  c.path := stdPath;
+  Dir.GetCwd(c.home); L := 0;
+  WHILE c.home[L] # 0X DO (* Replace \ with /, set L to length of c.home *)
+    IF c.home[L] = '\' THEN c.home[L] := '/' END; INC(L)
+  END; (* L = length of c.home; append / if it is not in the end *)
+  IF c.home[L - 1] # '/' THEN c.home[L] := '/'; INC(L); c.home[L] := 0X END;
+  Strings.Append(stdPath, c.home); c.path := c.home$;
 
   (* ColumnList *)
   c.colFiles := OV.NewColumnList();

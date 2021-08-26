@@ -92,4 +92,13 @@ END Rewind;
 PROCEDURE IsDir*(name: ARRAY OF CHAR): BOOLEAN;
 RETURN (name = '') OR Platform.DirExists(name) END IsDir;
 
+PROCEDURE GetCwd*(VAR dir: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN i := 0;
+  WHILE (Platform.CWD[i] # 0X) & (i < LEN(dir) - 1) DO
+    dir[i] := Platform.CWD[i]; INC(i)
+  END;
+  dir[i] := 0X
+END GetCwd;
+
 END Dir.
