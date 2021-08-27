@@ -26,6 +26,10 @@ PROCEDURE -StartProcess*
   (cmd: ARRAY OF CHAR): BOOLEAN
   "StartProcess(cmd)";
 
+PROCEDURE -StartProcessIn*
+  (cmd, dir: ARRAY OF CHAR): BOOLEAN
+  "StartProcessIn(cmd, dir)";
+
 PROCEDURE -ProcessFinished*(VAR err: INTEGER): BOOLEAN
   "ProcessFinished(err)";
 

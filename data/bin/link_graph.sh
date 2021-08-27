@@ -1,7 +1,7 @@
 #!/bin/bash
-# This script is run by Free Oberon on Linux. Current directory of the
-# script will be where FreeOberon executable is located. This
-# particular script is for graphical programs.
+#   This script is run by Free Oberon on Linux. Current directory of the
+#   script will be where FreeOberon executable is located. This
+#   particular script is for graphical programs.
 
 cd bin
 
@@ -12,6 +12,7 @@ PATH="$OFRDIR:$PATH"
 CC="gcc"
 
 SDL2Opts=`sdl2-config --cflags --libs`
+
 
 shift
 
@@ -25,8 +26,8 @@ shift
 
 
 
-
 $CC -g3 -O0 -fno-exceptions \
+  -I ../../src \
   -I $OFRDIR/../../Mod/Lib \
   -I $OFRDIR/Lib/Obj \
   $ONAME.c -o $ONAME \

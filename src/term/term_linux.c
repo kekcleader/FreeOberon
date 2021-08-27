@@ -29,8 +29,10 @@ extern void exit(int);
 int p[2], q[2];
 pid_t pid;
 
-int StartProcess(char *process) {
+int StartProcessIn(char *process, char *dir) {
+  char cmd[600];
   int success = 0;
+  int i, j;
   if ((pipe(p) == -1) || (pipe(q) == -1)) {
     perror("StartProcess: Could not create pipes.");
   } else {
@@ -46,6 +48,23 @@ int StartProcess(char *process) {
       }
       close(q[1]);
       close(p[0]);
+      if (dir && dir[0] != '\0') {
+        getcwd(cmd, 256);
+        i = 0;
+        while (cmd[i]) i++;
+        if (i && cmd[i - 1] != '/') {
+          cmd[i] = '/';
+          i++;
+          cmd[i] = '\0';
+        }
+        j = 0;
+        while (process[j]) { cmd[i] = process[j]; i++; j++; }
+        cmd[i] = '\0';
+        if (chdir(dir) != 0) {
+          perror("StartProcess: Could not chdir() in child process.");
+        }
+        process = &cmd[0];
+      }
       if (execl(process, process, (char*)NULL)) {
         puts("Could not run program.");
         exit(0);
@@ -58,6 +77,10 @@ int StartProcess(char *process) {
     success = 1;
   }
   return success;
+}
+
+int StartProcess(char *process) {
+  return StartProcessIn(process, (char *)NULL);
 }
 
 int ProcessFinished(int *err) {

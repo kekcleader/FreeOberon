@@ -590,11 +590,14 @@ BEGIN exename[0] := 0X;
   END ;
 RETURN ok END CompileAll;
 
-PROCEDURE RunProgram(prg: ARRAY OF CHAR);
-VAR cmd: ARRAY 256 OF CHAR;
-    x: INTEGER;
-BEGIN cmd := '"'; Strings.Append(prg, cmd); Strings.Append('"', cmd);
-  IF ~Term.StartProcess(cmd) THEN
+PROCEDURE RunProgram(IN prg: ARRAY OF CHAR);
+VAR dir: ARRAY 256 OF CHAR;
+  i: INTEGER;
+BEGIN dir := prg$;
+  i := 0; WHILE dir[i] # 0X DO INC(i) END;
+  WHILE (i # -1) & (dir[i] # '/') & (dir[i] # '\') DO DEC(i) END; INC(i);
+  dir[i] := 0X;
+  IF ~Term.StartProcessIn(prg, dir) THEN
     T.PutString(0, T.charsY - 1, ' Program execution failed ', 15, 4, 0);
     IF T.Draw() THEN G.Flip; G.Pause END
   ELSE

@@ -1,19 +1,38 @@
 #!/bin/bash
-# This script is run by Free Oberon on Linux. Current directory of the
-# script will be where FreeOberon executable is located. This
-# particular script is for console programs.
-cd bin
-VOCDIR=../data/bin/voc/install
-CC=gcc
+#   This script is run by Free Oberon on Linux. Current directory of the
+#   script will be where FreeOberon executable is located. This
+#   particular script is for console programs.
+
 THENAME="${1%.*}"
 ONAME="${THENAME##*/}"
-SDL2Opts=`sdl2-config --cflags --libs`
+OFRDIR="../data/bin/OfrontPlus/Target/Linux_amd64"
+PATH="$OFRDIR:$PATH"
+CC="gcc"
+
+cd bin
+
+
+
 shift
-$CC -fPIC -g -I $VOCDIR/C/include \
-  -o $ONAME $ONAME.o \
+
+
+
+
+
+
+
+
+
+
+
+$CC -g3 -O0 -fno-exceptions \
+  -I ../../src \
+  -I $OFRDIR/../../Mod/Lib \
+  -I $OFRDIR/Lib/Obj \
+  $ONAME.c -o $ONAME \
   $@ \
-  $VOCDIR/lib/Int.o \
-  $VOCDIR/lib/libvoc-OC.a
+  ../data/bin/libFreeOberon.a \
+  $OFRDIR/Lib/libOfront.a
 retcode=$?
 cd ..
 exit $retcode
