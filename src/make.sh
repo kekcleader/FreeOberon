@@ -1,8 +1,8 @@
 #/bin/bash
 PROG="FreeOberon"
-OFRDIR="$OBPATH"
+OFRDIR="../data/bin/OfrontPlus/Target/Linux_amd64"
 
-export PATH=$OBPATH:$PATH
+export PATH=$OFRDIR:$PATH
 export OBERON=.:$OFRDIR/Lib/Sym
 
 SDL2Opts="-lSDL2"
