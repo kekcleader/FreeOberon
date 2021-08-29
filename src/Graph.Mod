@@ -16,15 +16,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT SDL := SDL2, (* Mix := SDL2mixer, Net := SDL2net,*)
-       SYSTEM, Platform, Out;
+IMPORT SDL := SDL2, SYSTEM, Platform, Out;
 
 CONST
   (* Flip Flags *)
   flipNone* = {};
   flipH*    = 0;
   flipV*    = 1;
-  flipHV*   = flipH + flipV;
 
   (* Draw Mode Flags *)
   drawSpriteNormal* = 0;
@@ -38,8 +36,6 @@ CONST
   sharpPixels* = 3;
   software*    = 4;
   initMouse*   = 8;
-  initSound*   = 9;
-  initNet*     = 10;
 
   (* Event Types *)
   quit*        = 1;
@@ -190,8 +186,6 @@ CONST
   mAlt*   = {mLAlt, mRAlt};
   mGui*   = {mLGui, mRGui};
 
-  NIL0 = 0;
-
 TYPE
   ADRINT = SYSTEM.ADRINT;
   CHAR = SHORTCHAR;
@@ -220,38 +214,9 @@ TYPE
     repeat*: BOOLEAN
   END;
 
-  (*
-  Sample* = POINTER TO SampleDesc;
-  SampleDesc* = RECORD
-    chunk*: Mix.Chunk
-  END;
-
-  Music* = POINTER TO MusicDesc;
-  MusicDesc* = RECORD
-    music*: Mix.Music
-  END;
-  *)
-
   Region* = RECORD
     x*, y*, w*, h*: INTEGER
   END;
-
-  (* SDL Net *)
-  (*
-  IPAddress* = Net.IPAddress;
-  Socket* = Net.TCPSocket;
-
-  SocketSet* = Net.SocketSet;
-
-  PStr* = POINTER TO ARRAY OF CHAR;
-
-  NetBuf* = POINTER TO NetBufDesc;
-  NetBufDesc* = RECORD
-    s: PStr;
-    len: INTEGER; (* Actual used length of the buffer *)
-    lastLen: INTEGER
-  END;
-  *)
 
   Event* = RECORD
     type*: INTEGER;
@@ -285,7 +250,7 @@ VAR
   wantW, wantH: INTEGER;
   wantFullscreen, wantBuffer, wantSpread: BOOLEAN;
   wantSharpPixels, wantSoftware: BOOLEAN;
-  wantMouse, wantSound, wantNet: BOOLEAN;
+  wantMouse: BOOLEAN;
   wantFPS: INTEGER;
   buffer: Bitmap;
   lastFlip: INTEGER;
@@ -328,9 +293,7 @@ BEGIN (*!TODO: Refactor, save options in a SET?*)
   wantSharpPixels := sharpPixels IN flags;
   wantSoftware := software IN flags;
   wantMouse := initMouse IN flags;
-  showMouse := wantMouse;
-  wantNet := initNet IN flags;
-  wantSound := initSound IN flags
+  showMouse := wantMouse
 END Settings;
 
 PROCEDURE SetSizeStep*(w, h: INTEGER);
@@ -1034,7 +997,7 @@ END PumpMouseButton;
 
 PROCEDURE RepeatFlip*;
 BEGIN
-  IF screenTexture # NIL0 THEN
+  IF screenTexture # 0 THEN
     SDL.SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL.RenderClear(renderer);
     SDL.RenderCopyNil(renderer, screenTexture);
@@ -1158,9 +1121,9 @@ BEGIN
     (* Blit buffer on screen *)
     SDL.SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL.RenderClear(renderer);
-    IF screenTexture # NIL0 THEN
+    IF screenTexture # 0 THEN
       SDL.DestroyTexture(screenTexture);
-      screenTexture := NIL0
+      screenTexture := 0
     END;
     screenTexture := SDL.CreateTextureFromSurface(renderer, screen.surface);
     SDL.RenderCopyNil(renderer, screenTexture);
@@ -1169,183 +1132,6 @@ BEGIN
     IF blitMouse THEN CleanMouse END
   END
 END Flip;
-
-(* Sound *)
-
-(*
-PROCEDURE LoadSample*(filename: ARRAY OF CHAR): Sample;
-VAR spl: Sample;
-BEGIN NEW(spl);
-  spl.chunk := Mix.LoadWavRW(SDL.RWFromFile(filename, 'rb'), 1);
-  IF spl.chunk = NIL THEN spl := NIL END ;
-RETURN spl END LoadSample;
-
-PROCEDURE PlayChannel*(spl: Sample; channel: INTEGER);
-BEGIN
-  IF (spl # NIL) & (Mix.PlayChannelTimed(channel, spl.chunk, 0, -1) = 0) THEN
-  END
-END PlayChannel;
-
-PROCEDURE PlaySample*(spl: Sample);
-BEGIN IF spl # NIL THEN PlayChannel(spl, -1) END
-END PlaySample;
-
-PROCEDURE StopSample*(spl: Sample);
-BEGIN (*SDL.StopSample(spl)*)
-END StopSample;
-
-PROCEDURE LoadMusic*(filename: ARRAY OF CHAR): Music;
-VAR mus: Music;
-BEGIN
-  NEW(mus); mus.music := Mix.LoadMus(filename);
-  IF mus.music = NIL THEN mus := NIL END ;
-RETURN mus END LoadMusic;
-
-PROCEDURE PlayMusic*(mus: Music);
-BEGIN
-  IF (mus # NIL) & (mus.music # NIL) THEN
-    IF Mix.PlayMusic(mus.music, -1) = 0 THEN END
-  END
-END PlayMusic;
-
-PROCEDURE StopMusic*;
-BEGIN Mix.HaltMusic
-END StopMusic;
-*)
-
-(* Net *)
-
-(*
-PROCEDURE OpenServer*(port: INTEGER): Socket;
-VAR addr: IPAddress; socket: Socket;
-BEGIN
-  IF Net.ResolveHost(addr, NIL, SHORT(port)) = 0
-  THEN socket := Net.TCPOpen(addr)
-  ELSE socket := NIL END ;
-RETURN socket END OpenServer;
-
-PROCEDURE CloseConn*(VAR socket: Socket);
-BEGIN IF Net.TCPClose(socket) = 0 THEN socket := NIL END
-END CloseConn;
-
-PROCEDURE Accept*(server: Socket): Socket;
-BEGIN
-RETURN Net.TCPAccept(server) END Accept;
-
-PROCEDURE ConnectTo*(ip: ARRAY OF CHAR; port: INTEGER): Socket;
-VAR addr: IPAddress; socket: Socket;
-BEGIN
-  IF Net.ResolveHost(addr, ip, SHORT(port)) = 0 THEN
-    socket := Net.TCPOpen(addr)
-  ELSE socket := NIL
-  END ;
-RETURN socket END ConnectTo;
-
-PROCEDURE SocketReady*(socket: Socket): BOOLEAN;
-BEGIN
-RETURN (socket # NIL) & (socket.ready # 0) END SocketReady;
-
-PROCEDURE Send*(socket: Socket;
-  data: ARRAY OF CHAR; len: INTEGER): INTEGER;
-BEGIN
-RETURN Net.TCPSend(socket, data, len) END Send;
-
-PROCEDURE SendStr*(socket: Socket; s: ARRAY OF CHAR): INTEGER;
-VAR len: INTEGER;
-BEGIN len := 0;
-  WHILE (len < LEN(s)) & (s[len] # 0X) DO INC(len) END ;
-RETURN Net.TCPSend(socket, s, len) END SendStr;
-
-PROCEDURE Recv*(socket: Socket;
-  VAR data: ARRAY OF CHAR; len: INTEGER): INTEGER;
-BEGIN
-RETURN Net.TCPRecv(socket, SYSTEM.VAL(ADRINT, SYSTEM.ADR(data[0])), len)
-END Recv;
-
-PROCEDURE RecvStr*(socket: Socket; VAR s: ARRAY OF CHAR): INTEGER;
-VAR n: INTEGER;
-BEGIN n := Recv(socket, s, LEN(s) - 1);
-  IF n >= 0 THEN
-    IF n >= LEN(s) THEN n := LEN(s) END;
-    s[n] := 0X
-  END ;
-RETURN n END RecvStr;
-*)
-
-(* Socket Set *)
-
-(*
-PROCEDURE AllocSocketSet*(maxSockets: INTEGER): SocketSet;
-BEGIN
-  RETURN Net.AllocSocketSet(maxSockets)
-END AllocSocketSet;
-
-PROCEDURE FreeSocketSet*(set: SocketSet);
-BEGIN
-  Net.FreeSocketSet(set)
-END FreeSocketSet;
-
-PROCEDURE AddSocket*(set: SocketSet; socket: Socket): INTEGER;
-BEGIN
-  RETURN Net.AddSocket(set, SYSTEM.VAL(Net.Socket, socket))
-END AddSocket;
-
-PROCEDURE DelSocket*(set: SocketSet; socket: Socket): INTEGER;
-BEGIN
-  RETURN Net.DelSocket(set, SYSTEM.VAL(Net.Socket, socket))
-END DelSocket;
-
-PROCEDURE CheckSockets*(set: SocketSet; timeout: INTEGER): BOOLEAN;
-BEGIN
-  RETURN Net.CheckSockets(set, timeout) # 0
-END CheckSockets;
-*)
-
-(* NetBuf *)
-
-(*
-PROCEDURE InitNetBuf*(buf: NetBuf; size: INTEGER);
-BEGIN
-  NEW(buf.s, size); buf.len := 0; buf.lastLen := 0
-END InitNetBuf;
-
-PROCEDURE NewNetBuf*(size: INTEGER): NetBuf;
-VAR buf: NetBuf;
-BEGIN
-  NEW(buf); InitNetBuf(buf, size); RETURN buf
-END NewNetBuf;
-
-PROCEDURE RecvBuf*(socket: Socket; buf: NetBuf);
-VAR n, len: INTEGER; s: PStr;
-BEGIN
-  len := LEN(buf.s^) - buf.len;
-  IF len = 0 THEN
-    NEW(s, LEN(buf.s^) * 2); COPY(buf.s^, s^);
-    buf.s := s
-  END;
-  n := Net.TCPRecv(socket,
-    SYSTEM.VAL(ADRINT, SYSTEM.ADR(buf.s[buf.len])),
-    len);
-  buf.lastLen := buf.len;
-  IF n > 0 THEN
-    INC(buf.len, n);
-    IF buf.len > LEN(buf.s^) THEN buf.len := LEN(buf.s^) END
-  END
-END RecvBuf;
-
-PROCEDURE BufGet*(buf: NetBuf; sep: CHAR;
-  VAR s: ARRAY OF CHAR): BOOLEAN;
-VAR i: INTEGER; found: BOOLEAN;
-BEGIN i := SHORT(buf.lastLen);
-  WHILE (i < buf.len) & (buf.s[i] # sep) DO INC(i) END;
-  found := i < buf.len;
-  IF found THEN
-    S.Extract(buf.s^, 0, i, s);
-    S.Delete(buf.s^, 0, i + 1);
-    DEC(buf.len, i + 1); buf.lastLen := 0
-  END ;
-RETURN found END BufGet;
-*)
 
 (* Random *)
 
@@ -1427,7 +1213,7 @@ BEGIN screen := NIL;
     window := SDL.CreateWindow('',
       SDL.windowPosUndefined, SDL.windowPosUndefined,
       wantW, wantH, flags);
-    IF window # NIL0 THEN
+    IF window # 0 THEN
       IF wantSoftware THEN flags := {SDL.rendererSoftware}
       ELSE flags := {SDL.rendererAccelerated}
       END;
@@ -1440,7 +1226,7 @@ BEGIN screen := NIL;
       END;
       SDL.RenderSetLogicalSize(renderer, wantW, wantH);
       screen := CreateBitmap(wantW, wantH);
-      screenTexture := NIL0;
+      screenTexture := 0;
       UnsetRegion;
       SDL.ShowCursor(0);
       IF wantMouse THEN InitMouseData END;
@@ -1449,17 +1235,6 @@ BEGIN screen := NIL;
         Out.String('Could not initialize PNG or JPG: ');
         GetError(s); Out.String(s); Out.Ln
       END;
-      (*
-      IF wantSound THEN
-        IF Mix.Init({}) = 0 THEN
-          IF Mix.OpenAudio(22050, Mix.defaultFormat,
-             4, 1024) = 0 THEN END
-        END
-      END;
-      IF wantNet THEN
-        IF Net.Init() = 0 THEN END
-      END
-      *)
       Randomize;
       keyPressed := 0;
       lastFlip := -1
@@ -1469,14 +1244,10 @@ RETURN screen END Init;
 
 PROCEDURE Close*;
 BEGIN
-  IF screenTexture # NIL0 THEN
+  IF screenTexture # 0 THEN
     SDL.DestroyTexture(screenTexture);
-    screenTexture := NIL0
+    screenTexture := 0
   END;
-  (*
-  IF wantSound THEN Mix.Quit END;
-  IF wantNet THEN Net.Quit END;
-  *)
   SDL.Quit
 END Close;
 
