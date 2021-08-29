@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT G := Graph, T := Terminal, Files, Args,
-       OV, Editor, Term, Config, Strings, Out;
+       OV, Editor, Term, Config, Strings, Int, Out;
 CONST
   version* = '1.0.4';
 
@@ -66,29 +66,7 @@ VAR
   needWindowed: BOOLEAN;
   sysModules: StrList;
   workDir: ARRAY 256 OF CHAR; (* Directory of main file of compiled program *)
-
   app: OV.App;
-
-PROCEDURE IntToStr*(n: INTEGER; VAR s: ARRAY OF CHAR); (* !TODO move out *)
-(* LEN(s) > 1 *)
-VAR i, j: INTEGER; tmp: CHAR; neg: BOOLEAN;
-BEGIN
-  IF n = 0 THEN
-    s[0] := '0'; i := 1
-  ELSE i := 0; neg := n < 0;
-    IF neg THEN n := -n END;
-    WHILE (n > 0) & (i < LEN(s) - 1) DO
-      s[i] := CHR(ORD('0') + n MOD 10);
-      n := n DIV 10; INC(i)
-    END;
-    IF neg & (i < LEN(s) - 1) THEN s[i] := '-'; INC(i) END
-  END;
-  s[i] := 0X; j := 0; DEC(i);
-  WHILE j < i DO
-    tmp := s[j]; s[j] := s[i]; s[i] := tmp;
-    INC(j); DEC(i)
-  END
-END IntToStr;
 
 PROCEDURE CountLines(s: ARRAY OF CHAR; width: INTEGER): INTEGER;
 VAR i, x, lines: INTEGER;
@@ -315,9 +293,7 @@ BEGIN
       IF tempWindowed THEN G.SwitchToFullscreen END;
       IF err = 0 THEN
         T.WriteString(' Press any key to return to IDE')
-      ELSE
-        s := ' Runtime error ';
-        IntToStr(err, sN); Strings.Append(sN, s);
+      ELSE s := ' Runtime error '; Int.Append(err, s);
         T.WriteString(s)
       END
     ELSE
@@ -509,14 +485,12 @@ BEGIN
   success := (Term.RunProcess(cmd, buf, bufLen, len, err) # 0) &
              (err = 0);
   IF ~success THEN
-    s := ' Command returned ';
-    IntToStr(err, sN); Strings.Append(sN, s);
+    s := ' Command returned '; Int.Append(err, s);
     Strings.Append(' exit status ', s);
     IF (len > 0) & (len < bufLen) THEN
       IF buf[len - 1] = 0AX THEN buf[len - 1] := 0X
       ELSE buf[len] := 0X
       END;
-
       ParseErrors(buf, fname, line, col);
       FocusOrOpenFile(fname);
       e := app.windows(Editor.Editor);
@@ -1058,14 +1032,26 @@ BEGIN
   END
 END ParseFileNameArg;
 
-PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR fnames: Fnames);
+PROCEDURE ParseSize(IN s: ARRAY OF CHAR; VAR w, h: INTEGER);
+VAR i: INTEGER;
+  x: ARRAY 30 OF CHAR;
+BEGIN i := 0; w := 0; h := 0;
+  WHILE (s[i] # 0X) & (s[i] # 'x') DO INC(i) END;
+  Strings.Extract(s, 0, i, x); w := Int.Val(x);
+  Strings.Extract(s, i + 1, 30, x); h := Int.Val(x)
+END ParseSize;
+
+PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR w, h: INTEGER;
+    VAR fnames: Fnames);
 VAR i, nofnames: INTEGER;
   s: ARRAY 256 OF CHAR;
-BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0;
+BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := -1; h := -1;
   WHILE i # Args.argc DO
     Args.Get(i, s);
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--software' THEN sw := TRUE
+    ELSIF s = '--size' THEN
+      IF i + 1 # Args.argc THEN INC(i); Args.Get(i, s); ParseSize(s, w, h) END
     ELSIF nofnames < LEN(fnames) THEN
       ParseFileNameArg(s);
       fnames[nofnames] := s$;
@@ -1079,11 +1065,13 @@ END ParseArgs;
 
 PROCEDURE Init(): BOOLEAN;
 VAR success, fs, sw: BOOLEAN;
+  w, h: INTEGER;
   fnames: Fnames;
 BEGIN
   success := FALSE;
-  ParseArgs(fs, sw, fnames);
-  IF T.Init(fs, sw) THEN
+  ParseArgs(fs, sw, w, h, fnames);
+  ;Out.String('SIZE '); Out.Int(w, 0); Out.Int(h, 5); Out.Ln;
+  IF T.Init(fs, sw, w, h) THEN
     InitIDE;
     needWindowed := TRUE;
     ResetSysModules;

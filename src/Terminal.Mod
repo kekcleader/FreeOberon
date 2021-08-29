@@ -317,14 +317,16 @@ PROCEDURE LoadMedia(): BOOLEAN;
 BEGIN font := G.LoadFont('data/images/font.bmp', charW, charH) ;
 RETURN font # NIL END LoadMedia;
 
-PROCEDURE Init*(fullscreen, software: BOOLEAN): BOOLEAN;
+PROCEDURE Init*(fullscreen, software: BOOLEAN; w, h: INTEGER): BOOLEAN;
 VAR success: BOOLEAN; options: SET;
 BEGIN
   success := FALSE; isFullscreen := fullscreen;
   options := {G.buffered, G.initMouse, G.spread};
   IF fullscreen THEN INCL(options, G.fullscreen) END;
   IF software THEN INCL(options, G.software) END;
-  G.Settings(768, 432, options);
+  IF w < 0 THEN w := 96 ELSIF (w # 0) & (w < 10) THEN w := 10 END;
+  IF h < 0 THEN h := 27 ELSIF (h # 0) & (h < 10) THEN h := 10 END;
+  G.Settings(w * 8, h * 16, options);
   G.SetSizeStep(charW, charH);
   screen := G.Init();
   IF screen # NIL THEN
