@@ -1,7 +1,7 @@
 @ECHO OFF
 SET PROG=FreeOberon
 SET OFRDIR=..\data\bin\OfrontPlus\Target\Win64
-SET GCCDIR=..\data\bin\mingw-w64\mingw64\bin
+SET GCCDIR=..\data\bin\mingw64\bin
 SET PATH=%GCCDIR%;%OFRDIR%;%PATH%
 SET OBERON=.;%OFRDIR%\Lib\Sym
 REM SET SDL2Opts=-w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2

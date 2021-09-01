@@ -149,6 +149,9 @@ int StartProcessIn(char *process, char *dir) {
   siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
   siStartInfo.wShowWindow = SW_HIDE;
 
+  /* Environment block */
+  char chNewEnv[100] = "PATH=..\0"; // Must end with 2 \0s
+
   // Create the child process.
   bSuccess = CreateProcess(NULL,
     process, //szCmdline,    // command line
@@ -156,7 +159,7 @@ int StartProcessIn(char *process, char *dir) {
     NULL,    // primary thread security attributes
     TRUE,    // handles are inherited
     CREATE_NO_WINDOW, // creation flags
-    NULL,         // use parent's environment
+    (LPVOID)chNewEnv, // environment block
     dir,          // current directory of the process
     &siStartInfo, // STARTUPINFO pointer
     &piProcInfo); // receives PROCESS_INFORMATION
