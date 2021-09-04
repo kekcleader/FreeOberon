@@ -790,10 +790,33 @@ BEGIN w := c.app.windows;
 END OnBuild;
 
 PROCEDURE HelpAbout(c: OV.Control);
-BEGIN
-  IF app.statusText[0] # 0X THEN OV.SetStatusText(app, '')
-  ELSE OV.SetStatusText(app, '  free.oberon.org  ')
-  END
+CONST W = 37; H = 13;
+VAR w: OV.Window; L: OV.Label; b: OV.Button;
+  s: ARRAY 40 OF CHAR;
+  Y: INTEGER;
+BEGIN w := OV.NewWindow(); w.modal := TRUE; w.caption := 'About';
+  w.do.resize(w, (T.charsX - W) DIV 2, (T.charsY - H) DIV 2, W, H);
+  Y := 2;
+
+  L := OV.NewLabel('Free Oberon'); L.align := OV.center;
+  L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
+
+  s := 'Version '; Strings.Append(version, s);
+  L := OV.NewLabel(s); L.align := OV.center;
+  L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
+
+  L := OV.NewLabel('Copyright (c) 2017-2021 by'); L.align := OV.center;
+  L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
+
+  L := OV.NewLabel('Arthur Yefimov, free.oberon.su'); L.align := OV.center;
+  L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
+
+  b := OV.NewButton('O&K'); b.default := TRUE;
+  b.do.resize(b, (W - 8) DIV 2, Y, 8, 1); OV.Add(w, b); INC(Y, 2);
+  b.onClick := OV.CloseCurWindow;
+
+  OV.AddWindow(app, w);
+  OV.SetFocus(b)
 END HelpAbout;
 
 PROCEDURE TileWindows*(c: OV.Control);

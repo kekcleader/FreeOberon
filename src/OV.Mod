@@ -28,6 +28,11 @@ CONST
   moving*   = 4;
   resizing* = 5;
 
+  (* Align constants *)
+  left*   = 0;
+  center* = 1;
+  right*  = 2;
+
   (* Simple Hotkeys *)
   hF1*    = 58;
   hF2*    = 59;
@@ -614,6 +619,12 @@ TYPE
     lastSelected*: Control
   END;
 
+  Label* = POINTER TO LabelDesc;
+  LabelDesc* = EXTENSIBLE RECORD(ControlDesc)
+    len*: INTEGER;
+    align*: INTEGER (* See constants above *)
+  END;
+
   QuickBtn* = POINTER TO QuickBtnDesc;
   QuickBtnDesc* = EXTENSIBLE RECORD(MenuDesc) END;
 
@@ -653,6 +664,7 @@ TYPE
     modal*: BOOLEAN;
     resizable*: BOOLEAN;
     closeable*: BOOLEAN;
+    closeOnEsc*: BOOLEAN;
     closeBtn*, zoomBtn*: WinBtn;
     bg*: INTEGER;
     minW*, minH*: INTEGER;
@@ -674,6 +686,8 @@ TYPE
 
 VAR
   controlMethod-: ControlMethod;
+  labelMethod-: ControlMethod;
+  quickBtnMethod-: ControlMethod;
   buttonMethod-: ControlMethod;
   winBtnMethod-: ControlMethod;
   scrollbarMethod-: ControlMethod;
@@ -681,7 +695,6 @@ VAR
   columnListMethod-: ControlMethod;
   windowMethod-: ControlMethod;
   menuMethod-: ControlMethod;
-  quickBtnMethod-: ControlMethod;
 
 PROCEDURE DrawAppWindows*(app: App);
 VAR w, br: Control;
@@ -1390,6 +1403,35 @@ BEGIN InitControlMethod(m);
   m.mouseUp := MenuMouseUp
 END InitMenuMethod;
 
+(* Label *)
+
+PROCEDURE InitLabel*(c: Label; caption: ARRAY OF CHAR);
+BEGIN InitControl(c); c.do := labelMethod;
+  c.caption := caption$; c.len := Strings.Length(caption);
+  c.align := left
+END InitLabel;
+
+PROCEDURE NewLabel*(caption: ARRAY OF CHAR): Label;
+VAR c: Label;
+BEGIN NEW(c); InitLabel(c, caption);
+RETURN c END NewLabel;
+
+PROCEDURE LabelDraw(c: Control; x, y: INTEGER);
+VAR L: Label; X: INTEGER;
+BEGIN L := c(Label); INC(x, c.x); INC(y, c.y); X := x;
+  IF L.align = right THEN INC(X, c.w - L.len)
+  ELSIF L.align = center THEN INC(X, (c.w - L.len) DIV 2)
+  END;
+  T.PutString(X, y, c.caption, 0, 7, x + c.w - 1)
+END LabelDraw;
+
+(* LabelMethod *)
+
+PROCEDURE InitLabelMethod*(m: ControlMethod);
+BEGIN InitControlMethod(m);
+  m.draw := LabelDraw
+END InitLabelMethod;
+
 (* QuickBtn *)
 
 PROCEDURE InitQuickBtn*(c: QuickBtn; caption, hint: ARRAY OF CHAR;
@@ -1454,17 +1496,18 @@ RETURN c END NewButton;
 (* Button Method *)
 
 PROCEDURE ButtonDraw*(c: Control; x, y: INTEGER);
-VAR i, fg, bg: INTEGER;
+VAR i, n, fg, bg: INTEGER;
 BEGIN INC(x, c.x); INC(y, c.y);
   IF c.status = selected THEN INC(x) END;
   IF (c.parent # NIL) & (c.parent IS Window) THEN bg := c.parent(Window).bg
   ELSE bg := 7
   END;
   T.CharFill(x, y, c.w, c.h, ' ', 0, 2);
-  i := 0; WHILE c.caption[i] # 0X DO INC(i) END;
-  IF i > c.w THEN i := c.w END;
+  i := 0; n := 0;
+  WHILE c.caption[i] # 0X DO IF c.caption[i] # '&' THEN INC(n) END; INC(i) END;
+  IF n > c.w THEN n := c.w END;
   IF c.focused THEN fg := 15 ELSIF c.default THEN fg := 11 ELSE fg := 0 END;
-  PutMarkedString(x + (c.w - i) DIV 2, y + c.h DIV 2,
+  PutMarkedString(x + (c.w - n) DIV 2, y + c.h DIV 2,
     c.caption, fg, 14, 2, x + c.w - 1);
   IF c.status # selected THEN
     T.PutChar(x + c.w, y, 0DCX, 0, bg);
@@ -2016,7 +2059,8 @@ BEGIN InitControl(w);
   w.x := 0; w.y := 1;
   w.w := T.charsX; w.h := T.charsY - 2;
   w.mx := 0; w.my := 1; w.mw := w.w; w.mh := w.h;
-  w.modal := FALSE; w.resizable := FALSE; w.closeable := TRUE;
+  w.modal := FALSE; w.resizable := FALSE;
+  w.closeable := TRUE; w.closeOnEsc := TRUE;
   w.bg := 7; w.minW := 10; w.minH := 3;
   w.closeBtn := NewWinBtn(0FEX); (* Square *)
   w.closeBtn.x := 2; w.closeBtn.w := 3;
@@ -2166,6 +2210,25 @@ BEGIN
   END
 END WindowMouseMove;
 
+PROCEDURE FindDefaultControl(c: Control): Control;
+VAR p, br: Control;
+BEGIN p := c.children;
+  IF p # NIL THEN br := p;
+    REPEAT p := p.next UNTIL (p = br) OR p.default;
+    IF ~p.default THEN p := NIL END
+  END ;
+RETURN p END FindDefaultControl;
+
+PROCEDURE WindowKeyDown*(c: Control; key: G.Key);
+VAR d: Control;
+BEGIN
+  CASE key.code OF
+    G.kEsc: IF c(Window).closeOnEsc THEN CloseCurWindow(c) END
+  | G.kEnter: d := FindDefaultControl(c);
+    IF (d # NIL) & (d.do.click # NIL) THEN d.do.click(d) END
+  ELSE END
+END WindowKeyDown;
+
 PROCEDURE WindowGetFocus*(c: Control);
 BEGIN ControlGetFocus(c);
   IF c(Window).cur # NIL THEN SetFocus(c(Window).cur) END
@@ -2180,6 +2243,7 @@ BEGIN InitControlMethod(m);
   m.mouseDown := WindowMouseDown;
   m.mouseUp := WindowMouseUp;
   m.mouseMove := WindowMouseMove;
+  m.keyDown := WindowKeyDown;
   m.getFocus := WindowGetFocus
 END InitWindowMethod;
 
@@ -2458,12 +2522,13 @@ END RunApp;
 
 BEGIN
   NEW(controlMethod); InitControlMethod(controlMethod);
+  NEW(labelMethod); InitLabelMethod(labelMethod);
+  NEW(quickBtnMethod); InitQuickBtnMethod(quickBtnMethod);
   NEW(buttonMethod); InitButtonMethod(buttonMethod);
   NEW(winBtnMethod); InitWinBtnMethod(winBtnMethod);
   NEW(scrollbarMethod); InitScrollbarMethod(scrollbarMethod);
   NEW(editMethod); InitEditMethod(editMethod);
   NEW(columnListMethod); InitColumnListMethod(columnListMethod);
   NEW(windowMethod); InitWindowMethod(windowMethod);
-  NEW(menuMethod); InitMenuMethod(menuMethod);
-  NEW(quickBtnMethod); InitQuickBtnMethod(quickBtnMethod)
+  NEW(menuMethod); InitMenuMethod(menuMethod)
 END OV.

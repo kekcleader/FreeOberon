@@ -275,19 +275,10 @@ PROCEDURE FileDialogGetFocus(c: OV.Control);
 BEGIN OV.WindowGetFocus(c)
 END FileDialogGetFocus;
 
-PROCEDURE FileDialogKeyDown*(c: OV.Control; key: G.Key);
-BEGIN
-  CASE key.code OF
-    G.kEsc: OV.CloseCurWindow(c)
-  | G.kEnter: c(FileDialog).btnOk.do.click(c(FileDialog).btnOk)
-  ELSE END
-END FileDialogKeyDown;
-
 PROCEDURE InitFileDialogMethod*(m: OV.ControlMethod);
 BEGIN OV.InitWindowMethod(m);
   m.draw := FileDialogDraw;
-  m.getFocus := FileDialogGetFocus;
-  m.keyDown := FileDialogKeyDown
+  m.getFocus := FileDialogGetFocus
 END InitFileDialogMethod;
 
 (* Editor *)
@@ -851,11 +842,9 @@ BEGIN
 END HandleEnter;
 
 PROCEDURE InitEditor*(c: Editor);
-BEGIN OV.InitWindow(c);
-  c.fname[0] := 0X;
-  c.bg := 1; c.resizable := TRUE; c.caption := 'NONAME';
-  c.text := Text.NewText();
-  c.do := editorMethod
+BEGIN OV.InitWindow(c); c.closeOnEsc := FALSE;
+  c.fname[0] := 0X; c.bg := 1; c.resizable := TRUE; c.caption := 'NONAME';
+  c.text := Text.NewText(); c.do := editorMethod
 END InitEditor;
 
 PROCEDURE NewEditor*(): Editor;
@@ -963,7 +952,7 @@ BEGIN
 END EditorTextInput;
 
 PROCEDURE EditorKeyDown*(c: OV.Control; key: G.Key);
-BEGIN
+BEGIN OV.WindowKeyDown(c, key);
   CASE key.code OF
     G.kLeft:      MoveInLine(c(Editor), FALSE)
   | G.kRight:     MoveInLine(c(Editor), TRUE)
