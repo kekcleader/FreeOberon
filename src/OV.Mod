@@ -1306,7 +1306,7 @@ BEGIN p := c;
   IF c = c.app.menu THEN c := GetMenuAt(c.app, x, y)
   ELSIF c = c.app.statusbar THEN c := GetStatusbarAt(c.app, x, y)
   END;
-  IF (c = NIL) & (p = p.app.statusbar) THEN UnsetFocus(c.app);
+  IF (c = NIL) & (p = p.app.statusbar) THEN UnsetFocus(p.app)
   ELSIF (c # NIL) & (buttons = {G.btnLeft}) & (c.status = normal) THEN
     IF c.parent.parent = NIL THEN (* Top level menu *)
       IF c.do.mouseDown # NIL THEN c.do.mouseDown(c, x, y, G.btnLeft) END
