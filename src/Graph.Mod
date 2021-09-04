@@ -934,8 +934,8 @@ BEGIN
     IF events.len < LEN(events.buf) THEN
       QueueEvent;
       events.buf[events.last].type := mouseMove;
-      events.buf[events.last].x := newX;
-      events.buf[events.last].y := newY;
+      events.buf[events.last].x := SHORT(ENTIER(newX / scaleX));
+      events.buf[events.last].y := SHORT(ENTIER(newY / scaleY));
       events.buf[events.last].xRel := e.xRel;
       events.buf[events.last].yRel := e.yRel;
       events.buf[events.last].buttons := SYSTEM.VAL(SET32, e.state)
@@ -958,8 +958,8 @@ BEGIN
     IF e.y < 0 THEN e.y := 0
     ELSIF e.y >= screen.h THEN e.y := screen.h - 1
     END;
-    events.buf[events.last].x := e.x;
-    events.buf[events.last].y := e.y
+    events.buf[events.last].x := SHORT(ENTIER(e.x / scaleX));
+    events.buf[events.last].y := SHORT(ENTIER(e.y / scaleY))
   END
 END PumpMouseButton;
 
