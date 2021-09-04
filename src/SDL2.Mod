@@ -439,7 +439,9 @@ PROCEDURE -RenderCopyNil*(renderer: Renderer; texture: Texture)
     "SDL_RenderCopyEx((void * )renderer, (void * )texture, srcRect, dstRect, angle, center, flip)";*)
 PROCEDURE -SetRenderDrawBlendMode*(renderer: Renderer; blendMode: SET)
     "SDL_SetRenderDrawBlendMode(void *)renderer, blendMode)";
-PROCEDURE -DestroyRenderer(renderer: ADRINT)
+PROCEDURE -RenderSetScale*(renderer: Renderer; scaleX, scaleY: REAL)
+    "SDL_RenderSetScale((void *)renderer, scaleX, scaleY)";
+PROCEDURE -DestroyRenderer*(renderer: ADRINT)
     "SDL_DestroyRenderer((void *)renderer)";
 
 (* Misc *)

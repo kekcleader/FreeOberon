@@ -64,6 +64,10 @@ extern int SDL_RenderSetLogicalSize(void *, int, int);
 extern int SDL_SetColorKey(void *, int, UINT32);
 extern SDL_bool SDL_SetHint(void *, void *);
 extern int SDL_SetRenderDrawBlendMode(void *, SDL_BlendMode);
+
+extern int SDL_RenderSetScale(void *renderer, float scaleX, float scaleY);
+extern void SDL_DestroyRenderer(void *renderer);
+
 extern int SDL_SetRenderDrawColor(void *, UINT8, UINT8, UINT8, UINT8);
 extern int SDL_SetSurfaceColorMod(void *, UINT8, UINT8, UINT8);
 extern int SDL_SetWindowFullscreen(void *, UINT32);

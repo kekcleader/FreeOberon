@@ -29,13 +29,15 @@ CONST
   drawSpriteLit*    = 1;
   drawSpriteTrans*  = 2;
 
-  (* Settings *)
+  (* Settings, see global varialbe settings *)
   fullscreen*  = 0;
   buffered*    = 1;
   spread*      = 2;
   sharpPixels* = 3;
   software*    = 4;
   initMouse*   = 8;
+  noPng* = 11;
+  noJpg* = 12;
 
   (* Event Types *)
   quit*        = 1;
@@ -246,11 +248,10 @@ VAR
   events: EventQueue;
   keyPressed: INTEGER;
 
+  settings, initSettings: SET; (* See constants above *)
   sizeStepX, sizeStepY: INTEGER;
-  wantW, wantH: INTEGER;
-  wantFullscreen, wantBuffer, wantSpread: BOOLEAN;
-  wantSharpPixels, wantSoftware: BOOLEAN;
-  wantMouse: BOOLEAN;
+  scaleX, scaleY: REAL;
+  scrW, scrH: INTEGER;
   wantFPS: INTEGER;
   buffer: Bitmap;
   lastFlip: INTEGER;
@@ -279,50 +280,40 @@ PROCEDURE -AAIncludeSDL2h0 '#include "SDL2.h0"';
 PROCEDURE GetError*(VAR s: ARRAY OF CHAR);
 TYPE P = POINTER TO ARRAY 10240 OF CHAR;
 VAR p: P;
-BEGIN
-  p := SYSTEM.VAL(P, SDL.GetError());
-  s := p^$
+BEGIN p := SYSTEM.VAL(P, SDL.GetError()); s := p^$
 END GetError;
 
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
-BEGIN (*!TODO: Refactor, save options in a SET?*)
-  wantW := w; wantH := h;
-  wantFullscreen := fullscreen IN flags;
-  wantBuffer := buffered IN flags;
-  wantSpread := spread IN flags;
-  wantSharpPixels := sharpPixels IN flags;
-  wantSoftware := software IN flags;
-  wantMouse := initMouse IN flags;
-  showMouse := wantMouse
+BEGIN scrW := w; scrH := h;
+  initSettings := flags;
+  showMouse := initMouse IN flags
 END Settings;
 
 PROCEDURE SetSizeStep*(w, h: INTEGER);
-BEGIN
-  sizeStepX := w; sizeStepY := h
+BEGIN sizeStepX := w; sizeStepY := h
 END SetSizeStep;
 
-PROCEDURE SetFPS*(fps: INTEGER);
+PROCEDURE ApplyScale;
 BEGIN
-  IF fps <= 0 THEN fps := -1 END;
+  SDL.RenderSetLogicalSize(renderer,
+    SHORT(ENTIER(scrW * scaleX)), SHORT(ENTIER(scrH * scaleY)));
+END ApplyScale;
+
+PROCEDURE SetScale*(x, y: REAL);
+BEGIN scaleX := x; scaleY := y;
+  IF renderer # 0 THEN ApplyScale END
+END SetScale;
+
+PROCEDURE SetFPS*(fps: INTEGER);
+BEGIN IF fps <= 0 THEN fps := -1 END;
   wantFPS := fps
 END SetFPS;
 
 PROCEDURE GetDesktopResolution*(VAR w, h: INTEGER);
 VAR mode: SDL.DisplayMode;
-BEGIN
-  SDL.GetDesktopDisplayMode(0, mode);
+BEGIN SDL.GetDesktopDisplayMode(0, mode);
   w := mode.w; h := mode.h
 END GetDesktopResolution;
-
-PROCEDURE CheckWantedScreenSize;
-BEGIN
-  IF (wantW = -1) OR (wantH = -1) THEN
-    GetDesktopResolution(wantW, wantH);
-    IF ~wantFullscreen THEN
-      DEC(wantW, 20); DEC(wantH, 50)
-    END
-  END
-END CheckWantedScreenSize;
 
 (* Flip Region *)
 PROCEDURE SetRegion*(x, y, w, h: INTEGER);
@@ -332,8 +323,7 @@ BEGIN
 END SetRegion;
 
 PROCEDURE UnsetRegion*;
-BEGIN
-  flipRegion.w := -1
+BEGIN flipRegion.w := -1
 END UnsetRegion;
 
 PROCEDURE AddRegion*(x, y, w, h: INTEGER);
@@ -371,33 +361,27 @@ BEGIN RETURN SDL.MapRGB(bmp.surface.format, SHORT(r), SHORT(g), SHORT(b))
 END BmpCol;
 
 PROCEDURE ClearToColor*(bmp: Bitmap; color: INTEGER);
-BEGIN
-  SDL.FillRectNil(bmp.surface, color)
+BEGIN SDL.FillRectNil(bmp.surface, color)
 END ClearToColor;
 
 PROCEDURE ClearBitmap*(bmp: Bitmap);
-BEGIN
-  ClearToColor(bmp, MakeCol(0, 0, 0))
+BEGIN ClearToColor(bmp, MakeCol(0, 0, 0))
 END ClearBitmap;
 
 PROCEDURE ClearScreenToColor*(color: INTEGER);
-BEGIN
-  ClearToColor(screen, color)
+BEGIN ClearToColor(screen, color)
 END ClearScreenToColor;
 
 PROCEDURE ClearScreen*;
-BEGIN
-  ClearToColor(screen, MakeCol(0, 0, 0))
+BEGIN ClearToColor(screen, MakeCol(0, 0, 0))
 END ClearScreen;
 
 PROCEDURE LockBitmap*(bmp: Bitmap);
-BEGIN
-  SDL.LockSurface(bmp.surface)
+BEGIN SDL.LockSurface(bmp.surface)
 END LockBitmap;
 
 PROCEDURE UnlockBitmap*(bmp: Bitmap);
-BEGIN
-  SDL.UnlockSurface(bmp.surface)
+BEGIN SDL.UnlockSurface(bmp.surface)
 END UnlockBitmap;
 
 PROCEDURE PutPixelFast*(bmp: Bitmap; x, y, color: INTEGER);
@@ -511,8 +495,7 @@ END RectFill;
 
 PROCEDURE Circle*(b: Bitmap; cx, cy, r, col: INTEGER);
 VAR x, y, d: INTEGER;
-BEGIN
-  x := 0; y := r; d := 3 - 2 * r;
+BEGIN x := 0; y := r; d := 3 - 2 * r;
   WHILE x <= y DO
     PutPixel(b, cx + x, cy + y, col);
     PutPixel(b, cx + y, cy + x, col);
@@ -531,8 +514,7 @@ END Circle;
 
 PROCEDURE CircleFill*(b: Bitmap; cx, cy, r, col: INTEGER);
 VAR x, y, d: INTEGER;
-BEGIN
-  x := 0; y := r; d := 3 - 2 * r;
+BEGIN x := 0; y := r; d := 3 - 2 * r;
   WHILE x <= y DO
     HLine(b, cx - x, cy + y, cx + x, col);
     HLine(b, cx - y, cy + x, cx + y, col);
@@ -576,14 +558,12 @@ BEGIN NEW(bmp);
 RETURN bmp END CreateBitmap;
 
 PROCEDURE DestroyBitmap*(bmp: Bitmap);
-BEGIN
-  SDL.FreeSurface(bmp.surface)
+BEGIN SDL.FreeSurface(bmp.surface)
 END DestroyBitmap;
 
 PROCEDURE LoadBitmap*(filename: ARRAY OF CHAR): Bitmap;
 VAR bmp: Bitmap;
-BEGIN
-  NEW(bmp); bmp.surface := SDL.ImgLoad(filename);
+BEGIN NEW(bmp); bmp.surface := SDL.ImgLoad(filename);
   IF bmp.surface = NIL THEN bmp := NIL
   ELSE bmp.w := bmp.surface.w; bmp.h := bmp.surface.h END ;
 RETURN bmp END LoadBitmap;
@@ -643,8 +623,7 @@ BEGIN
 END DrawCharacterEx;
 
 PROCEDURE SetColorKey*(bmp: Bitmap; color: INTEGER);
-BEGIN
-  SDL.SetColorKey(bmp.surface, 1, color)
+BEGIN SDL.SetColorKey(bmp.surface, 1, color)
 END SetColorKey;
 
 (* Font *)
@@ -652,8 +631,7 @@ END SetColorKey;
 PROCEDURE LoadFont*(filename: ARRAY OF CHAR; charW, charH: INTEGER): Font;
 VAR bmp: Bitmap; font: Font;
     x, y, sx, sy, tmp: INTEGER;
-BEGIN
-  bmp := LoadBitmap(filename);
+BEGIN bmp := LoadBitmap(filename);
   IF bmp = NIL THEN font := NIL
   ELSE
     bmp.surface := SDL.ConvertSurface(bmp.surface,
@@ -683,8 +661,7 @@ RETURN font END LoadFont;
 PROCEDURE DrawCharacter*(dest: Bitmap; font: Font;
   x, y: INTEGER; ch: CHAR; fg: INTEGER);
 VAR fx, fy, r, g, b: INTEGER; dstRect: SDL.Rect;
-BEGIN
-  dstRect.x := x; dstRect.y := y;
+BEGIN dstRect.x := x; dstRect.y := y;
   fx := ORD(ch) MOD font.charsInRow;
   fy := ORD(ch) DIV font.charsInRow;
   ColorToRGB(fg, r, g, b);
@@ -696,8 +673,7 @@ END DrawCharacter;
 PROCEDURE DrawString*(dest: Bitmap; font: Font;
   x, y: INTEGER; s: ARRAY OF CHAR; fg: INTEGER);
 VAR i, cx: INTEGER;
-BEGIN
-  i := 0; cx := x;
+BEGIN i := 0; cx := x;
   WHILE (s[i] # 0X) & (cx < dest.w) DO
     DrawCharacter(dest, font, cx, y, s[i], fg);
     INC(i); INC(cx, font.charW)
@@ -713,8 +689,7 @@ BEGIN SDL.StopTextInput
 END StopTextInput;
 
 PROCEDURE QueueEvent;
-BEGIN
-  INC(events.len); INC(events.last);
+BEGIN INC(events.len); INC(events.last);
   IF events.last = LEN(events.buf) THEN events.last := 0 END
 END QueueEvent;
 
@@ -752,7 +727,7 @@ RETURN c END DecodeChar;
 
 PROCEDURE PumpTextEvent(event: SDL.Event);
 VAR sym: INTEGER;
-    e: SDL.TextInputEvent;
+  e: SDL.TextInputEvent;
 BEGIN
   IF events.len < LEN(events.buf) THEN
     e := SYSTEM.VAL(SDL.TextInputEvent, SYSTEM.ADR(event));
@@ -837,8 +812,7 @@ BEGIN IF SDL.GetMouseState(x, y) = 0 THEN END
 END GetRealMousePos;
 
 PROCEDURE GetMousePos*(VAR x, y: INTEGER);
-BEGIN
-  x := mouseX; y := mouseY
+BEGIN x := mouseX; y := mouseY
 END GetMousePos;
 
 PROCEDURE GetMouseButtons*(): SET;
@@ -887,57 +861,51 @@ BEGIN
 RETURN mousePointer END GetMousePointer;
 
 PROCEDURE SetStdMousePointer*;
-BEGIN
-  SetMousePointer(stdMousePointer, 0, 0)
+BEGIN SetMousePointer(stdMousePointer, 0, 0)
 END SetStdMousePointer;
 
 PROCEDURE InitMouseData;
-BEGIN
-  CreateStdMousePointer;
-  SetStdMousePointer
+BEGIN CreateStdMousePointer; SetStdMousePointer
 END InitMouseData;
 
 (* Misc *)
 PROCEDURE SetWindowTitle*(title: ARRAY OF CHAR);
-BEGIN
-  SDL.SetWindowTitle(window, title)
+BEGIN SDL.SetWindowTitle(window, title)
 END SetWindowTitle;
 
 PROCEDURE SwitchToWindowed*;
 BEGIN
-  IF wantFullscreen THEN
+  IF fullscreen IN settings THEN
     SDL.SetWindowSize(window, screen.w, screen.h);
     IF SDL.SetWindowFullscreen(window, {}) = 0 THEN
-      wantFullscreen := FALSE
+      EXCL(settings, fullscreen)
     END
   END
 END SwitchToWindowed;
 
 PROCEDURE SwitchToFullscreen*;
 BEGIN
-  IF ~wantFullscreen THEN
+  IF ~(fullscreen IN settings) THEN
     IF SDL.SetWindowFullscreen(window, SDL.windowFullscreenDesktop) = 0 THEN
-      wantFullscreen := TRUE
+      INCL(settings, fullscreen)
     END
   END
 END SwitchToFullscreen;
 
 PROCEDURE ToggleFullscreen*;
 BEGIN
-  IF wantFullscreen THEN SwitchToWindowed
+  IF fullscreen IN settings THEN SwitchToWindowed
   ELSE SwitchToFullscreen
   END
 END ToggleFullscreen;
 
 PROCEDURE Delay*(n: INTEGER);
-BEGIN
-  SDL.Delay(n)
+BEGIN SDL.Delay(n)
 END Delay;
 
 PROCEDURE HandleMouseButton(VAR event: SDL.Event);
 VAR e: SDL.MouseButtonEvent;
 BEGIN
-
 END HandleMouseButton;
 
 PROCEDURE PumpQuit;
@@ -950,7 +918,7 @@ END PumpQuit;
 
 PROCEDURE PumpMouseMove(VAR event: SDL.Event);
 VAR e: SDL.MouseMotionEvent;
-    newX, newY: INTEGER;
+  newX, newY: INTEGER;
 BEGIN
   e := SYSTEM.VAL(SDL.MouseMotionEvent, SYSTEM.ADR(event));
   newX := e.x; newY := e.y;
@@ -1098,8 +1066,7 @@ VAR mx, my: INTEGER; (* Mouse bitmap X Y *)
   END PrepareMouse;
 
   PROCEDURE CleanMouse;
-  BEGIN
-    (* Restore image under mouse in buffer *)
+  BEGIN (* Restore image under mouse in buffer *)
     Blit(underMouse, screen, 0, 0,
       underMouse.w, underMouse.h, mx, my);
     needRedrawMouse := FALSE
@@ -1142,20 +1109,17 @@ RETURN SHORT(Platform.Time()) END Time;
 (* Set random seed value. Any values are allowed, although
    values not in [1..2^31-2] will be mapped into this range. *)
 PROCEDURE PutSeed*(newSeed: INTEGER);
-BEGIN
-  newSeed := newSeed MOD randomModulo;
+BEGIN newSeed := newSeed MOD randomModulo;
   IF newSeed = 0 THEN randomSeed := 1
   ELSE randomSeed := newSeed
   END
 END PutSeed;
 
 PROCEDURE NextRND;
-CONST
-  a = 16807;
+CONST a = 16807;
   q = 127773; (* m div a *)
   r = 2836;   (* m mod a *)
-VAR
-  lo, hi, test: INTEGER;
+VAR lo, hi, test: INTEGER;
 BEGIN
   hi := randomSeed DIV q;
   lo := randomSeed MOD q;
@@ -1165,7 +1129,7 @@ BEGIN
   END
 END NextRND;
 
-(* Calculates a new number. range has to be in the intervall
+(* Calculates a new number. range has to be included in
    [1..2^31-2]. Result is a number from 0, 1, ... , range-1. *)
 PROCEDURE Random*(range: INTEGER): INTEGER;
 BEGIN NextRND ;
@@ -1185,59 +1149,62 @@ END Randomize;
 PROCEDURE Init*(): Bitmap;
 VAR flags: SET; success: BOOLEAN; w, h, nw, nh: INTEGER;
     s: ARRAY 2000 OF CHAR;
-BEGIN screen := NIL;
+BEGIN screen := NIL; settings := initSettings;
   IF SDL.Init({SDL.initVideo}) = 0 THEN
     flags := {};
-    IF wantFullscreen THEN
+    IF fullscreen IN settings THEN
       flags := flags + SDL.windowFullscreenDesktop;
-      IF (wantW <= 0) OR (wantH <= 0) THEN
-        GetDesktopResolution(wantW, wantH)
-      ELSIF wantSpread THEN
+      IF (scrW <= 0) OR (scrH <= 0) THEN
+        GetDesktopResolution(scrW, scrH);
+        scrW := SHORT(ENTIER(scrW / scaleX));
+        scrH := SHORT(ENTIER(scrH / scaleY))
+      ELSIF spread IN settings THEN
         GetDesktopResolution(w, h);
-        IF wantSharpPixels THEN
-          nw := w DIV wantW; nh := h DIV wantH;
-          IF nw < nh THEN
-            wantW := w DIV nw; wantH := h DIV nw;
-          ELSE
-            wantW := w DIV nh; wantH := h DIV nh;
+        w := SHORT(ENTIER(w / scaleX)); h := SHORT(ENTIER(h / scaleY));
+        IF sharpPixels IN settings THEN
+          nw := w DIV scrW; nh := h DIV scrH;
+          IF nw < nh THEN scrW := w DIV nw; scrH := h DIV nw
+          ELSE scrW := w DIV nh; scrH := h DIV nh
           END
         END;
-        IF w / h > wantW / wantH THEN wantW := w * wantH DIV h
-        ELSE wantH := h * wantW DIV w
+        IF w / h > scrW / scrH THEN scrW := w * scrH DIV h
+        ELSE scrH := h * scrW DIV w
         END
       END
-    ELSIF (wantW <= 0) OR (wantH <= 0) THEN wantW := 640; wantH := 400
+    ELSIF (scrW <= 0) OR (scrH <= 0) THEN scrW := 640; scrH := 400
     END;
-    IF sizeStepX # 1 THEN wantW := wantW DIV sizeStepX * sizeStepX END;
-    IF sizeStepY # 1 THEN wantH := wantH DIV sizeStepY * sizeStepY END;
+    IF sizeStepX # 1 THEN scrW := scrW DIV sizeStepX * sizeStepX END;
+    IF sizeStepY # 1 THEN scrH := scrH DIV sizeStepY * sizeStepY END;
     window := SDL.CreateWindow('',
       SDL.windowPosUndefined, SDL.windowPosUndefined,
-      wantW, wantH, flags);
+      scrW, scrH, flags);
     IF window # 0 THEN
-      IF wantSoftware THEN flags := {SDL.rendererSoftware}
+      IF software IN settings THEN flags := {SDL.rendererSoftware}
       ELSE flags := {SDL.rendererAccelerated}
       END;
       INCL(flags, SDL.rendererPresentVsync);
       renderer := SDL.CreateRenderer(window, -1, flags);
-      IF wantSharpPixels THEN
+      IF sharpPixels IN settings THEN
         SDL.SetHint(SDL.hintRenderScaleQuality, '0')
-      ELSE
-        SDL.SetHint(SDL.hintRenderScaleQuality, '1')
+      ELSE SDL.SetHint(SDL.hintRenderScaleQuality, '1')
       END;
-      SDL.RenderSetLogicalSize(renderer, wantW, wantH);
-      screen := CreateBitmap(wantW, wantH);
+      ApplyScale;
+      screen := CreateBitmap(scrW, scrH);
       screenTexture := 0;
       UnsetRegion;
       SDL.ShowCursor(0);
-      IF wantMouse THEN InitMouseData END;
-      flags := {SDL.imgInitPng, SDL.imgInitJpg};
-      IF flags - SDL.ImgInit(flags) # {} THEN
-        Out.String('Could not initialize PNG or JPG: ');
-        GetError(s); Out.String(s); Out.Ln
+      IF initMouse IN settings THEN InitMouseData END;
+      IF {noPng, noJpg} - settings # {} THEN flags := {};
+        IF ~(noPng IN settings) THEN INCL(flags, SDL.imgInitPng) END;
+        IF ~(noJpg IN settings) THEN INCL(flags, SDL.imgInitJpg) END;
+        IF flags - SDL.ImgInit(flags) # {} THEN
+          Out.String('Could not initialize image format support.'); Out.Ln;
+          GetError(s); Out.String(s); Out.Ln
+        END
       END;
-      Randomize;
       keyPressed := 0;
-      lastFlip := -1
+      lastFlip := -1;
+      Randomize
     END
   END ;
 RETURN screen END Init;
@@ -1248,18 +1215,21 @@ BEGIN
     SDL.DestroyTexture(screenTexture);
     screenTexture := 0
   END;
+  IF renderer # 0 THEN
+    SDL.DestroyRenderer(renderer);
+    renderer := 0
+  END;
   SDL.Quit
 END Close;
 
 BEGIN
-  wantW := 640; wantH := 400;
+  scrW := 640; scrH := 400;
   sizeStepX := 1; sizeStepY := 1;
-  wantFullscreen := TRUE; wantSpread := TRUE;
-  wantBuffer := FALSE; buffer := NIL; wantFPS := 60;
-  wantSharpPixels := TRUE;
+  initSettings := {fullscreen, spread, sharpPixels};
+  renderer := 0; buffer := NIL; wantFPS := 60;
   mousePointer := NIL; lastBlitMouseOutside := FALSE;
   mouseFocusX := 0; mouseFocusY := 0;
+  scaleX := 1; scaleY := 1;
   events.first := 0; events.last := -1; events.len := 0;
   randomSeed := 1; keyPressed := 0
 END Graph.
-

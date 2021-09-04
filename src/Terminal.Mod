@@ -44,16 +44,24 @@ VAR
   needRedraw: BOOLEAN;
 
   isFullscreen-: BOOLEAN;
+  pixelPerfect-: BOOLEAN; (* TRUE if G.Settings width or height was zero *)
 
 PROCEDURE Redraw*;
 BEGIN needRedraw := TRUE
 END Redraw;
 
+PROCEDURE SetScale;
+BEGIN
+  IF isFullscreen & ~pixelPerfect THEN G.SetScale(5/6, 1)
+  ELSE G.SetScale(1, 1)
+  END
+END SetScale;
+
 PROCEDURE ToggleFullscreen*;
 BEGIN
   IF isFullscreen THEN G.SwitchToWindowed ELSE G.SwitchToFullscreen END;
-  Redraw;
-  isFullscreen := ~isFullscreen
+  isFullscreen := ~isFullscreen;
+  SetScale; Redraw
 END ToggleFullscreen;
 
 PROCEDURE ExpandColor*(color: INTEGER): INTEGER;
@@ -114,7 +122,7 @@ END DrawMouse;
    Returns TRUE if anything has been drawn. *)
 PROCEDURE Draw*(): BOOLEAN;
 VAR x, y, color: INTEGER;
-    drawn: BOOLEAN;
+  drawn: BOOLEAN;
 BEGIN
   drawn := needRedraw;
   IF needRedraw THEN
@@ -175,25 +183,22 @@ BEGIN
 END ShowCursor;
 
 PROCEDURE GoToXY*(x, y: INTEGER);
-BEGIN
+BEGIN needRedraw := TRUE;
   IF x < 0 THEN x := 0 ELSIF x >= charsX THEN x := charsX - 1 END;
   IF y < 0 THEN y := 0 ELSIF y >= charsY THEN y := charsY - 1 END;
   chars[cursorY, cursorX].updated := TRUE;
-  cursorX := x; cursorY := y;
-  needRedraw := TRUE
+  cursorX := x; cursorY := y
 END GoToXY;
 
 PROCEDURE MouseXY*(x, y: INTEGER);
-BEGIN
-  needRedraw := TRUE;
+BEGIN needRedraw := TRUE;
   chars[mouseY, mouseX].updated := TRUE;
   mouseX := x; mouseY := y;
   chars[mouseY, mouseX].updated := TRUE
 END MouseXY;
 
 PROCEDURE ResizeScreen;
-BEGIN
-  NEW(chars, charsY, charsX)
+BEGIN NEW(chars, charsY, charsX)
 END ResizeScreen;
 
 PROCEDURE SetCharColor*(x, y: INTEGER; fg, bg: INTEGER);
@@ -246,8 +251,7 @@ END CharFill;
 
 PROCEDURE ClearScreen*;
 VAR x, y: INTEGER;
-BEGIN
-  needRedraw := TRUE;
+BEGIN needRedraw := TRUE;
   FOR y := 0 TO charsY - 1 DO
     FOR x := 0 TO charsX - 1 DO
       IF (chars[y, x].ch # ' ') OR
@@ -264,8 +268,7 @@ END ClearScreen;
 
 PROCEDURE ScrollScreen(lines: INTEGER);
 VAR x, y: INTEGER;
-BEGIN
-  needRedraw := TRUE;
+BEGIN needRedraw := TRUE;
   FOR y := 0 TO charsY - 1 - lines DO
     FOR x := 0 TO charsX - 1 DO
       chars[y, x] := chars[y + lines, x];
@@ -276,8 +279,7 @@ BEGIN
 END ScrollScreen;
 
 PROCEDURE Ln*;
-BEGIN
-  needRedraw := TRUE;
+BEGIN needRedraw := TRUE;
   chars[cursorY, cursorX].updated := TRUE;
   cursorX := 0;
   IF cursorY = charsY - 1 THEN ScrollScreen(1)
@@ -296,8 +298,7 @@ BEGIN
 END Backspace;
 
 PROCEDURE Write*(ch: CHAR);
-BEGIN
-  needRedraw := TRUE;
+BEGIN needRedraw := TRUE;
   IF ch = 0AX THEN Ln
   ELSIF ch # 0DX THEN
     PutChar(cursorX, cursorY, ch, 7, 0);
@@ -314,19 +315,24 @@ BEGIN i := 0; needRedraw := TRUE;
 END WriteString;
 
 PROCEDURE LoadMedia(): BOOLEAN;
-BEGIN font := G.LoadFont('data/images/font.bmp', charW, charH) ;
+CONST fontFile = 'data/images/font.bmp';
+BEGIN font := G.LoadFont(fontFile, charW, charH);
+  IF font = NIL THEN Out.String('Could not load font file "');
+    Out.String(fontFile); Out.String('".'); Out.Ln
+  END ;
 RETURN font # NIL END LoadMedia;
 
 PROCEDURE Init*(fullscreen, software: BOOLEAN; w, h: INTEGER): BOOLEAN;
-VAR success: BOOLEAN; options: SET;
-BEGIN
-  success := FALSE; isFullscreen := fullscreen;
-  options := {G.buffered, G.initMouse, G.spread};
-  IF fullscreen THEN INCL(options, G.fullscreen) END;
-  IF software THEN INCL(options, G.software) END;
-  IF w < 0 THEN w := 96 ELSIF (w # 0) & (w < 10) THEN w := 10 END;
-  IF h < 0 THEN h := 27 ELSIF (h # 0) & (h < 10) THEN h := 10 END;
-  G.Settings(w * 8, h * 16, options);
+VAR success: BOOLEAN; settings: SET;
+BEGIN success := FALSE; isFullscreen := fullscreen;
+  settings := {G.buffered, G.initMouse, G.spread, G.noJpg};
+  IF fullscreen THEN INCL(settings, G.fullscreen) END;
+  IF software THEN INCL(settings, G.software) END;
+  IF w < 0 THEN w := 107 ELSIF (w # 0) & (w < 10) THEN w := 20 END;
+  IF h < 0 THEN h := 25 ELSIF (h # 0) & (h < 10) THEN h := 10 END;
+  pixelPerfect := (w = 0) OR (h = 0);
+  G.Settings(w * 8, h * 16, settings);
+  SetScale;
   G.SetSizeStep(charW, charH);
   screen := G.Init();
   IF screen # NIL THEN

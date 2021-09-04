@@ -1070,7 +1070,6 @@ VAR success, fs, sw: BOOLEAN;
 BEGIN
   success := FALSE;
   ParseArgs(fs, sw, w, h, fnames);
-  ;Out.String('SIZE '); Out.Int(w, 0); Out.Int(h, 5); Out.Ln;
   IF T.Init(fs, sw, w, h) THEN
     InitIDE;
     needWindowed := TRUE;
