@@ -735,21 +735,20 @@ END MoveByLine;
 (* Moves input cursor up and down by page *)
 PROCEDURE MoveByPage(c: Editor; down: BOOLEAN);
 VAR i: INTEGER; moved: BOOLEAN;
-BEGIN
-  i := 1;
+BEGIN i := c.h - 3;
   IF down THEN
     moved := c.text.cur.next # NIL;
-    WHILE (i < c.h - 2) & (c.text.cur.next # NIL) DO
+    WHILE (i > 0) & (c.text.cur.next # NIL) DO
       c.text.scrFirst := c.text.scrFirst.next; INC(c.text.scrY);
       MoveByLine(c, TRUE, FALSE);
-      INC(i)
+      DEC(i)
     END
   ELSE (* Up *)
     moved := c.text.cur.prev # NIL;
-    WHILE (i < c.h - 2) & (c.text.cur.prev # NIL) DO
+    WHILE (i > 0) & (c.text.cur.prev # NIL) DO
       IF c.text.scrY > 0 THEN c.text.scrFirst := c.text.scrFirst.prev; DEC(c.text.scrY) END;
       MoveByLine(c, FALSE, FALSE);
-      INC(i)
+      DEC(i)
     END
   END;
   T.ResetCursorBlink;
@@ -774,9 +773,27 @@ BEGIN
       c.text.x := c.text.cur.len;
     END
   END;
-  T.ResetCursorBlink;
-  PrintText(c)
+  T.ResetCursorBlink
 END MoveInLine;
+
+(* Moves input cursor left and right by one word *)
+PROCEDURE MoveByWord(c: Editor; right: BOOLEAN);
+VAR kind: INTEGER;
+BEGIN
+  IF ~right THEN
+    REPEAT MoveInLine(c, FALSE)
+    UNTIL c.text.IsEdge() OR (c.text.CurCharKind() # Text.whitespace)
+  END;
+  kind := c.text.CurCharKind();
+  REPEAT MoveInLine(c, right)
+  UNTIL c.text.IsEdge() OR (c.text.CurCharKind() # kind);
+  IF right THEN
+    WHILE ~c.text.IsEdge() & (c.text.CurCharKind() = Text.whitespace) DO
+      MoveInLine(c, TRUE)
+    END
+  ELSIF ~c.text.IsEdge() THEN MoveInLine(c, TRUE)
+  END
+END MoveByWord;
 
 (* Moves input cursor to start and to end *)
 PROCEDURE MoveToLineEdge(c: Editor; end: BOOLEAN);
@@ -954,8 +971,16 @@ END EditorTextInput;
 PROCEDURE EditorKeyDown*(c: OV.Control; key: G.Key);
 BEGIN OV.WindowKeyDown(c, key);
   CASE key.code OF
-    G.kLeft:      MoveInLine(c(Editor), FALSE)
-  | G.kRight:     MoveInLine(c(Editor), TRUE)
+    G.kLeft:
+    IF key.mod * G.mCtrl # {} THEN MoveByWord(c(Editor), FALSE)
+    ELSE MoveInLine(c(Editor), FALSE)
+    END;
+    PrintText(c(Editor))
+  | G.kRight:
+    IF key.mod * G.mCtrl # {} THEN MoveByWord(c(Editor), TRUE)
+    ELSE MoveInLine(c(Editor), TRUE)
+    END;
+    PrintText(c(Editor))
   | G.kUp:        MoveByLine(c(Editor), FALSE, FALSE)
   | G.kDown:      MoveByLine(c(Editor), TRUE, FALSE)
   | G.kHome:      MoveToLineEdge(c(Editor), FALSE)

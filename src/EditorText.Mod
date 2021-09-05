@@ -21,6 +21,13 @@ IMPORT Config, Files, Strings, Out;
 CONST
   lineLen = 256;
 
+  (* Character kinds, see CurCharKind below *)
+  other*       = 0;
+  eol*         = 1;
+  whitespace*  = 2;
+  alphanum*    = 3;
+  punctuation* = 4;
+
 TYPE
   CHAR = SHORTCHAR;
 
@@ -474,5 +481,24 @@ BEGIN L := t.first; t.x := 0; t.y := 0;
     t.scrY := t.y - centerY + i; t.scrFirst := L
   END
 END MoveToPos;
+
+PROCEDURE (t: Text) IsEdge*(): BOOLEAN, NEW;
+BEGIN
+  RETURN (t.x = 0) & (t.y = 0) OR (t.cur = t.last) & (t.x = t.cur.len)
+END IsEdge;
+
+PROCEDURE (t: Text) CurCharKind*(): INTEGER, NEW;
+VAR c: CHAR; k: INTEGER;
+BEGIN
+  IF t.x = t.cur.len THEN k := eol
+  ELSE c := t.cur.s[t.x];
+    IF (c # 0X) & (c <= ' ') THEN k := whitespace
+    ELSIF ('0' <= c) & (c <= '9') OR ('a' <= c) & (c <= 'z') OR
+          ('A' <= c) & (c <= 'Z') THEN k := alphanum
+    ELSIF c <= 0FFX THEN k := punctuation
+    ELSE k := other
+    END
+  END ;
+RETURN k END CurCharKind;
 
 END EditorText.
