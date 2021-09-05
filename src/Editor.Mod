@@ -968,6 +968,12 @@ BEGIN
   END
 END EditorTextInput;
 
+PROCEDURE EditorClose*(c: OV.Control; VAR cancel: BOOLEAN);
+VAR E: Editor;
+BEGIN E := c(Editor);
+  (*IF E.text.changed THEN cancel := TRUE END*) (*!TODO Ask*)
+END EditorClose;
+
 PROCEDURE EditorKeyDown*(c: OV.Control; key: G.Key);
 BEGIN OV.WindowKeyDown(c, key);
   CASE key.code OF
@@ -1013,7 +1019,8 @@ BEGIN OV.InitWindowMethod(m);
   m.mouseUp := EditorMouseUp;
   m.mouseMove := EditorMouseMove;
   m.keyDown := EditorKeyDown;
-  m.textInput := EditorTextInput
+  m.textInput := EditorTextInput;
+  m.close := EditorClose
 END InitEditorMethod;
 
 BEGIN

@@ -607,7 +607,8 @@ TYPE
     lostFocus*: PROCEDURE (c: Control);
     mouseMove*: PROCEDURE (c: Control; x, y: INTEGER; buttons: SET);
     mouseDown*: PROCEDURE (c: Control; x, y, button: INTEGER);
-    mouseUp*: PROCEDURE (c: Control; x, y, button: INTEGER)
+    mouseUp*: PROCEDURE (c: Control; x, y, button: INTEGER);
+    close*: PROCEDURE (c: Control; VAR cancel: BOOLEAN)
   END;
 
   Menu* = POINTER TO MenuDesc;
@@ -1050,7 +1051,8 @@ BEGIN
   m.lostFocus := ControlLostFocus;
   m.mouseMove := ControlMouseMove;
   m.mouseDown := ControlMouseDown;
-  m.mouseUp := ControlMouseUp
+  m.mouseUp := ControlMouseUp;
+  m.close := NIL
 END InitControlMethod;
 
 (* Menu *)
@@ -2028,23 +2030,33 @@ BEGIN w := c.app.windows(Window);
   END
 END ZoomCurWindow;
 
-PROCEDURE CloseCurWindow*(c: Control);
-BEGIN
-  IF c.app.windows # NIL THEN
-    IF c.app.windows.next = c.app.windows THEN c.app.windows := NIL
-    ELSE
-      c.app.windows.prev.next := c.app.windows.next;
-      c.app.windows.next.prev := c.app.windows.prev;
-      c.app.windows := c.app.windows.prev(Window)
-    END;
-    SetAppFocus(c.app, c.app.windows);
-    NeedRedraw(c.app)
+PROCEDURE CloseCurWindowEx*(c: Control; VAR cancel: BOOLEAN);
+VAR w: Window;
+BEGIN w := c.app.windows; cancel := FALSE;
+  IF w # NIL THEN
+    IF w.do.close # NIL THEN w.do.close(w, cancel) END;
+    IF ~cancel THEN
+      IF w.next = w THEN c.app.windows := NIL
+      ELSE
+        w.prev.next := w.next;
+        w.next.prev := w.prev;
+        c.app.windows := w.prev(Window)
+      END;
+      SetAppFocus(c.app, c.app.windows);
+      NeedRedraw(c.app)
+    END
   END
+END CloseCurWindowEx;
+
+PROCEDURE CloseCurWindow*(c: Control);
+VAR cancel: BOOLEAN;
+BEGIN CloseCurWindowEx(c, cancel)
 END CloseCurWindow;
 
 PROCEDURE CloseAllWindows*(c: Control);
-BEGIN
-  WHILE c.app.windows # NIL DO CloseCurWindow(c) END
+VAR cancel: BOOLEAN;
+BEGIN cancel := FALSE;
+  WHILE ~cancel & (c.app.windows # NIL) DO CloseCurWindowEx(c, cancel) END
 END CloseAllWindows;
 
 PROCEDURE RefreshDisplay*(c: Control);
