@@ -295,7 +295,7 @@ VAR i, j: INTEGER; tmp: CHAR; neg: BOOLEAN;
 BEGIN
   IF n = 0 THEN
     s[0] := '0'; i := 1
-  ELSE i := 0; neg := n < 0; 
+  ELSE i := 0; neg := n < 0;
     IF neg THEN n := -n END;
     WHILE (n > 0) & (i < LEN(s) - 1) DO
       s[i] := CHR(ORD('0') + n MOD 10);
@@ -320,11 +320,11 @@ BEGIN
   IF (startPos > stringLength-patternLength) THEN
     startPos := stringLength-patternLength
   END;
-  
+
   IF (startPos >= 0) THEN
     patternPos := 0;
     LOOP
-      IF (pattern[patternPos] = 0X) THEN     
+      IF (pattern[patternPos] = 0X) THEN
         (* reached end of pattern *)
         patternFound := TRUE;
         posOfPattern := startPos-patternPos;
@@ -340,7 +340,7 @@ BEGIN
           EXIT
         END
       ELSE  (* characters identic, compare next one *)
-        INC (startPos); 
+        INC (startPos);
         INC (patternPos)
       END
     END
@@ -509,7 +509,7 @@ PROCEDURE PutStringH*(x, y: INTEGER; s: ARRAY OF CHAR;
   bg, limit: INTEGER; VAR comLevel: INTEGER);
 VAR i, fg, class, len: INTEGER;
 BEGIN
-  IF limit = 0 THEN limit := T.charsX END; 
+  IF limit = 0 THEN limit := T.charsX END;
   GetToken(s, 0, class, len, comLevel);
   fg := GetTokenColor(class); i := 0;
   WHILE (s[i] # 0X) & (x < limit) DO

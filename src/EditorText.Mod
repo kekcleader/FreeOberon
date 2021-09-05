@@ -201,7 +201,7 @@ VAR x0, x, y: INTEGER; L0, L: Line;
 BEGIN
   IF t.selected THEN
     L := t.GetFirstSelLine();
-    L0 := L; y := t.selT; 
+    L0 := L; y := t.selT;
     WHILE y < t.selB DO L := L.next; INC(y) END;
     L0.next := L.next;
     IF L.next = NIL THEN t.last := L0
@@ -440,14 +440,14 @@ BEGIN success := FALSE;
       success := TRUE
     END
   END ;
-RETURN success END LoadFromFile; 
+RETURN success END LoadFromFile;
 
 PROCEDURE (t: Text) MoveToLineCol*(line, col, winH: INTEGER), NEW;
 VAR i, centerY, tx, ty: INTEGER; L: Line;
 BEGIN L := t.first; tx := 0; ty := 0; DEC(line); DEC(col);
   WHILE (L # NIL) & (ty # line) DO L := L.next; INC(ty) END;
   IF L # NIL THEN
-    WHILE (L.s[tx] # 0X) & (col > 0) DO 
+    WHILE (L.s[tx] # 0X) & (col > 0) DO
       IF L.s[tx] < 80X THEN DEC(col) ELSE DEC(col, 2) END;
       INC(tx)
     END;

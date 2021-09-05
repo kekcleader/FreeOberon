@@ -575,7 +575,7 @@ TYPE
 
   ClickHandler* = PROCEDURE (c: Control);
   ChangeHandler* = ClickHandler;
-  
+
   ControlDesc* = EXTENSIBLE RECORD
     app*: App;
     parent*, children*: Control;
@@ -823,7 +823,7 @@ PROCEDURE PutMarkedString*(x, y: INTEGER; s: ARRAY OF CHAR; fg, fg2, bg, limit: 
 VAR i, c: INTEGER;
   mark: BOOLEAN;
 BEGIN
-  IF limit = 0 THEN limit := T.charsX END; 
+  IF limit = 0 THEN limit := T.charsX END;
   i := 0; mark := FALSE;
   WHILE (i < LEN(s)) & (s[i] # 0X) & (x <= limit) DO
     IF s[i] = '&' THEN mark := TRUE
@@ -1083,7 +1083,7 @@ BEGIN
     T.PutChar(x - 1, y, 0C3X, 0, 7);
     T.PutChar(x + w + 2, y, 0B4X, 0, 7)
   ELSE
-    IF (m.status = selected) OR (m.status = open) THEN bg := 2 
+    IF (m.status = selected) OR (m.status = open) THEN bg := 2
     ELSE bg := 7
     END;
     T.PutChar(x, y, ' ', 0, bg); INC(x);

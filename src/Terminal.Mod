@@ -231,7 +231,7 @@ END PutChar;
 PROCEDURE PutString*(x, y: INTEGER; s: ARRAY OF CHAR; fg, bg, limit: INTEGER);
 VAR i: INTEGER;
 BEGIN
-  IF limit = 0 THEN limit := charsX END; 
+  IF limit = 0 THEN limit := charsX END;
   i := 0;
   WHILE (i < LEN(s)) & (s[i] # 0X) & (x <= limit) DO
     PutChar(x, y, s[i], fg, bg);
