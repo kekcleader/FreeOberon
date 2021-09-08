@@ -33,6 +33,12 @@ int StartProcessIn(char *process, char *dir) {
   char cmd[600];
   int success = 0;
   int i, j;
+
+      // Ignore SIGPIPE in case of a write to a broken pipe
+      if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+        puts("Could not ignore SIGPIPE signal.");
+      }
+
   if ((pipe(p) == -1) || (pipe(q) == -1)) {
     perror("StartProcess: Could not create pipes.");
   } else {
@@ -69,6 +75,12 @@ int StartProcessIn(char *process, char *dir) {
         puts("Could not run program.");
         exit(0);
       }
+      /*
+      // Ignore SIGPIPE in case of a write to a broken pipe
+      if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+        puts("Could not ignore SIGPIPE signal.");
+      }
+      */
     } else { // Parent process
       close(q[0]);
       close(p[1]);
