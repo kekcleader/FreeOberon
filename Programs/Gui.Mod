@@ -3,7 +3,7 @@ IMPORT Out, G := Graph;
 
 CONST
   charW = 8; charH = 16;
-   
+
   (* redrawState *)
   redrawNone* = 0;
   redrawAll*  = 1;
@@ -22,7 +22,7 @@ TYPE
   OnDrawHandler = PROCEDURE (c: Component; bmp: G.Bitmap; x0, y0: INTEGER);
   OnMouseDownHandler = PROCEDURE (c: Component; x, y, btn: INTEGER);
   OnKeyDownHandler = PROCEDURE (c: Component; key: INTEGER);
-  
+
   MethodDesc* = RECORD
     draw*: OnDrawHandler;
     mouseDown*: OnMouseDownHandler;
@@ -43,13 +43,13 @@ TYPE
     setOnKeyDown*: PROCEDURE (c: Component; hn: OnKeyDownHandler);
   END;
   ComponentDesc* = RECORD
-    x-, y-, w-, h-: INTEGER;
-    visible-: BOOLEAN;
-    redrawState-: INTEGER; (* see constants with prefix 'redraw' *)
+    x*, y*, w*, h*: INTEGER;
+    visible*: BOOLEAN;
+    redrawState*: INTEGER; (* see constants with prefix 'redraw' *)
     do*: Method;
-    onDraw-: OnDrawHandler;
-    onMouseDown-: OnMouseDownHandler;
-    onKeyDown-: OnKeyDownHandler;
+    onDraw*: OnDrawHandler;
+    onMouseDown*: OnMouseDownHandler;
+    onKeyDown*: OnKeyDownHandler;
     parent*: Component;
     next*: Component
   END;
@@ -60,17 +60,17 @@ TYPE
     bgColor*: INTEGER
   END;
   ButtonDesc* = RECORD(ComponentDesc)
-    caption-: ARRAY 100 OF CHAR
+    caption*: ARRAY 100 OF CHAR
   END;
   EditDesc* = RECORD(ComponentDesc)
-    text-: ARRAY 4096 OF CHAR;
-    selStart-: INTEGER;
-    selLen-: INTEGER
+    text*: ARRAY 4096 OF CHAR;
+    selStart*: INTEGER;
+    selLen*: INTEGER
   END;
   CircleDesc* = RECORD(ComponentDesc)
     color*: INTEGER
   END;
-  
+
 VAR
   screen: G.Bitmap;
   font: G.Font;
