@@ -537,7 +537,8 @@ BEGIN sysModules := NIL;
   Add('SYSTEM');  Add('Texts');    Add('Files');  Add('Strings');
   Add('In');      Add('Out');      Add('Math');   Add('MathL');
   Add('Modules'); Add('Platform'); Add('Oberon'); Add('Reals');
-  Add('VT100');   Add('Graph');    Add('SDL2');   Add('Term')
+  Add('VT100');   Add('Graph');    Add('SDL2');   Add('Term');
+  Add('Dir');     Add('Int')
 END ResetSysModules;
 
 PROCEDURE CompileAll(modules: StrList; graph: BOOLEAN;
