@@ -4,7 +4,7 @@ IMPORT Dir, Out;
 PROCEDURE Do;
 VAR r: Dir.Rec;
 BEGIN
-  Dir.First(r, 'C:\');
+  Dir.First(r, 'C:\'); IF r.res # 0 THEN Dir.First(r, '.') END;
   IF r.res = 0 THEN (* Есть такой каталог *)
     WHILE ~r.eod DO (* Выводим только каталоги *)
       IF r.isDir THEN Out.Char('['); Out.String(r.name); Out.Char(']'); Out.Ln END;
