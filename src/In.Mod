@@ -25,7 +25,7 @@ PROCEDURE Open*;
 VAR error: Platform.ErrorCode;
 BEGIN
   error := Platform.Seek(Platform.StdIn, 0, Platform.SeekSet); (* Rewind STDIN to beginning of file. *)
-  cp := singleByte;
+  cp := utf8;
   nextch := 0X;
   readstate := pending;
   Done := error = 0
