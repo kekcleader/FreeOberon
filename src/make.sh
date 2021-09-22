@@ -14,11 +14,19 @@ CCFULL="$CC -g3 -O0 -fno-exceptions -I $OFRDIR/../../Mod/Lib -I $OFRDIR/Lib/Obj"
 
 $OFR -C Config_linux.Mod
 
+$OFR -C Utf8.Mod
+
+$OFR -C In.Mod
+
+$OFR -C Out.Mod
+
+$OFR -C Strings.Mod
+
 $OFR -C Int.Mod
 
-$OFR -7 StrList.Mod
+$OFR -7w StrList.Mod
 
-$OFR -7 Dir.Mod
+$OFR -7w Dir.Mod
 
 $OFR -C -i SDL2.Mod
 
@@ -38,15 +46,19 @@ $OFR -C -m FreeOberon.Mod
 
 
 
+$CCFULL -c Strings.c
+$CCFULL -c Utf8.c
 $CCFULL -c Int.c
+$CCFULL -c In.c
+$CCFULL -c Out.c
 $CCFULL -c StrList.c
 $CCFULL -c Dir.c
 $CCFULL -c SDL2.c
 $CCFULL -c Graph.c
-$AR -crs ../data/bin/libFreeOberon.a Int.o StrList.o Dir.o SDL2.o Graph.o
+$AR -crs ../data/bin/libFreeOberon.a Strings.o Utf8.o Int.o In.o Out.o StrList.o Dir.o SDL2.o Graph.o
 
 $CCFULL Config.c term/term_linux.c \
-  Int.o StrList.o Dir.o SDL2.o Graph.o \
+  Strings.o Utf8.o Int.o In.o Out.o StrList.o Dir.o SDL2.o Graph.o \
   Term.c Terminal.c OV.c EditorText.c Editor.c \
   $PROG.c -o ../$PROG \
   $OFRDIR/Lib/libOfront.a \

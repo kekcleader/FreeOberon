@@ -47,8 +47,6 @@ CONST
   save* = 2;
 
 TYPE
-  CHAR = SHORTCHAR;
-
   FileDialog* = POINTER TO FileDialogDesc;
   FileDialogDesc* = RECORD(OV.WindowDesc)
     type*: INTEGER; (* open or save *)
@@ -88,27 +86,28 @@ PROCEDURE FileDialogUpdateFileList*(c: FileDialog);
 VAR L: StrList.List;
   r: Dir.Rec;
   s: ARRAY 512 OF CHAR;
-  first: BOOLEAN;
   n: INTEGER;
 BEGIN L := c.colFiles.items;
   StrList.Clear(L);
-  Dir.First(r, c.path); first := TRUE;
+  Dir.First(r, c.path);
   WHILE ~r.eod DO
     IF r.name # '.' THEN s := r.name$;
       IF r.isDir THEN
-        IF first THEN n := Strings.Length(s);
-          s[n] := '/'; s[n + 1] := 0X;
-          OV.EditSetCaption(c.edtFilename, s);
-          s[n] := ']'; Strings.Insert('[', 0, s)
-        ELSE Strings.Insert('[', 0, s); Strings.Append(']', s)
-        END
-      ELSIF first THEN OV.EditSetCaption(c.edtFilename, s)
+        Strings.Insert('[', 0, s); Strings.Append(']', s)
       END;
-      StrList.Append(L, s); first := FALSE
+      StrList.Append(L, s)
     END;
     Dir.Next(r)
   END;
   StrList.Sort(L, FileNamesCmp);
+
+  StrList.First(L, s);
+  IF L.eol THEN s := ''
+  ELSIF s[0] = '[' THEN Strings.Delete(s, 0, 1);
+    s[Strings.Length(s) - 1] := '/'
+  END;
+  OV.EditSetCaption(c.edtFilename, s);
+
   OV.ColumnListSetCur(c.colFiles, 0);
   OV.NeedRedraw(c.app)
 END FileDialogUpdateFileList;
@@ -961,9 +960,9 @@ BEGIN
   OV.WindowMouseMove(c, x, y, buttons)
 END EditorMouseMove;
 
-PROCEDURE EditorTextInput(c: OV.Control; ch: INTEGER);
+PROCEDURE EditorTextInput(c: OV.Control; ch: CHAR);
 BEGIN
-  IF ch # 0 THEN c(Editor).text.InsertChar(OV.ToCP866(ch)); T.ResetCursorBlink;
+  IF ch # 0X THEN c(Editor).text.InsertChar(OV.ToCP866(ch)); T.ResetCursorBlink;
     c(Editor).text.selected := FALSE; PrintText(c(Editor))
   END
 END EditorTextInput;

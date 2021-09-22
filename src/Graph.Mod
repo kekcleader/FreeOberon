@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT SDL := SDL2, SYSTEM, Platform, Out;
+IMPORT SDL := SDL2, SYSTEM, Platform, Out, Utf8;
 
 CONST
   (* Flip Flags *)
@@ -190,7 +190,6 @@ CONST
 
 TYPE
   ADRINT = SYSTEM.ADRINT;
-  CHAR = SHORTCHAR;
   SET32 = SET;
 
   Bitmap* = POINTER TO BitmapDesc;
@@ -228,8 +227,8 @@ TYPE
     button*: INTEGER;
     buttons*: SET; (* What mouse buttons are pressed *)
     down*: BOOLEAN;
-    s*: ARRAY 32 OF CHAR;
-    ch*: INTEGER(*SHOULD BE 2-byte CHAR*)
+    s*: ARRAY 32 OF CHAR; (* For Text Input and Text Edit Events (SDL2, !TODO) *)
+    ch*: CHAR
   END;
 
   EventQueue* = RECORD
@@ -278,9 +277,9 @@ PROCEDURE -AAIncludeSDL2h0 '#include "SDL2.h0"';
 (* General *)
 
 PROCEDURE GetError*(VAR s: ARRAY OF CHAR);
-TYPE P = POINTER TO ARRAY 10240 OF CHAR;
+TYPE P = POINTER TO ARRAY 2048 OF SHORTCHAR;
 VAR p: P;
-BEGIN p := SYSTEM.VAL(P, SDL.GetError()); s := p^$
+BEGIN p := SYSTEM.VAL(P, SDL.GetError()); Utf8.Decode(p^, s)
 END GetError;
 
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
@@ -563,23 +562,25 @@ END DestroyBitmap;
 
 PROCEDURE LoadBitmap*(filename: ARRAY OF CHAR): Bitmap;
 VAR bmp: Bitmap;
-BEGIN NEW(bmp); bmp.surface := SDL.ImgLoad(filename);
+BEGIN NEW(bmp); bmp.surface := SDL.ImgLoad(SHORT(filename));
   IF bmp.surface = NIL THEN bmp := NIL
   ELSE bmp.w := bmp.surface.w; bmp.h := bmp.surface.h END ;
 RETURN bmp END LoadBitmap;
 
 PROCEDURE SaveBmp*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
 BEGIN
-  RETURN SDL.SaveBmpRW(bmp.surface, SDL.RWFromFile(filename, 'wb'), 1) = 0
+  RETURN SDL.SaveBmpRW(bmp.surface, SDL.RWFromFile(SHORT(filename), 'wb'), 1) = 0
 END SaveBmp;
 
 PROCEDURE SavePng*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
-BEGIN
-RETURN SDL.ImgSavePng(bmp.surface, filename) = 0 END SavePng;
+VAR s: ARRAY 1024 OF SHORTCHAR;
+BEGIN Utf8.Encode(filename, s);
+RETURN SDL.ImgSavePng(bmp.surface, s) = 0 END SavePng;
 
 PROCEDURE SaveJpg*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
-BEGIN
-RETURN SDL.ImgSaveJpg(bmp.surface, filename) = 0 END SaveJpg;
+VAR s: ARRAY 1024 OF SHORTCHAR;
+BEGIN Utf8.Encode(filename, s);
+RETURN SDL.ImgSaveJpg(bmp.surface, s) = 0 END SaveJpg;
 
 PROCEDURE Blit*(src, dest: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER);
 VAR a, b: SDL.Rect;
@@ -604,7 +605,7 @@ END StretchBlit;
 
 PROCEDURE SetAlpha*(bmp: Bitmap; alpha: INTEGER);
 BEGIN
-  IF SDL.SetSurfaceAlphaMod(bmp.surface, CHR(alpha)) = 0 THEN END
+  IF SDL.SetSurfaceAlphaMod(bmp.surface, SYSTEM.VAL(BYTE, alpha)) = 0 THEN END
 END SetAlpha;
 
 PROCEDURE MaskedBlit*(src, dest: Bitmap; sx, sy, dx, dy, w, h: INTEGER);
@@ -671,7 +672,7 @@ BEGIN dstRect.x := x; dstRect.y := y;
 END DrawCharacter;
 
 PROCEDURE DrawString*(dest: Bitmap; font: Font;
-  x, y: INTEGER; s: ARRAY OF CHAR; fg: INTEGER);
+    x, y: INTEGER; s: ARRAY OF CHAR; fg: INTEGER);
 VAR i, cx: INTEGER;
 BEGIN i := 0; cx := x;
   WHILE (s[i] # 0X) & (cx < dest.w) DO
@@ -710,21 +711,6 @@ BEGIN
   END
 END PumpKeyDown;
 
-PROCEDURE DecodeChar(IN s: ARRAY OF CHAR): INTEGER;
-VAR i, x, c: INTEGER;
-BEGIN c := ORD(s[0]);
-  IF c > 80H THEN x := ORD(s[1]) MOD 64; (* Not 1 byte *)
-    IF c DIV 32 = 6 THEN (* 2 bytes *)
-      c := c MOD 32 * 64 + x
-    ELSIF c DIV 16 = 14 THEN (* 3 bytes *)
-      c := (c MOD 16 * 64 + x) * 64 + ORD(s[2]) MOD 64
-    ELSIF c DIV 8 = 30 THEN (* 4 bytes *)
-      c := ((c MOD 8 * 64 + x) * 64 + ORD(s[2]) MOD 64) * 64 + ORD(s[3]) MOD 64
-    ELSE c := 0
-    END
-  END ;
-RETURN c END DecodeChar;
-
 PROCEDURE PumpTextEvent(event: SDL.Event);
 VAR sym: INTEGER;
   e: SDL.TextInputEvent;
@@ -750,8 +736,8 @@ BEGIN
     END;
     QueueEvent;
     events.buf[events.last].type := textInput;
-    events.buf[events.last].s := e.text$;
-    events.buf[events.last].ch := DecodeChar(e.text)
+    Utf8.Decode(e.text, events.buf[events.last].s);
+    events.buf[events.last].ch := events.buf[events.last].s[0]
   END
 END PumpTextEvent;
 
@@ -870,7 +856,8 @@ END InitMouseData;
 
 (* Misc *)
 PROCEDURE SetWindowTitle*(title: ARRAY OF CHAR);
-BEGIN SDL.SetWindowTitle(window, title)
+VAR s: ARRAY 2048 OF SHORTCHAR;
+BEGIN Utf8.Encode(title, s); SDL.SetWindowTitle(window, s)
 END SetWindowTitle;
 
 PROCEDURE SwitchToWindowed*;
@@ -1148,7 +1135,7 @@ END Randomize;
 
 PROCEDURE Init*(): Bitmap;
 VAR flags: SET; success: BOOLEAN; w, h, nw, nh: INTEGER;
-    s: ARRAY 2000 OF CHAR;
+  s: ARRAY 2000 OF CHAR;
 BEGIN screen := NIL; settings := initSettings;
   IF SDL.Init({SDL.initVideo}) = 0 THEN
     flags := {};

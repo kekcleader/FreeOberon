@@ -507,7 +507,7 @@ PROCEDURE -GetTicks*(): INTEGER "SDL_GetTicks()";
 PROCEDURE -SetWindowFullscreen*(window: Window; flags: SET): INTEGER
     "SDL_SetWindowFullscreen((void *)window, flags)";
 
-PROCEDURE -SetSurfaceAlphaMod*(surface: Surface; alpha: CHAR): INTEGER
+PROCEDURE -SetSurfaceAlphaMod*(surface: Surface; alpha: BYTE): INTEGER
     "SDL_SetSurfaceAlphaMod(surface, alpha)";
 
 END SDL2.

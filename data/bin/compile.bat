@@ -9,7 +9,7 @@ SET CURDIR=%~dp0
 SET OFRDIR=%CURDIR%OfrontPlus\Target\Win64
 SET PATH=%OFRDIR%;%CURDIR%mingw32\bin;%PATH%
 SET OBERON=.;%CURDIR%..\..\src;%OFRDIR%\Lib\Sym
-SET OFR=ofront+ -s -88 -7
+SET OFR=ofront+ -s -88 -7w
 
 ECHO ON
 @%OFR% %2 ..\Programs\%1

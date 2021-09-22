@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT Config, Files, Strings, Out;
+IMPORT Config, Files, Strings, Out, Utf8;
 
 CONST
   lineLen = 256;
@@ -29,8 +29,6 @@ CONST
   punctuation* = 4;
 
 TYPE
-  CHAR = SHORTCHAR;
-
   String* = ARRAY lineLen OF CHAR;
 
   Line* = POINTER TO LineDesc;
@@ -329,15 +327,15 @@ BEGIN
   i := 0; s[LEN(s) - 1] := 0X;
   WHILE s[i] # 0X DO
     ch := s[i];
-    IF ORD(ch) < 128 THEN Files.WriteChar(r, ch) (* ASCII *)
+    IF ORD(ch) < 128 THEN Files.WriteChar(r, SHORT(ch)) (* ASCII *)
     ELSIF ORD(ch) = 240 THEN (* Big cyrillic Yo *)
       Files.WriteChar(r, 0D0X); Files.WriteChar(r, 81X)
     ELSIF ORD(ch) < 224 THEN (* Before small cyrillic R *)
       Files.WriteChar(r, 0D0X);
-      Files.WriteChar(r, CHR(ORD(ch) - 128 + 090H))
+      Files.WriteChar(r, SHORT(CHR(ORD(ch) - 128 + 090H)))
     ELSE
       Files.WriteChar(r, 0D1X);
-      Files.WriteChar(r, CHR(ORD(ch) - 224 + 080H))
+      Files.WriteChar(r, SHORT(CHR(ORD(ch) - 224 + 080H)))
     END;
     INC(i)
   END
@@ -364,9 +362,11 @@ PROCEDURE (t: Text) SaveToFile*(fname: ARRAY OF CHAR): BOOLEAN, NEW;
 VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
   L: Line;
+  s: ARRAY 2048 OF SHORTCHAR;
 BEGIN success := FALSE;
   FixFname(fname);
-  f := Files.New(fname);
+  Utf8.Encode(fname, s);
+  f := Files.New(s);
   IF f # NIL THEN (*!FIXME error checking is wrong *)
     Files.Set(r, f, 0);
     L := t.first;
@@ -388,26 +388,26 @@ BEGIN success := FALSE;
 RETURN success END SaveToFile;
 
 PROCEDURE ReadLine(VAR r: Files.Rider; L: Line);
-VAR ch: CHAR; i: INTEGER;
+VAR x: SHORTCHAR; ch: CHAR; i: INTEGER;
 BEGIN i := 0;
-  Files.ReadChar(r, ch);
+  Files.ReadChar(r, x); ch := LONG(x);
   WHILE ~r.eof & (i < LEN(L.s) - 1) & (ch # 0AX) & (ch # 0DX) DO
     IF ORD(ch) < 128 THEN L.s[i] := ch
     ELSIF ch = 0D0X THEN
-      Files.ReadChar(r, ch);
+      Files.ReadChar(r, x); ch := LONG(x);
       IF ch = 081X THEN L.s[i] := CHR(240) (* Big Yo *)
       ELSE L.s[i] := CHR(ORD(ch) - 16)
       END
     ELSIF ch = 0D1X THEN
-      Files.ReadChar(r, ch); L.s[i] := CHR(ORD(ch) + 96)
+      Files.ReadChar(r, x); ch := LONG(x); L.s[i] := CHR(ORD(ch) + 96)
     END;
-    Files.ReadChar(r, ch);
+    Files.ReadChar(r, x); ch := LONG(x);
     INC(i)
   END;
   L.s[i] := 0X;
   IF ch = 0DX THEN
     L.lineEndLen := 2; (* Assume CRLF (DOS) *)
-    Files.ReadChar(r, ch) (* Skip LF *)
+    Files.ReadChar(r, x) (* Skip LF *)
   ELSE L.lineEndLen := 1 (* Assume LF (UNIX) *)
   END
 END ReadLine;
@@ -416,10 +416,12 @@ PROCEDURE (t: Text) LoadFromFile*(fname: ARRAY OF CHAR): BOOLEAN, NEW;
 VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
   L: Line;
+  s: ARRAY 2048 OF SHORTCHAR;
 BEGIN success := FALSE;
   IF fname[0] # 0X THEN
     FixFname(fname);
-    f := Files.Old(fname);
+    Utf8.Encode(fname, s);
+    f := Files.Old(s);
     IF f # NIL THEN
       Files.Set(r, f, 0);
       L := NewLine();

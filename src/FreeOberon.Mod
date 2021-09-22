@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT G := Graph, T := Terminal, Files, Args,
+IMPORT G := Graph, T := Terminal, Files, Args, Utf8,
        OV, Editor, Term, Config, Strings, Int, Out;
 CONST
   version* = '1.0.4';
@@ -47,8 +47,6 @@ CONST
   tokenComment = 4;
 
 TYPE
-  CHAR = SHORTCHAR;
-
   StrList = POINTER TO StrListDesc;
   StrListDesc = RECORD
     s: ARRAY 256 OF CHAR; (* Module name *)
@@ -58,8 +56,8 @@ TYPE
   Fnames = ARRAY 32, 256 OF CHAR;
 
 VAR
-  progBuf: ARRAY 16300 OF CHAR; (* For interacting with a launched program *)
-  inputBuf: ARRAY 16300 OF CHAR; (* Saves entered chars before Enter pressed *)
+  progBuf: ARRAY 16300 OF SHORTCHAR; (* For interacting with a launched program *)
+  inputBuf: ARRAY 16300 OF SHORTCHAR; (* Saves entered chars before Enter pressed *)
   inputBufLen: INTEGER;
   programFinished: BOOLEAN;
   tempWindowed: BOOLEAN; (* TRUE if editor windowed while program is running *)
@@ -302,8 +300,8 @@ BEGIN
   END
 END PollProgram;
 
-PROCEDURE WriteToProcess(s: ARRAY OF CHAR; len: INTEGER);
-VAR buf: ARRAY 2048 OF CHAR; i, bufLen: INTEGER; ch: CHAR;
+PROCEDURE WriteToProcess(s: ARRAY OF SHORTCHAR; len: INTEGER);
+VAR buf: ARRAY 2048 OF SHORTCHAR; i, bufLen: INTEGER; ch: SHORTCHAR;
 BEGIN
   bufLen := 0; i := 0;
   WHILE i < len DO
@@ -315,11 +313,11 @@ BEGIN
       INC(bufLen, 2)
     ELSIF ORD(ch) < 224 THEN (* Before small cyrillic R *)
       buf[bufLen] := 0D0X;
-      buf[bufLen + 1] := CHR(ORD(ch) - 128 + 090H);
+      buf[bufLen + 1] := SHORT(CHR(ORD(ch) - 128 + 090H));
       INC(bufLen, 2)
     ELSE
       buf[bufLen] := 0D1X;
-      buf[bufLen + 1] := CHR(ORD(ch) - 224 + 080H);
+      buf[bufLen + 1] := SHORT(CHR(ORD(ch) - 224 + 080H));
       INC(bufLen, 2)
     END;
     INC(i)
@@ -328,7 +326,7 @@ BEGIN
 END WriteToProcess;
 
 PROCEDURE HandleTerminalKeyDown(key: G.Key; VAR quit: BOOLEAN);
-VAR code: INTEGER; ch: CHAR; buf: ARRAY 2 OF CHAR;
+VAR code: INTEGER; ch: CHAR; buf: ARRAY 2 OF SHORTCHAR;
 BEGIN
   IF programFinished THEN
     IF (key.code = G.kEnter) & (key.mod * G.mAlt # {}) THEN
@@ -341,7 +339,7 @@ BEGIN
       IF key.mod * G.mAlt # {} THEN T.ToggleFullscreen
       ELSE T.Ln;
         WriteToProcess(inputBuf, inputBufLen);
-        inputBufLen := 0; buf[0] := 0AX;
+        inputBufLen := 0; buf[0] := SHORT(CHR(0AH));
         Term.WriteToProcess(buf, 1)
       END
     | G.kBackspace:
@@ -358,10 +356,10 @@ BEGIN
   END
 END HandleTerminalKeyDown;
 
-PROCEDURE HandleTerminalTextInput(s: ARRAY OF CHAR; ch: INTEGER);
+PROCEDURE HandleTerminalTextInput(s: ARRAY OF CHAR; ch: CHAR);
 BEGIN
-  IF (ch # 0) & (inputBufLen < LEN(inputBuf)) THEN
-    inputBuf[inputBufLen] := OV.ToCP866(ch); INC(inputBufLen);
+  IF (ch # 0X) & (inputBufLen < LEN(inputBuf)) THEN
+    inputBuf[inputBufLen] := SHORT(OV.ToCP866(ch)); INC(inputBufLen);
     T.Write(OV.ToCP866(ch))
   END
 END HandleTerminalTextInput;
@@ -395,7 +393,9 @@ RETURN p # NIL END IsSysModule;
 PROCEDURE ModuleExists(IN fname: ARRAY OF CHAR): BOOLEAN;
 VAR F: Files.File;
   exists: BOOLEAN;
-BEGIN F := Files.Old(fname); exists := F # NIL;
+  s: ARRAY 2048 OF SHORTCHAR;
+BEGIN Utf8.Encode(fname, s);
+  F := Files.Old(s); exists := F # NIL;
   IF F # NIL THEN Files.Close(F) END ;
 RETURN exists END ModuleExists;
 
@@ -438,11 +438,13 @@ RETURN ok END FindModule;
 PROCEDURE RunCommand(IN fname, mod: ARRAY OF CHAR;
     link, graph, main: BOOLEAN; list: StrList): BOOLEAN;
 CONST bufLen = 20480;
-VAR buf: ARRAY bufLen OF CHAR;
+VAR buf: ARRAY bufLen OF SHORTCHAR;
   e: Editor.Editor;
   p: StrList;
   len, err, line, col: INTEGER;
   command: ARRAY 32 OF CHAR;
+  q: ARRAY 1024 OF SHORTCHAR;
+  z: ARRAY 1024 OF CHAR;
   cmd: ARRAY 1024 OF CHAR;
   s, sN: ARRAY 80 OF CHAR;
   success: BOOLEAN;
@@ -452,7 +454,8 @@ BEGIN
   ELSE command := 'link_console'
   END;
   IF Config.isWindows THEN
-    IF Term.SearchPath('cmd.exe', cmd) # 0 THEN
+    IF Term.SearchPath('cmd.exe', q) # 0 THEN
+      Utf8.Decode(q, cmd);
       Strings.Insert('"', 0, cmd);
       Strings.Append('" /C data\bin\', cmd);
       Strings.Append(command, cmd);
@@ -482,7 +485,8 @@ BEGIN
     END
   END;
   (*Out.String('Running:'); Out.Ln; Out.String(cmd); Out.Ln;*)
-  success := (Term.RunProcess(cmd, buf, bufLen, len, err) # 0) &
+  Utf8.Encode(cmd, q);
+  success := (Term.RunProcess(q, buf, bufLen, len, err) # 0) &
              (err = 0);
   IF ~success THEN
     s := ' Command returned '; Int.Append(err, s);
@@ -491,16 +495,17 @@ BEGIN
       IF buf[len - 1] = 0AX THEN buf[len - 1] := 0X
       ELSE buf[len] := 0X
       END;
-      ParseErrors(buf, fname, line, col);
+      Utf8.Decode(buf, z);
+      ParseErrors(z, fname, line, col);
       FocusOrOpenFile(fname);
       e := app.windows(Editor.Editor);
       e.text.MoveToLineCol(line, col, e.h - 2);
       Editor.PrintText(app.windows(Editor.Editor));
       T.ResetCursorBlink (* !FIXME *)
-    ELSIF link THEN buf := 'Linking failed.'
-    ELSE buf := 'Compilation failed.'
+    ELSIF link THEN z := 'Linking failed.'
+    ELSE z := 'Compilation failed.'
     END;
-    IF buf[0] = 0X THEN ShowErrors(s) ELSE ShowErrors(buf) END
+    IF z[0] = 0X THEN ShowErrors(s) ELSE ShowErrors(z) END
   END ;
 RETURN success END RunCommand;
 
@@ -511,7 +516,8 @@ END Compile;
 PROCEDURE Link(IN fname, mod: ARRAY OF CHAR;
     graph: BOOLEAN; list: StrList; VAR exename: ARRAY OF CHAR): BOOLEAN;
 VAR ok: BOOLEAN;
-  s: ARRAY 256 OF CHAR;
+  s: ARRAY 2048 OF CHAR;
+  e2, s2: ARRAY 2048 OF SHORTCHAR;
   res: INTEGER;
 BEGIN ok := RunCommand(fname, mod, TRUE, graph, FALSE, list);
   IF ok THEN (* Move executable file if workDir is non-standard *)
@@ -519,7 +525,10 @@ BEGIN ok := RunCommand(fname, mod, TRUE, graph, FALSE, list);
     exename := 'bin/'; Strings.Append(s, exename);
     IF workDir # Editor.stdPath THEN
       Strings.Insert(workDir, 0, s);
-      Files.Rename(exename, s, res);
+
+      Utf8.Encode(exename, e2);
+      Utf8.Encode(s, s2);
+      Files.Rename(e2, s2, res);
       IF res = 0 THEN exename := s$ END
     END
   END ;
@@ -567,12 +576,15 @@ RETURN ok END CompileAll;
 
 PROCEDURE RunProgram(IN prg: ARRAY OF CHAR);
 VAR dir: ARRAY 256 OF CHAR;
+  s, d: ARRAY 2048 OF SHORTCHAR;
   i: INTEGER;
 BEGIN dir := prg$;
   i := 0; WHILE dir[i] # 0X DO INC(i) END;
   WHILE (i # -1) & (dir[i] # '/') & (dir[i] # '\') DO DEC(i) END; INC(i);
   dir[i] := 0X;
-  IF ~Term.StartProcessIn(prg, dir) THEN
+  Utf8.Encode(prg, s);
+  Utf8.Encode(dir, d);
+  IF ~Term.StartProcessIn(s, d) THEN
     T.PutString(0, T.charsY - 1, ' Program execution failed ', 15, 4, 0);
     IF T.Draw() THEN G.Flip; G.Pause END
   ELSE
@@ -641,24 +653,25 @@ END FileSave;
 
 PROCEDURE SkipComment(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
 VAR last: CHAR;
-BEGIN last := ch; Files.ReadChar(R, ch);
+  x: SHORTCHAR;
+BEGIN last := ch; Files.ReadChar(R, x); ch := LONG(x);
   WHILE ~R.eof & ((last # '*') OR (ch # ')')) DO
     IF (last = '(') & (ch = '*') THEN SkipComment(R, ch, s) END;
-    last := ch; Files.ReadChar(R, ch)
+    last := ch; Files.ReadChar(R, x); ch := LONG(x)
   END;
-  IF ~R.eof THEN Files.ReadChar(R, ch) END;
-  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, ch) END
+  IF ~R.eof THEN Files.ReadChar(R, x); ch := LONG(x) END;
+  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, x); ch := LONG(x) END
 END SkipComment;
 
 PROCEDURE GetSym(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
-VAR i: INTEGER;
+VAR i: INTEGER; x: SHORTCHAR;
 BEGIN
-  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, ch) END;
+  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, x); ch := LONG(x) END;
   i := 0;
   IF ~R.eof THEN
     IF ch = '(' THEN
-      Files.ReadChar(R, ch);
-      IF ch = '*' THEN Files.ReadChar(R, ch); SkipComment(R, ch, s)
+      Files.ReadChar(R, x); ch := LONG(x);
+      IF ch = '*' THEN Files.ReadChar(R, x); ch := LONG(x); SkipComment(R, ch, s)
       ELSE s[i] := ch; INC(i)
       END
     END;
@@ -667,14 +680,14 @@ BEGIN
             (('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
              ('0' <= ch) & (ch <= '9')) DO
         IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
-        Files.ReadChar(R, ch)
+        Files.ReadChar(R, x); ch := LONG(x)
       END
     ELSE
       WHILE ~R.eof & (ch > ' ') &
             ~(('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
               ('0' <= ch) & (ch <= '9')) DO
         IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
-        Files.ReadChar(R, ch)
+        Files.ReadChar(R, x); ch := LONG(x)
       END
     END
   END;
@@ -688,11 +701,14 @@ VAR F: Files.File;
   top, p: StrList;
   ch: CHAR;
   mod, s, fname2: ARRAY 256 OF CHAR;
+  q: ARRAY 2048 OF SHORTCHAR;
+  x: SHORTCHAR;
   exit: BOOLEAN;
 BEGIN NEW(top); top.next := NIL; p := top;
-  F := Files.Old(fname);
+  Utf8.Encode(fname, q);
+  F := Files.Old(q);
   IF F # NIL THEN
-    Files.Set(R, F, 0); Files.ReadChar(R, ch); GetSym(R, ch, s);
+    Files.Set(R, F, 0); Files.ReadChar(R, x); ch := LONG(x); GetSym(R, ch, s);
     ok := s = 'MODULE'; GetSym(R, ch, s); GetSym(R, ch, s); (*!FIXME check module name*)
     IF ok THEN
       ok := s = ';'; GetSym(R, ch, s);
@@ -1068,14 +1084,15 @@ END ParseSize;
 PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR w, h: INTEGER;
     VAR fnames: Fnames);
 VAR i, nofnames: INTEGER;
-  s: ARRAY 256 OF CHAR;
+  s: ARRAY 2048 OF CHAR;
+  q: ARRAY 2048 OF SHORTCHAR;
 BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := -1; h := -1;
   WHILE i # Args.argc DO
-    Args.Get(i, s);
+    Args.Get(i, q); Utf8.Decode(q, s);
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--software' THEN sw := TRUE
     ELSIF s = '--size' THEN
-      IF i + 1 # Args.argc THEN INC(i); Args.Get(i, s); ParseSize(s, w, h) END
+      IF i + 1 # Args.argc THEN INC(i); Args.Get(i, q); Utf8.Decode(q, s); ParseSize(s, w, h) END
     ELSIF nofnames < LEN(fnames) THEN
       ParseFileNameArg(s);
       fnames[nofnames] := s$;

@@ -22,7 +22,6 @@ CONST
   cursorTicks* = 10; (* Ticks before cursor flashes *)
 
 TYPE
-  CHAR = SHORTCHAR;
   ScreenChar* = RECORD
     ch*: CHAR;
     fg*, bg*: INTEGER; (* Цвет текста и цвет фона*)
@@ -316,7 +315,7 @@ END WriteString;
 
 PROCEDURE LoadMedia(): BOOLEAN;
 CONST fontFile = 'data/images/font.bmp';
-BEGIN font := G.LoadFont(fontFile, charW, charH);
+BEGIN font := G.LoadFont(LONG(fontFile), charW, charH);
   IF font = NIL THEN Out.String('Could not load font file "');
     Out.String(fontFile); Out.String('".'); Out.Ln
   END ;
@@ -336,7 +335,7 @@ BEGIN success := FALSE; isFullscreen := fullscreen;
   G.SetSizeStep(charW, charH);
   screen := G.Init();
   IF screen # NIL THEN
-    G.SetWindowTitle('Free Oberon');
+    G.SetWindowTitle(LONG('Free Oberon'));
     G.ShowMouse(FALSE);
     charsX := screen.w DIV charW;
     charsY := screen.h DIV charH;

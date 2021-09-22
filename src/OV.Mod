@@ -567,8 +567,6 @@ CONST
   hCtrlAltShiftPause*     = 700H + 72;
 
 TYPE
-  CHAR = SHORTCHAR;
-
   App* = POINTER TO AppDesc;
   Control* = POINTER TO ControlDesc;
   ControlMethod* = POINTER TO ControlMethodDesc;
@@ -602,7 +600,7 @@ TYPE
     click*: PROCEDURE (c: Control);
     dblClick*: PROCEDURE (c: Control);
     keyDown*: PROCEDURE (c: Control; key: G.Key);
-    textInput*: PROCEDURE (c: Control; ch: INTEGER);
+    textInput*: PROCEDURE (c: Control; ch: CHAR);
     getFocus*: PROCEDURE (c: Control);
     lostFocus*: PROCEDURE (c: Control);
     mouseMove*: PROCEDURE (c: Control; x, y: INTEGER; buttons: SET);
@@ -798,8 +796,9 @@ BEGIN
   IF ('a' <= ch) & (ch <= 'z') THEN ch := CAP(ch) END ;
 RETURN ch END Cap;
 
-PROCEDURE ToCP866*(n: INTEGER): CHAR;
-BEGIN
+PROCEDURE ToCP866*(ch: CHAR): CHAR;
+VAR n: INTEGER;
+BEGIN n := ORD(ch);
   IF n >= 80H THEN
     IF (410H(*A*) <= n) & (n <= 42FH(*YA*)) THEN n := n - 410H + 80H
     ELSIF (430H(*a*) <= n) & (n <= 44FH(*ya*)) THEN
@@ -1766,10 +1765,10 @@ BEGIN e := c(Edit); redraw := TRUE;
   IF redraw THEN NeedRedraw(c.app); T.ResetCursorBlink END
 END EditKeyDown;
 
-PROCEDURE EditTextInput*(c: Control; ch: INTEGER);
+PROCEDURE EditTextInput*(c: Control; ch: CHAR);
 VAR e: Edit;
 BEGIN
-  IF ch # 0 THEN e := c(Edit);
+  IF ch # 0X THEN e := c(Edit);
     InsertChar(ToCP866(ch), e.pos, e.caption, e.len);
     IF e.pos < e.len THEN INC(e.pos) END;
     NeedRedraw(c.app); T.ResetCursorBlink
@@ -1968,10 +1967,10 @@ BEGIN StrList.First(L, s); n := 0;
   IF L.eol THEN n := -1 END ;
 RETURN n END FindFirstLetterInList;
 
-PROCEDURE ColumnListTextInput*(c: Control; ch: INTEGER);
+PROCEDURE ColumnListTextInput*(c: Control; ch: CHAR);
 VAR C: ColumnList; n: INTEGER;
 BEGIN C := c(ColumnList);
-  IF ch # 0 THEN
+  IF ch # 0X THEN
     n := FindFirstLetterInList(C.items, Cap(ToCP866(ch)));
     IF n # -1 THEN ColumnListSetCur(C, n) END
   END
@@ -2429,7 +2428,7 @@ BEGIN handled := FALSE; p := app.cur;
   END
 END OnKeyDown;
 
-PROCEDURE OnTextInput(app: App; ch: INTEGER);
+PROCEDURE OnTextInput(app: App; ch: CHAR);
 BEGIN
   IF (app.cur # NIL) & (app.cur.do.textInput # NIL) THEN
     app.cur.do.textInput(app.cur, ch)
