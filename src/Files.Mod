@@ -21,11 +21,11 @@ CONST
   (* No file states, used when FileDesc.fd = Platform.InvalidHandleValue() *)
   open   = 0; (* OS File has been opened *)
   create = 1; (* OS file needs to be created *)
-  close  = 2; (* Flag used by Files.Register to tell Create to create the
-                 file using it's registerName directly, rather than to
-                 create a temporary file: i.e. since we're closing and all
-                 data is still in buffers bypass writing to temp file and
-                 then renaming and just write directly to final register name *)
+  close  = 2; (* Flag used by Files.Register to tell Create to create the file
+                 using it's registerName directly, rather than to create a
+                 temporary file: i.e. since we're closing and all data is still
+                 in buffers bypass writing to temp file and then renaming and
+                 just write directly to final register name *)
 
 TYPE
   FileName = ARRAY 256 OF SHORTCHAR;
@@ -60,7 +60,9 @@ TYPE
   END;
 
 VAR
-  files: POINTER [notag] TO FileDesc; (* List of files backed by an OS file, whether open, registered or temporary. *)
+  (* Array of files backed by an OS file: open, registered or temporary. *)
+  files: POINTER [notag] TO FileDesc;
+
   tempno: INTEGER;
   home: ARRAY 1024 OF SHORTCHAR;
   SearchPath: ARRAY 4096 OF SHORTCHAR;
@@ -73,7 +75,9 @@ PROCEDURE Err(IN s: ARRAY OF CHAR; f: File; errcode: Platform.ErrorCode);
 BEGIN
   Out.Ln; Out.String('-- '); Out.String(s); Out.String(': ');
   IF f # NIL THEN
-    IF f.registerName # '' THEN Out.Utf8(f.registerName) ELSE Out.Utf8(f.workName) END;
+    IF f.registerName # '' THEN Out.Utf8(f.registerName)
+    ELSE Out.Utf8(f.workName)
+    END;
     IF f.fd # 0 THEN Out.String(' f.fd = '); Out.Int(f.fd, 1) END
   END;
   IF errcode # 0 THEN Out.String(' errcode = '); Out.Int(errcode, 1) END;
@@ -81,7 +85,8 @@ BEGIN
   HALT(99)
 END Err;
 
-PROCEDURE MakeFileName(IN dir, name: ARRAY OF SHORTCHAR; VAR dest: ARRAY OF SHORTCHAR);
+PROCEDURE MakeFileName(IN dir, name: ARRAY OF SHORTCHAR;
+    VAR dest: ARRAY OF SHORTCHAR);
 VAR i, j: INTEGER;
 BEGIN i := 0; j := 0;
   WHILE dir[i] # 0X DO dest[i] := dir[i]; INC(i) END;
@@ -90,22 +95,30 @@ BEGIN i := 0; j := 0;
   dest[i] := 0X
 END MakeFileName;
 
-PROCEDURE GetTempName(IN finalName: ARRAY OF SHORTCHAR; VAR name: ARRAY OF SHORTCHAR);
+PROCEDURE GetTempName(IN finalName: ARRAY OF SHORTCHAR;
+    VAR name: ARRAY OF SHORTCHAR);
 VAR n, i, j: INTEGER;
 BEGIN
   INC(tempno); n := tempno; i := 0;
   IF finalName[0] # PathDelimiter THEN  (* relative pathname *)
     WHILE Platform.CWD[i] # 0X DO name[i] := Platform.CWD[i]; INC(i) END;
-    IF Platform.CWD[i-1] # PathDelimiter THEN name[i] := PathDelimiter; INC(i) END
+    IF Platform.CWD[i-1] # PathDelimiter THEN
+      name[i] := PathDelimiter; INC(i)
+    END
   END;
   j := 0;
   WHILE finalName[j] # 0X DO name[i] := finalName[j]; INC(i); INC(j) END;
   DEC(i);
   WHILE name[i] # PathDelimiter DO DEC(i) END;
-  name[i+1] := '.'; name[i+2] := 't'; name[i+3] := 'm'; name[i+4] := 'p'; name[i+5] := '.'; INC(i, 6);
-  WHILE n > 0 DO name[i] := SHORT(CHR(n MOD 10 + ORD('0'))); n := n DIV 10; INC(i) END;
+  name[i + 1] := '.'; name[i + 2] := 't'; name[i + 3] := 'm';
+  name[i + 4] := 'p'; name[i + 5] := '.'; INC(i, 6);
+  WHILE n > 0 DO
+    name[i] := SHORT(CHR(n MOD 10 + ORD('0'))); n := n DIV 10; INC(i)
+  END;
   name[i] := '.'; INC(i); n := Platform.PID;
-  WHILE n > 0 DO name[i] := SHORT(CHR(n MOD 10 + ORD('0'))); n := n DIV 10; INC(i) END;
+  WHILE n > 0 DO
+    name[i] := SHORT(CHR(n MOD 10 + ORD('0'))); n := n DIV 10; INC(i)
+  END;
   name[i] := 0X
 END GetTempName;
 
@@ -126,7 +139,9 @@ BEGIN
   IF Platform.IdentifyByName(name, identity) = 0 THEN
     (* The name we are registering is an already existing file. *)
     osfile := files;
-    WHILE (osfile # NIL) & ~Platform.SameFile(osfile.identity, identity) DO osfile := osfile.next END;
+    WHILE (osfile # NIL) & ~Platform.SameFile(osfile.identity, identity) DO
+      osfile := osfile.next
+    END;
     IF osfile # NIL THEN
       (* osfile is the FileDesc corresponding to the file name we are hoping
          to register. Turn it into a temporary file. *)
@@ -138,7 +153,8 @@ BEGIN
       osfile.state := close;
       error := Platform.RenameFile(osfile.registerName, osfile.workName);
       IF error # 0 THEN
-        Err('Could not rename previous version of file being registered', osfile, error)
+        Err('Could not rename previous version of file being registered',
+          osfile, error)
       END
     END
   END
@@ -165,12 +181,14 @@ BEGIN
       Deregister(f.registerName);
       f.workName := f.registerName; f.registerName := ''; f.tempFile := FALSE
     END;
-    error := Platform.DeleteFile(f.workName); (*unlink first to avoid stale NFS handles and to avoid reuse of inodes*)
+    (* Unlink first to avoid stale NFS handles and to avoid reuse of inodes *)
+    error := Platform.DeleteFile(f.workName);
 
     error := Platform.NewFile(f.workName, f.fd);
     done := error = 0;
     IF done THEN
-      f.next := files; files := f; (* Link this file into the list of OS backed files. *)
+      (* Link this file into the list of OS backed files. *)
+      f.next := files; files := f;
       INC(Heap.FileCount);
       Heap.RegisterFinalizer(f, Finalize);
       f.state := open;
@@ -196,9 +214,9 @@ BEGIN
     END;
     error := Platform.Write(f.fd, SYSTEM.ADR(buf.data), buf.size);
     IF error # 0 THEN Err('error writing file', f, error) END;
-    f.pos := buf.org + buf.size;
-    buf.chg := FALSE;
-    error := Platform.Identify(f.fd, f.identity); (* Update identity with new modification time. *)
+    f.pos := buf.org + buf.size; buf.chg := FALSE;
+    (* Update identity with new modification time. *)
+    error := Platform.Identify(f.fd, f.identity);
     IF error # 0 THEN Err('error identifying file', f, error) END
   END
 END Flush;
@@ -244,22 +262,24 @@ PROCEDURE ScanPath(VAR pos: INTEGER; VAR dir: ARRAY OF SHORTCHAR);
 VAR i: INTEGER; ch: SHORTCHAR;
 BEGIN
   i := 0;
-  IF SearchPath = '' THEN
-    IF pos = 0 THEN
-      dir[0] := '.'; i := 1; INC(pos) (* Default search path is just the current directory *)
-    END
+  IF SearchPath = '' THEN (* Default search path is the current directory *)
+    IF pos = 0 THEN dir[0] := '.'; i := 1; INC(pos) END
   ELSE
     ch := SearchPath[pos];
-    WHILE (ch = ' ') OR (ch = PathSeparator) DO INC(pos); ch := SearchPath[pos] END;
+    WHILE (ch = ' ') OR (ch = PathSeparator) DO
+      INC(pos); ch := SearchPath[pos]
+    END;
     IF ch = '~' THEN
       INC(pos); ch := SearchPath[pos];
       WHILE home[i] # 0X DO dir[i] := home[i]; INC(i) END;
-      IF (ch # PathDelimiter) & (ch # 0X) & (ch # PathSeparator) & (ch # ' ') THEN
-        WHILE (i > 0) & (dir[i-1] # PathDelimiter) DO DEC(i) END
+      IF (ch # PathDelimiter) & (ch # 0X) & (ch # PathSeparator) & (ch # ' ')
+      THEN WHILE (i > 0) & (dir[i - 1] # PathDelimiter) DO DEC(i) END
       END
     END;
-    WHILE (ch # 0X) & (ch # PathSeparator) DO dir[i] := ch; INC(i); INC(pos); ch := SearchPath[pos] END;
-    WHILE (i > 0) & (dir[i-1] = ' ') DO DEC(i) END
+    WHILE (ch # 0X) & (ch # PathSeparator) DO
+      dir[i] := ch; INC(i); INC(pos); ch := SearchPath[pos]
+    END;
+    WHILE (i > 0) & (dir[i - 1] = ' ') DO DEC(i) END
   END;
   dir[i] := 0X
 END ScanPath;
@@ -302,11 +322,14 @@ BEGIN
   (* Out.String('Files.Old '); Out.String(name); Out.Ln; *)
   IF name # '' THEN
     IF HasDir(name) THEN dir := ''; path := name$
-    ELSE pos := 0; ScanPath(pos, dir); MakeFileName(dir, name, path); ScanPath(pos, dir)
+    ELSE pos := 0; ScanPath(pos, dir);
+      MakeFileName(dir, name, path); ScanPath(pos, dir)
     END;
     LOOP
       error := Platform.OldRW(path, fd); done := error = 0;
-      IF ~done & Platform.TooManyFiles(error) THEN Err('too many files open', f, error) END;
+      IF ~done & Platform.TooManyFiles(error) THEN
+        Err('too many files open', f, error)
+      END;
       IF ~done & Platform.Inaccessible(error) THEN
         error := Platform.OldRO(path, fd); done := error = 0
       END;
@@ -319,10 +342,10 @@ BEGIN
         error := Platform.Identify(fd, identity);
         f := CacheEntry(identity);
         IF f # NIL THEN
-          error := Platform.CloseFile(fd); (* fd not needed - we'll be using f.fd. *)
+          error := Platform.CloseFile(fd); (* fd not needed, f.fd is used *)
           RETURN f
         ELSE NEW(f); Heap.RegisterFinalizer(f, Finalize);
-          f.fd := fd; f.state := open; f.pos := 0; f.swapper := -1; (*all f.buf[i] = NIL*)
+          f.fd := fd; f.state := open; f.pos := 0; f.swapper := -1;
           error := Platform.FileSize(fd, f.len);
           f.workName := name$; f.registerName := ''; f.tempFile := FALSE;
           f.identity := identity;
@@ -351,7 +374,8 @@ BEGIN i := 0;
     error := Platform.Seek(f.fd, 0, Platform.SeekSet)
   END;
   f.pos := 0; f.len := 0; f.swapper := -1;
-  error := Platform.Identify(f.fd, identity); Platform.SetMTime(f.identity, identity)
+  error := Platform.Identify(f.fd, identity);
+  Platform.SetMTime(f.identity, identity)
 END Purge;
 
 PROCEDURE GetDate*(f: File; VAR t, d: INTEGER);
@@ -374,7 +398,9 @@ BEGIN
   IF f # NIL THEN
     IF pos > f.len THEN pos := f.len ELSIF pos < 0 THEN pos := 0 END;
     offset := SHORT(pos MOD BufSize); org := pos - offset; i := 0;
-    WHILE (i < NumBufs) & (f.bufs[i] # NIL) & (org # f.bufs[i].org) DO INC(i) END;
+    WHILE (i < NumBufs) & (f.bufs[i] # NIL) & (org # f.bufs[i].org) DO
+      INC(i)
+    END;
     IF i < NumBufs THEN
       IF f.bufs[i] = NIL THEN
         NEW(buf); buf.chg := FALSE; buf.org := -1; buf.f := f; f.bufs[i] := buf
@@ -387,7 +413,9 @@ BEGIN
     IF buf.org # org THEN
       IF org = f.len THEN buf.size := 0
       ELSE Create(f);
-        IF f.pos # org THEN error := Platform.Seek(f.fd, org, Platform.SeekSet) END;
+        IF f.pos # org THEN
+          error := Platform.Seek(f.fd, org, Platform.SeekSet)
+        END;
         error := Platform.ReadBuf(f.fd, buf.data, n);
         IF error # 0 THEN Err('read from file not done', f, error) END;
         f.pos := org + n;
@@ -473,8 +501,8 @@ BEGIN
     IF n > restInBuf THEN min := restInBuf ELSE min := n END;
     SYSTEM.MOVE(SYSTEM.ADR(x) + xpos, SYSTEM.ADR(buf.data) + offset, min);
     INC(offset, min); r.offset := offset;
-    IF offset > buf.size THEN buf.f.len := buf.f.len + (offset - buf.size); buf.size := offset END;
-    INC(xpos, min); DEC(n, min); buf.chg := TRUE
+    IF offset > buf.size THEN buf.f.len := buf.f.len + (offset - buf.size);
+    buf.size := offset END; INC(xpos, min); DEC(n, min); buf.chg := TRUE
   END;
   r.res := 0
 END WriteBytes;
@@ -485,7 +513,8 @@ VAR pos: INTEGER;
 BEGIN
   IF name # '' THEN
     IF HasDir(name) THEN dir := ''; path := name$
-    ELSE pos := 0; ScanPath(pos, dir); MakeFileName(dir, name, path); ScanPath(pos, dir)
+    ELSE pos := 0; ScanPath(pos, dir);
+      MakeFileName(dir, name, path); ScanPath(pos, dir)
     END;
     LOOP
       Deregister(path);
@@ -554,7 +583,7 @@ END Rename;
 PROCEDURE Register*(f: File);
 VAR errcode: INTEGER;
 BEGIN
-  IF (f.state = create) & (f.registerName # '') THEN f.state := close (* shortcut renaming *) END;
+  IF (f.state = create) & (f.registerName # '') THEN f.state := close END;
   Close(f);
   IF f.registerName # '' THEN
     Deregister(f.registerName);
@@ -563,8 +592,8 @@ BEGIN
       Rename(f.workName, f.registerName, errcode);
       IF errcode = 0 THEN
         errcode := Platform.OldRW(f.registerName, f.fd);
-        IF errcode = 0 THEN
-          f.workName := f.registerName; f.registerName := ''; f.tempFile := FALSE;
+        IF errcode = 0 THEN f.workName := f.registerName;
+          f.registerName := ''; f.tempFile := FALSE;
           RETURN
         END
       END
