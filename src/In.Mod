@@ -1,5 +1,9 @@
 MODULE In;
 
+(*!FIXME From the Oakwood guidlines:
+  An unsuccessful input operation sets Done to FALSE;
+  it remains FALSE until the next call to Open. *)
+
 IMPORT Platform, SYSTEM, Strings, Out, Utf8;
 
 CONST
@@ -43,6 +47,10 @@ BEGIN
   RETURN x
 END GetByte;
 
+PROCEDURE Byte*(VAR x: UBYTE);
+BEGIN x := SYSTEM.VAL(UBYTE, SHORT(SHORT(GetByte())))
+END Byte;
+
 PROCEDURE ReadChar;
 VAR x, y: INTEGER;
 BEGIN
@@ -75,17 +83,19 @@ END StartAndSkip;
 
 PROCEDURE Char*(VAR ch: CHAR);
 BEGIN StartRead;
-  IF readstate = ready THEN Done := TRUE; ch := nextch;
+  IF readstate = ready THEN ch := nextch;
+    ;;;;;;;;;Out.String('readstate was ready. ch = '); Out.Int(ORD(ch), 0); Out.Ln;
     IF ch = 0AX THEN readstate := pending ELSE ReadChar END
   ELSE Done := FALSE; ch := 0X
+    ;;;;;;;;;Out.String('readstate was not ready. ch = '); Out.Int(ORD(ch), 0); Out.Ln;
   END
 END Char;
 
 PROCEDURE HugeInt*(VAR h: HUGEINT);
-VAR neg, hex, endofnum: BOOLEAN;
+VAR ok, neg, hex, endofnum: BOOLEAN;
   decacc, hexacc, digit: HUGEINT;
 BEGIN StartAndSkip;
-  Done := FALSE;
+  ok := FALSE;
   IF readstate = ready THEN
     neg := nextch = '-'; IF neg THEN ReadChar END;
     hex := FALSE;
@@ -101,7 +111,7 @@ BEGIN StartAndSkip;
         digit := ORD(nextch) MOD 16 + 9; hex := TRUE
       END;
       IF digit >= 0 THEN
-        Done := TRUE;
+        ok := TRUE;
         decacc := decacc * 10 + digit;
         hexacc := hexacc * 16 + digit;
         ReadChar
@@ -111,12 +121,13 @@ BEGIN StartAndSkip;
         endofnum := TRUE
       END
     END;
-    IF Done THEN
+    IF ok THEN
       IF hex THEN h := hexacc ELSE h := decacc END;
       IF neg THEN h := -h END
     ELSE h := 0
     END
-  END
+  END;
+  IF ~ok THEN Done := FALSE END
 END HugeInt;
 
 PROCEDURE Int16*(VAR i: SHORTINT);
@@ -136,7 +147,8 @@ END Int;
 
 PROCEDURE Line*(VAR line: ARRAY OF CHAR);
 VAR i: INTEGER;
-BEGIN StartRead; i := 0; Done := readstate = ready;
+BEGIN StartRead; i := 0;
+  IF readstate # ready THEN Done := FALSE END;
   WHILE (readstate = ready) & (nextch # 0DX) & (nextch # 0AX) &
         (i < LEN(line) - 1) DO
     line[i] := nextch; INC(i); ReadChar
@@ -156,9 +168,9 @@ BEGIN StartAndSkip; i := 0;
       s[i] := nextch; ReadChar; INC(i)
     END
   END;
-  Done := (readstate = ready) & (i < LEN(s) - 1) & (nextch = '"');
-  IF Done THEN ReadChar; s[i] := 0X
-  ELSE s[0] := 0X
+  IF (readstate = ready) & (i < LEN(s) - 1) & (nextch = '"') THEN
+    ReadChar; s[i] := 0X
+  ELSE s[0] := 0X; Done := FALSE
   END
 END String;
 
@@ -168,18 +180,16 @@ END Name;
 
 PROCEDURE Real*(VAR x: REAL);
 VAR s: ARRAY 16 OF CHAR;
-BEGIN
-  StartAndSkip;
-  Line(s);
+BEGIN StartAndSkip; Line(s);
   Strings.StrToReal(s, x)
+  (*!FIXME Set Done*)
 END Real;
 
 PROCEDURE LongReal*(VAR y: LONGREAL);
 VAR s: ARRAY 16 OF CHAR;
-BEGIN
-  StartAndSkip;
-  Line(s);
+BEGIN StartAndSkip; Line(s);
   Strings.StrToLongReal(s, y)
+  (*!FIXME Set Done*)
 END LongReal;
 
 BEGIN
