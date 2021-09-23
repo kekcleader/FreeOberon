@@ -191,6 +191,7 @@ CONST
 TYPE
   ADRINT = SYSTEM.ADRINT;
   SET32 = SET;
+  REAL = SYSTEM.REAL32;
 
   Bitmap* = POINTER TO BitmapDesc;
   BitmapDesc* = RECORD
@@ -1125,7 +1126,7 @@ RETURN randomSeed MOD range END Random;
 (* Calculates a number x with 0.0 <= x < 1.0. *)
 PROCEDURE Uniform*(): REAL;
 BEGIN NextRND ;
-RETURN (randomSeed - 1) * (1 / (randomModulo - 1)) END Uniform;
+RETURN SHORT((randomSeed - 1) * (1 / (randomModulo - 1))) END Uniform;
 
 PROCEDURE Randomize*;
 BEGIN PutSeed(Time())

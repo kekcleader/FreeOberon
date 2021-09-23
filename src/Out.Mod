@@ -1,6 +1,6 @@
 MODULE Out;
 
-IMPORT SYSTEM, Platform, Heap, Utf8;
+IMPORT SYSTEM, Platform, Heap, U := Utf8;
 
 TYPE
   SHORTINT = SYSTEM.INT16; INTEGER = SYSTEM.INT32; HUGEINT = SYSTEM.INT64;
@@ -18,7 +18,7 @@ VAR error: Platform.ErrorCode;
   len: INTEGER;
 BEGIN
   IF in > 0 THEN
-    Utf8.EncodeEx(buf, in, s, len);
+    U.EncodeEx(buf, in, s, len);
     error := Platform.Write(Platform.StdOut, SYSTEM.ADR(s), len)
   END;
   in := 0
@@ -49,12 +49,25 @@ BEGIN
   IF in + l > LEN(buf) THEN Flush END;
   IF l >= LEN(buf) THEN
     (* Doesn't fit buf or no sence. Bypass buffering. *)
-    Utf8.EncodeEx(str, l, s, len);
+    U.EncodeEx(str, l, s, len);
     error := Platform.Write(Platform.StdOut, SYSTEM.ADR(s), len)
   ELSE
     SYSTEM.MOVE(SYSTEM.ADR(str), SYSTEM.ADR(buf[in]), l * 2); INC(in, l)
   END
 END String;
+
+PROCEDURE Utf8*(IN s: ARRAY OF SHORTCHAR);
+VAR q: ARRAY 4096 OF CHAR;
+  p: POINTER TO ARRAY OF CHAR;
+  i: INTEGER;
+BEGIN
+  IF LEN(s) <= LEN(q) THEN U.Decode(s, q); String(q)
+  ELSE i := 0; WHILE s[i] # 0X DO INC(i) END;
+    IF i < LEN(q) THEN U.Decode(s, q); String(q)
+    ELSE NEW(p, i + 1); U.Decode(s, p^); String(p^)
+    END
+  END
+END Utf8;
 
 PROCEDURE Int*(x, n: HUGEINT);
   CONST zero = ORD('0');
@@ -81,11 +94,11 @@ PROCEDURE Hex*(x, n: HUGEINT);
 BEGIN
   IF n < 1 THEN n := 1 ELSIF n > 16 THEN n := 16 END;
   IF x >= 0 THEN
-    WHILE (n < 16) & (SYSTEM.LSH(x, -4*n) # 0) DO INC(n) END
+    WHILE (n < 16) & (SYSTEM.LSH(x, -4 * n) # 0) DO INC(n) END
   END;
-  x := SYSTEM.ROT(x, 4*(16-n));
+  x := SYSTEM.ROT(x, 4 * (16 - n));
   WHILE n > 0 DO
-    x := SYSTEM.ROT(x,4); DEC(n);
+    x := SYSTEM.ROT(x, 4); DEC(n);
     IF x MOD 16 < 10 THEN Char(SHORT(CHR((x MOD 16) + ORD('0'))))
     ELSE Char(SHORT(CHR((x MOD 16) - 10 + ORD('A')))) END
   END
@@ -94,9 +107,6 @@ END Hex;
 PROCEDURE Ln*;
 BEGIN String(Platform.NewLine); Flush
 END Ln;
-
-
-(* Real and Longreal display *)
 
 PROCEDURE digit(n: HUGEINT; VAR s: ARRAY OF CHAR; VAR i: INTEGER);
 BEGIN
@@ -111,8 +121,6 @@ BEGIN
   WHILE j < l DO s[i+j] := t[j]; INC(j) END
 END prepend;
 
-
-
 PROCEDURE Ten*(e: INTEGER): LONGREAL;
 VAR r, power: LONGREAL;
 BEGIN r := 1.0E0; power := 1.0E1;
@@ -123,7 +131,7 @@ BEGIN r := 1.0E0; power := 1.0E1;
   RETURN r
 END Ten;
 
-PROCEDURE -Entier64(x: LONGREAL): SYSTEM.INT64 "(INTEGER)(x)";
+PROCEDURE -Entier64(x: LONGREAL): SYSTEM.INT64 "(LONGINT)(x)";
 
 PROCEDURE RealP(x: LONGREAL; n: INTEGER; long: BOOLEAN);
 

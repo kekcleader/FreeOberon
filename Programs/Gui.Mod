@@ -415,12 +415,14 @@ BEGIN
   REPEAT
     G.WaitEvents(50);
     WHILE G.PollEvent(e) DO
-      CASE e.type OF
-        G.quit: quit := TRUE
-      | G.keyDown: IF e.key.code = G.kEsc THEN quit := TRUE END
-      | G.mouseDown: form.do.mouseDown(form, e.x, e.y, e.button)
-      | G.mouseMove: needFlip := TRUE
-      ELSE
+      IF e.type = G.quit THEN
+        quit := TRUE
+      ELSIF e.type = G.keyDown THEN
+        IF e.key.code = G.kEsc THEN quit := TRUE END
+      ELSIF e.type = G.mouseDown THEN
+        form.do.mouseDown(form, e.x, e.y, e.button)
+      ELSIF e.type = G.mouseMove THEN
+        needFlip := TRUE
       END
     END;
     Act
@@ -453,12 +455,12 @@ BEGIN
     circle.y := G.Random(screen.h - 1 - circle.h);
     form.do.add(form, circle)
   END;
-  
+
   edit := NewEdit();
   edit.do.setBounds(edit, 10, screen.h - 30, 80, 20);
   edit.text := 'World';
   form.do.add(form, edit);
-  
+
   G.ClearScreen;
   needFlip := TRUE
 END Init;
@@ -480,7 +482,7 @@ BEGIN
   method.setOnDraw := ComponentSetOnDraw;
   method.setOnMouseDown := ComponentSetOnMouseDown;
   method.setOnKeyDown := ComponentSetOnKeyDown;
-  
+
   NEW(formMethod);
   formMethod^ := method^;
   formMethod.draw := DrawForm;
@@ -492,7 +494,7 @@ BEGIN
   buttonMethod^ := method^;
   buttonMethod.draw := DrawButton;
   buttonMethod.mouseDown := MouseDownButton;
-  
+
   NEW (editMethod);
   editMethod^ := method^;
   editMethod.draw := DrawEdit;
@@ -508,10 +510,10 @@ BEGIN
   circleMethod.redraw := RedrawComponent;
 
   G.Settings(320, 200, {G.fullscreen, G.spread, G.sharpPixels, G.initMouse});
- (* G.Settings(640, 480, {G.fullscreen, G.spread, G.sharpPixels, G.initMouse});*)
+  (*G.Settings(640, 480, {G.fullscreen, G.spread, G.sharpPixels, G.initMouse});*)
   screen := G.Init();
   IF screen # NIL THEN
-    font := G.LoadFont('data/images/font.bmp', charW, charH);
+    font := G.LoadFont('../data/images/font.bmp', charW, charH);
     IF font # NIL THEN
       Init;
       Run

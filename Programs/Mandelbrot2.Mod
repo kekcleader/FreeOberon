@@ -34,7 +34,7 @@ BEGIN shine := (1 - M.cos(angle)) * 1;
         | 3: i := G.MakeCol(0, i, 0)
         | 4: i := G.MakeCol(0, i DIV 2, i)
         | 5: i := G.MakeCol(0, 0, i)
-        ELSE i := G.MakeCol(i * 2 DIV 4, 0, i * 2 DIV 4)
+        | 6: i := G.MakeCol(i * 2 DIV 4, 0, i * 2 DIV 4)
         END;
         G.PutPixel(s, x, y, i)
       END
