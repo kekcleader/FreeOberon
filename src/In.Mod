@@ -16,8 +16,8 @@ CONST
   utf8       = 2; (*!TODO also add UTF16 = 2 *)
 
 TYPE
-  SHORTINT = SYSTEM.INT16; INTEGER = SYSTEM.INT32; HUGEINT = SYSTEM.INT64;
-  REAL = SYSTEM.REAL32; LONGREAL = SYSTEM.REAL64; CHAR = SYSTEM.CHAR16;
+  SBYTE = BYTE;
+  BYTE* = UBYTE;
 
 VAR
   Done-: BOOLEAN;
@@ -37,7 +37,7 @@ END Open;
 
 PROCEDURE GetByte(): INTEGER;
 VAR error: Platform.ErrorCode; x, n: INTEGER;
-  m: ARRAY 1 OF BYTE;
+  m: ARRAY 1 OF SBYTE;
 BEGIN
   error := Platform.ReadBuf(Platform.StdIn, m, n); x := m[0] MOD 256;
   Out.String('READ ');Out.Int(x, 0);Out.Ln;
@@ -47,8 +47,8 @@ BEGIN
   RETURN x
 END GetByte;
 
-PROCEDURE Byte*(VAR x: UBYTE);
-BEGIN x := SYSTEM.VAL(UBYTE, SHORT(SHORT(GetByte())))
+PROCEDURE Byte*(VAR x: BYTE);
+BEGIN x := SYSTEM.VAL(BYTE, SHORT(SHORT(GetByte())))
 END Byte;
 
 PROCEDURE ReadChar;
@@ -91,9 +91,9 @@ BEGIN StartRead;
   END
 END Char;
 
-PROCEDURE HugeInt*(VAR h: HUGEINT);
+PROCEDURE HugeInt*(VAR h: LONGINT);
 VAR ok, neg, hex, endofnum: BOOLEAN;
-  decacc, hexacc, digit: HUGEINT;
+  decacc, hexacc, digit: LONGINT;
 BEGIN StartAndSkip;
   ok := FALSE;
   IF readstate = ready THEN
@@ -131,17 +131,17 @@ BEGIN StartAndSkip;
 END HugeInt;
 
 PROCEDURE Int16*(VAR i: SHORTINT);
-VAR h: HUGEINT;
+VAR h: LONGINT;
 BEGIN HugeInt(h); i := SHORT(SHORT(h)) (*!FIXME check range?*)
 END Int16;
 
 PROCEDURE LongInt*(VAR i: INTEGER);
-VAR h: HUGEINT;
+VAR h: LONGINT;
 BEGIN HugeInt(h); i := SHORT(h) (*!FIXME check range?*)
 END LongInt;
 
 PROCEDURE Int*(VAR i: INTEGER); (*32-bit INTEGER alias*)
-VAR h: HUGEINT;
+VAR h: LONGINT;
 BEGIN HugeInt(h); i := SHORT(h) (*!FIXME check range?*)
 END Int;
 
@@ -174,18 +174,27 @@ BEGIN StartAndSkip; i := 0;
   END
 END String;
 
-PROCEDURE Name*(VAR name: ARRAY OF CHAR); (* Read filename. Presumably using shell semantics. *)
-BEGIN HALT(99) (* Not implemented *)
+(** Read a file name *)
+PROCEDURE Name*(VAR name: ARRAY OF CHAR);
+VAR c: CHAR;
+  i: INTEGER;
+BEGIN i := 0; Char(c);
+  WHILE c > ' ' DO
+    IF i < LEN(name) - 1 THEN name[i] := c; INC(i) ELSE Done := FALSE END;
+    Char(c)
+  END;
+  name[i] := 0X;
+  IF c = 0AX THEN Char(c) END
 END Name;
 
-PROCEDURE Real*(VAR x: REAL);
+PROCEDURE Real*(VAR x: SHORTREAL);
 VAR s: ARRAY 16 OF CHAR;
 BEGIN StartAndSkip; Line(s);
   Strings.StrToReal(s, x)
   (*!FIXME Set Done*)
 END Real;
 
-PROCEDURE LongReal*(VAR y: LONGREAL);
+PROCEDURE LongReal*(VAR y: REAL);
 VAR s: ARRAY 16 OF CHAR;
 BEGIN StartAndSkip; Line(s);
   Strings.StrToLongReal(s, y)
