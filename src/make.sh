@@ -16,13 +16,15 @@ $OFR -C Config_linux.Mod
 
 $OFR -C Utf8.Mod
 
+$OFR -C Strings.Mod
+
+$OFR -C Reals.Mod
+
+$OFR -C Int.Mod
+
 $OFR -C In.Mod
 
 $OFR -C Out.Mod
-
-$OFR -C Strings.Mod
-
-$OFR -C Int.Mod
 
 $OFR -C Files.Mod
 
@@ -49,21 +51,22 @@ $OFR -C -m FreeOberon.Mod
 
 
 $CCFULL -c Utf8.c
+$CCFULL -c Strings.c
+$CCFULL -c Reals.c
+$CCFULL -c Int.c
 $CCFULL -c In.c
 $CCFULL -c Out.c
-$CCFULL -c Strings.c
-$CCFULL -c Int.c
 $CCFULL -c Files.c
 $CCFULL -c StrList.c
 $CCFULL -c Dir.c
 $CCFULL -c SDL2.c
 $CCFULL -c Graph.c
 $AR -crs ../data/bin/libFreeOberon.a \
-  Utf8.o In.o Out.o Strings.o Int.o Files.o \
+  Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o \
   StrList.o Dir.o SDL2.o Graph.o
 
 $CCFULL Config.c term/term_linux.c \
-  Utf8.o In.o Out.o Strings.o Int.o Files.o \
+  Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o \
   StrList.o Dir.o SDL2.o Graph.o \
   Term.c Terminal.c OV.c EditorText.c Editor.c \
   $PROG.c -o ../$PROG \

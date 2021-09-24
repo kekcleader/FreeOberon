@@ -4,7 +4,7 @@ MODULE In;
   An unsuccessful input operation sets Done to FALSE;
   it remains FALSE until the next call to Open. *)
 
-IMPORT Platform, SYSTEM, Strings, Out, Utf8;
+IMPORT Platform, SYSTEM, Reals, Out, Utf8;
 
 CONST
   pending = 0; (* readstate when at start of input or end of line. Implies nextch undefined. *)
@@ -40,7 +40,6 @@ VAR error: Platform.ErrorCode; x, n: INTEGER;
   m: ARRAY 1 OF SBYTE;
 BEGIN
   error := Platform.ReadBuf(Platform.StdIn, m, n); x := m[0] MOD 256;
-  Out.String('READ ');Out.Int(x, 0);Out.Ln;
   IF (error = 0) & (n = 1) THEN readstate := ready
   ELSE readstate := eof; x := 0
   END;
@@ -84,10 +83,8 @@ END StartAndSkip;
 PROCEDURE Char*(VAR ch: CHAR);
 BEGIN StartRead;
   IF readstate = ready THEN ch := nextch;
-    ;;;;;;;;;Out.String('readstate was ready. ch = '); Out.Int(ORD(ch), 0); Out.Ln;
     IF ch = 0AX THEN readstate := pending ELSE ReadChar END
   ELSE Done := FALSE; ch := 0X
-    ;;;;;;;;;Out.String('readstate was not ready. ch = '); Out.Int(ORD(ch), 0); Out.Ln;
   END
 END Char;
 
@@ -127,6 +124,8 @@ BEGIN StartAndSkip;
     ELSE h := 0
     END
   END;
+  WHILE (readstate = ready) & (nextch <= ' ') & (nextch # 0AX) DO ReadChar END;
+  IF (readstate = ready) & (nextch = 0AX) THEN readstate := pending END;
   IF ~ok THEN Done := FALSE END
 END HugeInt;
 
@@ -157,6 +156,20 @@ BEGIN StartRead; i := 0;
   IF (readstate = ready) & (nextch = 0DX) THEN ReadChar END;
   IF (readstate = ready) & (nextch = 0AX) THEN readstate := pending END
 END Line;
+
+(** Skip whitespaces, read characters until a whitespace, skip whitespaces
+    until a new line character. *)
+PROCEDURE Word*(VAR s: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN StartRead; i := 0;
+  IF readstate # ready THEN Done := FALSE END;
+  WHILE (readstate = ready) & (nextch > ' ') & (i < LEN(s) - 1) DO
+    s[i] := nextch; INC(i); ReadChar
+  END;
+  s[i] := 0X;
+  WHILE (readstate = ready) & (nextch <= ' ') & (nextch # 0AX) DO ReadChar END;
+  IF (readstate = ready) & (nextch = 0AX) THEN readstate := pending END
+END Word;
 
 PROCEDURE String*(VAR s: ARRAY OF CHAR);
 VAR i: INTEGER;
@@ -189,15 +202,15 @@ END Name;
 
 PROCEDURE Real*(VAR x: SHORTREAL);
 VAR s: ARRAY 16 OF CHAR;
-BEGIN StartAndSkip; Line(s);
-  Strings.StrToReal(s, x)
+BEGIN StartAndSkip; Word(s);
+  x := Reals.Val(s)
   (*!FIXME Set Done*)
 END Real;
 
-PROCEDURE LongReal*(VAR y: REAL);
+PROCEDURE LongReal*(VAR x: REAL);
 VAR s: ARRAY 16 OF CHAR;
-BEGIN StartAndSkip; Line(s);
-  Strings.StrToLongReal(s, y)
+BEGIN StartAndSkip; Word(s);
+  x := Reals.LongVal(s)
   (*!FIXME Set Done*)
 END LongReal;
 
