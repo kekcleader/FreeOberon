@@ -95,20 +95,14 @@ BEGIN
 RETURN color END InvertColor;
 
 PROCEDURE DrawChar*(ch: CHAR; x, y, fg, bg: INTEGER);
-VAR color: INTEGER;
-BEGIN
-  G.RectFill(screen, x, y, x + charW - 1,
-    y + charH - 1, ExpandColor(bg));
-  IF ch # ' ' THEN
-    G.DrawCharacter(screen, font, x, y, ch, ExpandColor(fg))
-  END
+BEGIN G.RectFill(screen, x, y, x + charW - 1, y + charH - 1, ExpandColor(bg));
+  IF ch # ' ' THEN G.DrawCharacter(screen, font, x, y, ch, ExpandColor(fg)) END
 END DrawChar;
 
 PROCEDURE DrawMouse;
 VAR x, y, bg, fg: INTEGER; ch: CHAR;
 BEGIN
-  IF (mouseX >= 0) & (mouseX < charsX) &
-     (mouseY >= 0) & (mouseY < charsY) THEN
+  IF (mouseX >= 0) & (mouseX < charsX) & (mouseY >= 0) & (mouseY < charsY) THEN
     bg := InvertColor(chars[mouseY, mouseX].bg);
     fg := InvertColor(chars[mouseY, mouseX].fg);
     ch := chars[mouseY, mouseX].ch
@@ -122,8 +116,7 @@ END DrawMouse;
 PROCEDURE Draw*(): BOOLEAN;
 VAR x, y, color: INTEGER;
   drawn: BOOLEAN;
-BEGIN
-  drawn := needRedraw;
+BEGIN drawn := needRedraw;
   IF needRedraw THEN
     needRedraw := FALSE;
     (* Chars *)

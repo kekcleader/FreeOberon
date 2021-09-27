@@ -28,7 +28,10 @@ CONST
                  just write directly to final register name *)
 
 TYPE
-  FileName = ARRAY 256 OF SHORTCHAR;
+  SBYTE* = BYTE;
+  BYTE* = UBYTE;
+
+  FileName = ARRAY 256 OF CHAR;
   File* = POINTER TO FileDesc;
   Buffer = POINTER TO BufDesc;
 
@@ -48,7 +51,7 @@ TYPE
     chg: BOOLEAN;
     org: LONGINT;
     size: INTEGER;
-    data: ARRAY BufSize OF BYTE
+    data: ARRAY BufSize OF SBYTE
   END;
 
   Rider* = RECORD
@@ -64,8 +67,8 @@ VAR
   files: POINTER [notag] TO FileDesc;
 
   tempno: INTEGER;
-  home: ARRAY 1024 OF SHORTCHAR;
-  SearchPath: ARRAY 4096 OF SHORTCHAR;
+  home: ARRAY 1024 OF CHAR;
+  SearchPath: ARRAY 4096 OF CHAR;
 
 PROCEDURE -IdxTrap(pos: INTEGER) '__HALT(-1, "Files.Mod", pos)';
 
@@ -75,8 +78,8 @@ PROCEDURE Err(IN s: ARRAY OF CHAR; f: File; errcode: Platform.ErrorCode);
 BEGIN
   Out.Ln; Out.String('-- '); Out.String(s); Out.String(': ');
   IF f # NIL THEN
-    IF f.registerName # '' THEN Out.Utf8(f.registerName)
-    ELSE Out.Utf8(f.workName)
+    IF f.registerName # '' THEN Out.String(f.registerName)
+    ELSE Out.String(f.workName)
     END;
     IF f.fd # 0 THEN Out.String(' f.fd = '); Out.Int(f.fd, 1) END
   END;
@@ -85,8 +88,7 @@ BEGIN
   HALT(99)
 END Err;
 
-PROCEDURE MakeFileName(IN dir, name: ARRAY OF SHORTCHAR;
-    VAR dest: ARRAY OF SHORTCHAR);
+PROCEDURE MakeFileName(IN dir, name: ARRAY OF CHAR; VAR dest: ARRAY OF CHAR);
 VAR i, j: INTEGER;
 BEGIN i := 0; j := 0;
   WHILE dir[i] # 0X DO dest[i] := dir[i]; INC(i) END;
@@ -95,30 +97,19 @@ BEGIN i := 0; j := 0;
   dest[i] := 0X
 END MakeFileName;
 
-PROCEDURE GetTempName(IN finalName: ARRAY OF SHORTCHAR;
-    VAR name: ARRAY OF SHORTCHAR);
-VAR n, i, j: INTEGER;
-BEGIN
-  INC(tempno); n := tempno; i := 0;
-  IF finalName[0] # PathDelimiter THEN  (* relative pathname *)
-    WHILE Platform.CWD[i] # 0X DO name[i] := Platform.CWD[i]; INC(i) END;
-    IF Platform.CWD[i-1] # PathDelimiter THEN
-      name[i] := PathDelimiter; INC(i)
-    END
-  END;
-  j := 0;
-  WHILE finalName[j] # 0X DO name[i] := finalName[j]; INC(i); INC(j) END;
-  DEC(i);
-  WHILE name[i] # PathDelimiter DO DEC(i) END;
-  name[i + 1] := '.'; name[i + 2] := 't'; name[i + 3] := 'm';
-  name[i + 4] := 'p'; name[i + 5] := '.'; INC(i, 6);
-  WHILE n > 0 DO
-    name[i] := SHORT(CHR(n MOD 10 + ORD('0'))); n := n DIV 10; INC(i)
-  END;
+PROCEDURE GetTempName(IN finalName: ARRAY OF CHAR; VAR name: ARRAY OF CHAR);
+VAR n, i: INTEGER;
+  q: ARRAY 256 OF SHORTCHAR;
+BEGIN INC(tempno); Platform.GetTempPath(q); Utf8.Decode(q, name);
+  i := 0; WHILE name[i] # 0X DO INC(i) END;
+
+  name[i] := 'o'; INC(i); name[i] := 'b'; INC(i); name[i] := 'e'; INC(i);
+  name[i] := 'r'; INC(i); name[i] := 'o'; INC(i); name[i] := 'n'; INC(i);
+  name[i] := '.'; INC(i); n := tempno;
+  REPEAT name[i] := CHR(n MOD 10 + 30H); n := n DIV 10; INC(i) UNTIL n = 0;
+
   name[i] := '.'; INC(i); n := Platform.PID;
-  WHILE n > 0 DO
-    name[i] := SHORT(CHR(n MOD 10 + ORD('0'))); n := n DIV 10; INC(i)
-  END;
+  REPEAT name[i] := CHR(n MOD 10 + 30H); n := n DIV 10; INC(i) UNTIL n = 0;
   name[i] := 0X
 END GetTempName;
 
@@ -131,12 +122,14 @@ END GetTempName;
    a real Oberon system, where registering the new file has the effect of
    unregistering the old file. To simulate this we need to change the old
    Files.File back to a temp file. *)
-PROCEDURE Deregister(IN name: ARRAY OF SHORTCHAR);
+PROCEDURE Deregister(IN name: ARRAY OF CHAR);
 VAR identity: Platform.FileIdentity;
   osfile: File;
   error: Platform.ErrorCode;
+  q, s: ARRAY 2048 OF SHORTCHAR;
 BEGIN
-  IF Platform.IdentifyByName(name, identity) = 0 THEN
+  Utf8.Encode(name, q);
+  IF Platform.IdentifyByName(q, identity) = 0 THEN
     (* The name we are registering is an already existing file. *)
     osfile := files;
     WHILE (osfile # NIL) & ~Platform.SameFile(osfile.identity, identity) DO
@@ -151,7 +144,9 @@ BEGIN
       osfile.tempFile := TRUE;
       error := Platform.CloseFile(osfile.fd);
       osfile.state := close;
-      error := Platform.RenameFile(osfile.registerName, osfile.workName);
+      Utf8.Encode(osfile.registerName, q);
+      Utf8.Encode(osfile.workName, s);
+      error := Platform.RenameFile(q, s);
       IF error # 0 THEN
         Err('Could not rename previous version of file being registered',
           osfile, error)
@@ -160,14 +155,15 @@ BEGIN
   END
 END Deregister;
 
+(** Makes sure there is an OS file backing this Oberon file.
+    Used when more data has been written to an unregistered new file than
+    buffers can hold, or when registering a new file whose data is all in
+    buffers. *)
 PROCEDURE Create(f: File);
-(* Makes sure there is an OS file backing this Oberon file.
-   Used when more data has been written to an unregistered new file than
-   buffers can hold, or when registering a new file whose data is all in
-   buffers. *)
 VAR done: BOOLEAN;
   error: Platform.ErrorCode;
   err: ARRAY 32 OF CHAR;
+  q: ARRAY 2048 OF SHORTCHAR;
 BEGIN
   IF f.fd = Platform.InvalidHandleValue() THEN
     IF f.state = create THEN
@@ -182,9 +178,10 @@ BEGIN
       f.workName := f.registerName; f.registerName := ''; f.tempFile := FALSE
     END;
     (* Unlink first to avoid stale NFS handles and to avoid reuse of inodes *)
-    error := Platform.DeleteFile(f.workName);
+    Utf8.Encode(f.workName, q);
+    error := Platform.DeleteFile(q);
 
-    error := Platform.NewFile(f.workName, f.fd);
+    error := Platform.NewFile(q, f.fd);
     done := error = 0;
     IF done THEN
       (* Link this file into the list of OS backed files. *)
@@ -247,7 +244,7 @@ END Close;
 PROCEDURE Length*(f: File): LONGINT;
 BEGIN RETURN f.len END Length;
 
-PROCEDURE New*(IN name: ARRAY OF SHORTCHAR): File;
+PROCEDURE New*(IN name: ARRAY OF CHAR): File;
 VAR f: File;
 BEGIN
   NEW(f); f.workName := ''; f.registerName := name$;
@@ -255,11 +252,11 @@ BEGIN
   f.len := 0; f.pos := 0; f.swapper := -1 ;
 RETURN f END New;
 
-PROCEDURE ScanPath(VAR pos: INTEGER; VAR dir: ARRAY OF SHORTCHAR);
+PROCEDURE ScanPath(VAR pos: INTEGER; VAR dir: ARRAY OF CHAR);
 (* Extract next individual directory from searchpath starting at pos,
    updating pos and returning dir.
    Supports ~, ~user and blanks inside path *)
-VAR i: INTEGER; ch: SHORTCHAR;
+VAR i: INTEGER; ch: CHAR;
 BEGIN
   i := 0;
   IF SearchPath = '' THEN (* Default search path is the current directory *)
@@ -284,8 +281,8 @@ BEGIN
   dir[i] := 0X
 END ScanPath;
 
-PROCEDURE HasDir(IN name: ARRAY OF SHORTCHAR): BOOLEAN;
-VAR i: INTEGER; ch: SHORTCHAR;
+PROCEDURE HasDir(IN name: ARRAY OF CHAR): BOOLEAN;
+VAR i: INTEGER; ch: CHAR;
 BEGIN i := 0; ch := name[0];
   WHILE (ch # 0X) & (ch # PathDelimiter) DO INC(i); ch := name[i] END ;
 RETURN ch = PathDelimiter END HasDir;
@@ -310,35 +307,34 @@ BEGIN f := files;
   RETURN NIL
 END CacheEntry;
 
-PROCEDURE Old*(IN name: ARRAY OF SHORTCHAR): File;
+PROCEDURE Old*(IN name: ARRAY OF CHAR): File;
 VAR f: File;
   fd: Platform.FileHandle;
   pos: INTEGER;
   done: BOOLEAN;
-  dir, path: ARRAY 256 OF SHORTCHAR;
+  dir, path: ARRAY 256 OF CHAR;
   error: Platform.ErrorCode;
   identity: Platform.FileIdentity;
+  q: ARRAY 4096 OF SHORTCHAR;
 BEGIN
-  (* Out.String('Files.Old '); Out.String(name); Out.Ln; *)
   IF name # '' THEN
     IF HasDir(name) THEN dir := ''; path := name$
     ELSE pos := 0; ScanPath(pos, dir);
       MakeFileName(dir, name, path); ScanPath(pos, dir)
     END;
-    LOOP
-      error := Platform.OldRW(path, fd); done := error = 0;
+    LOOP Utf8.Encode(path, q);
+      error := Platform.OldRW(q, fd); done := error = 0;
       IF ~done & Platform.TooManyFiles(error) THEN
         Err('too many files open', f, error)
       END;
       IF ~done & Platform.Inaccessible(error) THEN
-        error := Platform.OldRO(path, fd); done := error = 0
+        error := Platform.OldRO(q, fd); done := error = 0
       END;
       IF ~done & ~Platform.Absent(error) THEN
-        Out.String('Warning: Files.Old '); Out.Utf8(name);
-        Out.String(' error = '); Out.Int(error, 0); Out.Ln;
+        Out.String('Warning: Files.Old '); Out.String(name);
+        Out.String(' error = '); Out.Int(error, 0); Out.Ln
       END;
       IF done THEN
-        (* Out.String('  fd = '); Out.Int(fd,1); Out.Ln; *)
         error := Platform.Identify(fd, identity);
         f := CacheEntry(identity);
         IF f # NIL THEN
@@ -428,7 +424,7 @@ BEGIN
   r.buf := buf; r.org := org; r.offset := offset; r.eof := FALSE; r.res := 0
 END Set;
 
-PROCEDURE ReadByte*(VAR r: Rider; VAR x: BYTE);
+PROCEDURE Read*(VAR r: Rider; VAR x: BYTE);
 VAR offset: INTEGER; buf: Buffer;
 BEGIN
   buf := r.buf; offset := r.offset;
@@ -436,13 +432,13 @@ BEGIN
     Set(r, buf.f, r.org + offset); buf := r.buf; offset := r.offset
   END;
   IF (offset < buf.size) THEN
-    x := buf.data[offset]; r.offset := offset + 1
+    x := SYSTEM.VAL(BYTE, buf.data[offset]); r.offset := offset + 1
   ELSIF r.org + offset < buf.f.len THEN
     Set(r, r.buf.f, r.org + offset);
-    x := r.buf.data[0]; r.offset := 1
+    x := SYSTEM.VAL(BYTE, r.buf.data[0]); r.offset := 1
   ELSE x := 0; r.eof := TRUE
   END
-END ReadByte;
+END Read;
 
 PROCEDURE ReadBytes*(VAR r: Rider; VAR x: ARRAY OF BYTE; n: INTEGER);
 VAR xpos, min, restInBuf, offset: INTEGER; buf: Buffer;
@@ -463,15 +459,34 @@ BEGIN
   r.res := 0; r.eof := FALSE
 END ReadBytes;
 
-PROCEDURE ReadChar*(VAR r: Rider; VAR x: SHORTCHAR);
-BEGIN ReadByte(r, SYSTEM.VAL(BYTE, x))
+PROCEDURE ReadShortChar*(VAR r: Rider; VAR x: SHORTCHAR);
+BEGIN Read(r, SYSTEM.VAL(BYTE, x))
+END ReadShortChar;
+
+PROCEDURE ReadChar*(VAR r: Rider; VAR x: CHAR);
+VAR b: BYTE; y: INTEGER;
+BEGIN Read(r, b); y := b;
+  IF y > 80H THEN Read(r, b); b := SYSTEM.VAL(BYTE, b MOD 64); (* Not 1 byte *)
+    IF y DIV 32 = 6 THEN (* 2 bytes *)
+      y := y MOD 32 * 64 + b
+    ELSIF y DIV 16 = 14 THEN (* 3 bytes *)
+      y := (y MOD 16 * 64 + b) * 64;
+      Read(r, b); INC(y, b MOD 64)
+    ELSIF y DIV 8 = 30 THEN (* 4 bytes *)
+      y := (y MOD 8 * 64 + b) * 64;
+      Read(r, b); y := (y + b MOD 64) * 64;
+      Read(r, b); INC(y, b MOD 64) (*!FIXME UTF-16 surrogate pairs *)
+    ELSE y := 0
+    END
+  END;
+  x := CHR(y)
 END ReadChar;
 
 PROCEDURE Base*(VAR r: Rider): File;
 BEGIN RETURN r.buf.f
 END Base;
 
-PROCEDURE WriteByte*(VAR r: Rider; x: BYTE);
+PROCEDURE Write*(VAR r: Rider; x: BYTE);
 VAR buf: Buffer; offset: INTEGER;
 BEGIN
   buf := r.buf; offset := r.offset;
@@ -485,7 +500,7 @@ BEGIN
     INC(buf.size); INC(buf.f.len)
   END;
   r.offset := offset + 1; r.res := 0
-END WriteByte;
+END Write;
 
 PROCEDURE WriteBytes*(VAR r: Rider; IN x: ARRAY OF BYTE; n: INTEGER);
 VAR xpos, min, restInBuf, offset: INTEGER; buf: Buffer;
@@ -507,9 +522,10 @@ BEGIN
   r.res := 0
 END WriteBytes;
 
-PROCEDURE Delete*(IN name: ARRAY OF SHORTCHAR; VAR res: INTEGER);
+PROCEDURE Delete*(IN name: ARRAY OF CHAR; VAR res: INTEGER);
 VAR pos: INTEGER;
-  dir, path: ARRAY 256 OF SHORTCHAR;
+  dir, path: ARRAY 2048 OF CHAR;
+  q: ARRAY 2048 OF SHORTCHAR;
 BEGIN
   IF name # '' THEN
     IF HasDir(name) THEN dir := ''; path := name$
@@ -518,7 +534,8 @@ BEGIN
     END;
     LOOP
       Deregister(path);
-      res := Platform.DeleteFile(path);
+      Utf8.Encode(path, q);
+      res := Platform.DeleteFile(q);
       IF (res = 0) OR (dir = '') THEN RETURN
       ELSE MakeFileName(dir, name, path); ScanPath(pos, dir)
       END
@@ -527,21 +544,21 @@ BEGIN
   END
 END Delete;
 
-PROCEDURE Rename*(IN old, new: ARRAY OF SHORTCHAR; VAR res: INTEGER);
+PROCEDURE Rename*(IN old, new: ARRAY OF CHAR; VAR res: INTEGER);
 VAR n: INTEGER;
   fdold, fdnew: Platform.FileHandle;
   error, ignore: Platform.ErrorCode;
   oldidentity, newidentity: Platform.FileIdentity;
-  buf: ARRAY 4096 OF SHORTCHAR;
+  buf, old2, new2: ARRAY 4096 OF SHORTCHAR;
 BEGIN
-  error := Platform.IdentifyByName(old, oldidentity);
+  Utf8.Encode(old, old2); Utf8.Encode(new, new2);
+  error := Platform.IdentifyByName(old2, oldidentity);
   IF error = 0 THEN
-    error := Platform.IdentifyByName(new, newidentity);
+    error := Platform.IdentifyByName(new2, newidentity);
     IF (error # 0) & ~Platform.SameFile(oldidentity, newidentity) THEN
       Delete(new, error) (* work around stale nfs handles *)
     END;
-    error := Platform.RenameFile(old, new);
-    (* Out.String('Platform.Rename error code '); Out.Int(error,1); Out.Ln; *)
+    error := Platform.RenameFile(old2, new2);
     (* TODO, if we already have a FileDesc for old, it ought to be updated
        with the new workname. *)
     IF ~Platform.DifferentFilesystems(error) THEN
@@ -549,12 +566,12 @@ BEGIN
       RETURN
     ELSE
       (* cross device link, move the file *)
-      error := Platform.OldRO(old, fdold);
+      error := Platform.OldRO(old2, fdold);
       IF error # 0 THEN
         res := 2;
         RETURN
       END;
-      error := Platform.NewFile(new, fdnew);
+      error := Platform.NewFile(new2, fdnew);
       IF error # 0 THEN
         error := Platform.CloseFile(fdold); res := 3;
         RETURN
@@ -571,17 +588,17 @@ BEGIN
       END;
       ignore := Platform.CloseFile(fdold);
       ignore := Platform.CloseFile(fdnew);
-      IF n = 0 THEN error := Platform.DeleteFile(old); res := 0
+      IF n = 0 THEN error := Platform.DeleteFile(old2); res := 0
       ELSE Err('cannot move file', NIL, error)
       END
     END
-  ELSE
-    res := 2 (* old file not found *)
+  ELSE res := 2 (* old file not found *)
   END
 END Rename;
 
 PROCEDURE Register*(f: File);
 VAR errcode: INTEGER;
+  q: ARRAY 2048 OF SHORTCHAR;
 BEGIN
   IF (f.state = create) & (f.registerName # '') THEN f.state := close END;
   Close(f);
@@ -590,8 +607,8 @@ BEGIN
     errcode := Platform.CloseFile(f.fd);
     IF errcode = 0 THEN (* Platform.RenameFile requires a closed file *)
       Rename(f.workName, f.registerName, errcode);
-      IF errcode = 0 THEN
-        errcode := Platform.OldRW(f.registerName, f.fd);
+      IF errcode = 0 THEN Utf8.Encode(f.registerName, q);
+        errcode := Platform.OldRW(q, f.fd);
         IF errcode = 0 THEN f.workName := f.registerName;
           f.registerName := ''; f.tempFile := FALSE;
           RETURN
@@ -602,9 +619,9 @@ BEGIN
   END
 END Register;
 
-PROCEDURE ChangeDirectory*(IN path: ARRAY OF SHORTCHAR; VAR res: INTEGER);
-BEGIN
-  res := Platform.ChDir(path)
+PROCEDURE ChangeDirectory*(IN path: ARRAY OF CHAR; VAR res: INTEGER);
+VAR q: ARRAY 2048 OF SHORTCHAR;
+BEGIN Utf8.Encode(path, q); res := Platform.ChDir(q)
 END ChangeDirectory;
 
 PROCEDURE FlipBytes(VAR src, dest: ARRAY OF BYTE);
@@ -617,7 +634,7 @@ BEGIN
 END FlipBytes;
 
 PROCEDURE ReadBool*(VAR R: Rider; VAR x: BOOLEAN);
-BEGIN ReadByte(R, SYSTEM.VAL(BYTE, x))
+BEGIN Read(R, SYSTEM.VAL(BYTE, x))
 END ReadBool;
 
 PROCEDURE ReadSInt*(VAR R: Rider; VAR x: SHORTINT);
@@ -659,9 +676,15 @@ BEGIN ReadBytes(R, b, 8);
   FlipBytes(b, SYSTEM.THISARR(SYSTEM.ADR(x), 8))
 END ReadLReal;
 
-PROCEDURE ReadString*(VAR R: Rider; VAR x: ARRAY OF SHORTCHAR);
+PROCEDURE ReadShortString*(VAR R: Rider; VAR x: ARRAY OF SHORTCHAR);
 VAR i: INTEGER; ch: SHORTCHAR;
-BEGIN i := 0;
+BEGIN i := 0; (*!FIXME code from scratch*)
+  REPEAT ReadShortChar(R, ch); x[i] := ch; INC(i) UNTIL ch = 0X
+END ReadShortString;
+
+PROCEDURE ReadString*(VAR R: Rider; VAR x: ARRAY OF CHAR);
+VAR i: INTEGER; ch: CHAR;
+BEGIN i := 0; (*!FIXME code from scratch*)
   REPEAT ReadChar(R, ch); x[i] := ch; INC(i) UNTIL ch = 0X
 END ReadString;
 
@@ -669,7 +692,7 @@ PROCEDURE ReadLine*(VAR R: Rider; VAR x: ARRAY OF SHORTCHAR);
 VAR i: INTEGER; ch: SHORTCHAR; b: BOOLEAN;
 BEGIN i := 0; b := FALSE;
   REPEAT
-    ReadChar(R, ch);
+    ReadShortChar(R, ch);
     IF ((ch = 0X) OR (ch = 0AX) OR (ch = 0DX)) THEN b := TRUE
     ELSE x[i] := ch; INC(i)
     END
@@ -677,20 +700,28 @@ BEGIN i := 0; b := FALSE;
 END ReadLine;
 
 PROCEDURE ReadNum*(VAR R: Rider; VAR x: LONGINT);
-VAR s: INTEGER; ch: SHORTCHAR;
-BEGIN s := 0; x := 0; ReadChar(R, ch);
-  WHILE ORD(ch) >= 128 DO
-    INC(x, ASH(LONG(ORD(ch) - 128), s)); INC(s, 7); ReadChar(R, ch)
+VAR n: INTEGER; b: BYTE;
+BEGIN n := 0; x := 0; Read(R, b);
+  WHILE b >= 128 DO
+    INC(x, ASH(LONG(b) - 128, n)); INC(n, 7); Read(R, b)
   END;
-  INC(x, ASH(LONG(ORD(ch) MOD 64 - ORD(ch) DIV 64 * 64), s))
+  INC(x, ASH(LONG(b) MOD 64 - LONG(b) DIV 64 * 64, n))
 END ReadNum;
 
 PROCEDURE WriteBool*(VAR R: Rider; x: BOOLEAN);
-BEGIN WriteByte(R, SYSTEM.VAL(BYTE, x))
+BEGIN Write(R, SYSTEM.VAL(BYTE, x))
 END WriteBool;
 
-PROCEDURE WriteChar*(VAR R: Rider; x: SHORTCHAR);
-BEGIN WriteByte(R, SYSTEM.VAL(BYTE, x))
+PROCEDURE WriteShortChar*(VAR R: Rider; x: SHORTCHAR);
+BEGIN Write(R, SYSTEM.VAL(BYTE, x))
+END WriteShortChar;
+
+PROCEDURE WriteChar*(VAR R: Rider; c: CHAR);
+VAR i, L: INTEGER;
+  q: ARRAY 5 OF SHORTCHAR;
+BEGIN
+  Utf8.EncodeChar(c, q, L); i := 0;
+  WHILE i # L DO Write(R, SYSTEM.VAL(BYTE, q[i])); INC(i) END
 END WriteChar;
 
 PROCEDURE WriteSInt*(VAR R: Rider; x: SHORTINT);
@@ -733,37 +764,53 @@ BEGIN FlipBytes(SYSTEM.THISARR(SYSTEM.ADR(x), 8), b);
   WriteBytes(R, b, 8)
 END WriteLReal;
 
-PROCEDURE WriteString*(VAR R: Rider; IN x: ARRAY OF SHORTCHAR);
+PROCEDURE WriteShortString*(VAR R: Rider; IN s: ARRAY OF SHORTCHAR);
 VAR i: INTEGER;
-BEGIN i := 0; WHILE x[i] # 0X DO INC(i) END;
-  WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(x), LEN(x)), i+1)
+BEGIN i := 0; WHILE s[i] # 0X DO INC(i) END;
+  WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(s), LEN(s)), i + 1)
+END WriteShortString;
+
+PROCEDURE WriteString*(VAR R: Rider; IN s: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN i := -1;
+  REPEAT INC(i); WriteChar(R, s[i]) UNTIL (i = LEN(s)) OR (s[i] = 0X)
 END WriteString;
 
 PROCEDURE WriteNum*(VAR R: Rider; x: LONGINT);
 BEGIN
   WHILE (x < - 64) OR (x > 63) DO
-    WriteChar(R, SHORT(CHR(SHORT(x) MOD 128 + 128))); x := x DIV 128
+    Write(R, SYSTEM.VAL(BYTE, x MOD 128 + 128)); x := x DIV 128
   END;
-  WriteChar(R, SHORT(CHR(SHORT(x) MOD 128)))
+  Write(R, SYSTEM.VAL(BYTE, x MOD 128))
 END WriteNum;
 
-PROCEDURE GetName*(f: File; VAR name: ARRAY OF SHORTCHAR);
+PROCEDURE GetName*(f: File; VAR name: ARRAY OF CHAR);
 BEGIN name := f.workName$
 END GetName;
 
 PROCEDURE Finalize(o: SYSTEM.PTR);
 VAR f: File; res: INTEGER;
+  q: ARRAY 2048 OF SHORTCHAR;
 BEGIN f := SYSTEM.VAL(File, o);
   IF f.fd # Platform.InvalidHandleValue() THEN
     CloseOSFile(f);
-    IF f.tempFile THEN res := Platform.DeleteFile(f.workName) END
+    IF f.tempFile THEN
+      Utf8.Encode(f.workName, q);
+      res := Platform.DeleteFile(q)
+    END
   END
 END Finalize;
 
 PROCEDURE SetSearchPath*(IN path: ARRAY OF CHAR);
-BEGIN Utf8.Encode(path, SearchPath)
+BEGIN SearchPath := path$
 END SetSearchPath;
 
+PROCEDURE Init;
+VAR q: ARRAY 2048 OF SHORTCHAR;
 BEGIN tempno := -1; Heap.FileCount := 0; SearchPath := '';
-  home := ''; Platform.GetEnv('HOME', home)
+  Platform.GetEnv('HOME', q); Utf8.Decode(q, home);
+END Init;
+
+BEGIN
+  Init
 END Files.

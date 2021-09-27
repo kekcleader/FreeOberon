@@ -660,16 +660,31 @@ BEGIN bmp := LoadBitmap(filename);
   END ;
 RETURN font END LoadFont;
 
+PROCEDURE FindFontChar(c: CHAR; OUT n: INTEGER);
+BEGIN
+  IF c <= 0FFX THEN n := ORD(c)
+  ELSIF (410X(*A*) <= c) & (c <= 43FX(*p*)) THEN n := ORD(c) - (410H - 80H)
+  ELSIF (440X(*r*) <= c) & (c <= 44FX(*ja*)) THEN n := ORD(c) - (440H - 0E0H)
+  ELSIF c = 401X(*JO*) THEN n := 0F0H
+  ELSIF c = 451X(*jo*) THEN n := 0F1H
+  ELSE n := -1
+  END
+END FindFontChar;
+
 PROCEDURE DrawCharacter*(dest: Bitmap; font: Font;
   x, y: INTEGER; ch: CHAR; fg: INTEGER);
-VAR fx, fy, r, g, b: INTEGER; dstRect: SDL.Rect;
+VAR n, fx, fy, r, g, b: INTEGER; dstRect: SDL.Rect;
 BEGIN dstRect.x := x; dstRect.y := y;
-  fx := ORD(ch) MOD font.charsInRow;
-  fy := ORD(ch) DIV font.charsInRow;
+  FindFontChar(ch, n);
+  IF n < 0 THEN n := 1 (* "Bad" character *) END;
+  fx := n MOD font.charsInRow;
+  fy := n DIV font.charsInRow;
   ColorToRGB(fg, r, g, b);
   SDL.SetSurfaceColorMod(font.bmp.surface, r, g, b);
-  SDL.BlitSurface(font.bmp.surface, font.sprites[fy, fx],
-    screen.surface, dstRect)
+  IF (fy < LEN(font.sprites)) & (fx < LEN(font.sprites[0])) THEN
+    SDL.BlitSurface(font.bmp.surface, font.sprites[fy, fx],
+      screen.surface, dstRect)
+  END
 END DrawCharacter;
 
 PROCEDURE DrawString*(dest: Bitmap; font: Font;
@@ -718,23 +733,6 @@ VAR sym: INTEGER;
 BEGIN
   IF events.len < LEN(events.buf) THEN
     e := SYSTEM.VAL(SDL.TextInputEvent, SYSTEM.ADR(event));
-    IF e.text[1] = 0X THEN (* ASCII character *)
-      sym := ORD(e.text[0])
-    ELSE (* Unicode character. Assuming 2 bytes *)
-      sym := ORD(e.text[1]);
-      (* UTF-8 cyrillic *)
-      IF (e.text[0] = 0D0X) OR (e.text[0] = 0D1X) THEN
-        IF e.text[0] = 0D0X THEN DEC(sym, 090H)
-        ELSE DEC(sym, 060H - 16)
-        END;
-        (* Convert to CP866 *)
-        IF sym = 65 THEN sym := 0F1H (* jo *)
-        ELSIF sym = -15 THEN sym := 0F0H (* JO *)
-        ELSIF sym < 48 THEN INC(sym, 80H) (* A..JA, a..p *)
-        ELSE INC(sym, 0E0H - 48) (* r..ja *)
-        END
-      END
-    END;
     QueueEvent;
     events.buf[events.last].type := textInput;
     Utf8.Decode(e.text, events.buf[events.last].s);

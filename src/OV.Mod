@@ -796,23 +796,6 @@ BEGIN
   IF ('a' <= ch) & (ch <= 'z') THEN ch := CAP(ch) END ;
 RETURN ch END Cap;
 
-PROCEDURE ToCP866*(ch: CHAR): CHAR;
-VAR n: INTEGER;
-BEGIN n := ORD(ch);
-  IF n >= 80H THEN
-    IF (410H(*A*) <= n) & (n <= 42FH(*YA*)) THEN n := n - 410H + 80H
-    ELSIF (430H(*a*) <= n) & (n <= 44FH(*ya*)) THEN
-      IF n <= 43FH(*p*) THEN n := n - 430H + 0A0H (*a..p*)
-      ELSE n := n - 440H + 0E0H (*r..ya*)
-      END
-    ELSIF n = 401H(*YO*) THEN n := 0F0H
-    ELSIF n = 451H(*yo*) THEN n := 0F1H
-    ELSIF n = 2116H(*No*) THEN n := 0FCH
-    ELSE n := 0
-    END
-  END ;
-RETURN CHR(n) END ToCP866;
-
 PROCEDURE Refresh*(c: Control);
 BEGIN
   IF c.do.refresh # NIL THEN c.do.refresh(c) END
@@ -1769,7 +1752,7 @@ PROCEDURE EditTextInput*(c: Control; ch: CHAR);
 VAR e: Edit;
 BEGIN
   IF ch # 0X THEN e := c(Edit);
-    InsertChar(ToCP866(ch), e.pos, e.caption, e.len);
+    InsertChar(ch, e.pos, e.caption, e.len);
     IF e.pos < e.len THEN INC(e.pos) END;
     NeedRedraw(c.app); T.ResetCursorBlink
   END
@@ -1971,7 +1954,7 @@ PROCEDURE ColumnListTextInput*(c: Control; ch: CHAR);
 VAR C: ColumnList; n: INTEGER;
 BEGIN C := c(ColumnList);
   IF ch # 0X THEN
-    n := FindFirstLetterInList(C.items, Cap(ToCP866(ch)));
+    n := FindFirstLetterInList(C.items, CAP(ch));
     IF n # -1 THEN ColumnListSetCur(C, n) END
   END
 END ColumnListTextInput;

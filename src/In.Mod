@@ -52,8 +52,7 @@ END Byte;
 
 PROCEDURE ReadChar;
 VAR x, y: INTEGER;
-BEGIN
-  x := GetByte();
+BEGIN x := GetByte();
   IF readstate = ready THEN
     IF cp = utf8 THEN
       IF x > 80H THEN y := GetByte() MOD 64; (* Not 1 byte *)

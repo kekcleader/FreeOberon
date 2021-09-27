@@ -962,7 +962,7 @@ END EditorMouseMove;
 
 PROCEDURE EditorTextInput(c: OV.Control; ch: CHAR);
 BEGIN
-  IF ch # 0X THEN c(Editor).text.InsertChar(OV.ToCP866(ch)); T.ResetCursorBlink;
+  IF ch # 0X THEN c(Editor).text.InsertChar(ch); T.ResetCursorBlink;
     c(Editor).text.selected := FALSE; PrintText(c(Editor))
   END
 END EditorTextInput;

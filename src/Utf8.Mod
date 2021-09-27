@@ -32,7 +32,7 @@ PROCEDURE EncodeEx*(IN in: ARRAY OF CHAR; inLen: INTEGER;
 VAR i, j, val, lim: INTEGER;
 BEGIN Done := TRUE; i := 0; j := 0; lim := LEN(out) - 1;
   IF inLen < 0 THEN inLen := LEN(in) END;
-  WHILE Done & (i < inLen) & (in[i] # 0X) & (j < lim) DO
+  WHILE Done & (i # inLen) & (in[i] # 0X) & (j < lim) DO
     val := ORD(in[i]); INC(i);
     IF val < 128 THEN
       out[j] := SHORT(CHR(val)); INC(j)
@@ -47,7 +47,7 @@ BEGIN Done := TRUE; i := 0; j := 0; lim := LEN(out) - 1;
     END
   END;
   out[j] := 0X; outLen := j;
-  IF in[i] # 0X THEN Done := FALSE END
+  IF (i # inLen) & (in[i] # 0X) THEN Done := FALSE END
 END EncodeEx;
 
 PROCEDURE Encode*(IN in: ARRAY OF CHAR; OUT out: ARRAY OF SHORTCHAR);
@@ -69,5 +69,10 @@ BEGIN c := ORD(s[0]);
     END
   END ;
 RETURN CHR(c) END DecodeChar;
+
+PROCEDURE EncodeChar*(c: CHAR; OUT s: ARRAY OF SHORTCHAR; OUT len: INTEGER);
+VAR q: ARRAY 1 OF CHAR;
+BEGIN q[0] := c; EncodeEx(q, 1, s, len)
+END EncodeChar;
 
 END Utf8.

@@ -57,7 +57,7 @@ TYPE
 
 VAR
   progBuf: ARRAY 16300 OF SHORTCHAR; (* For interacting with a launched program *)
-  inputBuf: ARRAY 16300 OF SHORTCHAR; (* Saves entered chars before Enter pressed *)
+  inputBuf: ARRAY 16300 OF CHAR; (* Saves entered chars before Enter pressed *)
   inputBufLen: INTEGER;
   programFinished: BOOLEAN;
   tempWindowed: BOOLEAN; (* TRUE if editor windowed while program is running *)
@@ -300,26 +300,14 @@ BEGIN
   END
 END PollProgram;
 
-PROCEDURE WriteToProcess(s: ARRAY OF SHORTCHAR; len: INTEGER);
-VAR buf: ARRAY 2048 OF SHORTCHAR; i, bufLen: INTEGER; ch: SHORTCHAR;
-BEGIN
-  bufLen := 0; i := 0;
+PROCEDURE WriteToProcess(s: ARRAY OF CHAR; len: INTEGER);
+VAR buf: ARRAY 2048 OF SHORTCHAR;
+  q: ARRAY 5 OF SHORTCHAR;
+  i, j, L, bufLen: INTEGER;
+BEGIN bufLen := 0; i := 0;
   WHILE i < len DO
-    ch := s[i];
-    IF ch < 80X THEN
-      buf[bufLen] := ch; INC(bufLen)
-    ELSIF ORD(ch) = 240 THEN (* Big cyrillic Yo *)
-      buf[bufLen] := 0D0X; buf[bufLen + 1] := 81X;
-      INC(bufLen, 2)
-    ELSIF ORD(ch) < 224 THEN (* Before small cyrillic R *)
-      buf[bufLen] := 0D0X;
-      buf[bufLen + 1] := SHORT(CHR(ORD(ch) - 128 + 090H));
-      INC(bufLen, 2)
-    ELSE
-      buf[bufLen] := 0D1X;
-      buf[bufLen + 1] := SHORT(CHR(ORD(ch) - 224 + 080H));
-      INC(bufLen, 2)
-    END;
+    Utf8.EncodeChar(s[i], q, L); j := 0;
+    WHILE j # L DO buf[bufLen] := q[j]; INC(bufLen); INC(j) END;
     INC(i)
   END;
   Term.WriteToProcess(buf, bufLen)
@@ -359,8 +347,7 @@ END HandleTerminalKeyDown;
 PROCEDURE HandleTerminalTextInput(s: ARRAY OF CHAR; ch: CHAR);
 BEGIN
   IF (ch # 0X) & (inputBufLen < LEN(inputBuf)) THEN
-    inputBuf[inputBufLen] := SHORT(OV.ToCP866(ch)); INC(inputBufLen);
-    T.Write(OV.ToCP866(ch))
+    inputBuf[inputBufLen] := ch; INC(inputBufLen); T.Write(ch)
   END
 END HandleTerminalTextInput;
 
@@ -393,9 +380,7 @@ RETURN p # NIL END IsSysModule;
 PROCEDURE ModuleExists(IN fname: ARRAY OF CHAR): BOOLEAN;
 VAR F: Files.File;
   exists: BOOLEAN;
-  s: ARRAY 2048 OF SHORTCHAR;
-BEGIN Utf8.Encode(fname, s);
-  F := Files.Old(s); exists := F # NIL;
+BEGIN F := Files.Old(fname); exists := F # NIL;
   IF F # NIL THEN Files.Close(F) END ;
 RETURN exists END ModuleExists;
 
@@ -517,7 +502,6 @@ PROCEDURE Link(IN fname, mod: ARRAY OF CHAR;
     graph: BOOLEAN; list: StrList; VAR exename: ARRAY OF CHAR): BOOLEAN;
 VAR ok: BOOLEAN;
   s: ARRAY 2048 OF CHAR;
-  e2, s2: ARRAY 2048 OF SHORTCHAR;
   res: INTEGER;
 BEGIN ok := RunCommand(fname, mod, TRUE, graph, FALSE, list);
   IF ok THEN (* Move executable file if workDir is non-standard *)
@@ -525,10 +509,7 @@ BEGIN ok := RunCommand(fname, mod, TRUE, graph, FALSE, list);
     exename := 'bin/'; Strings.Append(s, exename);
     IF workDir # Editor.stdPath THEN
       Strings.Insert(workDir, 0, s);
-
-      Utf8.Encode(exename, e2);
-      Utf8.Encode(s, s2);
-      Files.Rename(e2, s2, res);
+      Files.Rename(exename, s, res);
       IF res = 0 THEN exename := s$ END
     END
   END ;
@@ -653,25 +634,24 @@ END FileSave;
 
 PROCEDURE SkipComment(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
 VAR last: CHAR;
-  x: SHORTCHAR;
-BEGIN last := ch; Files.ReadChar(R, x); ch := LONG(x);
+BEGIN last := ch; Files.ReadChar(R, ch);
   WHILE ~R.eof & ((last # '*') OR (ch # ')')) DO
     IF (last = '(') & (ch = '*') THEN SkipComment(R, ch, s) END;
-    last := ch; Files.ReadChar(R, x); ch := LONG(x)
+    last := ch; Files.ReadChar(R, ch)
   END;
-  IF ~R.eof THEN Files.ReadChar(R, x); ch := LONG(x) END;
-  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, x); ch := LONG(x) END
+  IF ~R.eof THEN Files.ReadChar(R, ch) END;
+  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, ch) END
 END SkipComment;
 
 PROCEDURE GetSym(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
-VAR i: INTEGER; x: SHORTCHAR;
+VAR i: INTEGER;
 BEGIN
-  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, x); ch := LONG(x) END;
+  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, ch) END;
   i := 0;
   IF ~R.eof THEN
     IF ch = '(' THEN
-      Files.ReadChar(R, x); ch := LONG(x);
-      IF ch = '*' THEN Files.ReadChar(R, x); ch := LONG(x); SkipComment(R, ch, s)
+      Files.ReadChar(R, ch);
+      IF ch = '*' THEN Files.ReadChar(R, ch); SkipComment(R, ch, s)
       ELSE s[i] := ch; INC(i)
       END
     END;
@@ -680,14 +660,14 @@ BEGIN
             (('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
              ('0' <= ch) & (ch <= '9')) DO
         IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
-        Files.ReadChar(R, x); ch := LONG(x)
+        Files.ReadChar(R, ch)
       END
     ELSE
       WHILE ~R.eof & (ch > ' ') &
             ~(('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
               ('0' <= ch) & (ch <= '9')) DO
         IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
-        Files.ReadChar(R, x); ch := LONG(x)
+        Files.ReadChar(R, ch)
       END
     END
   END;
@@ -701,14 +681,11 @@ VAR F: Files.File;
   top, p: StrList;
   ch: CHAR;
   mod, s, fname2: ARRAY 256 OF CHAR;
-  q: ARRAY 2048 OF SHORTCHAR;
-  x: SHORTCHAR;
   exit: BOOLEAN;
 BEGIN NEW(top); top.next := NIL; p := top;
-  Utf8.Encode(fname, q);
-  F := Files.Old(q);
+  F := Files.Old(fname);
   IF F # NIL THEN
-    Files.Set(R, F, 0); Files.ReadChar(R, x); ch := LONG(x); GetSym(R, ch, s);
+    Files.Set(R, F, 0); Files.ReadChar(R, ch); GetSym(R, ch, s);
     ok := s = 'MODULE'; GetSym(R, ch, s); GetSym(R, ch, s); (*!FIXME check module name*)
     IF ok THEN
       ok := s = ';'; GetSym(R, ch, s);

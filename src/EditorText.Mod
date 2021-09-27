@@ -321,29 +321,15 @@ BEGIN
   buf[i] := 0X
 END CopySelection;
 
-PROCEDURE WriteString(VAR r: Files.Rider; s: ARRAY OF CHAR);
-VAR i: INTEGER; ch: CHAR;
-BEGIN
-  i := 0; s[LEN(s) - 1] := 0X;
-  WHILE s[i] # 0X DO
-    ch := s[i];
-    IF ORD(ch) < 128 THEN Files.WriteChar(r, SHORT(ch)) (* ASCII *)
-    ELSIF ORD(ch) = 240 THEN (* Big cyrillic Yo *)
-      Files.WriteChar(r, 0D0X); Files.WriteChar(r, 81X)
-    ELSIF ORD(ch) < 224 THEN (* Before small cyrillic R *)
-      Files.WriteChar(r, 0D0X);
-      Files.WriteChar(r, SHORT(CHR(ORD(ch) - 128 + 090H)))
-    ELSE
-      Files.WriteChar(r, 0D1X);
-      Files.WriteChar(r, SHORT(CHR(ORD(ch) - 224 + 080H)))
-    END;
-    INC(i)
-  END
+PROCEDURE WriteString(VAR r: Files.Rider; IN s: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN i := 0;
+  WHILE (i # LEN(s)) & (s[i] # 0X) DO Files.WriteChar(r, s[i]); INC(i) END
 END WriteString;
 
 PROCEDURE WriteLn(VAR r: Files.Rider);
 BEGIN
-  IF Config.isWindows THEN Files.WriteChar(r, 0DX) END;
+  IF Config.isWindows THEN Files.WriteChar(r, 0DX) END;(*!TODO crossplatform*)
   Files.WriteChar(r, 0AX)
 END WriteLn;
 
@@ -362,11 +348,9 @@ PROCEDURE (t: Text) SaveToFile*(fname: ARRAY OF CHAR): BOOLEAN, NEW;
 VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
   L: Line;
-  s: ARRAY 2048 OF SHORTCHAR;
 BEGIN success := FALSE;
   FixFname(fname);
-  Utf8.Encode(fname, s);
-  f := Files.New(s);
+  f := Files.New(fname);
   IF f # NIL THEN (*!FIXME error checking is wrong *)
     Files.Set(r, f, 0);
     L := t.first;
@@ -388,26 +372,16 @@ BEGIN success := FALSE;
 RETURN success END SaveToFile;
 
 PROCEDURE ReadLine(VAR r: Files.Rider; L: Line);
-VAR x: SHORTCHAR; ch: CHAR; i: INTEGER;
+VAR ch: CHAR; i: INTEGER;
 BEGIN i := 0;
-  Files.ReadChar(r, x); ch := LONG(x);
+  Files.ReadChar(r, ch);
   WHILE ~r.eof & (i < LEN(L.s) - 1) & (ch # 0AX) & (ch # 0DX) DO
-    IF ORD(ch) < 128 THEN L.s[i] := ch
-    ELSIF ch = 0D0X THEN
-      Files.ReadChar(r, x); ch := LONG(x);
-      IF ch = 081X THEN L.s[i] := CHR(240) (* Big Yo *)
-      ELSE L.s[i] := CHR(ORD(ch) - 16)
-      END
-    ELSIF ch = 0D1X THEN
-      Files.ReadChar(r, x); ch := LONG(x); L.s[i] := CHR(ORD(ch) + 96)
-    END;
-    Files.ReadChar(r, x); ch := LONG(x);
-    INC(i)
+    L.s[i] := ch; Files.ReadChar(r, ch); INC(i)
   END;
   L.s[i] := 0X;
   IF ch = 0DX THEN
     L.lineEndLen := 2; (* Assume CRLF (DOS) *)
-    Files.ReadChar(r, x) (* Skip LF *)
+    Files.ReadChar(r, ch) (* Skip LF *)
   ELSE L.lineEndLen := 1 (* Assume LF (UNIX) *)
   END
 END ReadLine;
@@ -416,12 +390,10 @@ PROCEDURE (t: Text) LoadFromFile*(fname: ARRAY OF CHAR): BOOLEAN, NEW;
 VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
   L: Line;
-  s: ARRAY 2048 OF SHORTCHAR;
 BEGIN success := FALSE;
   IF fname[0] # 0X THEN
     FixFname(fname);
-    Utf8.Encode(fname, s);
-    f := Files.Old(s);
+    f := Files.Old(fname);
     IF f # NIL THEN
       Files.Set(r, f, 0);
       L := NewLine();
