@@ -32,7 +32,7 @@ $OFR -7w StrList.Mod
 
 $OFR -7w Dir.Mod
 
-$OFR -C -i SDL2.Mod
+$OFR -Ci SDL2.Mod
 
 $OFR -C Graph.Mod
 
@@ -46,7 +46,7 @@ $OFR -C EditorText.Mod
 
 $OFR -C Editor.Mod
 
-$OFR -C -m FreeOberon.Mod
+$OFR -Cm FreeOberon.Mod
 
 
 
