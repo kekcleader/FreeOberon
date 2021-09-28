@@ -30,7 +30,7 @@ ECHO ON
   -I %OFRDIR%\Lib\Obj ^
   %ONAME%.c -o %ONAME%.exe ^
   %ARGS%^
-  %CURDIR%libFreeOberon.a ^
+  %CURDIR%FreeOberon.a ^
   %OFRDIR%\Lib\Ofront.a
 @SET RETCODE=%ERRORLEVEL%
 

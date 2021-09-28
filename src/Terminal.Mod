@@ -184,6 +184,8 @@ END GoToXY;
 
 PROCEDURE MouseXY*(x, y: INTEGER);
 BEGIN needRedraw := TRUE;
+  IF x < 0 THEN x := 0 ELSIF x >= charsX THEN x := charsX - 1 END;
+  IF y < 0 THEN y := 0 ELSIF y >= charsY THEN y := charsY - 1 END;
   chars[mouseY, mouseX].updated := TRUE;
   mouseX := x; mouseY := y;
   chars[mouseY, mouseX].updated := TRUE

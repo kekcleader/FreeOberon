@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT G := Graph, T := Terminal, Files, Args, Utf8,
-       OV, Editor, Term, Config, Strings, Int, Out;
+       OV, Editor, Term, Config, Strings, Int, Out, Kernel;
 CONST
   version* = '1.0.4';
 
