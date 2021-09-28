@@ -35,7 +35,7 @@ TYPE
   LineDesc* = RECORD
     s*: String;
     len*: INTEGER; (* Actual amount characters before 0X *)
-    lineEndLen*: INTEGER; (* Character count of "CRLF" (1 or 2) *)
+    lineEndLen*: INTEGER; (* Character count of LF or CRLF (1 or 2) *)
     comLevel*: INTEGER; (* Comment level in start of string *)
     prev*, next*: Line
   END;
@@ -46,8 +46,10 @@ TYPE
     first*, last*, cur*: Line; (* First, last and current lines *)
     scrFirst*: Line; (* First line seen on screen *)
     selected*: BOOLEAN; (* Is something selected *)
-    selL*, selR*, selT*, selB*: INTEGER; (* Selection left, right, top and bottom *)
-    changed*: BOOLEAN
+    selL*, selR*, selT*, selB*: INTEGER; (* Selection left, right, top, bot. *)
+    changed*: BOOLEAN;
+    newLineCreated*: BOOLEAN; (* TRUE after Enter but before any edits/moves *)
+    winLineEndings*: BOOLEAN (* True if most lines had CRLF line endings *)
   END;
 
 (* Line *)
@@ -93,7 +95,8 @@ BEGIN t.cur := NewLine();
   t.first := t.cur; t.last := t.cur;
   t.scrFirst := t.cur;
   t.x := 0; t.y := 0; t.scrY := 0;
-  t.selected := FALSE; t.changed := FALSE
+  t.selected := FALSE; t.changed := FALSE;
+  t.newLineCreated := FALSE; t.winLineEndings := FALSE
 END InitText;
 
 PROCEDURE NewText*(): Text;
@@ -240,14 +243,15 @@ BEGIN
     t.selected := FALSE
   ELSIF t.x < t.cur.len THEN
     t.cur.Delete(t.x, 1)
-  ELSIF t.cur.next # NIL THEN (* Курсор в конце строки и после неё есть ещё строка *)
+  ELSIF t.cur.next # NIL THEN (* Cursor at line end & this line is not last *)
     t.Combine2Lines(t.cur)
   END
 END HandleDelete;
 
 PROCEDURE (t: Text) HandleEnter*(autoIndent: BOOLEAN), NEW;
 VAR L: Line; i, spaces: INTEGER;
-BEGIN L := NewLine(); spaces := 0;
+BEGIN t.MaybeRemoveIndent; L := NewLine(); spaces := 0;
+  IF t.winLineEndings THEN L.lineEndLen := 2 ELSE L.lineEndLen := 1 END;
   IF t.x = 0 THEN (* Начало строки *)
     IF t.cur.prev # NIL THEN t.cur.prev.next := L END;
     L.next := t.cur; L.prev := t.cur.prev;
@@ -256,8 +260,7 @@ BEGIN L := NewLine(); spaces := 0;
     IF t.scrFirst = t.cur THEN t.scrFirst := L END
   ELSE (* Середина или конец строки *)
     IF autoIndent THEN
-      WHILE (spaces < t.cur.len) & (t.cur.s[spaces] = ' ')
-      DO INC(spaces) END;
+      WHILE (spaces < t.cur.len) & (t.cur.s[spaces] = ' ') DO INC(spaces) END;
       FOR i := 0 TO spaces - 1 DO L.s[i] := ' ' END
     END;
     IF t.x < t.cur.len THEN (* Перенести вторую часть строки *)
@@ -272,8 +275,7 @@ BEGIN L := NewLine(); spaces := 0;
     IF t.last = t.cur THEN t.last := L END;
     t.cur := L
   END;
-  t.x := spaces; INC(t.y);
-  t.changed := TRUE
+  t.x := spaces; INC(t.y); t.newLineCreated := TRUE; t.changed := TRUE
 END HandleEnter;
 
 PROCEDURE (t: Text) InsertChar*(ch: CHAR), NEW;
@@ -327,9 +329,9 @@ BEGIN i := 0;
   WHILE (i # LEN(s)) & (s[i] # 0X) DO Files.WriteChar(r, s[i]); INC(i) END
 END WriteString;
 
-PROCEDURE WriteLn(VAR r: Files.Rider);
+PROCEDURE WriteLn(VAR r: Files.Rider; writeCr: BOOLEAN);
 BEGIN
-  IF Config.isWindows THEN Files.WriteChar(r, 0DX) END;(*!TODO crossplatform*)
+  IF writeCr THEN Files.WriteChar(r, 0DX) END;
   Files.WriteChar(r, 0AX)
 END WriteLn;
 
@@ -356,12 +358,7 @@ BEGIN success := FALSE;
     L := t.first;
     WHILE L # NIL DO
       WriteString(r, L.s);
-      IF L.next # NIL THEN
-        WriteLn(r);
-        IF Config.isWindows THEN L.lineEndLen := 2 (*!FIXME*)
-        ELSE L.lineEndLen := 1
-        END
-      END;
+      IF L.next # NIL THEN WriteLn(r, L.lineEndLen = 2) END;
       L := L.next
     END;
     Files.Register(f);
@@ -381,7 +378,8 @@ BEGIN i := 0;
   L.s[i] := 0X;
   IF ch = 0DX THEN
     L.lineEndLen := 2; (* Assume CRLF (DOS) *)
-    Files.ReadChar(r, ch) (* Skip LF *)
+    Files.ReadChar(r, ch); (* Skip LF *)
+    IF ch # 0AX THEN Out.String('Bad text file: 0DX without 0AX.'); Out.Ln END
   ELSE L.lineEndLen := 1 (* Assume LF (UNIX) *)
   END
 END ReadLine;
@@ -390,7 +388,8 @@ PROCEDURE (t: Text) LoadFromFile*(fname: ARRAY OF CHAR): BOOLEAN, NEW;
 VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
   L: Line;
-BEGIN success := FALSE;
+  lf, crlf: INTEGER; (* Count of CR and CRLF line endings *)
+BEGIN success := FALSE; lf := 0; crlf := 0;
   IF fname[0] # 0X THEN
     FixFname(fname);
     f := Files.Old(fname);
@@ -401,12 +400,14 @@ BEGIN success := FALSE;
       ReadLine(r, L);
       L.len := Strings.Length(L.s);
       WHILE ~r.eof DO
+        IF L.lineEndLen = 2 THEN INC(crlf) ELSE INC(lf) END;
         L.next := NewLine();
         L.next.prev := L;
         L := L.next;
         ReadLine(r, L);
         L.len := Strings.Length(L.s)
       END;
+      t.winLineEndings := crlf > lf;
       t.last := L; t.x := 0; t.y := 0; t.scrY := 0;
       t.selected := FALSE;
       Files.Close(f);
