@@ -635,7 +635,7 @@ TYPE
 
   Scrollbar* = POINTER TO ScrollbarDesc;
   ScrollbarDesc* = EXTENSIBLE RECORD(ControlDesc)
-    max*, cur*, step*: INTEGER; (* cur is runner position in range 0..max *)
+    max*, cur*: INTEGER; (* cur is runner position in range 0..max *)
     runnerOffset*: INTEGER; (* Current visual position of runner *)
     runnerW*: INTEGER; (* Visual width of runner *)
     onScrollbar*: PROCEDURE (c: Control)
@@ -1584,7 +1584,7 @@ END InitWinBtnMethod;
 
 PROCEDURE InitScrollbar*(c: Scrollbar);
 BEGIN InitControl(c); c.max := 100; c.runnerOffset := 1; c.runnerW := 5;
-  c.step := 1; c.w := 30; c.h := 1; c.cur := 0; c.onScrollbar := NIL;
+  c.w := 30; c.h := 1; c.cur := 0; c.onScrollbar := NIL;
   c.do := scrollbarMethod
 END InitScrollbar;
 

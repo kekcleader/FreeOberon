@@ -109,6 +109,7 @@ BEGIN L := c.colFiles.items;
   OV.EditSetCaption(c.edtFilename, s);
 
   OV.ColumnListSetCur(c.colFiles, 0);
+  OV.Refresh(c.colFiles);
   OV.NeedRedraw(c.app)
 END FileDialogUpdateFileList;
 
