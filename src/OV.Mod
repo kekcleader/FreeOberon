@@ -2377,13 +2377,17 @@ BEGIN t := p.tabIndex; next := NIL;
   END ;
 RETURN next END FindNextTabControl;
 
-PROCEDURE OnTabPress(app: App; back: BOOLEAN);
+PROCEDURE OnTabPress(app: App; back: BOOLEAN): BOOLEAN;
 VAR p: Control;
-BEGIN p := app.cur;
+  worked: BOOLEAN;
+BEGIN worked := FALSE; p := app.cur;
   IF p # NIL THEN p := FindNextTabControl(p, back);
-    IF p # NIL THEN SetAppFocus(app, p) END
-  END
-END OnTabPress;
+    IF (p # NIL) & (p # app.cur) THEN
+      SetAppFocus(app, p);
+      worked := TRUE
+    END
+  END ;
+RETURN worked END OnTabPress;
 
 PROCEDURE OnKeyDown(app: App; key: G.Key);
 VAR handled: BOOLEAN; p: Control;
@@ -2399,13 +2403,13 @@ BEGIN handled := FALSE; p := app.cur;
   IF ~handled THEN
     IF (key.code = G.kEnter) & (key.mod * G.mAlt # {}) THEN
       T.ToggleFullscreen
-    ELSIF (p # NIL) & (key.code = G.kTab) THEN
-      OnTabPress(app, key.mod * G.mShift # {})
     ELSIF p # NIL THEN
-      IF p.do.keyDown # NIL THEN p.do.keyDown(p, key) END;
-      IF (p.parent # NIL) & (p.parent IS Window) &
-         (p.parent.do.keyDown # NIL) THEN
-        p.parent.do.keyDown(p.parent, key)
+      IF (key.code # G.kTab) OR ~OnTabPress(app, key.mod * G.mShift # {}) THEN
+        IF p.do.keyDown # NIL THEN p.do.keyDown(p, key) END;
+        IF (p.parent # NIL) & (p.parent IS Window) &
+           (p.parent.do.keyDown # NIL) THEN
+          p.parent.do.keyDown(p.parent, key)
+        END
       END
     END
   END

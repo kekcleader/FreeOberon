@@ -89,18 +89,19 @@ BEGIN
   Insert(source, pos, dest)
 END Replace;
 
-PROCEDURE Extract*(IN source: ARRAY OF CHAR; pos, n: INTEGER; VAR dest: ARRAY OF CHAR);
+PROCEDURE Extract*(IN source: ARRAY OF CHAR; pos, n: INTEGER;
+    VAR dest: ARRAY OF CHAR);
 VAR len, destLen, i: INTEGER;
-BEGIN
-  len := Length(source); destLen := LEN(dest) - 1;
-  IF pos < 0 THEN pos := 0 END;
-  IF pos >= len THEN dest[0] := 0X; RETURN END;
-  i := 0;
-  WHILE (pos + i <= LEN(source)) & (source[pos + i] # 0X) & (i < n) DO
-    IF i < destLen THEN dest[i] := source[pos + i] END;
-    INC(i)
-  END;
-  dest[i] := 0X
+BEGIN len := Length(source);
+  IF pos < 0 THEN pos := 0 ELSIF pos >= len THEN dest[0] := 0X
+  ELSE i := 0; destLen := LEN(dest) - 1;
+    IF n >= destLen THEN n := destLen - 1 END;
+    WHILE (pos + i <= len) & (source[pos + i] # 0X) & (i < n) DO
+      IF i < destLen THEN dest[i] := source[pos + i] END;
+      INC(i)
+    END;
+    dest[i] := 0X
+  END
 END Extract;
 
 PROCEDURE Pos*(IN pattern, s: ARRAY OF CHAR; pos: INTEGER): INTEGER;

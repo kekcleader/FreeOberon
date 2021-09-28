@@ -248,17 +248,34 @@ BEGIN
   END
 END HandleDelete;
 
+PROCEDURE (t: Text) MaybeRemoveIndent*, NEW;
+VAR i: INTEGER;
+  L: Line;
+BEGIN
+  IF t.newLineCreated & (t.x = t.cur.len) THEN
+    L := t.cur; i := 0;
+    WHILE (L.s[i] # 0X) & (L.s[i] = ' ') DO INC(i) END;
+    IF L.s[i] = 0X THEN
+      t.x := 0; L.len := 0; L.s[0] := 0X;
+      t.changed := TRUE
+    END;
+    t.newLineCreated := FALSE
+  END
+END MaybeRemoveIndent;
+
 PROCEDURE (t: Text) HandleEnter*(autoIndent: BOOLEAN), NEW;
-VAR L: Line; i, spaces: INTEGER;
-BEGIN t.MaybeRemoveIndent; L := NewLine(); spaces := 0;
+VAR L: Line; x, i, spaces: INTEGER;
+BEGIN x := t.x; IF autoIndent THEN t.MaybeRemoveIndent END;
+  L := NewLine(); spaces := 0;
   IF t.winLineEndings THEN L.lineEndLen := 2 ELSE L.lineEndLen := 1 END;
-  IF t.x = 0 THEN (* Начало строки *)
+  IF (t.x = 0) & (t.cur.len # 0) THEN (* Начало непустой строки *)
     IF t.cur.prev # NIL THEN t.cur.prev.next := L END;
     L.next := t.cur; L.prev := t.cur.prev;
     t.cur.prev := L;
     IF t.first = t.cur THEN t.first := L END;
     IF t.scrFirst = t.cur THEN t.scrFirst := L END
   ELSE (* Середина или конец строки *)
+    IF t.x = 0 THEN spaces := x END;
     IF autoIndent THEN
       WHILE (spaces < t.cur.len) & (t.cur.s[spaces] = ' ') DO INC(spaces) END;
       FOR i := 0 TO spaces - 1 DO L.s[i] := ' ' END
@@ -268,8 +285,7 @@ BEGIN t.MaybeRemoveIndent; L := NewLine(); spaces := 0;
         L.s[i + spaces] := t.cur.s[i + t.x]
       END
     END;
-    L.len := t.cur.len + spaces - t.x;
-    t.cur.s[t.x] := 0X; t.cur.len := t.x;
+    L.len := t.cur.len + spaces - t.x; t.cur.s[t.x] := 0X; t.cur.len := t.x;
     IF t.cur.next # NIL THEN t.cur.next.prev := L END;
     L.next := t.cur.next; L.prev := t.cur; t.cur.next := L;
     IF t.last = t.cur THEN t.last := L END;
@@ -279,12 +295,13 @@ BEGIN t.MaybeRemoveIndent; L := NewLine(); spaces := 0;
 END HandleEnter;
 
 PROCEDURE (t: Text) InsertChar*(ch: CHAR), NEW;
-BEGIN t.cur.InsertChar(ch, t.x); INC(t.x); t.changed := TRUE
+BEGIN t.newLineCreated := FALSE;
+  t.cur.InsertChar(ch, t.x); INC(t.x); t.changed := TRUE
 END InsertChar;
 
 PROCEDURE (t: Text) Insert*(s: ARRAY OF CHAR; autoIndent: BOOLEAN), NEW;
 VAR i: INTEGER;
-BEGIN
+BEGIN t.newLineCreated := FALSE;
   i := 0;
   WHILE (i < LEN(s)) & (s[i] # 0X) DO
     IF s[i] = 0AX THEN (* Line Feed *)
@@ -301,7 +318,8 @@ BEGIN t.cur := NewLine(); t.first := t.cur;
   t.last := t.cur; t.scrFirst := t.cur;
   t.x := 0; t.y := 0;
   t.selected := FALSE;
-  t.changed := TRUE
+  t.changed := TRUE;
+  t.newLineCreated := FALSE
 END Clear;
 
 PROCEDURE (t: Text) CopySelection*(VAR buf: ARRAY OF CHAR), NEW;

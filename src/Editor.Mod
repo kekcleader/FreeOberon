@@ -708,8 +708,7 @@ END MoveScreen;
 (* Moves input cursor up and down *)
 PROCEDURE MoveByLine(c: Editor; down, viaHoriz: BOOLEAN);
 VAR moved: BOOLEAN;
-BEGIN
-  moved := FALSE;
+BEGIN c.text.MaybeRemoveIndent; moved := FALSE;
   IF down THEN
     IF c.text.cur.next # NIL THEN
       HandleSelection(c, dirDown, viaHoriz);
@@ -735,7 +734,7 @@ END MoveByLine;
 (* Moves input cursor up and down by page *)
 PROCEDURE MoveByPage(c: Editor; down: BOOLEAN);
 VAR i: INTEGER; moved: BOOLEAN;
-BEGIN i := c.h - 3;
+BEGIN c.text.MaybeRemoveIndent; i := c.h - 3;
   IF down THEN
     moved := c.text.cur.next # NIL;
     WHILE (i > 0) & (c.text.cur.next # NIL) DO
@@ -746,7 +745,9 @@ BEGIN i := c.h - 3;
   ELSE (* Up *)
     moved := c.text.cur.prev # NIL;
     WHILE (i > 0) & (c.text.cur.prev # NIL) DO
-      IF c.text.scrY > 0 THEN c.text.scrFirst := c.text.scrFirst.prev; DEC(c.text.scrY) END;
+      IF c.text.scrY > 0 THEN
+        c.text.scrFirst := c.text.scrFirst.prev; DEC(c.text.scrY)
+      END;
       MoveByLine(c, FALSE, FALSE);
       DEC(i)
     END
@@ -758,14 +759,14 @@ END MoveByPage;
 (* Moves input cursor left and right by one char *)
 PROCEDURE MoveInLine(c: Editor; right: BOOLEAN);
 BEGIN
-  IF right THEN
+  IF right THEN c.text.MaybeRemoveIndent;
     IF c.text.x < c.text.cur.len THEN
       HandleSelection(c, dirRight, FALSE); INC(c.text.x)
     ELSIF c.text.cur.next # NIL THEN
       MoveByLine(c, TRUE, TRUE);
       c.text.x := 0;
     END
-  ELSE (* Left *)
+  ELSE (* Left *) c.text.newLineCreated := FALSE;
     IF c.text.x > 0 THEN
       HandleSelection(c, dirLeft, FALSE); DEC(c.text.x)
     ELSIF c.text.cur.prev # NIL THEN
@@ -839,10 +840,7 @@ END HandleDelete;
 PROCEDURE HandleTab(e: Editor; shift: BOOLEAN);
 BEGIN
   IF shift THEN e.text.RemoveIndent
-  ELSIF e.text.WholeLineSelected() THEN
-    IF shift THEN e.text.RemoveIndent
-    ELSE e.text.AddIndent
-    END
+  ELSIF e.text.WholeLineSelected() THEN e.text.AddIndent
   ELSE
     IF e.text.selected THEN e.text.DeleteSelection END;
     e.text.InsertChar(' ');
@@ -952,13 +950,11 @@ BEGIN OV.WindowMouseDown(c, x, y, button);
 END EditorMouseDown;
 
 PROCEDURE EditorMouseUp*(c: OV.Control; x, y, button: INTEGER);
-BEGIN
-  OV.WindowMouseUp(c, x, y, button)
+BEGIN OV.WindowMouseUp(c, x, y, button)
 END EditorMouseUp;
 
 PROCEDURE EditorMouseMove*(c: OV.Control; x, y: INTEGER; buttons: SET);
-BEGIN
-  OV.WindowMouseMove(c, x, y, buttons)
+BEGIN OV.WindowMouseMove(c, x, y, buttons)
 END EditorMouseMove;
 
 PROCEDURE EditorTextInput(c: OV.Control; ch: CHAR);
