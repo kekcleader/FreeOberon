@@ -12,7 +12,7 @@ BEGIN
   FOR i := 0 TO N - 1 DO
     x[i] := s.w * G.Uniform();
     y[i] := s.h * G.Uniform();
-    vx[i] := 0; vy[i] := -G.Uniform() * 5 - 0.3
+    vx[i] := 0.0; vy[i] := -G.Uniform() * 5 - 0.3
   END;
   REPEAT
     G.ClearScreen;
