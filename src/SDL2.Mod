@@ -482,7 +482,13 @@ PROCEDURE -ConvertSurface*(src: Surface; fmt: PixelFormat;
     flags: INTEGER): Surface "(void *)SDL_ConvertSurface(src, fmt, flags)";
 
 PROCEDURE -SetSurfaceColorMod*(surface: Surface; r, g, b: INTEGER)
-    "SDL_SetSurfaceColorMod(surface, r, g, b)";
+    "SDL_SetSurfaceColorMod((void *)surface, r, g, b)";
+
+PROCEDURE -SetTextureColorMod*(texture: Texture; r, g, b: INTEGER)
+    "SDL_SetTextureColorMod((void *)texture, r, g, b)";
+
+PROCEDURE -SetTextureAlphaMod*(texture: Texture; alpha: INTEGER)
+    "SDL_SetTextureAlphaMod((void *)texture, alpha)";
 
 PROCEDURE -GetKeyboardState*(VAR numKeys: INTEGER): KeyArray
     "SDL_GetKeyboardState(numKeys)";
@@ -509,5 +515,11 @@ PROCEDURE -SetWindowFullscreen*(window: Window; flags: SET): INTEGER
 
 PROCEDURE -SetSurfaceAlphaMod*(surface: Surface; alpha: BYTE): INTEGER
     "SDL_SetSurfaceAlphaMod(surface, alpha)";
+
+PROCEDURE -SetClipRect*(surface: Surface; VAR rect: Rect): INTEGER
+    "SDL_SetClipRect(surface, rect)";
+
+PROCEDURE -SetClipRectNil*(surface: Surface): INTEGER
+    "SDL_SetClipRect(surface, (void *)0)";
 
 END SDL2.

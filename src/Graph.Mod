@@ -16,13 +16,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT SDL := SDL2, SYSTEM, Platform, Out, Utf8;
+IMPORT SDL := SDL2, SYSTEM, Platform, Out, Utf8, Strings, Texts;
 
 CONST
   (* Flip Flags *)
   flipNone* = {};
   flipH*    = 0;
   flipV*    = 1;
+  flipHV*   = flipH + flipV;
 
   (* Draw Mode Flags *)
   drawSpriteNormal* = 0;
@@ -54,9 +55,6 @@ CONST
   btnLeft*  = 0;
   btnRight* = 1;
   btnMid*   = 2;
-
-  (* Random Modulo *)
-  randomModulo* = 2147483647; (* =2^31-1 *)
 
   (* Key Codes *)
   kA*           = 4;
@@ -199,12 +197,24 @@ TYPE
     w*, h*: INTEGER
   END;
 
-  Font* = POINTER TO FontDesc;
-  FontDesc* = RECORD
+  MonoFont* = POINTER TO MonoFontDesc;
+  MonoFontDesc* = RECORD
     bmp*: Bitmap;
     charW*, charH*: INTEGER;
     charRows*, charsInRow*: INTEGER;
     sprites*: POINTER TO ARRAY OF ARRAY OF SDL.Rect
+  END;
+
+  CharGeo* = RECORD
+    w*, x*, y*: INTEGER
+  END;
+
+  Font* = POINTER TO FontDesc;
+  FontDesc* = RECORD
+    bmp*: Bitmap;
+    geo*: ARRAY 512 OF CharGeo;
+    geoCount*: INTEGER;
+    h*: INTEGER
   END;
 
   KeyArray = SDL.KeyArray;
@@ -256,6 +266,7 @@ VAR
   buffer: Bitmap;
   lastFlip: INTEGER;
   frames, framesT: INTEGER;
+  screenAlpha: INTEGER;
 
   (* Flip Region *)
   flipRegion: Region;
@@ -271,13 +282,11 @@ VAR
   mousePointer: Bitmap;
   underMouse: Bitmap; (* Buffer to copy part of image under the mouse *)
 
-  randomSeed-: INTEGER;
-
 PROCEDURE -AAIncludeSDL2h0 '#include "SDL2.h0"';
 
 (* General *)
 
-PROCEDURE GetError*(VAR s: ARRAY OF CHAR);
+PROCEDURE GetError*(OUT s: ARRAY OF CHAR);
 TYPE P = POINTER TO ARRAY 2048 OF SHORTCHAR;
 VAR p: P;
 BEGIN p := SYSTEM.VAL(P, SDL.GetError()); Utf8.Decode(p^, s)
@@ -356,6 +365,14 @@ BEGIN
   b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -16)) * {0..7})
 END ColorToRGB;
 
+PROCEDURE ColorToRGBA*(color: INTEGER; VAR r, g, b, a: INTEGER);
+BEGIN
+  r := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, color) * {0..7});
+  g := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -8)) * {0..7});
+  b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -16)) * {0..7});
+  a := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -24)) * {0..7})
+END ColorToRGBA;
+
 PROCEDURE BmpCol*(bmp: Bitmap; r, g, b: INTEGER): INTEGER;
 BEGIN RETURN SDL.MapRGB(bmp.surface.format, SHORT(r), SHORT(g), SHORT(b))
 END BmpCol;
@@ -403,6 +420,14 @@ BEGIN
     SDL.UnlockSurface(bmp.surface)
   END
 END PutPixel;
+
+PROCEDURE GetPixelFast*(bmp: Bitmap; x, y: INTEGER): INTEGER;
+VAR color: INTEGER;
+  n: ADRINT;
+BEGIN n := SYSTEM.VAL(ADRINT, bmp.surface.pixels);
+  INC(n, (y * bmp.w + x) * 4);
+  SYSTEM.GET(n, color) ;
+RETURN color END GetPixelFast;
 
 PROCEDURE GetPixel*(bmp: Bitmap; x, y: INTEGER): INTEGER;
 VAR color: INTEGER;
@@ -561,26 +586,27 @@ PROCEDURE DestroyBitmap*(bmp: Bitmap);
 BEGIN SDL.FreeSurface(bmp.surface)
 END DestroyBitmap;
 
-PROCEDURE LoadBitmap*(filename: ARRAY OF CHAR): Bitmap;
+PROCEDURE LoadBitmap*(IN filename: ARRAY OF CHAR): Bitmap;
 VAR bmp: Bitmap;
-BEGIN NEW(bmp); bmp.surface := SDL.ImgLoad(SHORT(filename));
+  s: ARRAY 2048 OF SHORTCHAR;
+BEGIN NEW(bmp); Utf8.Encode(filename, s); bmp.surface := SDL.ImgLoad(s);
   IF bmp.surface = NIL THEN bmp := NIL
   ELSE bmp.w := bmp.surface.w; bmp.h := bmp.surface.h END ;
 RETURN bmp END LoadBitmap;
 
-PROCEDURE SaveBmp*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
-BEGIN
-  RETURN SDL.SaveBmpRW(bmp.surface, SDL.RWFromFile(SHORT(filename), 'wb'), 1) = 0
-END SaveBmp;
+PROCEDURE SaveBmp*(bmp: Bitmap; IN filename: ARRAY OF CHAR): BOOLEAN;
+VAR s: ARRAY 2048 OF SHORTCHAR;
+BEGIN Utf8.Encode(filename, s) ;
+RETURN SDL.SaveBmpRW(bmp.surface, SDL.RWFromFile(s, 'wb'), 1) = 0 END SaveBmp;
 
-PROCEDURE SavePng*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
-VAR s: ARRAY 1024 OF SHORTCHAR;
-BEGIN Utf8.Encode(filename, s);
+PROCEDURE SavePng*(bmp: Bitmap; IN filename: ARRAY OF CHAR): BOOLEAN;
+VAR s: ARRAY 2048 OF SHORTCHAR;
+BEGIN Utf8.Encode(filename, s) ;
 RETURN SDL.ImgSavePng(bmp.surface, s) = 0 END SavePng;
 
-PROCEDURE SaveJpg*(bmp: Bitmap; filename: ARRAY OF CHAR): BOOLEAN;
-VAR s: ARRAY 1024 OF SHORTCHAR;
-BEGIN Utf8.Encode(filename, s);
+PROCEDURE SaveJpg*(bmp: Bitmap; IN filename: ARRAY OF CHAR): BOOLEAN;
+VAR s: ARRAY 2048 OF SHORTCHAR;
+BEGIN Utf8.Encode(filename, s) ;
 RETURN SDL.ImgSaveJpg(bmp.surface, s) = 0 END SaveJpg;
 
 PROCEDURE Blit*(src, dest: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER);
@@ -589,6 +615,49 @@ BEGIN a.x := sx; a.y := sy; a.w := sw; a.h := sh;
   b.x := dx; b.y := dy;
   SDL.BlitSurface(src.surface, a, dest.surface, b)
 END Blit;
+
+(*!FIXME remove FlipBlit *)
+PROCEDURE FlipBlit*(src, dest: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER;
+    hFlip: BOOLEAN);
+VAR x, y, sx0: INTEGER;
+  c1, c2, r1, r2, g1, g2, b1, b2, a1, a2: INTEGER;
+BEGIN
+  IF ~hFlip THEN Blit(src, dest, sx, sy, sw, sh, dx, dy)
+  ELSE
+    IF sx < 0 THEN DEC(sw, -sx); INC(dx, -sx); sx := 0
+    ELSIF sx + sw - 1 >= src.w THEN DEC(sw, sx + sw - 1 - src.w)
+    ELSIF dx + sw - 1 >= dest.w THEN DEC(sw, dx + sw - 1 - dest.w)
+    END;
+    IF sy < 0 THEN DEC(sh, -sy); INC(dy, -sy); sy := 0
+    ELSIF sy + sh - 1 >= src.h THEN DEC(sh, sy + sh - 1 - src.h)
+    ELSIF dy + sh - 1 >= dest.h THEN DEC(sh, dy + sh - 1 - dest.h)
+    END;
+    LockBitmap(src);
+    LockBitmap(dest);
+    sx0 := sx + sw - 1;
+    FOR y := dy TO dy + sh - 1 DO
+      sx := sx0;
+      FOR x := dx TO dx + sw - 1 DO
+        c1 := GetPixelFast(src, sx, sy);
+        ColorToRGBA(c1, r1, g1, b1, a1);
+        IF a1 # 0 THEN
+          c2 := GetPixelFast(dest, x, y);
+          ColorToRGBA(c2, r2, g2, b2, a2);
+          IF a1 # 255 THEN
+            c1 := MakeCol((r1 * a1 + r2 * (255 - a1)) DIV 256, 
+                (g1 * a1 + g2 * (255 - g1)) DIV 256, 
+                (b1 * a1 + b2 * (255 - b1)) DIV 256)
+          END;
+          PutPixelFast(dest, x, y, c1)
+        END;
+        DEC(sx)
+      END;
+      INC(sy)
+    END;
+    UnlockBitmap(dest);
+    UnlockBitmap(src)
+  END
+END FlipBlit;
 
 PROCEDURE BlitWhole*(src, dest: Bitmap; x, y: INTEGER);
 VAR b: SDL.Rect;
@@ -604,10 +673,25 @@ BEGIN
   SDL.BlitScaled(src.surface, a, dest.surface, b)
 END StretchBlit;
 
+PROCEDURE SetScreenAlpha*(alpha: INTEGER);
+BEGIN screenAlpha := alpha
+END SetScreenAlpha;
+
 PROCEDURE SetAlpha*(bmp: Bitmap; alpha: INTEGER);
 BEGIN
   IF SDL.SetSurfaceAlphaMod(bmp.surface, SYSTEM.VAL(BYTE, alpha)) = 0 THEN END
 END SetAlpha;
+
+PROCEDURE SetClip*(bmp: Bitmap; x, y, w, h: INTEGER);
+VAR r: SDL.Rect;
+BEGIN r.x := x; r.y := y; r.w := w; r.h := h;
+  IF SDL.SetClipRect(bmp.surface, r) = 0 THEN END
+END SetClip;
+
+PROCEDURE UnsetClip*(bmp: Bitmap);
+BEGIN
+  IF SDL.SetClipRectNil(bmp.surface) = 0 THEN END
+END UnsetClip;
 
 PROCEDURE MaskedBlit*(src, dest: Bitmap; sx, sy, dx, dy, w, h: INTEGER);
 BEGIN
@@ -628,12 +712,19 @@ PROCEDURE SetColorKey*(bmp: Bitmap; color: INTEGER);
 BEGIN SDL.SetColorKey(bmp.surface, 1, color)
 END SetColorKey;
 
-(* Font *)
+PROCEDURE SetColorMod*(bmp: Bitmap; r, g, b: INTEGER);
+BEGIN
+  SDL.SetSurfaceColorMod(bmp.surface, r, g, b)
+END SetColorMod;
 
-PROCEDURE LoadFont*(filename: ARRAY OF CHAR; charW, charH: INTEGER): Font;
-VAR bmp: Bitmap; font: Font;
-    x, y, sx, sy, tmp: INTEGER;
-BEGIN bmp := LoadBitmap(filename);
+(* MonoFont *)
+
+PROCEDURE LoadMonoFont*(IN filename: ARRAY OF CHAR;
+    charW, charH: INTEGER): MonoFont;
+VAR bmp: Bitmap; font: MonoFont;
+  x, y, sx, sy, tmp: INTEGER;
+BEGIN
+  bmp := LoadBitmap(filename);
   IF bmp = NIL THEN font := NIL
   ELSE
     bmp.surface := SDL.ConvertSurface(bmp.surface,
@@ -658,7 +749,7 @@ BEGIN bmp := LoadBitmap(filename);
       INC(sy, charH)
     END
   END ;
-RETURN font END LoadFont;
+RETURN font END LoadMonoFont;
 
 PROCEDURE FindFontChar(c: CHAR; OUT n: INTEGER);
 BEGIN
@@ -671,8 +762,8 @@ BEGIN
   END
 END FindFontChar;
 
-PROCEDURE DrawCharacter*(dest: Bitmap; font: Font;
-  x, y: INTEGER; ch: CHAR; fg: INTEGER);
+PROCEDURE DrawCharacter*(dest: Bitmap; font: MonoFont;
+    x, y: INTEGER; ch: CHAR; fg: INTEGER);
 VAR n, fx, fy, r, g, b: INTEGER; dstRect: SDL.Rect;
 BEGIN dstRect.x := x; dstRect.y := y;
   FindFontChar(ch, n);
@@ -687,8 +778,8 @@ BEGIN dstRect.x := x; dstRect.y := y;
   END
 END DrawCharacter;
 
-PROCEDURE DrawString*(dest: Bitmap; font: Font;
-    x, y: INTEGER; s: ARRAY OF CHAR; fg: INTEGER);
+PROCEDURE DrawString*(dest: Bitmap; font: MonoFont;
+    x, y: INTEGER; IN s: ARRAY OF CHAR; fg: INTEGER);
 VAR i, cx: INTEGER;
 BEGIN i := 0; cx := x;
   WHILE (s[i] # 0X) & (cx < dest.w) DO
@@ -696,6 +787,109 @@ BEGIN i := 0; cx := x;
     INC(i); INC(cx, font.charW)
   END
 END DrawString;
+
+(* Font *)
+
+PROCEDURE LoadFont*(IN fname: ARRAY OF CHAR): Font;
+VAR T: Texts.Text;
+  S: Texts.Scanner;
+  i: INTEGER;
+  s: ARRAY 512 OF CHAR;
+  f: Font;
+BEGIN NEW(f);
+  s := fname$; Strings.Append('.png', s);
+  f.bmp := LoadBitmap(s);
+  IF f.bmp = NIL THEN f := NIL
+  ELSE s := fname$; Strings.Append('.dat', s);
+    NEW(T); Texts.Open(T, s);
+    Texts.OpenScanner(S, T, 0);
+    Texts.Scan(S);
+    IF S.class = Texts.Int THEN f.h := S.i ELSE f.h := 0 END;
+    Texts.Scan(S); i := 0;
+    WHILE ~S.eot & (S.class = Texts.Int) DO
+      f.geo[i].w := S.i; Texts.Scan(S);
+      f.geo[i].x := S.i; Texts.Scan(S);
+      f.geo[i].y := S.i; Texts.Scan(S);
+      INC(i)
+    END;
+    f.geoCount := i
+  END;
+RETURN f END LoadFont;
+
+PROCEDURE GetCharGeometry*(font: Font; ch: INTEGER; VAR fx, fy, w: INTEGER);
+VAR i: INTEGER;
+BEGIN
+  IF (32 <= ch) & (ch <= 127) THEN i := ch - 32
+  ELSIF (1040 <= ch) & (ch <= 1103) THEN i := ch - 1040 + 95
+  ELSIF ch = 1025 THEN i := 64 + 95
+  ELSIF ch = 1105 THEN i := 65 + 95;
+  ELSE i := font.geoCount
+  END;
+  IF i >= font.geoCount THEN i := 31 (*'?'*) END;
+  w  := font.geo[i].w;
+  fx := font.geo[i].x;
+  fy := font.geo[i].y
+END GetCharGeometry;
+
+PROCEDURE GetTextWidth*(font: Font; IN s: ARRAY OF CHAR): INTEGER;
+VAR i, w, tw, maxTw, fx, fy: INTEGER;
+  c1, c2: CHAR;
+  ch: INTEGER;
+BEGIN
+  maxTw := 0; tw := 0; i := 0;
+  IF font # NIL THEN
+    WHILE (i < LEN(s) - 1) & (s[i] # 0X) DO
+      c1 := s[i]; c2 := s[i + 1];
+      IF c1 < 80X THEN ch := ORD(c1); INC(i)
+      ELSE ch := ORD(c1) MOD 32 * 64 + ORD(c2) MOD 64; INC(i, 2)
+      END;
+      IF ch = 0AH THEN
+        IF tw > maxTw THEN maxTw := tw END;
+        tw := 0
+      ELSE
+        GetCharGeometry(font, ch, fx, fy, w);
+        INC(tw, w)
+      END
+    END
+  END;
+  IF tw > maxTw THEN maxTw := tw END;
+RETURN maxTw END GetTextWidth;
+
+PROCEDURE DrawChar*(dest: Bitmap; font: Font; x, y, ch, color: INTEGER;
+    VAR w: INTEGER);
+VAR r, g, b, fx, fy: INTEGER; (* Font X, Y *)
+BEGIN
+  IF font # NIL THEN
+    GetCharGeometry(font, ch, fx, fy, w);
+    IF ch # 32 (*space*) THEN
+      ColorToRGB(color, r, g, b);
+      SetColorMod(font.bmp, r, g, b);
+      Blit(font.bmp, dest, fx, fy, w, font.h, x, y)
+    END
+  END
+END DrawChar;
+
+PROCEDURE DrawText*(dest: Bitmap; font: Font; x, y: INTEGER;
+    IN s: ARRAY OF CHAR; color: INTEGER);
+VAR x0, i, w: INTEGER;
+  c1, c2: CHAR;
+  ch: INTEGER;
+BEGIN
+  IF font # NIL THEN
+    x0 := x; i := 0;
+    WHILE (i < LEN(s) - 1) & (s[i] # 0X) DO
+      c1 := s[i]; c2 := s[i + 1];
+      IF c1 < 80X THEN ch := ORD(c1); INC(i)
+      ELSE ch := ORD(c1) MOD 32 * 64 + ORD(c2) MOD 64; INC(i, 2)
+      END;
+      IF ch = 0AH THEN INC(y, font.h); x := x0
+      ELSE DrawChar(dest, font, x, y, ch, color, w); INC(x, w)
+      END
+    END
+  END
+END DrawText;
+
+(* Events *)
 
 PROCEDURE StartTextInput*;
 BEGIN SDL.StartTextInput
@@ -757,8 +951,7 @@ END UpdateMousePos;
 
 (* Keyboard *)
 
-PROCEDURE GetKeyArray(): KeyArray;
-BEGIN
+PROCEDURE GetKeyArray(): KeyArray; BEGIN
 RETURN SYSTEM.VAL(KeyArray, SDL.GetKeyboardStateNil()) END GetKeyArray;
 
 PROCEDURE KeyDown*(key: INTEGER): BOOLEAN;
@@ -841,8 +1034,7 @@ BEGIN
   needRedrawMouse := TRUE
 END SetMousePointer;
 
-PROCEDURE GetMousePointer*(): Bitmap;
-BEGIN
+PROCEDURE GetMousePointer*(): Bitmap; BEGIN
 RETURN mousePointer END GetMousePointer;
 
 PROCEDURE SetStdMousePointer*;
@@ -854,7 +1046,7 @@ BEGIN CreateStdMousePointer; SetStdMousePointer
 END InitMouseData;
 
 (* Misc *)
-PROCEDURE SetWindowTitle*(title: ARRAY OF CHAR);
+PROCEDURE SetWindowTitle*(IN title: ARRAY OF CHAR);
 VAR s: ARRAY 2048 OF SHORTCHAR;
 BEGIN Utf8.Encode(title, s); SDL.SetWindowTitle(window, s)
 END SetWindowTitle;
@@ -880,19 +1072,12 @@ END SwitchToFullscreen;
 
 PROCEDURE ToggleFullscreen*;
 BEGIN
-  IF fullscreen IN settings THEN SwitchToWindowed
-  ELSE SwitchToFullscreen
-  END
+  IF fullscreen IN settings THEN SwitchToWindowed ELSE SwitchToFullscreen END
 END ToggleFullscreen;
 
 PROCEDURE Delay*(n: INTEGER);
 BEGIN SDL.Delay(n)
 END Delay;
-
-PROCEDURE HandleMouseButton(VAR event: SDL.Event);
-VAR e: SDL.MouseButtonEvent;
-BEGIN
-END HandleMouseButton;
 
 PROCEDURE PumpQuit;
 BEGIN
@@ -1030,8 +1215,7 @@ VAR flags: SET;
 BEGIN flags := SDL.GetWindowFlags(window) ;
 RETURN SDL.windowShown IN flags END WindowShown;
 
-PROCEDURE GetTicks*(): INTEGER;
-BEGIN
+PROCEDURE GetTicks*(): INTEGER; BEGIN
 RETURN SDL.GetTicks() END GetTicks;
 
 PROCEDURE Flip*;
@@ -1047,14 +1231,17 @@ VAR mx, my: INTEGER; (* Mouse bitmap X Y *)
     Blit(screen, underMouse, mx, my,
       underMouse.w, underMouse.h, 0, 0);
     (* Blit mouse pointer onto buffer *)
-    Blit(mousePointer, screen, 0, 0,
-      mousePointer.w, mousePointer.h, mx, my)
+    IF mouseX # -1 THEN
+      Blit(mousePointer, screen, 0, 0,
+        mousePointer.w, mousePointer.h, mx, my)
+    END
   END PrepareMouse;
 
   PROCEDURE CleanMouse;
-  BEGIN (* Restore image under mouse in buffer *)
-    Blit(underMouse, screen, 0, 0,
-      underMouse.w, underMouse.h, mx, my);
+  BEGIN
+    IF mouseX # -1 THEN (* Restore image under mouse in buffer *)
+      Blit(underMouse, screen, 0, 0, underMouse.w, underMouse.h, mx, my)
+    END;
     needRedrawMouse := FALSE
   END CleanMouse;
 
@@ -1079,6 +1266,7 @@ BEGIN
       screenTexture := 0
     END;
     screenTexture := SDL.CreateTextureFromSurface(renderer, screen.surface);
+    SDL.SetTextureAlphaMod(screenTexture, screenAlpha);
     SDL.RenderCopyNil(renderer, screenTexture);
     SDL.RenderPresent(renderer);
 
@@ -1086,49 +1274,6 @@ BEGIN
   END
 END Flip;
 
-(* Random *)
-
-PROCEDURE Time(): INTEGER;
-BEGIN
-RETURN SHORT(Platform.Time()) END Time;
-
-(* Set random seed value. Any values are allowed, although
-   values not in [1..2^31-2] will be mapped into this range. *)
-PROCEDURE PutSeed*(newSeed: INTEGER);
-BEGIN newSeed := newSeed MOD randomModulo;
-  IF newSeed = 0 THEN randomSeed := 1
-  ELSE randomSeed := newSeed
-  END
-END PutSeed;
-
-PROCEDURE NextRND;
-CONST a = 16807;
-  q = 127773; (* m div a *)
-  r = 2836;   (* m mod a *)
-VAR lo, hi, test: INTEGER;
-BEGIN
-  hi := randomSeed DIV q;
-  lo := randomSeed MOD q;
-  test := a * lo - r * hi;
-  IF test > 0 THEN randomSeed := test
-  ELSE randomSeed := test + randomModulo
-  END
-END NextRND;
-
-(* Calculates a new number. range has to be included in
-   [1..2^31-2]. Result is a number from 0, 1, ... , range-1. *)
-PROCEDURE Random*(range: INTEGER): INTEGER;
-BEGIN NextRND ;
-RETURN randomSeed MOD range END Random;
-
-(* Calculates a number x with 0.0 <= x < 1.0. *)
-PROCEDURE Uniform*(): REAL;
-BEGIN NextRND ;
-RETURN SHORT((randomSeed - 1) * (1 / (randomModulo - 1))) END Uniform;
-
-PROCEDURE Randomize*;
-BEGIN PutSeed(Time())
-END Randomize;
 
 (* Init *)
 
@@ -1190,7 +1335,7 @@ BEGIN screen := NIL; settings := initSettings;
       END;
       keyPressed := 0;
       lastFlip := -1;
-      Randomize
+      screenAlpha := 255
     END
   END ;
 RETURN screen END Init;
@@ -1217,5 +1362,5 @@ BEGIN
   mouseFocusX := 0; mouseFocusY := 0;
   scaleX := 1; scaleY := 1;
   events.first := 0; events.last := -1; events.len := 0;
-  randomSeed := 1; keyPressed := 0
+  keyPressed := 0
 END Graph.

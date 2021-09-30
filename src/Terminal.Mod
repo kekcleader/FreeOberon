@@ -32,7 +32,7 @@ TYPE
 VAR
   screen*: G.Bitmap;
   charsX-, charsY-: INTEGER;
-  font: G.Font;
+  font: G.MonoFont;
 
   chars: ScreenChars;
   cursorX-, cursorY-: INTEGER;
@@ -310,7 +310,7 @@ END WriteString;
 
 PROCEDURE LoadMedia(): BOOLEAN;
 CONST fontFile = 'data/images/font.bmp';
-BEGIN font := G.LoadFont(fontFile, charW, charH);
+BEGIN font := G.LoadMonoFont(fontFile, charW, charH);
   IF font = NIL THEN Out.String('Could not load font file "');
     Out.String(fontFile); Out.String('".'); Out.Ln
   END ;
