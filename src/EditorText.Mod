@@ -445,7 +445,11 @@ BEGIN L := t.first; tx := 0; ty := 0; DEC(line); DEC(col);
       INC(tx)
     END;
     IF L.s[tx] # 0X THEN t.x := tx; t.y := ty; t.cur := L;
-      IF ty - t.scrY > winH - 4 THEN t.scrFirst := L; t.scrY := ty END
+      IF (ty > t.scrY + winH - 4) OR (ty < t.scrY + 1) THEN 
+        i := 5; IF i > winH DIV 2 THEN i := winH DIV 2 END;
+        WHILE (L.prev # NIL) & (i # 0) DO L := L.prev; DEC(i); DEC(ty) END;
+        t.scrFirst := L; t.scrY := ty
+      END
     END
   END
 END MoveToLineCol;
