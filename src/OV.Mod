@@ -2382,7 +2382,7 @@ VAR p: Control;
   worked: BOOLEAN;
 BEGIN worked := FALSE; p := app.cur;
   IF p # NIL THEN p := FindNextTabControl(p, back);
-    IF (p # NIL) & (p # app.cur) THEN
+    IF (p # NIL) & (p # app.cur) & ~(p IS Window) THEN
       SetAppFocus(app, p);
       worked := TRUE
     END
@@ -2494,8 +2494,7 @@ BEGIN x := event.x DIV T.charW; y := event.y DIV T.charH;
 END OnMouseUp;
 
 PROCEDURE RunApp*(app: App);
-VAR
-  event: G.Event;
+VAR event: G.Event;
 BEGIN
   app.quit := FALSE;
   DrawApp(app);
