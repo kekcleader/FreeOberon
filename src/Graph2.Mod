@@ -63,6 +63,7 @@ TYPE
   WindowDesc* = RECORD(BitmapDesc)
     display: Al.Display;
     winW, winH: INTEGER;
+    pixelSize: REAL;
     next: Window (* See windowList below *)
   END;
 
@@ -344,8 +345,9 @@ VAR W: Window;
   d: Al.Display;
   q: ARRAY 256 OF SHORTCHAR;
   opt: SET;
-  n, dw, dh, nw, nh: INTEGER;
-BEGIN NEW(W); W.w := w; W.h := h;
+  n, dw, dh, nw, nh, sw, sh: INTEGER;
+  nwf, nhf: REAL;
+BEGIN NEW(W); W.pixelSize := 1.0;
 
   Utf8.Encode(title, q); Al.set_new_window_title(q);
   IF software IN options THEN n := 0 ELSE n := 1 END;
@@ -358,10 +360,41 @@ BEGIN NEW(W); W.w := w; W.h := h;
   END;
   Al.set_new_display_option(Al.sampleBuffers, n, Al.suggest);
 
+  GetDesktopResolution(dw, dh);
+  dw := FLOOR(FLT(dw) * scaleX); dh := FLOOR(FLT(h) * scaleY);
+
+  IF (w < 0) OR (h < 0) THEN
+    IF ~(fullscreen IN options) THEN w := 640; h := 400
+    ELSE w := dw; h := dh
+    END
+  ELSIF fullscreen IN options THEN
+    IF smooth IN options THEN nwf := dw / w; nhf := dh / h;
+      IF nhf < nwf THEN nwf := nhf END;
+      W.pixelSize := nwf;
+      IF exact IN options THEN sw := FLOOR(w * nwf); sh := FLOOR(h * nwf)
+      ELSE sw := FLOOR(dw / nwf); sh := FLOOR(dh / nwf)
+      END
+    ELSE nw := dw DIV w; nh := dh DIV h;
+      IF nh < nw THEN nw := nh END;
+      W.pixelSize := FLT(nw);
+      IF exact IN options THEN sw := w * nw; sh := h * nw
+      ELSE sw := dw DIV nw; sh := dh DIV nw
+      END
+    END;
+  END;
+
+  w := FLOOR(sw / W.pixelSize);
+  h := FLOOR(sh / W.pixelSize);
+
+  (*IF sizeStepX # 1 THEN w := w DIV sizeStepX * sizeStepX END;
+  IF sizeStepY # 1 THEN h := h DIV sizeStepY * sizeStepY END;*)
+
+  W.w := w; W.h := h;
+
   IF centered IN options THEN
     GetDesktopResolution(dw, dh);
-    x := (dw - w) DIV 2;
-    y := (dh - h) DIV 2;
+    x := (dw - sw) DIV 2;
+    y := (dh - sh) DIV 2;
     IF x < 0 THEN x := 0 END;
     IF y < 0 THEN y := 0 END;
     Al.set_new_window_position(x, y)
@@ -371,60 +404,26 @@ BEGIN NEW(W); W.w := w; W.h := h;
   END;
 
   opt := {};
-  wantW := w; wantH := h;
-  IF fullscreen IN options THEN
-    INCL(opt, Al.fullscreenWindow);
-    IF (wantW <= 0) OR (wantH <= 0) THEN
-      GetDesktopResolution(wantW, wantH);
-      wantW := FLOOR(wantW / scaleX);
-      wantH := FLOOR(wantH / scaleY)
-    ELSIF ~(exact IN options) THEN
-      GetDesktopResolution(w, h);
-      w := FLOOR(w / scaleX); h := FLOOR(h / scaleY);
-      IF ~(smooth IN options) THEN
-        nw := w DIV wantW; nh := h DIV wantH;
-        Out.String('want = '); Out.Int(wantW, 0); Out.String(', '); Out.Int(wantH, 0); Out.Ln;
-        IF nw < nh THEN wantW := w DIV nw; wantH := h DIV nw
-        ELSE wantW := w DIV nh; wantH := h DIV nh
-        END
-;       Out.String('nw, nh = '); Out.Int(nw, 0); Out.String(', '); Out.Int(nh, 0); Out.Ln;
-      END;
-      IF w / h > wantW / wantH THEN wantW := w * wantH DIV h
-      ELSE wantH := h * wantW DIV w
-      END
-    END
-  ELSE INCL(opt, Al.windowed);
-    IF (wantW <= 0) OR (wantH <= 0) THEN wantW := 640; wantH := 400 END
+  IF fullscreen IN options THEN INCL(opt, Al.fullscreenWindow)
+  ELSE INCL(opt, Al.windowed)
   END;
-  IF sizeStepX # 1 THEN wantW := wantW DIV sizeStepX * sizeStepX END;
-  IF sizeStepY # 1 THEN wantH := wantH DIV sizeStepY * sizeStepY END;
-
   IF resizable IN options THEN INCL(opt, Al.resizable) END;
   IF maximized IN options THEN INCL(opt, Al.maximized) END;
   IF minimized IN options THEN INCL(opt, Al.minimized) END;
   IF frameless IN options THEN INCL(opt, Al.frameless) END;
   Al.set_new_display_flags(opt);
 
-  Out.String('want = '); Out.Int(wantW, 0); Out.String(', '); Out.Int(wantH, 0); Out.Ln;
-
-  W.display := Al.create_display(wantW, wantH);
+  W.display := Al.create_display(w, h);
   W.winW := Al.get_display_width(W.display);
   W.winH := Al.get_display_height(W.display);
 
-  Out.String('W. w,h = '); Out.Int(W.w, 0); Out.String(', '); Out.Int(W.h, 0); Out.Ln;
-
-  IF (wantW # W.w) OR (wantH # W.h) THEN
+  IF W.pixelSize # 1.0 THEN
     W.bmp := Al.create_bitmap(wantW, wantH);
     W.w := wantW; W.h := wantH
   ELSE W.bmp := NIL
   END;
 
-  Out.String('FINAL w h       = '); Out.Int(W.w, 0); Out.String(', '); Out.Int(W.h, 0); Out.Ln;
-  Out.String('FINAL winW winH = '); Out.Int(W.winW, 0); Out.String(', '); Out.Int(W.winH, 0); Out.Ln;
-
-  SetWindowScale(W, 1.0, 1.0); (*!FIXME remove*)
   Al.register_event_source(queue, Al.get_display_event_source(W.display));
-
   W.next := windowList; windowList := W
 RETURN W END NewWindow;
 
