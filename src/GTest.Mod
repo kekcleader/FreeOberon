@@ -15,7 +15,7 @@ PROCEDURE OpenDialog;
 BEGIN
   IF nofdialogs # LEN(dialogs) THEN
     dialogs[nofdialogs] := G.NewWindow(-1, -1,
-      300, 100 + 50 * nofdialogs, 'Dialog', {G.center});
+      300, 100 + 50 * nofdialogs, 'Dialog', {G.center, G.smooth});
     INC(nofdialogs)
   END
 END OpenDialog;
@@ -71,6 +71,7 @@ END Draw;
 
 PROCEDURE Run;
 VAR e: G.Event;
+  r, g, b: INTEGER;
 BEGIN
   quit := FALSE;
   redraw := TRUE;
@@ -83,16 +84,24 @@ BEGIN
 
     G.WaitEvent(e);
     IF e.type = G.mouseMove THEN
-      IF e.window = main THEN
-        mX := e.x; mY := e.y
+      IF (e.dx # 0) OR (e.dy # 0) THEN
+        IF e.window = main THEN
+          mX := e.x; mY := e.y
+        END
       END;
-      G.MakeCol(80 + Random.Int(2) * 40, 80, 30, c1);
-      G.MakeCol(0, Random.Int(3) * 70, 0, c2);
+      IF e.dz # 0 THEN
+        G.ColorToRGB(c1, r, g, b);
+        r := (r + e.dz * 8) MOD 256;
+        G.MakeCol(r, g, b, c1);
+      END;
+      (*G.MakeCol(80 + Random.Int(2) * 40, 80, 30, c1);*)
+      (*G.MakeCol(0, Random.Int(3) * 70, 0, c2);*)
       redraw := TRUE
     ELSIF e.type = G.mouseDown THEN
-      Out.String('Mouse DOWN '); Out.Int(e.x, 0); Out.Char(':'); Out.Int(e.y, 0); Out.Ln;
-      OpenDialog;
-      redraw := TRUE
+      IF e.button = 1 THEN
+        OpenDialog;
+        redraw := TRUE
+      END
     ELSIF e.type = G.timer THEN
       INC(Z);
       redraw := TRUE
@@ -128,15 +137,15 @@ PROCEDURE RunSingle;
 VAR i, n: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
-                                                                                                      
-  G.Settings(320, 200, {(*G.exact, G.smooth*)});
-  (*G.SetScale(5/6, 1.0);*)
+  G.Settings(640, 400, {G.window, G.smooth(*G.exact, G.smooth*)});
+  G.SetZoom(1.3);
+  G.SetScale(5/6, 1.0);
   G.Init;
-  G.MakeCol(210, 80, 30, c1);
+  G.MakeCol(0, 80, 210, c1);
   G.MakeCol(0, 255, 0, c2);
   G.MakeCol(255, 255, 255, c3);
   G.MakeCol(50, 30, 255, c4);
-  B := G.LoadBitmap('img.png');
+  B := G.LoadBitmap('fb.png');
   IF B = NIL THEN Out.String('COULD NOT LOAD img.png'); Out.Ln END;
   G.ClearScreen;
     (*DELETEME*)          G.Flip; G.Delay(20);
@@ -152,13 +161,13 @@ BEGIN
 
   i := 0;
   REPEAT
-    G.DrawRotated(B, B.w DIV 2, B.h DIV 2, 15 + i * 25, 80,
-      FLT(i) * 15 / 180.0 * 3.14, {});
+    G.DrawRotated(B, B.w DIV 2, B.h DIV 2, 15 + i * 6, 80,
+      FLT(i) / 180.0 * 3.14, {});
     G.DrawRotated(B, B.w DIV 2, B.h DIV 2, G.Width() - 15 - i * 25, 130,
-      FLT(i) * 15 / 180.0 * 3.14, {G.flipHor});
-      (*DELETEME*)          G.Flip; G.Delay(50);
+      FLT(i) / 180.0 * 3.14, {G.flipHor});
+      (*DELETEME*)          G.Flip; G.Delay(20);
     INC(i)
-  UNTIL i = 14;
+  UNTIL i = 100;
   G.Line(0, 0, 0, 10, c2);
     (*DELETEME*)          G.Flip; G.Delay(20);
   G.Line(2, 0, 2, 10, c2);

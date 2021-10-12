@@ -72,7 +72,8 @@ TYPE
     zoom: INTEGER; (* See constants above; based on this rzoom/izoom is used *)
     izoom: INTEGER; (* Window.izoom is used if Window.zoom = intZoom  *)
     rzoom: REAL;    (* Window.rzoom is used if Window.zoom = realZoom *)
-    scaleX, scaleY: REAL; (* Deforms pixels on Flip; zoom is for drawing *)
+    hasScale: BOOLEAN; (* If TRUE, scaleX and scaleY are used *)
+    scaleX, scaleY: REAL; (* Deforms pixels on Flip, but zoom is for drawing *)
     flipX, flipY, flipW, flipH: REAL;
     next: Window (* See windowList below *)
   END;
@@ -166,7 +167,8 @@ BEGIN
 END ApplyScale;
 
 PROCEDURE SetWindowScale*(W: Window; x, y: REAL);
-BEGIN W.scaleX := x; W.scaleY := y; ApplyScale(W)
+BEGIN W.hasScale := (x # 1.0) OR (y # 1.0);
+  W.scaleX := x; W.scaleY := y; ApplyScale(W)
 END SetWindowScale;
 
 PROCEDURE SetScale*(x, y: REAL);
@@ -178,9 +180,7 @@ PROCEDURE SetTitle*(title: ARRAY OF CHAR);
 BEGIN wantScreenTitle := title
 END SetTitle;
 
-(*PROCEDURE ColorToRGB*(color: INTEGER; VAR r, g, b: INTEGER);
-PROCEDURE ColorToRGBA*(color: INTEGER; VAR r, g, b, a: INTEGER);
-PROCEDURE ClearBitmap*(bmp: Bitmap);
+(*PROCEDURE ClearBitmap*(bmp: Bitmap);
 PROCEDURE ClearScreenToColor*(color: INTEGER);*)
 
 PROCEDURE LoadBitmap*(fname: ARRAY OF CHAR): Bitmap;
@@ -220,6 +220,19 @@ END PutPixel;
 PROCEDURE MakeCol*(r, g, b: INTEGER; VAR c: Color);
 BEGIN c.r := r / 255; c.g := g / 255; c.b := b / 255; c.a := 1.0
 END MakeCol;
+
+PROCEDURE ColorToRGB*(color: Color; VAR r, g, b: INTEGER);
+BEGIN r := FLOOR(color.r * 255) MOD 256;
+  g := FLOOR(color.g * 255) MOD 256;
+  b := FLOOR(color.b * 255) MOD 256
+END ColorToRGB;
+
+PROCEDURE ColorToRGBA*(color: Color; VAR r, g, b, a: INTEGER);
+BEGIN r := FLOOR(color.r * 255) MOD 256;
+  g := FLOOR(color.g * 255) MOD 256;
+  b := FLOOR(color.b * 255) MOD 256;
+  a := FLOOR(color.a * 255) MOD 256
+END ColorToRGBA;
 
 PROCEDURE ClearToColor*(c: Color);
 BEGIN Al.clear_to_color(SYSTEM.VAL(Al.Color, c))
@@ -371,10 +384,11 @@ VAR W: Window;
   n, dw, dh, nw, nh, sw, sh: INTEGER;
   nwf, nhf: REAL;
 BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
+  W.hasScale := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
   W.scaleX := wantScaleX; W.scaleY := wantScaleY;
   IF wantZoom = 1.0 THEN W.zoom := noZoom
   ELSIF wantZoom = FLT(FLOOR(wantZoom)) THEN
-    W.zoom := intZoom; W.izoom := FLOOR(wantZoom)
+    W.zoom := intZoom; W.izoom := FLOOR(wantZoom); W.rzoom := wantZoom
   ELSE W.zoom := realZoom; W.rzoom := wantZoom
   END;
 
@@ -407,7 +421,6 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
       END
     ELSE nw := dw DIV w; nh := dh DIV h;
       IF nh < nw THEN nw := nh END;
-      Out.String('INT ====== nw ');Out.Int(nw, 0);Out.Ln;
       W.zoom := intZoom; W.izoom := nw; W.rzoom := FLT(nw);
       IF exact IN options THEN sw := w * nw; sh := h * nw
       ELSE sw := dw DIV nw * nw; sh := dh DIV nw * nw
@@ -419,13 +432,9 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
     ELSE w := sw; h := sh
     END;
     sw := w; sh := h
-  ELSE sw := FLOOR(w * wantZoom); sh := FLOOR(h * wantZoom)
+  ELSE sw := FLOOR(w * wantZoom * W.scaleX);
+    sh := FLOOR(h * wantZoom * W.scaleY)
   END;
-
-Out.String('sw,sh ');Out.Int(sw, 0);Out.Int(sh, 10);Out.Ln;
-Out.String('w,h ');Out.Int(w, 0);Out.Int(h, 10);Out.Ln;
-
-Out.String('w,h ');Out.Int(w, 0);Out.Int(h, 10);Out.Ln;
 
   (*IF sizeStepX # 1 THEN w := w DIV sizeStepX * sizeStepX END;
   IF sizeStepY # 1 THEN h := h DIV sizeStepY * sizeStepY END;*)
@@ -452,12 +461,6 @@ Out.String('w,h ');Out.Int(w, 0);Out.Int(h, 10);Out.Ln;
   IF frameless IN options THEN INCL(opt, Al.frameless) END;
   Al.set_new_display_flags(opt);
 
-Out.String('wantZoom ');Out.RealFix(wantZoom, 0, 2);Out.Ln;
-Out.String('    zoom ');Out.Int(W.zoom, 0);Out.Ln;
-Out.String('   izoom ');Out.Int(W.izoom, 0);Out.Ln;
-Out.String('   rzoom ');Out.RealFix(W.rzoom, 0, 2);Out.Ln;
-Out.String('sw,sh ');Out.Int(sw, 0);Out.Int(sh, 10);Out.Ln;
-Out.String('w,h   ');Out.Int(w, 0);Out.Int(h, 10);Out.Ln;
   W.display := Al.create_display(sw, sh);
   IF W.display # NIL THEN
     W.winW := Al.get_display_width(W.display);
@@ -471,10 +474,8 @@ Out.String('w,h   ');Out.Int(w, 0);Out.Int(h, 10);Out.Ln;
       Al.set_new_bitmap_flags(opt);
       W.bmp := Al.create_bitmap(w, h);
 
-      W.flipW := FLT(sw) * W.rzoom * W.scaleX;
-      W.flipH := FLT(sh) * W.rzoom * W.scaleY;
-
-      Out.String('flipW,H ');Out.RealFix(W.flipW, 0, 2);Out.RealFix(W.flipH, 0, 2);Out.Ln;
+      W.flipW := FLT(W.w) * W.rzoom * W.scaleX;
+      W.flipH := FLT(W.h) * W.rzoom * W.scaleY;
 
       IF fullscreen IN options THEN
         W.flipX := FLT(FLOOR(FLT(W.winW) - W.flipW) DIV 2);
@@ -538,8 +539,11 @@ BEGIN
         event.x := FLOOR(ME.x / W.rzoom);
         event.y := FLOOR(ME.y / W.rzoom)
       END;
+      IF W.hasScale THEN event.x := FLOOR(event.x / W.scaleX);
+        event.y := FLOOR(event.y / W.scaleY)
+      END;
       IF (event.x # W.lastX) OR (event.y # W.lastY) OR
-         (event.dz # 0) OR (event.dw # 0) THEN
+         (ME.dz # 0) OR (ME.dw # 0) THEN
         event.z := ME.z; event.w := ME.w;
         IF event.x = -1 THEN event.dx := 0; event.dy := 0
         ELSE event.dx := event.x - W.lastX; event.dy := event.y - W.lastY
@@ -562,6 +566,9 @@ BEGIN
         event.x := FLOOR(ME.x / W.rzoom);
         event.y := FLOOR(ME.y / W.rzoom)
       END;
+      IF W.hasScale THEN event.x := FLOOR(event.x / W.scaleX);
+        event.y := FLOOR(event.y / W.scaleY)
+      END;
       event.z := ME.z; event.w := ME.w;
       event.button := ME.button;
       event.display := ME.display
@@ -575,6 +582,9 @@ BEGIN
       ELSE
         event.x := FLOOR(ME.x / W.rzoom);
         event.y := FLOOR(ME.y / W.rzoom)
+      END;
+      IF W.hasScale THEN event.x := FLOOR(event.x / W.scaleX);
+        event.y := FLOOR(event.y / W.scaleY)
       END;
       event.z := ME.z; event.w := ME.w;
       event.button := ME.button;
@@ -662,7 +672,7 @@ BEGIN
     Al.register_event_source(queue, Al.get_mouse_event_source());
 
     IF ~(manual IN settings) THEN InitScreen END
-  ELSE Out.String('ERROR'); Out.Ln
+  ELSE Out.String('Coult not init Allegro.'); Out.Ln
   END
 END Init;
 
