@@ -24,6 +24,20 @@ CONST
   require*  = 1;
   suggest*  = 2;
 
+  (** Bitmap Flags *)
+  memoryBitmap*         = 0;
+  keepBitmapFormat*     = 1;
+  forceLocking*         = 2;
+  noPreserveTexture*    = 3;
+  alphaTest*            = 4;
+  internalOpengl*       = 5;
+  minLinear*            = 6;
+  magLinear*            = 7;
+  mipmap*               = 8;
+  noPremultipliedAlpha* = 9;
+  videoBitmap*          = 10;
+  convertBitmap*        = 12;
+
   (** Values of parameter option in al_set_new_display_option *)
   redSize*               = 0;
   greenSize*             = 1;

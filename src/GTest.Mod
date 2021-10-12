@@ -1,5 +1,5 @@
 MODULE GTest;
-IMPORT G := Graph2, Out;
+IMPORT G := Graph2, Random, Out;
 VAR main: G.Window;
   dialogs: ARRAY 10 OF G.Window;
   nofdialogs: INTEGER;
@@ -8,12 +8,14 @@ VAR main: G.Window;
   Z: INTEGER;
   t: G.Timer;
   c1, c2: G.Color;
+  mX, mY: INTEGER;
+  B: G.Bitmap;
 
 PROCEDURE OpenDialog;
 BEGIN
   IF nofdialogs # LEN(dialogs) THEN
     dialogs[nofdialogs] := G.NewWindow(-1, -1,
-      300, 100 + 50 * nofdialogs, 'Dialog', {G.centered});
+      300, 100 + 50 * nofdialogs, 'Dialog', {G.center});
     INC(nofdialogs)
   END
 END OpenDialog;
@@ -51,6 +53,8 @@ BEGIN
     END
   END;
 
+  IF mX # -1 THEN G.Draw(B, mX, mY) END;
+
   G.Flip
 END DrawWin;
 
@@ -78,7 +82,14 @@ BEGIN
     END;
 
     G.WaitEvent(e);
-    IF e.type = G.mouseDown THEN
+    IF e.type = G.mouseMove THEN
+      IF e.window = main THEN
+        mX := e.x; mY := e.y
+      END;
+      G.MakeCol(80 + Random.Int(2) * 40, 80, 30, c1);
+      G.MakeCol(0, Random.Int(3) * 70, 0, c2);
+      redraw := TRUE
+    ELSIF e.type = G.mouseDown THEN
       Out.String('Mouse DOWN '); Out.Int(e.x, 0); Out.Char(':'); Out.Int(e.y, 0); Out.Ln;
       OpenDialog;
       redraw := TRUE
@@ -87,38 +98,39 @@ BEGIN
       redraw := TRUE
     ELSIF e.type = G.keyDown THEN
       Out.String('Key Down');Out.Ln;
-      IF G.GetWindow(e) = main THEN
+      IF e.window = main THEN
         INC(Z)
       ELSE
         DEC(Z)
       END;
       redraw := TRUE
     ELSIF e.type = G.char THEN
-      IF G.GetWindow(e) = main THEN Out.String('Main window ') END;
+      IF e.window = main THEN Out.String('Main window ') END;
       Out.String('char typed: '); Out.Char(e.ch); Out.Ln;
       Out.String('         Code '); Out.Int(ORD(e.ch), 0); Out.Ln;
       redraw := TRUE
     ELSIF e.type = G.resize THEN
       Out.String('Resize');Out.Ln;
-      G.ApplyResize(e);
+      G.ApplyResize(e.window);
       redraw := TRUE
     ELSIF e.type = G.quit THEN
       Out.String('Quit');Out.Ln;
-      IF G.GetWindow(e) = main THEN
+      IF e.window = main THEN
         quit := TRUE
       ELSE
-        CloseDialog(G.GetWindow(e))
+        CloseDialog(e.window)
       END
     END
   UNTIL quit
 END Run;
 
 PROCEDURE RunSingle;
-VAR i: INTEGER;
-  B: G.Bitmap;
+VAR i, n: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
-  G.Settings(320, 200, {G.fullscreen, G.exact});
+                                                                                                      
+  G.Settings(320, 200, {(*G.exact, G.smooth*)});
+  (*G.SetScale(5/6, 1.0);*)
   G.Init;
   G.MakeCol(210, 80, 30, c1);
   G.MakeCol(0, 255, 0, c2);
@@ -131,14 +143,12 @@ BEGIN
 
   i := 0;
   REPEAT
-    G.Line(0, i, G.Width() - 1, i, c1);
-    G.Flip; G.Delay(1);
-    G.MakeCol(150 - i DIV 2, 80 - i DIV 4, 30 - i DIV 10, c5);
-    INC(i);
+    n := i * 255 DIV G.Height();
+    G.MakeCol(n, n DIV 3, 255 - n, c5);
     G.Line(0, i, G.Width() - 1, i, c5);
     G.Flip; G.Delay(1);
-    INC(i, 2)
-  UNTIL i >= G.Height();
+    INC(i)
+  UNTIL i = G.Height();
 
   i := 0;
   REPEAT
@@ -185,8 +195,12 @@ BEGIN
 
   G.TargetScreen;
   G.Draw(B, 130, 100);
-  G.Flip;
-  G.Delay(1000);
+  main := G.GetScreen();
+  t := G.NewTimer(1.0);
+  mX := -1; mY := -1;
+
+  Run;
+
   G.Close
 END RunSingle;
 
