@@ -121,11 +121,12 @@ END GetDesktopResolution;
 PROCEDURE GetScreen*(): Window;
 RETURN screen END GetScreen;
 
-PROCEDURE Width*(): INTEGER;
-RETURN screen.w END Width;
-
-PROCEDURE Height*(): INTEGER;
-RETURN screen.h END Height;
+PROCEDURE GetScreenSize*(VAR width, height: INTEGER);
+BEGIN
+  IF screen # NIL THEN width := screen.w; height := screen.h
+  ELSE width := 0; height := 0
+  END
+END GetScreenSize;
 
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
 BEGIN wantW := w; wantH := h; 

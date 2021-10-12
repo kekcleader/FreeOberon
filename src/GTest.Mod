@@ -71,7 +71,7 @@ END Draw;
 
 PROCEDURE Run;
 VAR e: G.Event;
-  r, g, b: INTEGER;
+  r, g, b, W, H: INTEGER;
 BEGIN
   quit := FALSE;
   redraw := TRUE;
@@ -94,8 +94,8 @@ BEGIN
         r := (r + e.dz * 8) MOD 256;
         G.MakeCol(r, g, b, c1);
       END;
-      (*G.MakeCol(80 + Random.Int(2) * 40, 80, 30, c1);*)
-      (*G.MakeCol(0, Random.Int(3) * 70, 0, c2);*)
+      G.MakeCol(e.x * 256 DIV e.window.w, 80, 30, c1);
+      G.MakeCol(0, e.y * 256 DIV e.window.h, 0, c2);
       redraw := TRUE
     ELSIF e.type = G.mouseDown THEN
       IF e.button = 1 THEN
@@ -134,13 +134,14 @@ BEGIN
 END Run;
 
 PROCEDURE RunSingle;
-VAR i, n: INTEGER;
+VAR i, n, W, H: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
   G.Settings(640, 400, {G.window, G.smooth(*G.exact, G.smooth*)});
   G.SetZoom(1.3);
   G.SetScale(5/6, 1.0);
   G.Init;
+  G.GetScreenSize(W, H);
   G.MakeCol(0, 80, 210, c1);
   G.MakeCol(0, 255, 0, c2);
   G.MakeCol(255, 255, 255, c3);
@@ -152,18 +153,18 @@ BEGIN
 
   i := 0;
   REPEAT
-    n := i * 255 DIV G.Height();
+    n := i * 255 DIV H;
     G.MakeCol(n, n DIV 3, 255 - n, c5);
-    G.Line(0, i, G.Width() - 1, i, c5);
+    G.Line(0, i, W - 1, i, c5);
     G.Flip; G.Delay(1);
     INC(i)
-  UNTIL i = G.Height();
+  UNTIL i = H;
 
   i := 0;
   REPEAT
     G.DrawRotated(B, B.w DIV 2, B.h DIV 2, 15 + i * 6, 80,
       FLT(i) / 180.0 * 3.14, {});
-    G.DrawRotated(B, B.w DIV 2, B.h DIV 2, G.Width() - 15 - i * 25, 130,
+    G.DrawRotated(B, B.w DIV 2, B.h DIV 2, W - 15 - i * 25, 130,
       FLT(i) / 180.0 * 3.14, {G.flipHor});
       (*DELETEME*)          G.Flip; G.Delay(20);
     INC(i)
