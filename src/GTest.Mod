@@ -72,6 +72,7 @@ END Draw;
 PROCEDURE Run;
 VAR e: G.Event;
   r, g, b, W, H: INTEGER;
+  z: REAL;
 BEGIN
   quit := FALSE;
   redraw := TRUE;
@@ -92,10 +93,12 @@ BEGIN
       IF e.dz # 0 THEN
         G.ColorToRGB(c1, r, g, b);
         r := (r + e.dz * 8) MOD 256;
-        G.MakeCol(r, g, b, c1);
+        G.MakeCol(c1, r, g, b);
+        z := G.GetWindowZoom(e.window) + e.dz / 10;
+        IF z < 0.3 THEN z := 0.3 END;
+        G.SetWindowZoom(e.window, z)
       END;
-      G.MakeCol(e.x * 256 DIV e.window.w, 80, 30, c1);
-      G.MakeCol(0, e.y * 256 DIV e.window.h, 0, c2);
+      G.MakeCol(c2, e.x * 256 DIV e.window.w, e.y * 256 DIV e.window.h, 0);
       redraw := TRUE
     ELSIF e.type = G.mouseDown THEN
       IF e.button = 1 THEN
@@ -106,12 +109,7 @@ BEGIN
       INC(Z);
       redraw := TRUE
     ELSIF e.type = G.keyDown THEN
-      Out.String('Key Down');Out.Ln;
-      IF e.window = main THEN
-        INC(Z)
-      ELSE
-        DEC(Z)
-      END;
+      IF e.window = main THEN INC(Z) ELSE DEC(Z) END;
       redraw := TRUE
     ELSIF e.type = G.char THEN
       IF e.window = main THEN Out.String('Main window ') END;
@@ -123,11 +121,8 @@ BEGIN
       G.ApplyResize(e.window);
       redraw := TRUE
     ELSIF e.type = G.quit THEN
-      Out.String('Quit');Out.Ln;
-      IF e.window = main THEN
-        quit := TRUE
-      ELSE
-        CloseDialog(e.window)
+      IF e.window = main THEN quit := TRUE
+      ELSE CloseDialog(e.window)
       END
     END
   UNTIL quit
@@ -137,24 +132,23 @@ PROCEDURE RunSingle;
 VAR i, n, W, H: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
-  G.Settings(640, 400, {G.window, G.smooth(*G.exact, G.smooth*)});
-  G.SetZoom(1.3);
-  G.SetScale(5/6, 1.0);
+  G.Settings(640, 400, {G.window, G.smooth, G.center (*G.exact, G.smooth*)});
+  (*G.SetZoom(1.3);*)
+  (*G.SetScale(5/6, 1.0);*)
   G.Init;
   G.GetScreenSize(W, H);
-  G.MakeCol(0, 80, 210, c1);
-  G.MakeCol(0, 255, 0, c2);
-  G.MakeCol(255, 255, 255, c3);
-  G.MakeCol(50, 30, 255, c4);
+  G.MakeCol(c1, 0, 80, 210);
+  G.MakeCol(c2, 0, 255, 0);
+  G.MakeCol(c3, 255, 255, 255);
+  G.MakeCol(c4, 50, 30, 255);
   B := G.LoadBitmap('fb.png');
   IF B = NIL THEN Out.String('COULD NOT LOAD img.png'); Out.Ln END;
   G.ClearScreen;
-    (*DELETEME*)          G.Flip; G.Delay(20);
 
-  i := 0;
+(*  i := 0;
   REPEAT
     n := i * 255 DIV H;
-    G.MakeCol(n, n DIV 3, 255 - n, c5);
+    G.MakeCol(c5, n, n DIV 3, 255 - n);
     G.Line(0, i, W - 1, i, c5);
     G.Flip; G.Delay(1);
     INC(i)
@@ -205,10 +199,11 @@ BEGIN
 
   G.TargetScreen;
   G.Draw(B, 130, 100);
-  main := G.GetScreen();
-  t := G.NewTimer(1.0);
-  mX := -1; mY := -1;
+*)
 
+  main := G.GetScreen();
+  t := G.NewTimer(0.5);
+  mX := -1; mY := -1;
   Run;
 
   G.Close
@@ -225,8 +220,8 @@ BEGIN
   main := G.NewWindow(-1, -1, 800, 600, 'Oberon Allegro 5 Test',
     {G.resizable, G.maximized});
   t := G.NewTimer(1.0);
-  G.MakeCol(180, 80, 20, c1);
-  G.MakeCol(240, 180, 80, c2);
+  G.MakeCol(c1, 180, 80, 20);
+  G.MakeCol(c2, 240, 180, 80);
 
   Run;
   G.Close*)

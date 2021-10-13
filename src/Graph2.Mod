@@ -74,7 +74,8 @@ TYPE
     rzoom: REAL;    (* Window.rzoom is used if Window.zoom = realZoom *)
     hasScale: BOOLEAN; (* If TRUE, scaleX and scaleY are used *)
     scaleX, scaleY: REAL; (* Deforms pixels on Flip, but zoom is for drawing *)
-    flipX, flipY, flipW, flipH: REAL;
+    flipX, flipY, flipW, flipH: REAL; (* Where to flip the window bitmap to *)
+    iFlipX, iFlipY: INTEGER; (* Same as flipX, flipY, which are always whole *)
     next: Window (* See windowList below *)
   END;
 
@@ -107,6 +108,7 @@ VAR
   windowList: Window;
   screen: Window;
   target: Bitmap;
+  black: Color;
 
 PROCEDURE GetDesktopResolution*(VAR w, h: INTEGER);
 VAR info: Al.MonitorInfo;
@@ -135,6 +137,28 @@ BEGIN wantW := w; wantH := h;
   END;
   settings := flags
 END Settings;
+
+PROCEDURE ResetFlipVars*(W: Window);
+BEGIN
+  W.flipW := FLT(W.w) * W.rzoom * W.scaleX;
+  W.flipH := FLT(W.h) * W.rzoom * W.scaleY;
+  W.iFlipX := FLOOR(FLT(W.winW) - W.flipW) DIV 2;
+  W.iFlipY := FLOOR(FLT(W.winH) - W.flipH) DIV 2;
+  W.flipX := FLT(W.iFlipX); W.flipY := FLT(W.iFlipY)
+END ResetFlipVars;
+
+PROCEDURE GetWindowZoom*(W: Window): REAL;
+RETURN W.rzoom END GetWindowZoom;
+
+PROCEDURE SetWindowZoom*(W: Window; zoom: REAL);
+BEGIN W.rzoom := zoom;
+  IF zoom = 1.0 THEN W.zoom := noZoom
+  ELSIF zoom = FLT(FLOOR(zoom)) THEN
+    W.zoom := intZoom; W.izoom := FLOOR(zoom)
+  ELSE W.zoom := realZoom
+  END;
+  ResetFlipVars(W)
+END SetWindowZoom;
 
 PROCEDURE SetZoom*(zoom: REAL);
 BEGIN wantZoom := zoom
@@ -201,6 +225,7 @@ BEGIN
     W := target(Window);
     tmp := Al.get_target_bitmap();
     Al.set_target_backbuffer(W.display);
+    Al.clear_to_color(SYSTEM.VAL(Al.Color, black));
     Al.draw_scaled_bitmap(target.bmp, 0.0, 0.0, FLT(target.w), FLT(target.h),
       W.flipX, W.flipY, W.flipW, W.flipH, {});
     Al.flip_display();
@@ -218,8 +243,9 @@ PROCEDURE PutPixel*(x, y: INTEGER; c: Color);
 BEGIN Al.draw_pixel(FLT(x) + 0.5, FLT(y) + 0.5, SYSTEM.VAL(Al.Color, c))
 END PutPixel;
 
-PROCEDURE MakeCol*(r, g, b: INTEGER; VAR c: Color);
-BEGIN c.r := r / 255; c.g := g / 255; c.b := b / 255; c.a := 1.0
+PROCEDURE MakeCol*(VAR color: Color; r, g, b: INTEGER);
+BEGIN color.r := r / 255; color.g := g / 255;
+  color.b := b / 255; color.a := 1.0
 END MakeCol;
 
 PROCEDURE ColorToRGB*(color: Color; VAR r, g, b: INTEGER);
@@ -240,8 +266,7 @@ BEGIN Al.clear_to_color(SYSTEM.VAL(Al.Color, c))
 END ClearToColor;
 
 PROCEDURE ClearScreen*;
-VAR c: Color;
-BEGIN MakeCol(0, 0, 0, c); Al.clear_to_color(SYSTEM.VAL(Al.Color, c))
+BEGIN Al.clear_to_color(SYSTEM.VAL(Al.Color, black))
 END ClearScreen;
 
 PROCEDURE ThickLineF*(x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
@@ -387,10 +412,11 @@ VAR W: Window;
 BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
   W.hasScale := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
   W.scaleX := wantScaleX; W.scaleY := wantScaleY;
+  W.rzoom := wantZoom;
   IF wantZoom = 1.0 THEN W.zoom := noZoom
   ELSIF wantZoom = FLT(FLOOR(wantZoom)) THEN
-    W.zoom := intZoom; W.izoom := FLOOR(wantZoom); W.rzoom := wantZoom
-  ELSE W.zoom := realZoom; W.rzoom := wantZoom
+    W.zoom := intZoom; W.izoom := FLOOR(wantZoom)
+  ELSE W.zoom := realZoom
   END;
 
   Utf8.Encode(title, q); Al.set_new_window_title(q);
@@ -474,15 +500,7 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
       END;
       Al.set_new_bitmap_flags(opt);
       W.bmp := Al.create_bitmap(w, h);
-
-      W.flipW := FLT(W.w) * W.rzoom * W.scaleX;
-      W.flipH := FLT(W.h) * W.rzoom * W.scaleY;
-
-      IF fullscreen IN options THEN
-        W.flipX := FLT(FLOOR(FLT(W.winW) - W.flipW) DIV 2);
-        W.flipY := FLT(FLOOR(FLT(W.winH) - W.flipH) DIV 2)
-      ELSE W.flipX := 0.0; W.flipY := 0.0
-      END
+      ResetFlipVars(W)
     ELSE W.bmp := NIL
     END;
     Al.register_event_source(queue, Al.get_display_event_source(W.display));
@@ -525,6 +543,7 @@ VAR E: Al.Event;
   ME: Al.PMouseEvent;
   W: Window;
   skip: BOOLEAN;
+  x, y: INTEGER;
 BEGIN
   REPEAT skip := FALSE;
     Al.wait_for_event(queue, E);
@@ -533,22 +552,21 @@ BEGIN
       event.type := mouseMove;
       ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
       W := GetWindow(ME.display);
-      IF W.zoom = noZoom THEN event.x := ME.x; event.y := ME.y
+      IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
       ELSIF W.zoom = intZoom THEN
-        event.x := ME.x DIV W.izoom; event.y := ME.y DIV W.izoom
-      ELSE
-        event.x := FLOOR(ME.x / W.rzoom);
-        event.y := FLOOR(ME.y / W.rzoom)
+        x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
+      ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom);
+        y := FLOOR((ME.y - W.flipY) / W.rzoom)
       END;
-      IF W.hasScale THEN event.x := FLOOR(event.x / W.scaleX);
-        event.y := FLOOR(event.y / W.scaleY)
+      IF W.hasScale THEN x := FLOOR(x / W.scaleX); y := FLOOR(y / W.scaleY)
       END;
-      IF (event.x # W.lastX) OR (event.y # W.lastY) OR
+      IF (x # W.lastX) OR (y # W.lastY) OR
          (ME.dz # 0) OR (ME.dw # 0) THEN
         event.z := ME.z; event.w := ME.w;
-        IF event.x = -1 THEN event.dx := 0; event.dy := 0
-        ELSE event.dx := event.x - W.lastX; event.dy := event.y - W.lastY
+        IF x = -1 THEN event.dx := 0; event.dy := 0
+        ELSE event.dx := x - W.lastX; event.dy := y - W.lastY
         END;
+        event.x := x; event.y := y;
         event.dz := ME.dz; event.dw := ME.dw;
         event.button := ME.button;
         event.display := ME.display;
@@ -693,5 +711,6 @@ BEGIN
 END Close;
 
 BEGIN
+  MakeCol(black, 0, 0, 0);
   ResetDefaults
 END Graph2.
