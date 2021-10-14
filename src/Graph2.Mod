@@ -76,6 +76,7 @@ TYPE
     scaleX, scaleY: REAL; (* Deforms pixels on Flip, but zoom is for drawing *)
     flipX, flipY, flipW, flipH: REAL; (* Where to flip the window bitmap to *)
     iFlipX, iFlipY: INTEGER; (* Same as flipX, flipY, which are always whole *)
+    options: SET;
     next: Window (* See windowList below *)
   END;
 
@@ -138,30 +139,90 @@ BEGIN wantW := w; wantH := h;
   settings := flags
 END Settings;
 
-PROCEDURE ResetFlipVars*(W: Window);
+PROCEDURE ResetFlipVars(W: Window);
+VAR w, h: INTEGER;
 BEGIN
-  W.flipW := FLT(W.w) * W.rzoom * W.scaleX;
-  W.flipH := FLT(W.h) * W.rzoom * W.scaleY;
-  W.iFlipX := FLOOR(FLT(W.winW) - W.flipW) DIV 2;
-  W.iFlipY := FLOOR(FLT(W.winH) - W.flipH) DIV 2;
-  W.flipX := FLT(W.iFlipX); W.flipY := FLT(W.iFlipY)
+  IF W.zoom = noZoom THEN W.flipW := FLT(W.w); W.flipH := FLT(W.h);
+    IF W.hasScale THEN
+      W.flipW := W.flipW * W.scaleX; W.flipH := W.flipH * W.scaleY
+    END;
+    W.iFlipX := FLOOR(W.winW - W.flipW + 0.5) DIV 2;
+    W.iFlipY := FLOOR(W.winH - W.flipH + 0.5) DIV 2
+  ELSIF W.zoom = intZoom THEN w := W.w * W.izoom; h := W.h * W.izoom;
+    W.flipW := FLT(w); W.flipH := FLT(h);
+    IF W.hasScale THEN
+      W.flipW := W.flipW * W.scaleX; W.flipH := W.flipH * W.scaleY;
+      W.iFlipX := (W.winW - FLOOR(W.flipW + 0.5)) DIV 2;
+      W.iFlipY := (W.winH - FLOOR(W.flipH + 0.5)) DIV 2
+    ELSE W.iFlipX := (W.winW - w) DIV 2; W.iFlipY := (W.winH - h) DIV 2
+    END
+  ELSE W.flipW := FLT(W.w) * W.rzoom; W.flipH := FLT(W.h) * W.rzoom;
+    IF W.hasScale THEN
+      W.flipW := W.flipW * W.scaleX; W.flipH := W.flipH * W.scaleY
+    END;
+    W.flipW := FLT(FLOOR(W.flipW + 0.5)); W.flipH := FLT(FLOOR(W.flipH + 0.5));
+    W.iFlipX := (W.winW - FLOOR(W.flipW)) DIV 2;
+    W.iFlipY := (W.winH - FLOOR(W.flipH)) DIV 2;
+  END;
+  W.flipX := FLT(W.iFlipX); W.flipY := FLT(W.iFlipY);
+  IF ~(exact IN W.options) & (smooth IN W.options) &
+     ((W.winW - W.flipX - W.flipW < W.rzoom) OR
+      (W.winH - W.flipY - W.flipH < W.rzoom)) THEN
+    W.iFlipX := 0; W.iFlipY := 0; W.flipX := 0.0; W.flipY := 0.0;
+    W.flipW := FLT(W.winW); W.flipH := FLT(W.winH)
+  END
 END ResetFlipVars;
+
+PROCEDURE ResetWindowBitmap(W: Window);
+VAR opt: SET;
+BEGIN
+  IF ~(exact IN W.options) THEN
+    W.w := FLOOR(W.winW / W.rzoom);
+    W.h := FLOOR(W.winH / W.rzoom)
+  END;
+  IF W.zoom # noZoom THEN
+    IF smooth IN W.options THEN opt := {Al.minLinear, Al.magLinear}
+    ELSE opt := {}
+    END;
+    Al.set_new_bitmap_flags(opt);
+    W.bmp := Al.create_bitmap(W.w, W.h);
+    ResetFlipVars(W)
+  ELSE W.bmp := NIL
+  END
+END ResetWindowBitmap;
 
 PROCEDURE GetWindowZoom*(W: Window): REAL;
 RETURN W.rzoom END GetWindowZoom;
 
-PROCEDURE SetWindowZoom*(W: Window; zoom: REAL);
+PROCEDURE SetWindowZoomF*(W: Window; zoom: REAL);
 BEGIN W.rzoom := zoom;
   IF zoom = 1.0 THEN W.zoom := noZoom
   ELSIF zoom = FLT(FLOOR(zoom)) THEN
     W.zoom := intZoom; W.izoom := FLOOR(zoom)
   ELSE W.zoom := realZoom
   END;
-  ResetFlipVars(W)
+  ResetWindowBitmap(W)
+  ;Out.RealFix(W.rzoom, 20, 10);Out.Int(W.izoom, 10);Out.Int(W.zoom, 10);Out.Ln;
+  Out.RealFix(W.flipX, 10, 2); Out.RealFix(W.flipY, 10, 2);
+  Out.RealFix(W.flipW, 10, 2); Out.RealFix(W.flipH, 10, 2); Out.Ln;
+END SetWindowZoomF;
+
+PROCEDURE SetWindowZoom*(W: Window; zoom: INTEGER);
+BEGIN W.rzoom := FLT(zoom);
+  IF zoom = 1 THEN W.zoom := noZoom
+  ELSE W.zoom := intZoom; W.izoom := zoom
+  END;
+  ResetWindowBitmap(W)
 END SetWindowZoom;
 
-PROCEDURE SetZoom*(zoom: REAL);
-BEGIN wantZoom := zoom
+PROCEDURE SetZoomF*(zoom: REAL);
+BEGIN wantZoom := zoom;
+  IF screen # NIL THEN SetWindowZoomF(screen, zoom) END
+END SetZoomF;
+
+PROCEDURE SetZoom*(zoom: INTEGER);
+BEGIN wantZoom := FLT(zoom);
+  IF screen # NIL THEN SetWindowZoom(screen, zoom) END
 END SetZoom;
 
 PROCEDURE SetSizeStep*(w, h: INTEGER);
@@ -409,7 +470,7 @@ VAR W: Window;
   opt: SET;
   n, dw, dh, nw, nh, sw, sh: INTEGER;
   nwf, nhf: REAL;
-BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
+BEGIN NEW(W); W.lastX := -1; W.lastY := -1; W.options := options;
   W.hasScale := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
   W.scaleX := wantScaleX; W.scaleY := wantScaleY;
   W.rzoom := wantZoom;
@@ -493,16 +554,7 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
     W.winW := Al.get_display_width(W.display);
     W.winH := Al.get_display_height(W.display);
     W.w := w; W.h := h;
-
-    IF W.zoom # noZoom THEN
-      IF smooth IN options THEN opt := {Al.minLinear, Al.magLinear}
-      ELSE opt := {}
-      END;
-      Al.set_new_bitmap_flags(opt);
-      W.bmp := Al.create_bitmap(w, h);
-      ResetFlipVars(W)
-    ELSE W.bmp := NIL
-    END;
+    ResetWindowBitmap(W);
     Al.register_event_source(queue, Al.get_display_event_source(W.display));
     W.next := windowList; windowList := W
   ELSE Out.String('Could not create dispaly.'); Out.Ln
@@ -529,10 +581,10 @@ BEGIN W := windowList;
 RETURN W END GetWindow;
 
 PROCEDURE ApplyResize*(window: Window);
-VAR W: Window;
 BEGIN Al.acknowledge_resize(window.display);
-  window.w := Al.get_display_width(window.display);
-  window.h := Al.get_display_height(window.display)
+  window.winW := Al.get_display_width(window.display);
+  window.winH := Al.get_display_height(window.display);
+  ResetWindowBitmap(window)
 END ApplyResize;
 
 PROCEDURE WaitEvent*(VAR event: Event);

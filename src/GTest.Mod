@@ -94,9 +94,9 @@ BEGIN
         G.ColorToRGB(c1, r, g, b);
         r := (r + e.dz * 8) MOD 256;
         G.MakeCol(c1, r, g, b);
-        z := G.GetWindowZoom(e.window) + e.dz / 10;
+        z := (FLT(FLOOR(G.GetWindowZoom(e.window) * 10 + 0.5)) + e.dz) / 10;
         IF z < 0.3 THEN z := 0.3 END;
-        G.SetWindowZoom(e.window, z)
+        G.SetWindowZoomF(e.window, z)
       END;
       G.MakeCol(c2, e.x * 256 DIV e.window.w, e.y * 256 DIV e.window.h, 0);
       redraw := TRUE
@@ -132,7 +132,7 @@ PROCEDURE RunSingle;
 VAR i, n, W, H: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
-  G.Settings(640, 400, {G.window, G.smooth, G.center (*G.exact, G.smooth*)});
+  G.Settings(640, 400, {G.window, G.resizable, (*G.smooth,*) G.center (*G.exact, G.smooth*)});
   (*G.SetZoom(1.3);*)
   (*G.SetScale(5/6, 1.0);*)
   G.Init;
