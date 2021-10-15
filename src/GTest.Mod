@@ -117,7 +117,7 @@ BEGIN
       Out.String('         Code '); Out.Int(ORD(e.ch), 0); Out.Ln;
       redraw := TRUE
     ELSIF e.type = G.resize THEN
-      Out.String('Resize');Out.Ln;
+      Out.String('Resize '); Out.Int(e.window.w,5); Out.Int(e.window.h, 5);Out.Ln;
       G.ApplyResize(e.window);
       redraw := TRUE
     ELSIF e.type = G.quit THEN
@@ -132,7 +132,7 @@ PROCEDURE RunSingle;
 VAR i, n, W, H: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
-  G.Settings(640, 400, {G.window, G.resizable, (*G.smooth,*) G.center (*G.exact, G.smooth*)});
+  G.Settings(640, 400, {G.window, G.resizable, (*G.smooth,*) G.center, G.exact});
   (*G.SetZoom(1.3);*)
   (*G.SetScale(5/6, 1.0);*)
   G.Init;

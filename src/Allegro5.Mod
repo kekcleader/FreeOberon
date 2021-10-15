@@ -507,6 +507,7 @@ PROCEDURE get_monitor_info* ["al_get_monitor_info"] (adapter: INTEGER; VAR info:
 
 PROCEDURE rest* ["al_rest"] (seconds: LONGREAL);
 
+PROCEDURE identity_transform* ["al_identity_transform"] (VAR trans: Transform);
 PROCEDURE build_transform* ["al_build_transform"] (VAR trans: Transform; x, y, sx, sy, theta: REAL);
 PROCEDURE use_transform* ["al_use_transform"] (VAR trans: Transform);
 

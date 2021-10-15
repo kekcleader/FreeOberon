@@ -175,20 +175,31 @@ END ResetFlipVars;
 
 PROCEDURE ResetWindowBitmap(W: Window);
 VAR opt: SET;
+  w, h, bw, bh: INTEGER;
 BEGIN
-  IF ~(exact IN W.options) THEN
-    W.w := FLOOR(W.winW / W.rzoom);
-    W.h := FLOOR(W.winH / W.rzoom)
+  IF W.bmp = NIL THEN bw := -1
+  ELSE bw := Al.get_bitmap_width(W.bmp); bh := Al.get_bitmap_height(W.bmp)
   END;
-  IF W.zoom # noZoom THEN
-    IF smooth IN W.options THEN opt := {Al.minLinear, Al.magLinear}
-    ELSE opt := {}
-    END;
-    Al.set_new_bitmap_flags(opt);
-    W.bmp := Al.create_bitmap(W.w, W.h);
-    ResetFlipVars(W)
-  ELSE W.bmp := NIL
-  END
+  IF ~(exact IN W.options) THEN
+    IF W.zoom = noZoom THEN w := W.winW; h := W.winH
+    ELSIF W.zoom = intZoom THEN
+      w := W.winW DIV W.izoom; h := W.winH DIV W.izoom
+    ELSE w := FLOOR(W.winW / W.rzoom); h := FLOOR(W.winH / W.rzoom)
+    END
+  ELSE w := W.w; h := W.h
+  END;
+  IF (w > bw) OR (h > bh) OR (W.zoom = noZoom) THEN
+    IF W.bmp # NIL THEN Al.destroy_bitmap(W.bmp) END;
+    IF W.zoom # noZoom THEN
+      IF smooth IN W.options THEN opt := {Al.minLinear, Al.magLinear}
+      ELSE opt := {}
+      END;
+      Al.set_new_bitmap_flags(opt);
+      W.bmp := Al.create_bitmap(W.w, W.h)
+    ELSE W.bmp := NIL
+    END
+  END;
+  ResetFlipVars(W)
 END ResetWindowBitmap;
 
 PROCEDURE GetWindowZoom*(W: Window): REAL;
@@ -229,11 +240,15 @@ PROCEDURE SetSizeStep*(w, h: INTEGER);
 BEGIN sizeStepX := w; sizeStepY := h
 END SetSizeStep;
 
-PROCEDURE Target*(W: Bitmap);
-BEGIN target := W;
-  IF (W IS Window) & (W.bmp = NIL) THEN
-    Al.set_target_backbuffer(W(Window).display)
-  ELSE Al.set_target_bitmap(SYSTEM.VAL(Al.Bitmap, W.bmp))
+PROCEDURE Target*(bitmap: Bitmap);
+VAR T: Al.Transform;
+  W: Window;
+BEGIN target := bitmap;
+  IF (bitmap IS Window) & (bitmap.bmp = NIL) THEN W := bitmap(Window);
+    Al.set_target_backbuffer(W.display);
+    Al.build_transform(T, W.flipX, W.flipY, 1.0, 1.0, 0.0);
+    Al.use_transform(T)
+  ELSE Al.set_target_bitmap(SYSTEM.VAL(Al.Bitmap, bitmap.bmp))
   END
 END Target;
 
@@ -281,18 +296,34 @@ RETURN B END LoadBitmap;
 PROCEDURE Flip*;
 VAR tmp: Al.Bitmap;
   W: Window;
+  T: Al.Transform;
 BEGIN
-  IF (target # NIL) & (target IS Window) & (target.bmp # NIL) THEN
+  IF ((target = NIL) OR ~(target IS Window)) & (screen # NIL) THEN
+    Target(screen)
+  END;
+  IF (target # NIL) & (target IS Window) THEN
     W := target(Window);
     tmp := Al.get_target_bitmap();
     Al.set_target_backbuffer(W.display);
-    Al.clear_to_color(SYSTEM.VAL(Al.Color, black));
-    Al.draw_scaled_bitmap(target.bmp, 0.0, 0.0, FLT(target.w), FLT(target.h),
-      W.flipX, W.flipY, W.flipW, W.flipH, {});
+    Al.identity_transform(T);
+    Al.use_transform(T);
+    IF target.bmp # NIL THEN
+      Al.clear_to_color(SYSTEM.VAL(Al.Color, black));
+      Al.draw_scaled_bitmap(W.bmp, 0.0, 0.0, FLT(W.w), FLT(W.h),
+        W.flipX, W.flipY, W.flipW, W.flipH, {});
+    ELSE
+      Al.draw_filled_rectangle(0.0, 0.0, W.flipX, FLT(W.winH),
+        SYSTEM.VAL(Al.Color, black));
+      Al.draw_filled_rectangle(W.flipX + W.w, 0.0, FLT(W.winW), FLT(W.winH),
+        SYSTEM.VAL(Al.Color, black));
+      Al.draw_filled_rectangle(W.flipX, 0.0, W.flipX + FLT(W.w), W.flipY,
+        SYSTEM.VAL(Al.Color, black));
+      Al.draw_filled_rectangle(W.flipX, W.flipY + FLT(W.h),
+        W.flipX + FLT(W.w), FLT(W.winH), SYSTEM.VAL(Al.Color, black))
+    END;
     Al.flip_display();
     Al.set_target_bitmap(tmp)
-  ELSE Al.flip_display()
-  END;
+  END
 END Flip;
 
 PROCEDURE PutPixel2*(x, y: INTEGER; c: Color);
