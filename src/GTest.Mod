@@ -12,10 +12,13 @@ VAR main: G.Window;
   B: G.Bitmap;
 
 PROCEDURE OpenDialog;
+VAR opt: SET;
 BEGIN
   IF nofdialogs # LEN(dialogs) THEN
-    dialogs[nofdialogs] := G.NewWindow(-1, -1,
-      300, 100 + 50 * nofdialogs, 'Dialog', {G.center, G.smooth});
+    opt := {G.smooth, G.resizable};
+    IF ODD(nofdialogs) THEN INCL(opt, G.exact) END;
+    dialogs[nofdialogs] := G.NewWindow(40, nofdialogs * 70,
+      300, 100 + 50 * nofdialogs, 'Dialog', opt);
     INC(nofdialogs)
   END
 END OpenDialog;
@@ -86,9 +89,7 @@ BEGIN
     G.WaitEvent(e);
     IF e.type = G.mouseMove THEN
       IF (e.dx # 0) OR (e.dy # 0) THEN
-        IF e.window = main THEN
-          mX := e.x; mY := e.y
-        END
+        mX := e.x; mY := e.y
       END;
       IF e.dz # 0 THEN
         G.ColorToRGB(c1, r, g, b);
@@ -132,8 +133,8 @@ PROCEDURE RunSingle;
 VAR i, n, W, H: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
-  G.Settings(640, 400, {G.window, G.resizable, (*G.smooth,*) G.center, G.exact});
-  (*G.SetZoom(1.3);*)
+  G.Settings(640, 400, {G.window, G.resizable, G.smooth, G.center(*, G.exact*)});
+  (*G.SetZoomF(1.0);*)
   (*G.SetScale(5/6, 1.0);*)
   G.Init;
   G.GetScreenSize(W, H);

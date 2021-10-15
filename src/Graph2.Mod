@@ -166,8 +166,8 @@ BEGIN
   END;
   W.flipX := FLT(W.iFlipX); W.flipY := FLT(W.iFlipY);
   IF ~(exact IN W.options) & (smooth IN W.options) &
-     ((W.winW - W.flipX - W.flipW < W.rzoom) OR
-      (W.winH - W.flipY - W.flipH < W.rzoom)) THEN
+     (W.winW - W.flipX - W.flipW < W.rzoom) &
+     (W.winH - W.flipY - W.flipH < W.rzoom) THEN
     W.iFlipX := 0; W.iFlipY := 0; W.flipX := 0.0; W.flipY := 0.0;
     W.flipW := FLT(W.winW); W.flipH := FLT(W.winH)
   END
@@ -188,6 +188,7 @@ BEGIN
     END
   ELSE w := W.w; h := W.h
   END;
+  IF W.hasScale THEN w := FLOOR(w / W.scaleX); h := FLOOR(h / W.scaleY) END;
   IF (w > bw) OR (h > bh) OR (W.zoom = noZoom) THEN
     IF W.bmp # NIL THEN Al.destroy_bitmap(W.bmp) END;
     IF W.zoom # noZoom THEN
@@ -195,11 +196,14 @@ BEGIN
       ELSE opt := {}
       END;
       Al.set_new_bitmap_flags(opt);
-      W.bmp := Al.create_bitmap(W.w, W.h)
+      W.bmp := Al.create_bitmap(w, h)
     ELSE W.bmp := NIL
-    END
+    END;
   END;
-  ResetFlipVars(W)
+  IF (W.w # w) OR (W.h # h) THEN
+    W.w := w; W.h := h;
+    ResetFlipVars(W)
+  END
 END ResetWindowBitmap;
 
 PROCEDURE GetWindowZoom*(W: Window): REAL;
@@ -246,7 +250,7 @@ VAR T: Al.Transform;
 BEGIN target := bitmap;
   IF (bitmap IS Window) & (bitmap.bmp = NIL) THEN W := bitmap(Window);
     Al.set_target_backbuffer(W.display);
-    Al.build_transform(T, W.flipX, W.flipY, 1.0, 1.0, 0.0);
+    Al.build_transform(T, W.flipX, W.flipY, W.scaleX, W.scaleY, 0.0);
     Al.use_transform(T)
   ELSE Al.set_target_bitmap(SYSTEM.VAL(Al.Bitmap, bitmap.bmp))
   END
