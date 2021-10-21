@@ -636,7 +636,6 @@ BEGIN
     Al.wait_for_event(queue, E);
     event.time := E.timestamp;
     IF E.type = Al.eventMouseAxes THEN
-      event.type := mouseMove;
       ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
       W := GetWindow(ME.display);
       IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
@@ -647,18 +646,21 @@ BEGIN
       END;
       IF W.hasScale THEN x := FLOOR(x / W.scaleX); y := FLOOR(y / W.scaleY)
       END;
-      IF (x # W.lastX) OR (y # W.lastY) OR
-         (ME.dz # 0) OR (ME.dw # 0) THEN
-        event.z := ME.z; event.w := ME.w;
-        IF x = -1 THEN event.dx := 0; event.dy := 0
-        ELSE event.dx := x - W.lastX; event.dy := y - W.lastY
+      IF (x # W.lastX) OR (y # W.lastY) OR (ME.dz # 0) OR (ME.dw # 0) THEN
+        IF (ME.dz # 0) OR (ME.dw # 0) THEN event.type := mouseWheel;
+          event.dz := ME.dz; event.dw := ME.dw;
+          event.x := W.lastX; event.y := W.lastY;
+          event.z := ME.z; event.w := ME.w;
+          event.dx := 0; event.dy := 0
+        ELSE event.type := mouseMove;
+          IF x = -1 THEN event.dx := 0; event.dy := 0
+          ELSE event.dx := x - W.lastX; event.dy := y - W.lastY
+          END;
+          event.x := x; event.y := y;
+          W.lastX := event.x; W.lastY := event.y
         END;
-        event.x := x; event.y := y;
-        event.dz := ME.dz; event.dw := ME.dw;
         event.button := ME.button;
-        event.display := ME.display;
-        event.window := W;
-        W.lastX := event.x; W.lastY := event.y
+        event.display := ME.display; event.window := W
       ELSE skip := TRUE
       END
     ELSIF E.type = Al.eventMouseButtonDown THEN

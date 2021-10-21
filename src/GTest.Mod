@@ -91,6 +91,9 @@ BEGIN
       IF (e.dx # 0) OR (e.dy # 0) THEN
         mX := e.x; mY := e.y
       END;
+      G.MakeCol(c2, mX * 256 DIV e.window.w, mY * 256 DIV e.window.h, 0);
+      redraw := TRUE
+    ELSIF e.type = G.mouseWheel THEN
       IF e.dz # 0 THEN
         G.ColorToRGB(c1, r, g, b);
         r := (r + e.dz * 8) MOD 256;
@@ -99,7 +102,6 @@ BEGIN
         IF z < 0.3 THEN z := 0.3 END;
         G.SetWindowZoomF(e.window, z)
       END;
-      G.MakeCol(c2, e.x * 256 DIV e.window.w, e.y * 256 DIV e.window.h, 0);
       redraw := TRUE
     ELSIF e.type = G.mouseDown THEN
       IF e.button = 1 THEN
