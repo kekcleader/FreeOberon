@@ -1,7 +1,9 @@
 MODULE Graph2;
-IMPORT Out, Al := Allegro5, Utf8, SYSTEM;
+IMPORT Out, Al := Allegro5, Utf8, Files, Strings, SYSTEM;
 
 CONST
+  fontPlanes = 4; (*!TODO*)
+
   (* Settings set members *)
   manual*      = 0;
   fullscreen*  = 1;
@@ -96,6 +98,29 @@ TYPE
     window*: Window;
     display: Al.Display;
     source: ADRINT
+  END;
+
+  FontMessage* = POINTER TO FontMessageDesc;
+  FontMessageDesc* = RECORD
+
+  END;
+
+  FontDrawMsg* = POINTER TO FontDrawMsgDesc;
+  FontDrawMsgDesc* = RECORD(FontMessage)
+
+  END;
+
+  Font* = POINTER TO FontDesc;
+  FontDesc* = RECORD
+    handle: PROCEDURE (font: Font; VAR msg: FontMessage);
+    draw: PROCEDURE (font: Font; VAR msg: FontDrawMsg)
+  END;
+
+  MonoFont* = POINTER TO MonoFontDesc;
+  MonoFontDesc* = RECORD(FontDesc)
+    bmp: Bitmap;
+    charW, charH: INTEGER;
+    rows, cols: INTEGER
   END;
 
 VAR
@@ -243,6 +268,16 @@ END SetZoom;
 PROCEDURE SetSizeStep*(w, h: INTEGER);
 BEGIN sizeStepX := w; sizeStepY := h
 END SetSizeStep;
+
+PROCEDURE GetTarget*(): Bitmap;
+RETURN target END GetTarget;
+
+PROCEDURE GetTargetSize*(VAR width, height: INTEGER);
+BEGIN
+  IF target # NIL THEN width := target.w; height := target.h
+  ELSE width := 0; height := 0
+  END
+END GetTargetSize;
 
 PROCEDURE Target*(bitmap: Bitmap);
 VAR T: Al.Transform;
@@ -742,6 +777,88 @@ END WaitEvent;
 PROCEDURE StartTimer*(timer: Timer);
 BEGIN Al.start_timer(timer.tmr)
 END StartTimer;
+
+(* Font *)
+
+PROCEDURE FindFontChar(font: Font; c: CHAR; VAR bmp: Bitmap;
+    VAR x, y, w, h: INTEGER);
+VAR n: INTEGER;
+  m: MonoFont;
+BEGIN m := font(MonoFont);
+  IF c < 180X THEN n := ORD(c)
+  ELSIF (400X <= c) & (c < 500X) THEN n := ORD(c) + (300H - 400H)
+  ELSIF (2500X <= c) & (c < 2600X) THEN n := ORD(c) + (200H - 2500H)
+  ELSE n := -1
+  END;
+  IF n < 0 THEN n := 1 (* "Bad" character *) END;
+  bmp := m.bmp;
+  x := n MOD m.cols * m.charW; y := n DIV m.cols * m.charH;
+  w := m.charW; h := m.charH
+END FindFontChar;
+
+PROCEDURE DrawCharEx*(ch: CHAR; x, y: INTEGER; font: Font; color: Color;
+    VAR w: INTEGER);
+VAR sx, sy, h: INTEGER;
+  bmp: Bitmap;
+BEGIN FindFontChar(font, ch, bmp, sx, sy, w, h);
+  DrawPart(bmp, sx, sy, w, h, x, y)
+END DrawCharEx;
+
+PROCEDURE DrawChar*(ch: CHAR; x, y: INTEGER; font: Font; color: Color);
+VAR w: INTEGER;
+BEGIN DrawCharEx(ch, x, y, font, color, w)
+END DrawChar;
+
+PROCEDURE DrawString*(s: ARRAY OF CHAR; x, y: INTEGER;
+    font: Font; color: Color);
+VAR i, cx, cy, charW, destW, destH: INTEGER;
+  m: MonoFont;
+BEGIN m := font(MonoFont); i := 0; cx := x; cy := y;
+  GetTargetSize(destW, destH);
+  WHILE (s[i] # 0X) & (cx < destW) & (cy < destH) DO
+    IF s[i] = 0AX THEN cx := x; INC(cy, m.charH)
+    ELSE DrawCharEx(s[i], cx, cy, font, color, charW);
+      INC(i); INC(cx, charW)
+    END
+  END
+END DrawString;
+
+PROCEDURE MonoFontDraw(f: Font; VAR msg: FontDrawMsg);
+VAR m: MonoFont;
+BEGIN m := f(MonoFont);
+  (*!TODO*)
+END MonoFontDraw;
+
+PROCEDURE MonoFontHandle(f: Font; VAR msg: FontMessage);
+VAR m: MonoFont;
+BEGIN m := f(MonoFont)
+  (*!TODO*)
+END MonoFontHandle;
+
+PROCEDURE LoadFont*(fname: ARRAY OF CHAR): Font;
+VAR f: MonoFont;
+  bmp: Bitmap;
+  F: Files.File;
+  r: Files.Rider;
+  s: ARRAY 4096 OF CHAR;
+BEGIN f := NIL;
+  s := fname; Strings.Append('.ofi', s);
+  F := Files.Old(s);
+  IF F # NIL THEN
+    Files.Close(F); (*!TODO*)
+    s := fname; Strings.Append('.png', s);
+    bmp := LoadBitmap(s);
+    IF bmp # NIL THEN
+      NEW(f); f.bmp := bmp;
+      f.cols := 16; f.rows := 16 * fontPlanes;
+      f.charW := bmp.w DIV f.cols; f.charH := bmp.h DIV f.rows;
+      f.draw := MonoFontDraw;
+      f.handle := MonoFontHandle
+    END
+  END
+RETURN f END LoadFont;
+
+(* Init *)
 
 PROCEDURE InitScreen;
 BEGIN

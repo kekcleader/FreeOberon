@@ -10,6 +10,7 @@ VAR main: G.Window;
   c1, c2: G.Color;
   mX, mY: INTEGER;
   B: G.Bitmap;
+  font: G.Font;
 
 PROCEDURE OpenDialog;
 VAR opt: SET;
@@ -57,6 +58,9 @@ BEGIN
   END;
 
   IF mX # -1 THEN G.Draw(B, mX, mY) END;
+
+  G.DrawString('Привет, Оберон!', 16, 16, font, c2);
+  G.DrawString('Aŭ! Ķolorōĵ ne ļāboŗaš!', 16, 32, font, c1);
 
   G.Flip
 END DrawWin;
@@ -135,7 +139,7 @@ PROCEDURE RunSingle;
 VAR i, n, W, H: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
-  G.Settings(640, 400, {G.window, G.resizable, G.smooth, G.center(*, G.exact*)});
+  G.Settings(640, 400, {G.window, G.resizable, G.center(*, G.exact*)});
   (*G.SetZoomF(1.0);*)
   (*G.SetScale(5/6, 1.0);*)
   G.Init;
@@ -146,63 +150,8 @@ BEGIN
   G.MakeCol(c4, 50, 30, 255);
   B := G.LoadBitmap('fb.png');
   IF B = NIL THEN Out.String('COULD NOT LOAD img.png'); Out.Ln END;
-  G.ClearScreen;
-
-(*  i := 0;
-  REPEAT
-    n := i * 255 DIV H;
-    G.MakeCol(c5, n, n DIV 3, 255 - n);
-    G.Line(0, i, W - 1, i, c5);
-    G.Flip; G.Delay(1);
-    INC(i)
-  UNTIL i = H;
-
-  i := 0;
-  REPEAT
-    G.DrawRotated(B, B.w DIV 2, B.h DIV 2, 15 + i * 6, 80,
-      FLT(i) / 180.0 * 3.14, {});
-    G.DrawRotated(B, B.w DIV 2, B.h DIV 2, W - 15 - i * 25, 130,
-      FLT(i) / 180.0 * 3.14, {G.flipHor});
-      (*DELETEME*)          G.Flip; G.Delay(20);
-    INC(i)
-  UNTIL i = 100;
-  G.Line(0, 0, 0, 10, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.Line(2, 0, 2, 10, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.Line(10, 0, 40, 30, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.Line(10, 10, 40, 70, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.PutPixel(4, 4, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.PutPixel(6, 4, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.PutPixel(6, 4, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.PutPixel2(4, 14, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.PutPixel2(6, 14, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.PutPixel2(6, 14, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.PutPixel2(6, 13, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.PutPixel2(7, 13, c2);
-    (*DELETEME*)          G.Flip; G.Delay(20);
-  G.Target(B);
-
-  G.Line(0, 0, 15, 0, c2);
-  G.Line(0, 22, 15, 22, c2);
-  G.Line(0, 0, 0, 22, c2);
-  G.Line(15, 0, 15, 22, c2);
-
-  G.Line(0, 0, 15, 5, c4);
-  G.Line(15, 0, 12, 22, c3);
-
-  G.TargetScreen;
-  G.Draw(B, 130, 100);
-*)
+  font := G.LoadFont('mainfont');
+  IF font = NIL THEN Out.String('COULD NOT LOAD mainfont'); Out.Ln END;
 
   main := G.GetScreen();
   t := G.NewTimer(0.5);
