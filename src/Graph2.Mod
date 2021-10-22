@@ -785,7 +785,7 @@ PROCEDURE FindFontChar(font: Font; c: CHAR; VAR bmp: Bitmap;
 VAR n: INTEGER;
   m: MonoFont;
 BEGIN m := font(MonoFont);
-  IF c < 180X THEN n := ORD(c)
+  IF c < 200X THEN n := ORD(c)
   ELSIF (400X <= c) & (c < 500X) THEN n := ORD(c) + (300H - 400H)
   ELSIF (2500X <= c) & (c < 2600X) THEN n := ORD(c) + (200H - 2500H)
   ELSE n := -1
