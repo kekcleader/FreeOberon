@@ -7,7 +7,7 @@ CONST
   (* Settings set members *)
   manual*      = 0;
   fullscreen*  = 1;
-  window*    = 2;
+  window*      = 2;
   exact*       = 3;
   smooth*      = 4;
   software*    = 5;
