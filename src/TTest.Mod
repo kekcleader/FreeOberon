@@ -6,7 +6,7 @@ PROCEDURE Draw;
 VAR x: INTEGER;
 BEGIN
   T.Init;
-  T.Clear(14, 4);
+  T.ClearTo(14, 4);
   FOR x := 0 TO 31 DO
     T.SetCell(x + 3, 3, CHR(ORD('А') + x), 15, 4);
     T.SetChar(x + 3, 5, 2566X);

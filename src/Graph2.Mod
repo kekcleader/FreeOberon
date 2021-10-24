@@ -785,6 +785,10 @@ END StartTimer;
 
 (* Font *)
 
+PROCEDURE GetMonoFontSize*(font: Font; VAR charW, charH: INTEGER);
+BEGIN charW := font(MonoFont).charW; charH := font(MonoFont).charH
+END GetMonoFontSize;
+
 PROCEDURE FindFontChar(font: Font; c: CHAR; VAR bmp: Bitmap;
     VAR x, y, w, h: INTEGER);
 VAR n: INTEGER;

@@ -93,6 +93,22 @@ BEGIN
   END
 END SetPartChar;
 
+PROCEDURE SetPartFg(p: Part; x, y, fg: INTEGER);
+BEGIN
+  IF p.cells[y, x].fg # fg THEN
+    p.cells[y, x].fg := fg;
+    p.redraw := TRUE
+  END
+END SetPartFg;
+
+PROCEDURE SetPartBg(p: Part; x, y, bg: INTEGER);
+BEGIN
+  IF p.cells[y, x].bg # bg THEN
+    p.cells[y, x].bg := bg;
+    p.redraw := TRUE
+  END
+END SetPartBg;
+
 PROCEDURE GetPart(S: Buffer; VAR x, y: INTEGER): Part;
 VAR p: Part;
 BEGIN p := S.first;
@@ -100,7 +116,7 @@ BEGIN p := S.first;
   WHILE (p # NIL) & (x >= p.w) DO DEC(x, p.w); p := p.right END
 RETURN p END GetPart;
 
-PROCEDURE ClearTo(fg, bg: INTEGER);
+PROCEDURE ClearTo*(fg, bg: INTEGER);
 VAR x, y: INTEGER;
   l, p: Part;
 BEGIN l := buffer.first;
@@ -113,7 +129,7 @@ BEGIN l := buffer.first;
       END;
       p := p.right
     END;
-    l := l.next
+    l := l.down
   END
 END ClearTo;
 
@@ -122,15 +138,21 @@ BEGIN ClearTo(7, 0)
 END Clear;
 
 PROCEDURE DrawCell(x, y: INTEGER; cell: Cell);
-BEGIN x := x * font.charW; y := y * font.charH;
-  G.FillRect(x, y, x + font.charW - 1, y + font.charH - 1,
-    colors[cell.bg MOD nofcolors]);
+VAR w, h: INTEGER;
+BEGIN G.GetMonoFontSize(font, w, h); x := x * w; y := y * h;
+  G.FillRect(x, y, x + w - 1, y + h - 1, colors[cell.bg MOD nofcolors]);
   G.DrawChar(cell.ch, x, y, font, colors[cell.fg MOD nofcolors])
 END DrawCell;
 
 PROCEDURE Flip;
 BEGIN G.Flip
 END Flip;
+
+PROCEDURE UpdateCell(x, y: INTEGER);
+VAR p: Part;
+BEGIN p := GetPart(buffer, x, y);
+  IF p # NIL THEN p.updated[y, x] := TRUE; p.redraw := TRUE END
+END UpdateCell;
 
 PROCEDURE SetCursor*(x, y: INTEGER);
 BEGIN
@@ -185,8 +207,30 @@ BEGIN p := GetPart(buffer, x, y);
 END GetCell;
 
 PROCEDURE WaitEvent*(VAR event: Event);
+VAR e: G.Event;
+  skip: BOOLEAN;
 BEGIN
-  event.type := 
+  REPEAT skip := FALSE;
+    G.WaitEvent(e);
+    IF e.type = G.mouseMove THEN
+      skip := TRUE
+    ELSIF e.type = G.mouseDown THEN
+      skip := TRUE
+    ELSIF e.type = G.mouseUp THEN
+      skip := TRUE
+    ELSIF e.type = G.timer THEN
+      skip := TRUE
+    ELSIF e.type = G.keyDown THEN
+      event.type := key;
+      event.key := e.key;
+      event.ch := e.ch;
+      event.mod := e.mod
+    ELSIF e.type = G.resize THEN
+      skip := TRUE
+    ELSIF e.type = G.quit THEN
+      event.type := quit
+    END
+  UNTIL ~skip
 END WaitEvent;
 
 PROCEDURE Flush*;
@@ -199,7 +243,7 @@ BEGIN l := buffer.first; Y := 0;
         FOR y := 0 TO p.h - 1 DO
           FOR x := 0 TO p.w - 1 DO
             IF p.updated[y, x] THEN
-              DrawCell(X + x, Y + y, p.cell[y, x]);
+              DrawCell(X + x, Y + y, p.cells[y, x]);
               p.updated[y, x] := FALSE
             END
           END
@@ -208,7 +252,7 @@ BEGIN l := buffer.first; Y := 0;
       END;
       INC(X, l.w); p := p.right
     END;
-    INC(Y, l.h); l := l.next
+    INC(Y, l.h); l := l.down
   END;
   Flip
 END Flush;
@@ -220,7 +264,6 @@ END Sync;
 
 PROCEDURE Close*;
 BEGIN
-  buffer := NIL;
   font := NIL;
   G.Close
 END Close;
@@ -240,7 +283,7 @@ RETURN font # NIL END LoadFont;
 PROCEDURE NewPart(w, h: INTEGER): Part;
 VAR p: Part;
   x, y: INTEGER;
-BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL
+BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL;
   FOR y := 0 TO h - 1 DO
     FOR x := 0 TO w - 1 DO
       p.cells[y, x].ch := emptyCh;
@@ -252,9 +295,9 @@ BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL
 RETURN p END NewPart;
 
 PROCEDURE InitBuffer;
-VAR W, H: INTEGER;
-BEGIN G.GetScreenSize(W, H);
-  buffer.w := W DIV font.charW; buffer.h := H DIV font.charH;
+VAR W, H, fw, fh: INTEGER;
+BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
+  buffer.w := W DIV fw; buffer.h := H DIV fh;
   IF buffer.w > partW THEN buffer.w := partW END; (*!FIXME*)
   IF buffer.h > partH THEN buffer.h := partH END;
   buffer.first := NewPart(buffer.w, buffer.h);
