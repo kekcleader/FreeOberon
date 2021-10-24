@@ -124,6 +124,8 @@ TYPE
   END;
 
 VAR
+  Done*: BOOLEAN;
+
   settings: SET; (* See list of constants Settings above *)
   wantW, wantH: INTEGER; (* Assigned in procedure Settings *)
   wantZoom: REAL; (* Assigned in procedure SetZoom *)
@@ -283,11 +285,13 @@ PROCEDURE Target*(bitmap: Bitmap);
 VAR T: Al.Transform;
   W: Window;
 BEGIN target := bitmap;
-  IF (bitmap IS Window) & (bitmap.bmp = NIL) THEN W := bitmap(Window);
-    Al.set_target_backbuffer(W.display);
-    Al.build_transform(T, W.flipX, W.flipY, W.scaleX, W.scaleY, 0.0);
-    Al.use_transform(T)
-  ELSE Al.set_target_bitmap(SYSTEM.VAL(Al.Bitmap, bitmap.bmp))
+  IF bitmap # NIL THEN
+    IF (bitmap IS Window) & (bitmap.bmp = NIL) THEN W := bitmap(Window);
+      Al.set_target_backbuffer(W.display);
+      Al.build_transform(T, W.flipX, W.flipY, W.scaleX, W.scaleY, 0.0);
+      Al.use_transform(T)
+    ELSE Al.set_target_bitmap(SYSTEM.VAL(Al.Bitmap, bitmap.bmp))
+    END
   END
 END Target;
 
@@ -295,6 +299,7 @@ PROCEDURE TargetScreen*;
 BEGIN
   IF screen # NIL THEN Target(screen)
   ELSIF windowList # NIL THEN Target(windowList)
+  ELSE Target(NIL)
   END
 END TargetScreen;
 
@@ -860,45 +865,49 @@ RETURN f END LoadFont;
 
 (* Init *)
 
-PROCEDURE InitScreen;
+PROCEDURE InitScreen(): BOOLEAN;
 BEGIN
   IF ~(fullscreen IN settings) & ((wantW <= 0) OR (wantH <= 0)) THEN
     wantW := 640; wantH := 400
   END;
   screen := NewWindow(-1, -1, wantW, wantH, wantScreenTitle, settings);
   Target(screen)
-END InitScreen;
+RETURN screen # NIL END InitScreen;
 
 PROCEDURE Init*;
-BEGIN
+VAR ok: BOOLEAN;
+BEGIN ok := TRUE;
   IF Al.install_system(Al.get_allegro_version(), 0) THEN
     IF ~Al.install_keyboard() THEN
-      Out.String('Could not install keyboard.'); Out.Ln
+      Out.String('Could not install keyboard.'); Out.Ln; ok := FALSE
     END;
 
     IF ~Al.install_mouse() THEN
-      Out.String('Could not install mouse.'); Out.Ln
+      Out.String('Could not install mouse.'); Out.Ln; ok := FALSE
     END;
 
     IF ~Al.init_primitives_addon() THEN
-      Out.String('Could not init primitives addon.'); Out.Ln
+      Out.String('Could not init primitives addon.'); Out.Ln; ok := FALSE
     END;
 
     IF ~Al.init_image_addon() THEN
-      Out.String('Could not init image addon.'); Out.Ln
+      Out.String('Could not init image addon.'); Out.Ln; ok := FALSE
     END;
 
     queue := Al.create_event_queue();
     IF queue = NIL THEN
-      Out.String('Could not create queue.'); Out.Ln
+      Out.String('Could not create queue.'); Out.Ln; ok := FALSE
     END;
 
     Al.register_event_source(queue, Al.get_keyboard_event_source());
     Al.register_event_source(queue, Al.get_mouse_event_source());
 
-    IF ~(manual IN settings) THEN InitScreen END
-  ELSE Out.String('Coult not init Allegro.'); Out.Ln
-  END
+    IF ~(manual IN settings) THEN
+      IF ~InitScreen() THEN ok := FALSE END
+    END
+  ELSE Out.String('Coult not init Allegro.'); Out.Ln; ok := FALSE
+  END;
+  Done := ok
 END Init;
 
 PROCEDURE ResetDefaults;
@@ -916,7 +925,7 @@ BEGIN
   ResetDefaults
 END Close;
 
-BEGIN
+BEGIN Done := FALSE;
   MakeCol(black, 0, 0, 0);
   ResetDefaults
 END Graph2.

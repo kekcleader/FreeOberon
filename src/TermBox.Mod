@@ -1,5 +1,5 @@
 MODULE TermBox;
-IMPORT G := Graph2;
+IMPORT G := Graph2, Out;
 
 CONST
   (* Settings set members *)
@@ -22,28 +22,30 @@ CONST
   none*   = 14;
   error*  = 15;
 
-  emptyCh = ORD(' ');
+  emptyCh = ' ';
 
   partW = 80;
   partH = 25;
 
-TYPE
-  Cell* = RECORD
-    ch*: INTEGER;
-    fg*, bg*: INTEGER
-  END;
+  nofcolors = 16;
 
+TYPE
   Event* = RECORD
     type*: INTEGER;
     x*, y*: INTEGER;
     w*, h*: INTEGER;  (* Size of screen in cells on resize *)
     button*: INTEGER; (* Mouse button that is pressed *)
     key*: INTEGER;    (* Physical key code *)
-    ch*: INTEGER;     (* Typed character *)
+    ch*: CHAR;        (* Typed character *)
     mod*: SET         (* Key modifiers *)
   END;
 
-  Part* = POINTER TO PartDesc; (* Part of screen *)
+  Cell* = RECORD
+    ch*: CHAR;
+    fg*, bg*: INTEGER
+  END;
+
+  Part* = POINTER TO PartDesc; (* Part of screen buffer *)
   PartDesc* = RECORD
     cells: ARRAY partH, partW OF Cell;
     updated: ARRAY partH, partW OF BOOLEAN; (* TRUE means need to redraw *)
@@ -52,7 +54,7 @@ TYPE
     down, right: Part
   END;
 
-  Screen = RECORD
+  Buffer = RECORD (* Screen buffer *)
     first: Part;
     w, h: INTEGER;
     curX, curY: INTEGER (* Cursor position *)
@@ -61,9 +63,14 @@ TYPE
 VAR
   wantW, wantH: INTEGER;
   settings: SET;
-  screen: Screen;
+  buffer: Buffer;
 
-PROCEDURE SetPartCell(x, y, ch, fg, bg: INTEGER);
+  font: G.MonoFont;
+  colors: ARRAY nofcolors OF G.Color;
+
+  Done*: BOOLEAN;
+
+PROCEDURE SetPartCell(p: Part; x, y: INTEGER; ch: CHAR; fg, bg: INTEGER);
 BEGIN
   IF (p.cells[y, x].ch # ch) OR
      (p.cells[y, x].fg # fg) OR
@@ -77,15 +84,31 @@ BEGIN
   END
 END SetPartCell;
 
+PROCEDURE SetPartChar(p: Part; x, y: INTEGER; ch: CHAR);
+BEGIN
+  IF p.cells[y, x].ch # ch THEN
+    p.cells[y, x].ch := ch;
+    p.updated[y, x] := TRUE;
+    p.redraw := TRUE
+  END
+END SetPartChar;
+
+PROCEDURE GetPart(S: Buffer; VAR x, y: INTEGER): Part;
+VAR p: Part;
+BEGIN p := S.first;
+  WHILE (p # NIL) & (y >= p.h) DO DEC(y, p.h); p := p.down END;
+  WHILE (p # NIL) & (x >= p.w) DO DEC(x, p.w); p := p.right END
+RETURN p END GetPart;
+
 PROCEDURE ClearTo(fg, bg: INTEGER);
 VAR x, y: INTEGER;
   l, p: Part;
-BEGIN l := screen.first;
+BEGIN l := buffer.first;
   WHILE l # NIL DO p := l;
     WHILE p # NIL DO
       FOR y := 0 TO p.h - 1 DO
         FOR x := 0 TO p.w - 1 DO
-          SetPartCell(x, y, emptyCh, fg, bg)
+          SetPartCell(p, x, y, emptyCh, fg, bg)
         END
       END;
       p := p.right
@@ -99,18 +122,24 @@ BEGIN ClearTo(7, 0)
 END Clear;
 
 PROCEDURE DrawCell(x, y: INTEGER; cell: Cell);
-BEGIN
-
+BEGIN x := x * font.charW; y := y * font.charH;
+  G.FillRect(x, y, x + font.charW - 1, y + font.charH - 1,
+    colors[cell.bg MOD nofcolors]);
+  G.DrawChar(cell.ch, x, y, font, colors[cell.fg MOD nofcolors])
 END DrawCell;
+
+PROCEDURE Flip;
+BEGIN G.Flip
+END Flip;
 
 PROCEDURE SetCursor*(x, y: INTEGER);
 BEGIN
-  IF (x # screen.curX) OR (y # screen.curY) THEN
-    UpdateCell(screen.curX, screen.curY);
-    IF (0 <= x) & (x < screen.w) & (0 <= y) & (y < screen.h) THEN
-      screen.curX := x; screen.curY := y;
+  IF (x # buffer.curX) OR (y # buffer.curY) THEN
+    UpdateCell(buffer.curX, buffer.curY);
+    IF (0 <= x) & (x < buffer.w) & (0 <= y) & (y < buffer.h) THEN
+      buffer.curX := x; buffer.curY := y;
       UpdateCell(x, y)
-    ELSE screen.curX := -1; screen.curY := -1
+    ELSE buffer.curX := -1; buffer.curY := -1
     END
   END
 END SetCursor;
@@ -121,35 +150,35 @@ END HideCursor;
 
 PROCEDURE SetBg*(x, y, bg: INTEGER);
 VAR p: Part;
-BEGIN p := GetPart(screen, x, y);
+BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartBg(p, x, y, bg) END
 END SetBg;
 
 PROCEDURE SetFg*(x, y, fg: INTEGER);
 VAR p: Part;
-BEGIN p := GetPart(screen, x, y);
+BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartFg(p, x, y, fg) END
 END SetFg;
 
-PROCEDURE SetCell*(x, y, ch, fg, bg: INTEGER);
+PROCEDURE SetCell*(x, y: INTEGER; ch: CHAR; fg, bg: INTEGER);
 VAR p: Part;
-BEGIN p := GetPart(screen, x, y);
+BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartCell(p, x, y, ch, fg, bg) END
 END SetCell;
 
-PROCEDURE SetChar*(x, y, ch: INTEGER);
+PROCEDURE SetChar*(x, y: INTEGER; ch: CHAR);
 VAR p: Part;
-BEGIN p := GetPart(screen, x, y);
+BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartChar(p, x, y, ch) END
 END SetChar;
 
 PROCEDURE Size*(VAR width, height: INTEGER);
-BEGIN width := screen.w; height := screen.h
+BEGIN width := buffer.w; height := buffer.h
 END Size;
 
 PROCEDURE GetCell*(x, y: INTEGER; VAR cell: Cell);
 VAR p: Part;
-BEGIN p := GetPart(screen, x, y);
+BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN cell := p.cells[y, x]
   ELSE cell.ch := emptyCh; cell.fg := 7; cell.bg := 0
   END
@@ -163,7 +192,7 @@ END WaitEvent;
 PROCEDURE Flush*;
 VAR x, y, X, Y: INTEGER;
   l, p: Part;
-BEGIN l := screen.first; Y := 0;
+BEGIN l := buffer.first; Y := 0;
   WHILE l # NIL DO p := l; X := 0;
     WHILE p # NIL DO
       IF p.redraw THEN
@@ -180,7 +209,8 @@ BEGIN l := screen.first; Y := 0;
       INC(X, l.w); p := p.right
     END;
     INC(Y, l.h); l := l.next
-  END
+  END;
+  Flip
 END Flush;
 
 PROCEDURE Sync*;
@@ -190,22 +220,93 @@ END Sync;
 
 PROCEDURE Close*;
 BEGIN
-  screen := NIL;
+  buffer := NIL;
+  font := NIL;
   G.Close
 END Close;
 
-PROCEDURE Init*;
+PROCEDURE LoadFont(): BOOLEAN;
+VAR f: G.Font;
 BEGIN
+  f := G.LoadFont('mainfont');
+  IF f # NIL THEN 
+    IF f IS G.MonoFont THEN font := f(G.MonoFont)
+    ELSE Out.String('The font is not monospaced.'); Out.Ln
+    END
+  ELSE Out.String('Could not load font.'); Out.Ln
+  END
+RETURN font # NIL END LoadFont;
+
+PROCEDURE NewPart(w, h: INTEGER): Part;
+VAR p: Part;
+  x, y: INTEGER;
+BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL
+  FOR y := 0 TO h - 1 DO
+    FOR x := 0 TO w - 1 DO
+      p.cells[y, x].ch := emptyCh;
+      p.cells[y, x].fg := 7;
+      p.cells[y, x].bg := 0;
+      p.updated[y, x] := TRUE
+    END
+  END
+RETURN p END NewPart;
+
+PROCEDURE InitBuffer;
+VAR W, H: INTEGER;
+BEGIN G.GetScreenSize(W, H);
+  buffer.w := W DIV font.charW; buffer.h := H DIV font.charH;
+  IF buffer.w > partW THEN buffer.w := partW END; (*!FIXME*)
+  IF buffer.h > partH THEN buffer.h := partH END;
+  buffer.first := NewPart(buffer.w, buffer.h);
+  buffer.curX := -1; buffer.curY := -1
+END InitBuffer;
+
+PROCEDURE ExpandColor(color: INTEGER; VAR r, g, b: INTEGER);
+BEGIN
+  CASE color OF
+     0: b :=   0; g :=   0; r :=   0
+  |  1: b :=  90; g :=   0; r :=   0
+  |  2: b :=   0; g := 176; r :=   0
+  |  3: b := 176; g := 176; r :=   0
+  |  4: b :=   0; g :=   0; r := 176
+  |  5: b := 176; g :=   0; r := 176
+  |  6: b :=   0; g :=  85; r := 176
+  |  7: b := 176; g := 176; r := 176
+  |  8: b :=  85; g :=  85; r :=  85
+  |  9: b := 255; g :=  85; r :=  85
+  | 10: b :=  85; g := 255; r :=  85
+  | 11: b := 255; g := 255; r :=  85
+  | 12: b :=  85; g :=  85; r := 255
+  | 13: b := 255; g :=  85; r := 255
+  | 14: b :=  85; g := 255; r := 255
+  | 15: b := 255; g := 255; r := 255
+  END
+END ExpandColor;
+
+PROCEDURE InitColors;
+VAR i, r, g, b: INTEGER;
+BEGIN
+  FOR i := 0 TO nofcolors DO
+    ExpandColor(i, r, g, b);
+    G.MakeCol(colors[i], r, g, b)
+  END;
+END InitColors;
+
+PROCEDURE Init*;
+BEGIN Done := FALSE;
   G.Settings(640, 400, {G.window, G.resizable, G.center(*, G.exact*)});
-  (*G.SetZoomF(1.0);*)
-  (*G.SetScale(5/6, 1.0);*)
+  G.SetZoom(2); (*G.SetScale(5/6, 1.0);*)
   G.Init;
-  G.GetScreenSize(W, H);
+  IF G.Done & LoadFont()THEN
+    InitColors;
+    InitBuffer;
+    Done := TRUE
+  END
 END Init;
 
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
 BEGIN wantW := w; wantH := h; settings := flags
 END Settings;
 
-BEGIN wantW := 80; wantH := 25; settings := {}
+BEGIN wantW := 80; wantH := 25; settings := {}; Done := FALSE
 END TermBox.
