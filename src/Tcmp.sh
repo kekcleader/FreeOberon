@@ -1,3 +1,6 @@
+OFRDIR="../data/bin/OfrontPlus/Target/Linux_amd64"
+export OBERON=.:$OFRDIR/Lib/Sym
+
 ofront+ -887ws Allegro5.Mod && \
 ofront+ -887ws Graph2.Mod && \
 ofront+ -887ws TermBox.Mod && \

@@ -70,7 +70,7 @@ VAR i: INTEGER;
 BEGIN
   DrawWin(main);
   i := 0;
-  WHILE (i # nofdialogs) & ~quit DO
+  WHILE (i # nofdialogs) & ~quit DO (*!FIXME ~quit??*)
     DrawWin(dialogs[i]);
     INC(i)
   END

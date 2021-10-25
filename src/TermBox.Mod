@@ -210,25 +210,29 @@ PROCEDURE WaitEvent*(VAR event: Event);
 VAR e: G.Event;
   skip: BOOLEAN;
 BEGIN
-  REPEAT skip := FALSE;
+  REPEAT skip := TRUE;
+  event.ch := '&';
     G.WaitEvent(e);
     IF e.type = G.mouseMove THEN
-      skip := TRUE
     ELSIF e.type = G.mouseDown THEN
-      skip := TRUE
     ELSIF e.type = G.mouseUp THEN
-      skip := TRUE
     ELSIF e.type = G.timer THEN
-      skip := TRUE
-    ELSIF e.type = G.keyDown THEN
+    (*ELSIF e.type = G.keyDown THEN
       event.type := key;
       event.key := e.key;
       event.ch := e.ch;
-      event.mod := e.mod
+      event.mod := e.mod;
+      skip := FALSE *)
+    ELSIF e.type = G.char THEN
+      event.type := key;
+      event.key := e.key;
+      event.ch := e.ch;
+      event.mod := e.mod;
+      skip := FALSE
     ELSIF e.type = G.resize THEN
-      skip := TRUE
     ELSIF e.type = G.quit THEN
-      event.type := quit
+      event.type := quit;
+      skip := FALSE
     END
   UNTIL ~skip
 END WaitEvent;
@@ -284,6 +288,7 @@ PROCEDURE NewPart(w, h: INTEGER): Part;
 VAR p: Part;
   x, y: INTEGER;
 BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL;
+  p.w := w; p.h := h;
   FOR y := 0 TO h - 1 DO
     FOR x := 0 TO w - 1 DO
       p.cells[y, x].ch := emptyCh;
@@ -329,7 +334,7 @@ END ExpandColor;
 PROCEDURE InitColors;
 VAR i, r, g, b: INTEGER;
 BEGIN
-  FOR i := 0 TO nofcolors DO
+  FOR i := 0 TO nofcolors - 1 DO
     ExpandColor(i, r, g, b);
     G.MakeCol(colors[i], r, g, b)
   END;
@@ -337,10 +342,11 @@ END InitColors;
 
 PROCEDURE Init*;
 BEGIN Done := FALSE;
-  G.Settings(640, 400, {G.window, G.resizable, G.center(*, G.exact*)});
-  G.SetZoom(2); (*G.SetScale(5/6, 1.0);*)
+  G.Settings(640, 400, {G.window, G.resizable, G.center, G.smooth(*, G.exact*)});
+  G.SetZoomF(2.0);
+  (*G.SetScale(5/6, 1.0);*)
   G.Init;
-  IF G.Done & LoadFont()THEN
+  IF G.Done & LoadFont() THEN
     InitColors;
     InitBuffer;
     Done := TRUE
@@ -350,6 +356,11 @@ END Init;
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
 BEGIN wantW := w; wantH := h; settings := flags
 END Settings;
+
+PROCEDURE Z*;
+BEGIN
+  G.SetZoomF(2.0)
+END Z;
 
 BEGIN wantW := 80; wantH := 25; settings := {}; Done := FALSE
 END TermBox.
