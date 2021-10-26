@@ -6,7 +6,7 @@ CONST
   fullscreen*  = 1;
   window*      = 2;
   exact*       = 3;
-  smooth*      = 4;
+  sharp*       = 4;
   software*    = 5;
   initMouse*   = 6;
   center*      = 7;
@@ -24,8 +24,8 @@ CONST
 
   emptyCh = ' ';
 
-  partW = 80;
-  partH = 25;
+  partW = 800;
+  partH = 250;
 
   nofcolors = 16;
 
@@ -61,10 +61,14 @@ TYPE
   END;
 
 VAR
+  wantTitle: ARRAY 256 OF CHAR; (* Assigned in procedure SetTitle *)
+  wantZoom: REAL;
   wantW, wantH: INTEGER;
+  wantScaleX, wantScaleY: REAL;
   settings: SET;
   buffer: Buffer;
 
+  screen: G.Window;
   font: G.MonoFont;
   colors: ARRAY nofcolors OF G.Color;
 
@@ -240,7 +244,12 @@ END WaitEvent;
 PROCEDURE Flush*;
 VAR x, y, X, Y: INTEGER;
   l, p: Part;
-BEGIN l := buffer.first; Y := 0;
+
+  c: G.Color;
+BEGIN
+  G.MakeCol(c, 255, 128, 0);
+  G.ClearToColor(c);
+  l := buffer.first; Y := 0;
   WHILE l # NIL DO p := l; X := 0;
     WHILE p # NIL DO
       IF p.redraw THEN
@@ -340,13 +349,60 @@ BEGIN
   END;
 END InitColors;
 
+PROCEDURE SetTitle*(title: ARRAY OF CHAR);
+BEGIN wantTitle := title
+END SetTitle;
+
+PROCEDURE SetZoomF*(zoom: REAL);
+BEGIN wantZoom := zoom; G.SetZoomF(zoom)
+END SetZoomF;
+
+PROCEDURE SetZoom*(zoom: INTEGER);
+BEGIN wantZoom := FLT(zoom); G.SetZoom(zoom)
+END SetZoom;
+
+PROCEDURE SetScale*(x, y: REAL);
+BEGIN wantScaleX := x; wantScaleY := y; G.SetScale(x, y)
+END SetScale;
+
+PROCEDURE MakeGraphSettings(): SET;
+VAR s: SET;
+BEGIN s := {};
+  IF fullscreen IN settings THEN INCL(s, G.fullscreen) END;
+  IF window IN settings THEN INCL(s, G.window) END;
+  IF exact IN settings THEN INCL(s, G.exact) END;
+  IF ~(sharp IN settings) THEN INCL(s, G.smooth) END;
+  IF software IN settings THEN INCL(s, G.software) END;
+  IF initMouse IN settings THEN INCL(s, G.initMouse) END;
+  IF center IN settings THEN INCL(s, G.center) END;
+  IF resizable IN settings THEN INCL(s, G.resizable) END;
+  IF maximized IN settings THEN INCL(s, G.maximized) END;
+  IF minimized IN settings THEN INCL(s, G.minimized) END;
+  IF frameless IN settings THEN INCL(s, G.frameless) END
+RETURN s END MakeGraphSettings;
+
+PROCEDURE InitScreen;
+VAR W, H, dw, dh, fw, fh: INTEGER;
+BEGIN G.GetMonoFontSize(font, fw, fh); G.GetDesktopResolution(dw, dh);
+  W := wantW * fw; H := wantH * fh;
+
+  IF (wantScaleX # 0.0) & (wantScaleY # 0.0) THEN
+    G.SetScale(wantScaleX, wantScaleY)
+  ELSIF ((fullscreen IN settings) OR (wantZoom >= 6/5 - 0.01)) &
+        ~(sharp IN settings) & (dw >= W * 6/5 - 0.01) THEN
+    G.SetScale(5/6, 1.0)
+  END;
+
+  G.SetSizeStep(fw, fh);
+  screen := G.NewWindow(-1, -1, W, H, wantTitle, MakeGraphSettings())
+END InitScreen;
+
 PROCEDURE Init*;
 BEGIN Done := FALSE;
-  G.Settings(640, 400, {G.window, G.resizable, G.center, G.smooth(*, G.exact*)});
-  G.SetZoomF(2.0);
-  (*G.SetScale(5/6, 1.0);*)
+  G.Settings(-1, -1, {G.manual});
   G.Init;
   IF G.Done & LoadFont() THEN
+    InitScreen;
     InitColors;
     InitBuffer;
     Done := TRUE
@@ -354,13 +410,13 @@ BEGIN Done := FALSE;
 END Init;
 
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
-BEGIN wantW := w; wantH := h; settings := flags
+BEGIN wantW := w; wantH := h;
+  IF {fullscreen, window} * flags = {} THEN INCL(flags, fullscreen)
+  ELSIF fullscreen IN flags THEN EXCL(flags, window)
+  END;
+  settings := flags
 END Settings;
 
-PROCEDURE Z*;
-BEGIN
-  G.SetZoomF(2.0)
-END Z;
-
-BEGIN wantW := 80; wantH := 25; settings := {}; Done := FALSE
+BEGIN wantW := 80; wantH := 25; wantScaleX := 0.0; wantScaleY := 0.0;
+  settings := {fullscreen}; Done := FALSE
 END TermBox.

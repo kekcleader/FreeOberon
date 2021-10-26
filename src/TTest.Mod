@@ -6,6 +6,9 @@ PROCEDURE Draw;
 VAR x: INTEGER;
 BEGIN
   T.ClearTo(14, 4);
+  T.SetCell(0, 0, 'К', 3, 1);
+  T.SetCell(1, 23, 'й', 2, 1);
+  T.SetCell(0, 24, 'Ю', 3, 1);
   FOR x := 0 TO 31 DO
     T.SetCell(x + 3, 3, CHR(ORD('А') + x), 15, 4);
     T.SetChar(x + 3, 5, 2566X);
@@ -25,19 +28,19 @@ VAR e: T.Event;
 BEGIN done := FALSE;
   REPEAT
     Draw;
-    Out.String('DRAW DONE'); Out.Ln;
     T.WaitEvent(e);
     IF e.type = T.quit THEN done := TRUE
     ELSIF e.type = T.key THEN
       Y := e.ch;
       Out.Int(e.key, 5); Out.Char(' '); Out.Char(e.ch); Out.Int(ORD(e.ch), 5);Out.Ln;
-      IF e.ch = 'q' THEN done := TRUE
-      ELSIF e.ch = 'z' THEN T.Z END
+      IF e.ch = 'q' THEN done := TRUE END
     END
   UNTIL done
 END Run;
 
 BEGIN
+  T.Settings(80, 25, {});
+  T.SetTitle('Oberon TermBox Module');
   T.Init;
   Y := ' ';
   Run;
