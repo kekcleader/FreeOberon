@@ -176,6 +176,38 @@ BEGIN
   IF sizeStepY # 1 THEN h := h DIV sizeStepY * sizeStepY END
 END ApplySizeStep;
 
+PROCEDURE GetTarget*(): Bitmap;
+RETURN target END GetTarget;
+
+PROCEDURE GetTargetSize*(VAR width, height: INTEGER);
+BEGIN
+  IF target # NIL THEN width := target.w; height := target.h
+  ELSE width := 0; height := 0
+  END
+END GetTargetSize;
+
+PROCEDURE Target*(bitmap: Bitmap);
+VAR T: Al.Transform;
+  W: Window;
+BEGIN target := bitmap;
+  IF bitmap # NIL THEN
+    IF (bitmap IS Window) & (bitmap.bmp = NIL) THEN W := bitmap(Window);
+      Al.set_target_backbuffer(W.display);
+      Al.build_transform(T, W.flipX, W.flipY, W.scaleX, W.scaleY, 0.0);
+      Al.use_transform(T)
+    ELSE Al.set_target_bitmap(SYSTEM.VAL(Al.Bitmap, bitmap.bmp))
+    END
+  END
+END Target;
+
+PROCEDURE TargetScreen*;
+BEGIN
+  IF screen # NIL THEN Target(screen)
+  ELSIF windowList # NIL THEN Target(windowList)
+  ELSE Target(NIL)
+  END
+END TargetScreen;
+
 PROCEDURE ResetFlipVars(W: Window);
 VAR w, h: INTEGER;
 BEGIN
@@ -208,13 +240,17 @@ BEGIN
     W.iFlipX := 0; W.iFlipY := 0; W.flipX := 0.0; W.flipY := 0.0;
     W.flipW := FLT(W.winW); W.flipH := FLT(W.winH)
   END
+
+  ;Out.String('ResetFlipVars ');
+  Out.RealFix(W.flipX, 8, 1); Out.RealFix(W.flipY, 8, 1);
+  Out.RealFix(W.flipW, 8, 1); Out.RealFix(W.flipH, 8, 1); Out.Ln;
 END ResetFlipVars;
 
 PROCEDURE ResetWindowBitmap(W: Window);
 VAR opt: SET;
   w, h, bw, bh: INTEGER;
   fw, fh: REAL;
-  scaled: BOOLEAN;
+  scaled, wasTarget: BOOLEAN;
 BEGIN scaled := FALSE;
   IF W.bmp = NIL THEN bw := -1
   ELSE bw := Al.get_bitmap_width(W.bmp); bh := Al.get_bitmap_height(W.bmp)
@@ -237,14 +273,19 @@ BEGIN scaled := FALSE;
   ;Out.String('before apply ');Out.Int(w,0);Out.Ln;
   ApplySizeStep(w, h);
   IF (w > bw) OR (h > bh) OR (W.zoom = noZoom) THEN
-    IF W.bmp # NIL THEN Al.destroy_bitmap(W.bmp) END;
+    IF W.bmp # NIL THEN
+      wasTarget := Al.get_target_bitmap() = W.bmp;
+      Al.destroy_bitmap(W.bmp)
+    END;
     IF W.zoom # noZoom THEN
       IF smooth IN W.options THEN opt := {Al.minLinear, Al.magLinear}
       ELSE opt := {}
       END;
       Al.set_new_bitmap_flags(opt);
-      W.bmp := Al.create_bitmap(w, h)
-    ELSE W.bmp := NIL
+      W.bmp := Al.create_bitmap(w, h);
+      IF wasTarget THEN Target(W) END
+    ELSE W.bmp := NIL;
+      IF wasTarget THEN Target(NIL) END
     END;
   END;
   W.w := w; W.h := h;
@@ -289,38 +330,6 @@ PROCEDURE SetZoom*(zoom: INTEGER);
 BEGIN wantZoom := FLT(zoom);
   IF screen # NIL THEN SetWindowZoom(screen, zoom) END
 END SetZoom;
-
-PROCEDURE GetTarget*(): Bitmap;
-RETURN target END GetTarget;
-
-PROCEDURE GetTargetSize*(VAR width, height: INTEGER);
-BEGIN
-  IF target # NIL THEN width := target.w; height := target.h
-  ELSE width := 0; height := 0
-  END
-END GetTargetSize;
-
-PROCEDURE Target*(bitmap: Bitmap);
-VAR T: Al.Transform;
-  W: Window;
-BEGIN target := bitmap;
-  IF bitmap # NIL THEN
-    IF (bitmap IS Window) & (bitmap.bmp = NIL) THEN W := bitmap(Window);
-      Al.set_target_backbuffer(W.display);
-      Al.build_transform(T, W.flipX, W.flipY, W.scaleX, W.scaleY, 0.0);
-      Al.use_transform(T)
-    ELSE Al.set_target_bitmap(SYSTEM.VAL(Al.Bitmap, bitmap.bmp))
-    END
-  END
-END Target;
-
-PROCEDURE TargetScreen*;
-BEGIN
-  IF screen # NIL THEN Target(screen)
-  ELSIF windowList # NIL THEN Target(windowList)
-  ELSE Target(NIL)
-  END
-END TargetScreen;
 
 PROCEDURE ApplyScale*(W: Window);
 VAR t: Al.Transform;
@@ -385,10 +394,18 @@ BEGIN
     Al.identity_transform(T);
     Al.use_transform(T);
     IF target.bmp # NIL THEN
+      ;Out.String('target.bmp # NIL');Out.Ln;
       Al.clear_to_color(SYSTEM.VAL(Al.Color, black));
+      ;Out.Int(W.w, 7);
+      ;Out.Int(W.h, 7);
+      ;Out.RealFix(W.flipX, 7, 2);
+      ;Out.RealFix(W.flipY, 7, 2);
+      ;Out.RealFix(W.flipW, 7, 2);
+      ;Out.RealFix(W.flipH, 7, 2);Out.Ln;
       Al.draw_scaled_bitmap(W.bmp, 0.0, 0.0, FLT(W.w), FLT(W.h),
         W.flipX, W.flipY, W.flipW, W.flipH, {});
     ELSE
+      ;Out.String('target.bmp = NIL');Out.Ln;
       Al.draw_filled_rectangle(0.0, 0.0, W.flipX, FLT(W.winH),
         SYSTEM.VAL(Al.Color, black));
       Al.draw_filled_rectangle(W.flipX + W.w, 0.0, FLT(W.winW), FLT(W.winH),
@@ -914,15 +931,11 @@ BEGIN
   IF ~(fullscreen IN settings) & ((wantW <= 0) OR (wantH <= 0)) THEN
     wantW := 640; wantH := 400
   END;
-
   opt := settings;
   IF {fullscreen, window} * opt = {} THEN INCL(opt, fullscreen)
   ELSIF fullscreen IN opt THEN EXCL(opt, window)
-  END;
-
-  screen := NewWindow(-1, -1, wantW, wantH, wantTitle, opt);
-  Target(screen)
-RETURN screen # NIL END InitScreen;
+  END
+RETURN NewWindow(-1, -1, wantW, wantH, wantTitle, opt) # NIL END InitScreen;
 
 PROCEDURE Init*;
 VAR ok: BOOLEAN;

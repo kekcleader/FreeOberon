@@ -57,7 +57,8 @@ TYPE
   Buffer = RECORD (* Screen buffer *)
     first: Part;
     w, h: INTEGER;
-    curX, curY: INTEGER (* Cursor position *)
+    curX, curY: INTEGER; (* Cursor position *)
+    redrawAll: BOOLEAN
   END;
 
 VAR
@@ -246,14 +247,19 @@ END WaitEvent;
 PROCEDURE Flush*;
 VAR x, y, X, Y: INTEGER;
   l, p: Part;
+
+  c: G.Color;
 BEGIN
+  G.MakeCol(c, 255, 128, 0);
+  G.ClearToColor(c);
+
   l := buffer.first; Y := 0;
   WHILE l # NIL DO p := l; X := 0;
     WHILE p # NIL DO
-      IF p.redraw THEN
+      IF p.redraw OR buffer.redrawAll THEN
         FOR y := 0 TO p.h - 1 DO
           FOR x := 0 TO p.w - 1 DO
-            IF p.updated[y, x] THEN
+            IF p.updated[y, x] OR buffer.redrawAll THEN
               DrawCell(X + x, Y + y, p.cells[y, x]);
               p.updated[y, x] := FALSE
             END
@@ -265,12 +271,14 @@ BEGIN
     END;
     INC(Y, l.h); l := l.down
   END;
+  buffer.redrawAll := FALSE;
   Flip
 END Flush;
 
 PROCEDURE Sync*;
 BEGIN
-  Flush (*!FIXME ?*)
+  buffer.redrawAll := FALSE;
+  Flush
 END Sync;
 
 PROCEDURE Close*;
@@ -313,7 +321,7 @@ BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
   IF buffer.w > partW THEN buffer.w := partW END; (*!FIXME*)
   IF buffer.h > partH THEN buffer.h := partH END;
   buffer.first := NewPart(buffer.w, buffer.h);
-  buffer.curX := -1; buffer.curY := -1
+  buffer.curX := -1; buffer.curY := -1; buffer.redrawAll := TRUE
 END InitBuffer;
 
 PROCEDURE ExpandColor(color: INTEGER; VAR r, g, b: INTEGER);
