@@ -166,6 +166,16 @@ PROCEDURE Settings*(w, h: INTEGER; flags: SET);
 BEGIN wantW := w; wantH := h; settings := flags
 END Settings;
 
+PROCEDURE SetSizeStep*(w, h: INTEGER);
+BEGIN sizeStepX := w; sizeStepY := h
+END SetSizeStep;
+
+PROCEDURE ApplySizeStep(VAR w, h: INTEGER);
+BEGIN
+  IF sizeStepX # 1 THEN w := w DIV sizeStepX * sizeStepX END;
+  IF sizeStepY # 1 THEN h := h DIV sizeStepY * sizeStepY END
+END ApplySizeStep;
+
 PROCEDURE ResetFlipVars(W: Window);
 VAR w, h: INTEGER;
 BEGIN
@@ -203,21 +213,29 @@ END ResetFlipVars;
 PROCEDURE ResetWindowBitmap(W: Window);
 VAR opt: SET;
   w, h, bw, bh: INTEGER;
-BEGIN
+  fw, fh: REAL;
+  scaled: BOOLEAN;
+BEGIN scaled := FALSE;
   IF W.bmp = NIL THEN bw := -1
   ELSE bw := Al.get_bitmap_width(W.bmp); bh := Al.get_bitmap_height(W.bmp)
   END;
   IF ~(exact IN W.options) THEN
     IF W.zoom = noZoom THEN w := W.winW; h := W.winH
-    ELSIF W.zoom = intZoom THEN
+    ELSIF (W.zoom = intZoom) & ~W.hasScale THEN
       w := W.winW DIV W.izoom; h := W.winH DIV W.izoom
-    ELSE w := FLOOR(W.winW / W.rzoom + 0.1); h := FLOOR(W.winH / W.rzoom + 0.1)
+    ELSE fw := W.winW / W.rzoom; fh := W.winH / W.rzoom; scaled := TRUE;
+      IF W.hasScale THEN
+        w := FLOOR(fw / W.scaleX + 0.1); h := FLOOR(fh / W.scaleY + 0.1)
+      END
     END
   ELSE w := W.w; h := W.h
   END;
-  IF W.hasScale THEN
+  ;Out.String('before scale ');Out.Int(w,0);Out.Ln;
+  IF W.hasScale & ~scaled THEN
     w := FLOOR(w / W.scaleX + 0.1); h := FLOOR(h / W.scaleY + 0.1)
   END;
+  ;Out.String('before apply ');Out.Int(w,0);Out.Ln;
+  ApplySizeStep(w, h);
   IF (w > bw) OR (h > bh) OR (W.zoom = noZoom) THEN
     IF W.bmp # NIL THEN Al.destroy_bitmap(W.bmp) END;
     IF W.zoom # noZoom THEN
@@ -271,10 +289,6 @@ PROCEDURE SetZoom*(zoom: INTEGER);
 BEGIN wantZoom := FLT(zoom);
   IF screen # NIL THEN SetWindowZoom(screen, zoom) END
 END SetZoom;
-
-PROCEDURE SetSizeStep*(w, h: INTEGER);
-BEGIN sizeStepX := w; sizeStepY := h
-END SetSizeStep;
 
 PROCEDURE GetTarget*(): Bitmap;
 RETURN target END GetTarget;
@@ -491,9 +505,7 @@ VAR b: Bitmap;
 BEGIN NEW(b);
   Al.set_new_bitmap_flags({}); (*!FIXME*)
   b.bmp := Al.create_bitmap(w, h);
-  IF b.bmp = NIL THEN b := NIL
-  ELSE b.w := w; b.h := h
-  END
+  IF b.bmp = NIL THEN b := NIL ELSE b.w := w; b.h := h END
 RETURN b END NewBitmap;
 
 PROCEDURE DrawPartFlip*(bmp: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER;
@@ -592,8 +604,10 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
   IF (w < 0) OR (h < 0) THEN
     IF fullscreen IN options THEN
       w := FLOOR(dw / wantZoom + 0.1); h := FLOOR(dh / wantZoom + 0.1);
+      ApplySizeStep(w, h);
       sw := FLOOR(w * wantZoom + 0.1); sh := FLOOR(h * wantZoom + 0.1)
-    ELSE w := 640; h := 400; W.zoom := noZoom; sw := w; sh := h
+    ELSE w := 640; h := 400; W.zoom := noZoom;
+      ApplySizeStep(w, h); sw := w; sh := h
     END
   ELSIF fullscreen IN options THEN
     IF smooth IN options THEN nwf := dw / w; nhf := dh / h;
@@ -611,19 +625,15 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
       END
     END;
 
-    Out.Int(sw, 5); Out.Int(sh, 5); Out.Ln;
-    IF sizeStepX # 1 THEN sw := sw DIV sizeStepX * sizeStepX END;
-    IF sizeStepY # 1 THEN sh := sh DIV sizeStepY * sizeStepY END;
-    Out.Int(sw, 5); Out.Int(sh, 5); Out.Ln;
-
     IF W.zoom = realZoom THEN
       w := FLOOR(sw / W.rzoom + 0.1); h := FLOOR(sh / W.rzoom + 0.1)
     ELSIF W.zoom = intZoom THEN w := sw DIV W.izoom; h := sh DIV W.izoom
     ELSE w := sw; h := sh
     END;
-    sw := w; sh := h
-  ELSE sw := FLOOR(w * wantZoom * W.scaleX + 0.1);
-    sh := FLOOR(h * wantZoom * W.scaleY + 0.1)
+    ApplySizeStep(w, h); sw := w; sh := h
+  ELSE ApplySizeStep(w, h);
+    sw := FLOOR(w * wantZoom * W.scaleX + 0.999);
+    sh := FLOOR(h * wantZoom * W.scaleY + 0.999)
   END;
 
   IF center IN options THEN
@@ -648,6 +658,7 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
   IF frameless IN options THEN INCL(opt, Al.frameless) END;
   Al.set_new_display_flags(opt);
 
+  ;Out.Int(sw,20);Out.Int(sh,10);Out.Ln;
   W.display := Al.create_display(sw, sh);
   IF W.display # NIL THEN
     W.winW := Al.get_display_width(W.display);

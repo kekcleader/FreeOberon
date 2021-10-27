@@ -9,6 +9,8 @@ BEGIN
   T.SetCell(0, 0, 'К', 3, 1);
   T.SetCell(1, 23, 'й', 2, 1);
   T.SetCell(0, 24, 'Ю', 3, 1);
+  T.SetCell(78, 23, 'щ', 0, 7);
+  T.SetCell(79, 24, 'ц', 3, 1);
   FOR x := 0 TO 31 DO
     T.SetCell(x + 3, 3, CHR(ORD('А') + x), 15, 4);
     T.SetChar(x + 3, 5, 2566X);
@@ -39,7 +41,8 @@ BEGIN done := FALSE;
 END Run;
 
 BEGIN
-  T.Settings(80, 25, {});
+  T.Settings(80, 25, {T.center, T.window, T.resizable});
+  T.SetZoom(2);
   T.SetTitle('Oberon TermBox Module');
   T.Init;
   Y := ' ';

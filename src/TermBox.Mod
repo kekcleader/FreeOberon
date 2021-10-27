@@ -234,6 +234,8 @@ BEGIN
       event.mod := e.mod;
       skip := FALSE
     ELSIF e.type = G.resize THEN
+      G.ApplyResize(e.window);
+      Flip
     ELSIF e.type = G.quit THEN
       event.type := quit;
       skip := FALSE
@@ -244,11 +246,7 @@ END WaitEvent;
 PROCEDURE Flush*;
 VAR x, y, X, Y: INTEGER;
   l, p: Part;
-
-  c: G.Color;
 BEGIN
-  G.MakeCol(c, 255, 128, 0);
-  G.ClearToColor(c);
   l := buffer.first; Y := 0;
   WHILE l # NIL DO p := l; X := 0;
     WHILE p # NIL DO
