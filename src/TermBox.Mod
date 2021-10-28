@@ -19,6 +19,7 @@ CONST
   quit*   = 0;
   key*    = 1;
   mouse*  = 2;
+  resize* = 11;
   none*   = 14;
   error*  = 15;
 
@@ -243,9 +244,61 @@ BEGIN
   Flush
 END Sync;
 
+PROCEDURE NewPart(w, h: INTEGER): Part;
+VAR p: Part;
+  x, y: INTEGER;
+BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL;
+  p.w := w; p.h := h;
+  FOR y := 0 TO h - 1 DO
+    FOR x := 0 TO w - 1 DO
+      p.cells[y, x].ch := emptyCh;
+      p.cells[y, x].fg := 7;
+      p.cells[y, x].bg := 0;
+      p.updated[y, x] := TRUE
+    END
+  END
+RETURN p END NewPart;
+
+PROCEDURE ResizePart(p: Part; w, h: INTEGER);
+VAR x, y: INTEGER;
+BEGIN p.redraw := TRUE;
+  FOR y := p.h TO h - 1 DO
+    FOR x := p.w TO w - 1 DO
+      p.cells[y, x].ch := emptyCh;
+      p.cells[y, x].fg := 7;
+      p.cells[y, x].bg := 0;
+      p.updated[y, x] := TRUE
+    END
+  END;
+  p.w := w; p.h := h
+END ResizePart;
+
+PROCEDURE InitBuffer;
+VAR W, H, fw, fh: INTEGER;
+BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
+  buffer.w := W DIV fw; buffer.h := H DIV fh;
+  IF buffer.w > partW THEN buffer.w := partW END; (*!FIXME*)
+  IF buffer.h > partH THEN buffer.h := partH END;
+  buffer.first := NewPart(buffer.w, buffer.h);
+  buffer.curX := -1; buffer.curY := -1; buffer.redrawAll := TRUE
+END InitBuffer;
+
+PROCEDURE ResizeBuffer;
+VAR W, H, fw, fh, nw, nh: INTEGER;
+BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
+  nw := W DIV fw; nh := H DIV fh;
+  IF nw > partW THEN nw := partW END; (*!FIXME*)
+  IF nh > partH THEN nh := partH END;
+  IF (nw # buffer.w) OR (nh # buffer.h) THEN
+    buffer.w := nw; buffer.h := nh;
+    ResizePart(buffer.first, nw, nh)
+  END
+END ResizeBuffer;
+
 PROCEDURE WaitEvent*(VAR event: Event);
 VAR e: G.Event;
   skip: BOOLEAN;
+  fw, fh: INTEGER;
 BEGIN
   REPEAT skip := TRUE;
   event.ch := '&';
@@ -267,8 +320,12 @@ BEGIN
       event.mod := e.mod;
       skip := FALSE
     ELSIF e.type = G.resize THEN
+      event.type := resize; G.GetMonoFontSize(font, fw, fh);
+      event.w := e.w DIV fw; event.h := e.h DIV fh;
       G.ApplyResize(e.window);
-      Sync
+      ResizeBuffer;
+      Sync;
+      skip := FALSE
     ELSIF e.type = G.quit THEN
       event.type := quit;
       skip := FALSE
@@ -293,31 +350,6 @@ BEGIN
   ELSE Out.String('Could not load font.'); Out.Ln
   END
 RETURN font # NIL END LoadFont;
-
-PROCEDURE NewPart(w, h: INTEGER): Part;
-VAR p: Part;
-  x, y: INTEGER;
-BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL;
-  p.w := w; p.h := h;
-  FOR y := 0 TO h - 1 DO
-    FOR x := 0 TO w - 1 DO
-      p.cells[y, x].ch := emptyCh;
-      p.cells[y, x].fg := 7;
-      p.cells[y, x].bg := 0;
-      p.updated[y, x] := TRUE
-    END
-  END
-RETURN p END NewPart;
-
-PROCEDURE InitBuffer;
-VAR W, H, fw, fh: INTEGER;
-BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
-  buffer.w := W DIV fw; buffer.h := H DIV fh;
-  IF buffer.w > partW THEN buffer.w := partW END; (*!FIXME*)
-  IF buffer.h > partH THEN buffer.h := partH END;
-  buffer.first := NewPart(buffer.w, buffer.h);
-  buffer.curX := -1; buffer.curY := -1; buffer.redrawAll := TRUE
-END InitBuffer;
 
 PROCEDURE ExpandColor(color: INTEGER; VAR r, g, b: INTEGER);
 BEGIN
@@ -369,8 +401,10 @@ END SetScale;
 PROCEDURE MakeGraphSettings(): SET;
 VAR s: SET;
 BEGIN s := {};
-  IF fullscreen IN settings THEN INCL(s, G.fullscreen) END;
-  IF window IN settings THEN INCL(s, G.window) END;
+  IF fullscreen IN settings THEN INCL(s, G.fullscreen)
+  ELSE INCL(s, G.topleft);
+    IF window IN settings THEN INCL(s, G.window) END
+  END;
   IF exact IN settings THEN INCL(s, G.exact) END;
   IF ~(sharp IN settings) THEN INCL(s, G.smooth) END;
   IF software IN settings THEN INCL(s, G.software) END;
@@ -380,7 +414,6 @@ BEGIN s := {};
   IF maximized IN settings THEN INCL(s, G.maximized) END;
   IF minimized IN settings THEN INCL(s, G.minimized) END;
   IF frameless IN settings THEN INCL(s, G.frameless) END;
-  INCL(s, G.topleft)
 RETURN s END MakeGraphSettings;
 
 PROCEDURE InitScreen;

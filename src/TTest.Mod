@@ -1,6 +1,8 @@
 MODULE TTest;
 IMPORT T := TermBox, Out, Kernel;
-VAR Y: CHAR;
+VAR ch: CHAR;
+  X, Y: INTEGER;
+  W, H: INTEGER;
 
 PROCEDURE DrawOnce;
 VAR x: INTEGER;
@@ -24,9 +26,27 @@ END DrawOnce;
 
 PROCEDURE Draw;
 BEGIN
-  T.SetCell(15, 1, Y, 0, 4);
+  T.SetCell(X, Y, ch, 0, 4);
   T.Flush
 END Draw;
+
+PROCEDURE OnResize;
+VAR x, y, w, h: INTEGER;
+BEGIN
+  T.Size(w, h);
+  FOR y := 0 TO h - 1 DO
+    FOR x := W TO w - 1 DO
+      T.SetCell(x, y, CHR(ORD(ch) + 1), 0, (x + y) MOD 16)
+    END
+  END;
+  FOR y := H TO h - 1 DO
+    FOR x := 0 TO w - 1 DO
+      T.SetCell(x, y, CHR(ORD(ch) + 1), 0, (x * y) MOD 16)
+    END
+  END;
+  W := w; H := h;
+  T.Flush
+END OnResize;
 
 PROCEDURE Run;
 VAR e: T.Event;
@@ -37,20 +57,29 @@ BEGIN done := FALSE;
     Draw;
     T.WaitEvent(e);
     IF e.type = T.quit THEN done := TRUE
+    ELSIF e.type = T.resize THEN OnResize
     ELSIF e.type = T.key THEN
-      Y := e.ch;
-      Out.Int(e.key, 5); Out.Char(' '); Out.Char(e.ch); Out.Int(ORD(e.ch), 5);Out.Ln;
+      Out.Int(e.key, 5); (*Out.Char(' '); Out.Char(e.ch); *)Out.Int(ORD(e.ch), 5);Out.Ln;
+      IF e.key = 82 THEN DEC(X)
+      ELSIF e.key = 83 THEN INC(X)
+      ELSIF e.key = 84 THEN DEC(Y)
+      ELSIF e.key = 85 THEN INC(Y)
+      ELSE ch := e.ch
+      END;
+      IF X < 0 THEN X := 0 ELSIF X >= W THEN X := W - 1 END;
+      IF Y < 0 THEN Y := 0 ELSIF Y >= H THEN Y := H - 1 END;
       IF e.ch = 'q' THEN done := TRUE END
     END
   UNTIL done
 END Run;
 
 BEGIN
-  T.Settings(80, 25, {T.center, T.window, T.resizable});
+  T.Settings(80, 25, {(*T.center, T.window, T.resizable*)});
   T.SetZoom(2);
   T.SetTitle('Oberon TermBox Module');
   T.Init;
-  Y := ' ';
+  T.Size(W, H);
+  ch := ' ';
   Run;
   T.Close
 END TTest.
