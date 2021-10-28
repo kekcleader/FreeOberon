@@ -2,10 +2,10 @@ MODULE TTest;
 IMPORT T := TermBox, Out, Kernel;
 VAR Y: CHAR;
 
-PROCEDURE Draw;
+PROCEDURE DrawOnce;
 VAR x: INTEGER;
 BEGIN
-  (*T.ClearTo(14, 4);*)
+  T.ClearTo(14, 4);
   T.SetCell(0, 0, 'К', 3, 1);
   T.SetCell(1, 23, 'й', 2, 1);
   T.SetCell(0, 24, 'Ю', 3, 1);
@@ -19,15 +19,20 @@ BEGIN
   T.SetChar(3, 5, 2554X);
   T.SetChar(3, 6, 255AX);
   T.SetChar(34, 5, 2557X);
-  T.SetChar(34, 6, 255DX);
+  T.SetChar(34, 6, 255DX)
+END DrawOnce;
+
+PROCEDURE Draw;
+BEGIN
   T.SetCell(15, 1, Y, 0, 4);
-  T.Sync (*!FIXME T.Flush*)
+  T.Flush
 END Draw;
 
 PROCEDURE Run;
 VAR e: T.Event;
   done: BOOLEAN;
 BEGIN done := FALSE;
+  DrawOnce;
   REPEAT
     Draw;
     T.WaitEvent(e);

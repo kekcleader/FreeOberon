@@ -211,6 +211,38 @@ BEGIN p := GetPart(buffer, x, y);
   END
 END GetCell;
 
+PROCEDURE Flush*;
+VAR x, y, X, Y: INTEGER;
+  l, p: Part;
+BEGIN
+  l := buffer.first; Y := 0;
+  WHILE l # NIL DO p := l; X := 0;
+    WHILE p # NIL DO
+      IF p.redraw OR buffer.redrawAll THEN
+        FOR y := 0 TO p.h - 1 DO
+          FOR x := 0 TO p.w - 1 DO
+            IF p.updated[y, x] OR buffer.redrawAll THEN
+              DrawCell(X + x, Y + y, p.cells[y, x]);
+              p.updated[y, x] := FALSE
+            END
+          END
+        END;
+        p.redraw := FALSE
+      END;
+      INC(X, l.w); p := p.right
+    END;
+    INC(Y, l.h); l := l.down
+  END;
+  buffer.redrawAll := FALSE;
+  Flip
+END Flush;
+
+PROCEDURE Sync*;
+BEGIN
+  buffer.redrawAll := TRUE;
+  Flush
+END Sync;
+
 PROCEDURE WaitEvent*(VAR event: Event);
 VAR e: G.Event;
   skip: BOOLEAN;
@@ -236,50 +268,13 @@ BEGIN
       skip := FALSE
     ELSIF e.type = G.resize THEN
       G.ApplyResize(e.window);
-      Flip
+      Sync
     ELSIF e.type = G.quit THEN
       event.type := quit;
       skip := FALSE
     END
   UNTIL ~skip
 END WaitEvent;
-
-PROCEDURE Flush*;
-VAR x, y, X, Y: INTEGER;
-  l, p: Part;
-
-  c: G.Color;
-BEGIN
-  G.MakeCol(c, 255, 128, 0);
-  G.ClearToColor(c);
-
-  l := buffer.first; Y := 0;
-  WHILE l # NIL DO p := l; X := 0;
-    WHILE p # NIL DO
-      IF p.redraw OR buffer.redrawAll THEN
-        FOR y := 0 TO p.h - 1 DO
-          FOR x := 0 TO p.w - 1 DO
-            IF p.updated[y, x] OR buffer.redrawAll THEN
-              DrawCell(X + x, Y + y, p.cells[y, x]);
-              p.updated[y, x] := FALSE
-            END
-          END
-        END;
-        p.redraw := FALSE
-      END;
-      INC(X, l.w); p := p.right
-    END;
-    INC(Y, l.h); l := l.down
-  END;
-  buffer.redrawAll := FALSE;
-  Flip
-END Flush;
-
-PROCEDURE Sync*;
-BEGIN
-  buffer.redrawAll := FALSE;
-  Flush
-END Sync;
 
 PROCEDURE Close*;
 BEGIN
@@ -384,7 +379,8 @@ BEGIN s := {};
   IF resizable IN settings THEN INCL(s, G.resizable) END;
   IF maximized IN settings THEN INCL(s, G.maximized) END;
   IF minimized IN settings THEN INCL(s, G.minimized) END;
-  IF frameless IN settings THEN INCL(s, G.frameless) END
+  IF frameless IN settings THEN INCL(s, G.frameless) END;
+  INCL(s, G.topleft)
 RETURN s END MakeGraphSettings;
 
 PROCEDURE InitScreen;
