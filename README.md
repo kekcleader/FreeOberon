@@ -10,6 +10,8 @@ Free Oberon is a cross-platform integrated development environment for programmi
 
 *See English text below.*
 
+[Как собрать новую версию под Линукс](README_build_rus.md)
+
 # Среда программирования Free Oberon
 
 Оберон — самый простой, и при этом всецело мощный, язык программирования общего назначения. Это развитый и доведённый до совершенства Паскаль.
