@@ -99,11 +99,13 @@ BEGIN
       redraw := TRUE
     ELSIF e.type = G.mouseWheel THEN
       IF e.dz # 0 THEN
+        Out.String('e.dz = '); Out.Int(e.dz, 0); Out.Ln;
         G.ColorToRGB(c1, r, g, b);
         r := (r + e.dz * 8) MOD 256;
         G.MakeCol(c1, r, g, b);
         z := (FLT(FLOOR(G.GetWindowZoom(e.window) * 10 + 0.5)) + e.dz) / 10;
         IF z < 0.3 THEN z := 0.3 END;
+        Out.String('zoom = '); Out.RealFix(z, 0, 2); Out.Ln;
         G.SetWindowZoomF(e.window, z)
       END;
       redraw := TRUE
@@ -124,7 +126,7 @@ BEGIN
       Out.String('         Code '); Out.Int(ORD(e.ch), 0); Out.Ln;
       redraw := TRUE
     ELSIF e.type = G.resize THEN
-      Out.String('Resize '); Out.Int(e.window.w,5); Out.Int(e.window.h, 5);Out.Ln;
+      Out.String('Resize '); Out.Int(e.window.w, 0);Out.Char('x');Out.Int(e.window.h, 0);Out.Ln;
       G.ApplyResize(e.window);
       redraw := TRUE
     ELSIF e.type = G.quit THEN
@@ -140,7 +142,7 @@ VAR i, n, W, H: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
   (*G.Settings(640, 400, {G.window, G.resizable, G.center(*, G.exact*)});*)
-  G.Settings(640, 400, {G.smooth});
+  G.Settings(640, 400, {G.smooth, G.window, G.resizable});
   G.SetZoomF(2.0);
   (*G.SetScale(5/6, 1.0);*)
   G.Init;
