@@ -142,7 +142,7 @@ VAR i, n, W, H: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
   (*G.Settings(640, 400, {G.window, G.resizable, G.center(*, G.exact*)});*)
-  G.Settings(640, 400, {G.smooth, G.window, G.resizable});
+  G.Settings(640, 400, {G.smooth, G.window, G.resizable, G.nobuffer});
   G.SetZoomF(2.0);
   (*G.SetScale(5/6, 1.0);*)
   G.Init;

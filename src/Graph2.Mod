@@ -221,13 +221,8 @@ END TargetScreen;
 PROCEDURE ResetFlipVars(W: Window);
 VAR w, h: INTEGER;
 BEGIN
-  IF W.zoom = noZoom THEN W.flipW := FLT(W.w); W.flipH := FLT(W.h);
-    IF W.hasScale THEN
-      W.flipW := W.flipW * W.scaleX; W.flipH := W.flipH * W.scaleY
-    END;
-    W.iFlipX := FLOOR(W.winW - W.flipW + 0.1) DIV 2;
-    W.iFlipY := FLOOR(W.winH - W.flipH + 0.1) DIV 2
-  ELSIF W.zoom = intZoom THEN w := W.w * W.izoom; h := W.h * W.izoom;
+  IF W.zoom = intZoom THEN
+    w := W.w * W.izoom; h := W.h * W.izoom;
     IF W.hasScale THEN
       W.flipW := FLT(FLOOR(FLT(w) * W.scaleX + 0.9));
       W.flipH := FLT(FLOOR(FLT(h) * W.scaleY + 0.9));
@@ -236,11 +231,9 @@ BEGIN
     ELSE W.flipW := FLT(w); W.flipH := FLT(h);
       W.iFlipX := (W.winW - w) DIV 2; W.iFlipY := (W.winH - h) DIV 2
     END
-  ELSE W.flipW := FLT(W.w) * W.rzoom; W.flipH := FLT(W.h) * W.rzoom;
-    IF W.hasScale THEN
-      W.flipW := W.flipW * W.scaleX; W.flipH := W.flipH * W.scaleY
-    END;
-    W.flipW := FLT(FLOOR(W.flipW + 0.9)); W.flipH := FLT(FLOOR(W.flipH + 0.9));
+  ELSE
+    W.flipW := FLT(FLOOR(W.w * W.rzoom * W.scaleX + 0.9));
+    W.flipH := FLT(FLOOR(W.h * W.rzoom * W.scaleY + 0.9));
     W.iFlipX := (W.winW - FLOOR(W.flipW + 0.1)) DIV 2;
     W.iFlipY := (W.winH - FLOOR(W.flipH + 0.1)) DIV 2
   END;
@@ -251,7 +244,7 @@ BEGIN
      (W.winH - W.flipY - W.flipH < W.rzoom) THEN
     W.iFlipX := 0; W.iFlipY := 0; W.flipX := 0.0; W.flipY := 0.0;
     W.flipW := FLT(W.winW); W.flipH := FLT(W.winH)
-  END;
+  END
 END ResetFlipVars;
 
 PROCEDURE ResetWindowBitmap(W: Window);
@@ -260,7 +253,6 @@ VAR opt: SET;
   fw, fh: REAL;
   scaled, wasTarget: BOOLEAN;
 BEGIN scaled := FALSE;
-  ;Out.String('BEFORE ResetWindowBitmap'); Out.Ln;
   IF W.bmp = NIL THEN bw := -1
   ELSE bw := Al.get_bitmap_width(W.bmp); bh := Al.get_bitmap_height(W.bmp)
   END;
@@ -268,14 +260,12 @@ BEGIN scaled := FALSE;
     IF W.zoom = noZoom THEN w := W.winW; h := W.winH
     ELSIF (W.zoom = intZoom) & ~W.hasScale THEN
       w := W.winW DIV W.izoom; h := W.winH DIV W.izoom
-    ELSE fw := W.winW / W.rzoom; fh := W.winH / W.rzoom; scaled := TRUE;
-      IF W.hasScale THEN
-        w := FLOOR(fw / W.scaleX + 0.1); h := FLOOR(fh / W.scaleY + 0.1)
-      END
+    ELSE scaled := TRUE;
+      w := FLOOR(W.winW / W.rzoom / W.scaleX + 0.1);
+      h := FLOOR(W.winH / W.rzoom / W.scaleY + 0.1)
     END
   ELSE w := W.w; h := W.h
   END;
-
   IF W.hasScale & ~scaled THEN
     w := FLOOR(w / W.scaleX + 0.1); h := FLOOR(h / W.scaleY + 0.1)
   END;
@@ -286,21 +276,20 @@ BEGIN scaled := FALSE;
       wasTarget := Al.get_target_bitmap() = W.bmp;
       Al.destroy_bitmap(W.bmp)
     END;
-    IF W.zoom # noZoom THEN
+    IF (W.zoom = noZoom) & (nobuffer IN W.options) THEN
+      W.bmp := NIL;
+      IF wasTarget THEN Target(NIL) END
+    ELSE
       IF smooth IN W.options THEN opt := {Al.minLinear, Al.magLinear}
       ELSE opt := {}
       END;
       Al.set_new_bitmap_flags(opt);
       W.bmp := Al.create_bitmap(w, h);
       IF wasTarget THEN Target(W) END
-    ELSE W.bmp := NIL;
-      IF wasTarget THEN Target(NIL) END
-    END;
+    END
   END;
   W.w := w; W.h := h;
-  Out.String('W.w,h = '); Out.Int(w,0);Out.Char('x');Out.Int(h,0);Out.Ln;
   ResetFlipVars(W)
-  ;Out.String('AFTER ResetWindowBitmap'); Out.Ln;
 END ResetWindowBitmap;
 
 PROCEDURE GetWindowZoom*(W: Window): REAL;
@@ -409,7 +398,7 @@ BEGIN
       Al.clear_to_color(SYSTEM.VAL(Al.Color, black));
       Al.draw_scaled_bitmap(W.bmp, 0.0, 0.0, FLT(W.w), FLT(W.h),
         W.flipX, W.flipY, W.flipW, W.flipH, {});
-    ELSE w := FLT(W.winH); h := FLT(W.winH);
+    ELSE w := FLT(W.winW); h := FLT(W.winH);
       x := FLT(FLOOR(W.flipX + W.flipW + 0.1));
       y := FLT(FLOOR(W.flipY + W.flipH + 0.1));
       Al.draw_filled_rectangle(0.0, 0.0, w, W.flipY,
@@ -836,7 +825,6 @@ BEGIN
       event.display := KE.display;
       event.window := GetWindow(event.display)
     ELSIF E.type = Al.eventDisplayResize THEN
-      ;Out.String(' EVENT RESIZE BEGIN ');Out.Ln;
       DE := SYSTEM.VAL(Al.PDisplayEvent, SYSTEM.ADR(E));
       Al.acknowledge_resize(DE.source); W := GetWindow(DE.source);
 
@@ -852,8 +840,7 @@ BEGIN
         event.w := w; event.h := h; event.x := DE.x; event.y := DE.y;
         ResetWindowBitmap(W)
       ELSE skip := TRUE
-      END;
-      ;Out.String(' EVENT RESIZE END ');Out.Ln;
+      END
     ELSIF E.type = Al.eventDisplayClose THEN
       event.type := quit;
       event.display := SYSTEM.VAL(Al.Display, E.source);
