@@ -42,6 +42,141 @@ CONST
   flipHor*  = 1;
   flipVert* = 2;
 
+  (* Key Codes *)
+  kA*          = 1;
+  kB*          = 2;
+  kC*          = 3;
+  kD*          = 4;
+  kE*          = 5;
+  kF*          = 6;
+  kG*          = 7;
+  kH*          = 8;
+  kI*          = 9;
+  kJ*          = 10;
+  kK*          = 11;
+  kL*          = 12;
+  kM*          = 13;
+  kN*          = 14;
+  kO*          = 15;
+  kP*          = 16;
+  kQ*          = 17;
+  kR*          = 18;
+  kS*          = 19;
+  kT*          = 20;
+  kU*          = 21;
+  kV*          = 22;
+  kW*          = 23;
+  kX*          = 24;
+  kY*          = 25;
+  kZ*          = 26;
+  k0*          = 27;
+  k1*          = 28;
+  k2*          = 29;
+  k3*          = 30;
+  k4*          = 31;
+  k5*          = 32;
+  k6*          = 33;
+  k7*          = 34;
+  k8*          = 35;
+  k9*          = 36;
+  k0Pad*       = 37;
+  k1Pad*       = 38;
+  k2Pad*       = 39;
+  k3Pad*       = 40;
+  k4Pad*       = 41;
+  k5Pad*       = 42;
+  k6Pad*       = 43;
+  k7Pad*       = 44;
+  k8Pad*       = 45;
+  k9Pad*       = 46;
+  kF1*         = 47;
+  kF2*         = 48;
+  kF3*         = 49;
+  kF4*         = 50;
+  kF5*         = 51;
+  kF6*         = 52;
+  kF7*         = 53;
+  kF8*         = 54;
+  kF9*         = 55;
+  kF10*        = 56;
+  kF11*        = 57;
+  kF12*        = 58;
+  kEsc*        = 59;
+  kTilde*      = 60;
+  kMinus*      = 61;
+  kEquals*     = 62;
+  kBackspace*  = 63;
+  kTab*        = 64;
+  kOpenBrace*  = 65;
+  kCloseBrace* = 66;
+  kEnter*      = 67;
+  kColon*      = 68;
+  kQuote*      = 69;
+  kBackslash*  = 70;
+  kBackslash2* = 71;
+  kComma*      = 72;
+  kStop*       = 73;
+  kSlash*      = 74;
+  kSpace*      = 75;
+  kInsert*     = 76;
+  kDel*        = 77;
+  kHome*       = 78;
+  kEnd*        = 79;
+  kPgUp*       = 80;
+  kPgDn*       = 81;
+  kLeft*       = 82;
+  kRight*      = 83;
+  kUp*         = 84;
+  kDown*       = 85;
+  kSlashPad*   = 86;
+  kAsterisk*   = 87;
+  kMinusPad*   = 88;
+  kPlusPad*    = 89;
+  kDelPad*     = 90;
+  kEnterPad*   = 91;
+  kPrtScr*     = 92;
+  kPause*      = 93;
+  kEqualsPad*  = 103;
+  kBackquote*  = 104;
+  kSemicolon2* = 105;
+  kCommand*    = 106;
+
+  kBack*       = 107;
+  kVolumeUp*   = 108;
+  kVolumeDown* = 109;
+
+  kModifers*   = 215;
+
+  kLShift*     = 215;
+  kRShift*     = 216;
+  kLCtrl*      = 217;
+  kRCtrl*      = 218;
+  kAlt*        = 219;
+  kAltGr*      = 220;
+  kLMeta*      = 221;
+  kRMeta*      = 222;
+  kMenu*       = 223;
+  kScrLock*    = 224;
+  kNumLock*    = 225;
+  kCapsLock*   = 226;
+
+  kMax*        = 226;
+
+  (* Modifiers Set *)
+  mShift*    = 0;
+  mCtrl*     = 1;
+  mAlt*      = 2;
+  mLMeta*    = 3;
+  mRMeta*    = 4;
+  mAltGr*    = 5; (*!FIXME check this*)
+  mMenu*     = 6; (*!FIXME check this*)
+  mCommand*  = 7;
+  mScroll*   = 8;
+  mNum*      = 9;
+  mCaps*     = 10;
+  mAltKeys*  = {mAlt, mAltGr};
+  mMetaKeys* = {mLMeta, mRMeta};
+
 TYPE
   ADRINT = SYSTEM.ADRINT;
   REAL = SYSTEM.REAL64;
@@ -72,6 +207,9 @@ TYPE
   WindowDesc* = RECORD(BitmapDesc)
     display: Al.Display;
     winW, winH: INTEGER; (* Window size in real pixels *)
+    initX, initY: INTEGER; (* Window position upon its creation *)
+    initW, initH: INTEGER; (* Window size upon its creation *)
+    wantZoom: REAL; (* Window zoom upon its creation *)
     lastX, lastY: INTEGER; (* Last mouse position in virtual pixels *)
     lastW, lastH: INTEGER; (* Last stepped size in virtual pixels *)
     zoom: INTEGER; (* See constants above; based on this rzoom/izoom is used *)
@@ -83,6 +221,7 @@ TYPE
     flipX, flipY, flipW, flipH: REAL; (* Where to flip the window bitmap to *)
     iFlipX, iFlipY: INTEGER; (* Same as flipX, flipY, which are always whole *)
     options: SET;
+    title: ARRAY 256 OF CHAR;
     next: Window (* See windowList below *)
   END;
 
@@ -253,6 +392,8 @@ VAR opt: SET;
   fw, fh: REAL;
   scaled, wasTarget: BOOLEAN;
 BEGIN scaled := FALSE;
+  Out.Int(W.winW, 10); Out.Int(W.winH, 10);(*!FIXME*)
+  Out.RealFix(W.rzoom, 10, 2); Out.Ln;(*!FIXME*)
   IF W.bmp = NIL THEN bw := -1
   ELSE bw := Al.get_bitmap_width(W.bmp); bh := Al.get_bitmap_height(W.bmp)
   END;
@@ -291,6 +432,9 @@ BEGIN scaled := FALSE;
   W.w := w; W.h := h;
   ResetFlipVars(W)
 END ResetWindowBitmap;
+
+PROCEDURE GetWindowOptions*(W: Window): SET;
+RETURN W.options END GetWindowOptions;
 
 PROCEDURE GetWindowZoom*(W: Window): REAL;
 RETURN W.rzoom END GetWindowZoom;
@@ -397,7 +541,7 @@ BEGIN
     IF target.bmp # NIL THEN
       Al.clear_to_color(SYSTEM.VAL(Al.Color, black));
       Al.draw_scaled_bitmap(W.bmp, 0.0, 0.0, FLT(W.w), FLT(W.h),
-        W.flipX, W.flipY, W.flipW, W.flipH, {});
+        W.flipX, W.flipY, W.flipW, W.flipH, {})
     ELSE w := FLT(W.winW); h := FLT(W.winH);
       x := FLT(FLOOR(W.flipX + W.flipW + 0.1));
       y := FLT(FLOOR(W.flipY + W.flipH + 0.1));
@@ -573,36 +717,33 @@ BEGIN
 
 END Pause;
 
-PROCEDURE NewWindow*(x, y, w, h: INTEGER; title: ARRAY OF CHAR;
-    options: SET): Window;
-VAR W: Window;
-  d: Al.Display;
+PROCEDURE RecreateDisplay(W: Window);
+VAR d: Al.Display;
   q: ARRAY 256 OF SHORTCHAR;
   opt: SET;
-  n, dw, dh, nw, nh, sw, sh: INTEGER;
+  n, x, y, w, h, dw, dh, nw, nh, sw, sh: INTEGER;
   nwf, nhf: REAL;
-BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
-  W.sizeStepX := wantSizeStepX; W.sizeStepY := wantSizeStepY;
-  IF {fullscreen, window} * opt = {} THEN INCL(opt, window)
-  ELSIF window IN opt THEN EXCL(opt, fullscreen)
-  END;
-  W.options := options;
+  isCurTarget: BOOLEAN;
+BEGIN
+  Out.String('   RECREATE DISPLAY ');Out.Int(W.winW, 10); Out.Int(W.winH, 10);(*!FIXME*)
+  Out.RealFix(W.wantZoom, 10, 2); Out.Ln;(*!FIXME*)
 
-  W.hasScale := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
-  W.scaleX := wantScaleX; W.scaleY := wantScaleY;
-  W.rzoom := wantZoom;
-  IF wantZoom = 1.0 THEN W.zoom := noZoom
-  ELSIF FLOOR(wantZoom + 0.001) * 100 = FLOOR(wantZoom * 100 + 0.001) THEN
-    W.zoom := intZoom; W.izoom := FLOOR(wantZoom + 0.001)
+  isCurTarget := target = W;
+  IF W.display # NIL THEN Al.destroy_display(W.display) END;
+
+  W.rzoom := W.wantZoom;
+  IF W.wantZoom = 1.0 THEN W.zoom := noZoom
+  ELSIF FLOOR(W.wantZoom + 0.001) * 100 = FLOOR(W.wantZoom * 100 + 0.001) THEN
+    W.zoom := intZoom; W.izoom := FLOOR(W.wantZoom + 0.001)
   ELSE W.zoom := realZoom
   END;
 
-  Utf8.Encode(title, q); Al.set_new_window_title(q);
-  IF software IN options THEN n := 0 ELSE n := 1 END;
+  Utf8.Encode(W.title, q); Al.set_new_window_title(q);
+  IF software IN W.options THEN n := 0 ELSE n := 1 END;
   Al.set_new_display_option(Al.renderMethod, n, Al.suggest);
   Al.set_new_display_option(Al.vsync, 2, Al.suggest);
 
-  IF smooth IN options THEN n := 1;
+  IF smooth IN W.options THEN n := 1;
     Al.set_new_display_option(Al.samples, 8, Al.suggest)
   ELSE n := 0
   END;
@@ -612,26 +753,28 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
   dw := FLOOR(FLT(dw) / W.scaleX + 0.1);
   dh := FLOOR(FLT(dh) / W.scaleY + 0.1);
 
+  w := W.initW; h := W.initH;
+
   IF (w < 0) OR (h < 0) THEN
-    IF fullscreen IN options THEN
-      w := FLOOR(dw / wantZoom + 0.1); h := FLOOR(dh / wantZoom + 0.1);
+    IF fullscreen IN W.options THEN
+      w := FLOOR(dw / W.wantZoom + 0.1); h := FLOOR(dh / W.wantZoom + 0.1);
       ApplySizeStep(W, w, h);
-      sw := FLOOR(w * wantZoom + 0.1); sh := FLOOR(h * wantZoom + 0.1)
+      sw := FLOOR(w * W.wantZoom + 0.1); sh := FLOOR(h * W.wantZoom + 0.1)
     ELSE w := 640; h := 400; W.zoom := noZoom;
       ApplySizeStep(W, w, h); sw := w; sh := h
     END
-  ELSIF fullscreen IN options THEN
-    IF smooth IN options THEN nwf := dw / w; nhf := dh / h;
+  ELSIF fullscreen IN W.options THEN
+    IF smooth IN W.options THEN nwf := dw / w; nhf := dh / h;
       IF nhf < nwf THEN nwf := nhf END;
       W.zoom := realZoom; W.rzoom := nwf;
-      IF exact IN options THEN
+      IF exact IN W.options THEN
         sw := FLOOR(w * nwf + 0.1); sh := FLOOR(h * nwf + 0.1)
       ELSE sw := dw; sh := dh
       END
     ELSE nw := dw DIV w; nh := dh DIV h;
       IF nh < nw THEN nw := nh END;
       W.zoom := intZoom; W.izoom := nw; W.rzoom := FLT(nw);
-      IF exact IN options THEN sw := w * nw; sh := h * nw
+      IF exact IN W.options THEN sw := w * nw; sh := h * nw
       ELSE sw := dw DIV nw * nw; sh := dh DIV nw * nw
       END
     END;
@@ -643,32 +786,28 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
     END;
     ApplySizeStep(W, w, h); sw := w; sh := h
   ELSE ApplySizeStep(W, w, h);
-    sw := FLOOR(w * wantZoom * W.scaleX + 0.999);
-    sh := FLOOR(h * wantZoom * W.scaleY + 0.999)
+    sw := FLOOR(w * W.wantZoom * W.scaleX + 0.999);
+    sh := FLOOR(h * W.wantZoom * W.scaleY + 0.999)
   END;
 
   W.lastW := w; W.lastH := h;
 
-  IF center IN options THEN
-    GetDesktopResolution(dw, dh);
-    x := (dw - sw) DIV 2;
-    y := (dh - sh) DIV 2;
-    IF x < 0 THEN x := 0 END;
-    IF y < 0 THEN y := 0 END;
-    Al.set_new_window_position(x, y)
-  ELSIF (x < 0) OR (y < 0) THEN
-    Al.set_new_window_position(Al.intMax, Al.intMax)
-  ELSE Al.set_new_window_position(x, y)
+  IF center IN W.options THEN GetDesktopResolution(dw, dh);
+    x := (dw - sw) DIV 2; y := (dh - sh) DIV 2;
+    IF x < 0 THEN x := 0 END; IF y < 0 THEN y := 0 END
+  ELSIF (W.initX < 0) OR (W.initY < 0) THEN x := Al.intMax; y := Al.intMax
+  ELSE x := W.initX; y := W.initY
   END;
+  Al.set_new_window_position(x, y);
 
   opt := {};
-  IF fullscreen IN options THEN INCL(opt, Al.fullscreenWindow)
+  IF fullscreen IN W.options THEN INCL(opt, Al.fullscreenWindow)
   ELSE INCL(opt, Al.windowed)
   END;
-  IF resizable IN options THEN INCL(opt, Al.resizable) END;
-  IF maximized IN options THEN INCL(opt, Al.maximized) END;
-  IF minimized IN options THEN INCL(opt, Al.minimized) END;
-  IF frameless IN options THEN INCL(opt, Al.frameless) END;
+  IF resizable IN W.options THEN INCL(opt, Al.resizable) END;
+  IF maximized IN W.options THEN INCL(opt, Al.maximized) END;
+  IF minimized IN W.options THEN INCL(opt, Al.minimized) END;
+  IF frameless IN W.options THEN INCL(opt, Al.frameless) END;
   Al.set_new_display_flags(opt);
 
   W.display := Al.create_display(sw, sh);
@@ -678,13 +817,37 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
     W.w := w; W.h := h;
     ResetWindowBitmap(W);
     Al.register_event_source(queue, Al.get_display_event_source(W.display));
-    W.next := windowList; windowList := W
-  ELSE Error('Could not create dispaly.')
-  END;
-  IF (screen = NIL) & (W # NIL) THEN
-    screen := W;
-    Target(screen)
+    IF isCurTarget THEN Target(W) END
   END
+END RecreateDisplay;
+
+PROCEDURE NewWindow*(x, y, w, h: INTEGER; title: ARRAY OF CHAR;
+    options: SET): Window;
+VAR W: Window;
+  d: Al.Display;
+  q: ARRAY 256 OF SHORTCHAR;
+  opt: SET;
+  n, dw, dh, nw, nh, sw, sh: INTEGER;
+  nwf, nhf: REAL;
+BEGIN NEW(W); W.lastX := -1; W.lastY := -1;
+  W.sizeStepX := wantSizeStepX; W.sizeStepY := wantSizeStepY;
+  IF {fullscreen, window} * options = {} THEN INCL(options, window)
+  ELSIF window IN options THEN EXCL(options, fullscreen)
+  END;
+  W.options := options;
+  W.title := title;
+  W.wantZoom := wantZoom;
+  W.hasScale := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
+  W.scaleX := wantScaleX; W.scaleY := wantScaleY;
+  W.initX := x; W.initY := y;
+  W.initW := w; W.initH := h;
+
+  W.display := NIL;
+  RecreateDisplay(W);
+  IF W.display # NIL THEN W.next := windowList; windowList := W
+  ELSE Error('Could not create dispaly.'); W := NIL
+  END;
+  IF (screen = NIL) & (W # NIL) THEN screen := W; Target(screen) END
 RETURN W END NewWindow;
 
 PROCEDURE CloseWindow*(W: Window);
@@ -706,21 +869,18 @@ BEGIN W := windowList;
   WHILE (W # NIL) & (W.display # d) DO W := W.next END
 RETURN W END GetWindow;
 
-PROCEDURE ApplyResize*(window: Window);
-VAR w, h: INTEGER;
+PROCEDURE ToggleFullscreen*(win: Window);
+VAR fs: BOOLEAN;
 BEGIN
-  (*w := Al.get_display_width(window.display);
-  h := Al.get_display_height(window.display);
-  w := w DIV 8 * 8;
-  h := h DIV 16 * 16;
-  IF Al.resize_display(window.display, w, h) THEN END;
-  *)
-  (*
-  window.winW := Al.get_display_width(window.display);
-  window.winH := Al.get_display_height(window.display);
-  ResetWindowBitmap(window)
-  *)
-END ApplyResize;
+  IF (win = NIL) & (screen # NIL) THEN win := screen END;
+  IF (win # NIL) & (win.display # NIL) THEN
+    fs := ~(Al.windowed IN Al.get_display_flags(win.display));
+    IF fs THEN EXCL(win.options, fullscreen); INCL(win.options, window)
+    ELSE INCL(win.options, fullscreen); EXCL(win.options, window)
+    END;
+    RecreateDisplay(win)
+  END
+END ToggleFullscreen;
 
 PROCEDURE WaitEvent*(VAR event: Event);
 VAR E: Al.Event;
@@ -807,12 +967,14 @@ BEGIN
       event.type := keyDown;
       KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
       event.key := KE.keycode;
+      event.mod := KE.modifiers;
       event.display := KE.display;
       event.window := GetWindow(event.display)
     ELSIF E.type = Al.eventKeyUp THEN
       event.type := keyUp;
       KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
       event.key := KE.keycode;
+      event.mod := KE.modifiers;
       event.display := KE.display;
       event.window := GetWindow(event.display)
     ELSIF E.type = Al.eventKeyChar THEN
@@ -839,7 +1001,7 @@ BEGIN
         event.type := resize; event.window := W; event.display := DE.source;
         event.w := w; event.h := h; event.x := DE.x; event.y := DE.y;
         ResetWindowBitmap(W)
-      ELSE skip := TRUE
+      ELSE ResetFlipVars(W); Flip; skip := TRUE
       END
     ELSIF E.type = Al.eventDisplayClose THEN
       event.type := quit;

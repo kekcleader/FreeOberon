@@ -27,6 +27,7 @@ END DrawOnce;
 PROCEDURE Draw;
 BEGIN
   T.SetCell(X, Y, ch, 0, 4);
+  T.SetCell(40, 15, ch, 9, 1);
   T.Flush
 END Draw;
 
@@ -48,6 +49,20 @@ BEGIN
   T.Flush
 END OnResize;
 
+PROCEDURE Set(s: SET);
+VAR i: INTEGER;
+  f: BOOLEAN;
+BEGIN f := TRUE;
+  Out.Char('{');
+  FOR i := 0 TO 31 DO
+    IF i IN s THEN
+      IF f THEN f := FALSE ELSE Out.String(', ') END;
+      Out.Int(i, 0)
+    END
+  END;
+  Out.Char('}')
+END Set;
+
 PROCEDURE Run;
 VAR e: T.Event;
   done: BOOLEAN;
@@ -59,7 +74,6 @@ BEGIN done := FALSE;
     IF e.type = T.quit THEN done := TRUE
     ELSIF e.type = T.resize THEN OnResize
     ELSIF e.type = T.key THEN
-      Out.Int(e.key, 5); (*Out.Char(' '); Out.Char(e.ch); *)Out.Int(ORD(e.ch), 5);Out.Ln;
       IF e.key = 82 THEN DEC(X)
       ELSIF e.key = 83 THEN INC(X)
       ELSIF e.key = 84 THEN DEC(Y)
@@ -74,8 +88,9 @@ BEGIN done := FALSE;
 END Run;
 
 BEGIN
-  T.Settings(80, 25, {(*T.center, T.window, T.resizable*)});
-  T.SetZoom(2);
+  T.Settings(80, 25, {T.center, T.window, T.resizable});
+  T.Settings(80, 25, {T.center, T.resizable});
+  (*T.SetZoom(2);*)
   T.SetTitle('Oberon TermBox Module');
   T.Init;
   T.Size(W, H);

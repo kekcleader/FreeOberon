@@ -23,6 +23,21 @@ CONST
   none*   = 14;
   error*  = 15;
 
+  (* Modifiers Set *)
+  mShift*    = 0;
+  mCtrl*     = 1;
+  mAlt*      = 2;
+  mLMeta*    = 3;
+  mRMeta*    = 4;
+  mAltGr*    = 5; (*!FIXME check this*)
+  mMenu*     = 6; (*!FIXME check this*)
+  mCommand*  = 7;
+  mScroll*   = 8;
+  mNum*      = 9;
+  mCaps*     = 10;
+  mAltKeys*  = {mAlt, mAltGr};
+  mMetaKeys* = {mLMeta, mRMeta};
+
   emptyCh = ' ';
 
   partW = 800;
@@ -295,6 +310,29 @@ BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
   END
 END ResizeBuffer;
 
+PROCEDURE Set(s: SET);
+VAR i: INTEGER;
+  f: BOOLEAN;
+BEGIN f := TRUE;
+  Out.Char('{');
+  FOR i := 0 TO 31 DO
+    IF i IN s THEN
+      IF f THEN f := FALSE ELSE Out.String(', ') END;
+      Out.Int(i, 0)
+    END
+  END;
+  Out.Char('}')
+END Set;
+
+PROCEDURE ToggleFS;
+BEGIN
+  IF ~(G.window IN G.GetWindowOptions(screen)) THEN
+    G.SetWindowScale(screen, 1.0, 1.0)
+  ELSE G.SetWindowScale(screen, 5/6, 1.0)
+  END;
+  G.ToggleFullscreen(screen)
+END ToggleFS;
+
 PROCEDURE WaitEvent*(VAR event: Event);
 VAR e: G.Event;
   skip: BOOLEAN;
@@ -307,12 +345,8 @@ BEGIN
     ELSIF e.type = G.mouseDown THEN
     ELSIF e.type = G.mouseUp THEN
     ELSIF e.type = G.timer THEN
-    (*ELSIF e.type = G.keyDown THEN
-      event.type := key;
-      event.key := e.key;
-      event.ch := e.ch;
-      event.mod := e.mod;
-      skip := FALSE *)
+    ELSIF e.type = G.keyDown THEN
+      IF (e.key = G.kEnter) & (e.mod * G.mAltKeys # {}) THEN ToggleFS; Sync END
     ELSIF e.type = G.char THEN
       event.type := key;
       event.key := e.key;
@@ -322,7 +356,6 @@ BEGIN
     ELSIF e.type = G.resize THEN
       event.type := resize; G.GetMonoFontSize(font, fw, fh);
       event.w := e.w DIV fw; event.h := e.h DIV fh;
-      G.ApplyResize(e.window);
       ResizeBuffer;
       Sync;
       skip := FALSE
