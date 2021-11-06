@@ -209,6 +209,14 @@ BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartCell(p, x, y, ch, fg, bg) END
 END SetCell;
 
+PROCEDURE Print*(x, y: INTEGER; s: ARRAY OF CHAR; fg, bg: INTEGER);
+VAR i, w, h: INTEGER;
+BEGIN i := 0;
+  WHILE (s[i] # 0X) & (x < buffer.w) DO
+    SetCell(x, y, s[i], fg, bg); INC(i); INC(x)
+  END
+END Print;
+
 PROCEDURE SetChar*(x, y: INTEGER; ch: CHAR);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
@@ -487,6 +495,10 @@ BEGIN wantW := w; wantH := h;
   END;
   settings := flags
 END Settings;
+
+PROCEDURE TESTCB*(VAR s: ARRAY OF CHAR);
+BEGIN G.GetClipboardText(screen, s)
+END TESTCB;
 
 BEGIN wantW := 80; wantH := 25; wantScaleX := 0.0; wantScaleY := 0.0;
   settings := {fullscreen}; Done := FALSE

@@ -38,7 +38,6 @@ PROCEDURE OnResize;
 VAR x, y, w, h: INTEGER;
 BEGIN
   T.Size(w, h);
-  Out.String('RESIZE!! ');Out.Int(w, 0);Out.Char('x');Out.Int(h, 0);Out.Ln;
   FOR y := 0 TO h - 1 DO
     FOR x := W TO w - 1 DO
       T.SetCell(x, y, CHR(ORD(ch) + 1), 0, (x + y) MOD 4)
@@ -67,6 +66,13 @@ BEGIN f := TRUE;
   Out.Char('}')
 END Set;
 
+PROCEDURE Paste;
+VAR s: ARRAY 256 OF CHAR;
+BEGIN
+  T.TESTCB(s);
+  T.Print(X + 1, Y, s, 3, 1);
+END Paste;
+
 PROCEDURE Run;
 VAR e: T.Event;
   done: BOOLEAN;
@@ -82,6 +88,7 @@ BEGIN done := FALSE;
       ELSIF e.key = 83 THEN INC(X)
       ELSIF e.key = 84 THEN DEC(Y)
       ELSIF e.key = 85 THEN INC(Y)
+      ELSIF e.ch = 'p' THEN Paste
       ELSE ch := e.ch
       END;
       IF X < 0 THEN X := 0 ELSIF X >= W THEN X := W - 1 END;
@@ -93,8 +100,8 @@ END Run;
 
 BEGIN
   T.Settings(80, 25, {T.center, T.window, T.resizable});
-  T.Settings(80, 25, {T.center, T.resizable});
-  (*T.SetZoom(2);*)
+  (*T.Settings(80, 25, {T.center, T.resizable});*)
+  T.SetZoom(2);
   T.SetTitle('Oberon TermBox Module');
   T.Init;
   T.Size(W, H);

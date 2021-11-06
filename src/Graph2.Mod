@@ -395,8 +395,6 @@ VAR opt: SET;
   fw, fh: REAL;
   scaled, wasTarget: BOOLEAN;
 BEGIN scaled := FALSE;
-  Out.Int(W.winW, 10); Out.Int(W.winH, 10);(*!FIXME*)
-  Out.RealFix(W.rzoom, 10, 2); Out.Ln;(*!FIXME*)
   IF W.bmp = NIL THEN bw := -1
   ELSE bw := Al.get_bitmap_width(W.bmp); bh := Al.get_bitmap_height(W.bmp)
   END;
@@ -735,11 +733,7 @@ VAR d: Al.Display;
   n, x, y, w, h, dw, dh, nw, nh, sw, sh: INTEGER;
   nwf, nhf: REAL;
   isCurTarget: BOOLEAN;
-BEGIN
-  Out.String('   RECREATE DISPLAY ');Out.Int(W.winW, 10); Out.Int(W.winH, 10);(*!FIXME*)
-  Out.RealFix(W.wantZoom, 10, 2); Out.Ln;(*!FIXME*)
-
-  isCurTarget := target = W;
+BEGIN isCurTarget := target = W;
   IF W.display # NIL THEN Al.destroy_display(W.display) END;
 
   W.rzoom := W.wantZoom;
@@ -1128,6 +1122,25 @@ BEGIN f := NIL;
     END
   END
 RETURN f END LoadFont;
+
+(* Clipboard *)
+
+PROCEDURE GetClipboardText*(win: Window; VAR s: ARRAY OF CHAR);
+TYPE P = POINTER [1] TO ARRAY 5000 OF SHORTCHAR;
+VAR a: Al.ADRINT;
+  p: P;
+  q: ARRAY 20 OF SHORTCHAR;
+BEGIN
+  a := Al.get_clipboard_text(win.display);
+  (*IF a = 0 THEN a := Al.get_clipboard_text(win.display) END; (*Allegro bug*)
+  IF a = 0 THEN a := Al.get_clipboard_text(win.display) END; (*Allegro bug*)*)
+  Out.String('a = ');Out.Int(a, 0);Out.Ln;
+  IF a # 0 THEN p := SYSTEM.VAL(P, a); Utf8.Decode(p^, s)
+    (*;Utf8.Encode('Привет', q);
+    ;IF Al.set_clipboard_text(win.display, SYSTEM.VAL(Al.ADRINT, SYSTEM.ADR(q))) THEN END*)
+  ELSE s[0] := 'н'; s[1] := 0X
+  END
+END GetClipboardText;
 
 (* Init *)
 
