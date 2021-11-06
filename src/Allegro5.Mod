@@ -523,4 +523,6 @@ PROCEDURE get_clipboard_text* ["al_get_clipboard_text"] (display: Display): ADRI
 PROCEDURE set_clipboard_text* ["al_set_clipboard_text"] (display: Display; text: ADRINT): BOOLEAN;
 PROCEDURE clipboard_has_text* ["al_clipboard_has_text"] (display: Display): BOOLEAN;
 
+PROCEDURE free_with_context* ["al_free_with_context"] (ptr: ADRINT; line: INTEGER; file, func: ARRAY OF SHORTCHAR);
+
 END Allegro5.

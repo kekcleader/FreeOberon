@@ -1132,13 +1132,13 @@ VAR a: Al.ADRINT;
   q: ARRAY 20 OF SHORTCHAR;
 BEGIN
   a := Al.get_clipboard_text(win.display);
-  (*IF a = 0 THEN a := Al.get_clipboard_text(win.display) END; (*Allegro bug*)
-  IF a = 0 THEN a := Al.get_clipboard_text(win.display) END; (*Allegro bug*)*)
+  (*IF a = 0 THEN a := Al.get_clipboard_text(win.display) END; (*Allegro bug*)*)
   Out.String('a = ');Out.Int(a, 0);Out.Ln;
-  IF a # 0 THEN p := SYSTEM.VAL(P, a); Utf8.Decode(p^, s)
+  IF a # 0 THEN p := SYSTEM.VAL(P, a); Utf8.Decode(p^, s);
+    Al.free_with_context(a, 27, 'Graph2.Mod', 'GetClipboardText')
     (*;Utf8.Encode('Привет', q);
     ;IF Al.set_clipboard_text(win.display, SYSTEM.VAL(Al.ADRINT, SYSTEM.ADR(q))) THEN END*)
-  ELSE s[0] := 'н'; s[1] := 0X
+  ELSE s[0] := 0X
   END
 END GetClipboardText;
 
