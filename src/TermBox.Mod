@@ -464,7 +464,8 @@ BEGIN G.GetMonoFontSize(font, fw, fh); G.GetDesktopResolution(dw, dh);
   END;
 
   G.SetSizeStep(fw, fh);
-  screen := G.NewWindow(-1, -1, W, H, wantTitle, MakeGraphSettings())
+  screen := G.NewWindow(-1, -1, W, H, wantTitle, MakeGraphSettings());
+  G.SetWindowFullscreenSize(screen, W, H)
 END InitScreen;
 
 PROCEDURE Init*;

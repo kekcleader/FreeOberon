@@ -38,14 +38,15 @@ PROCEDURE OnResize;
 VAR x, y, w, h: INTEGER;
 BEGIN
   T.Size(w, h);
+  Out.String('RESIZE!! ');Out.Int(w, 0);Out.Char('x');Out.Int(h, 0);Out.Ln;
   FOR y := 0 TO h - 1 DO
     FOR x := W TO w - 1 DO
-      T.SetCell(x, y, CHR(ORD(ch) + 1), 0, (x + y) MOD 16)
+      T.SetCell(x, y, CHR(ORD(ch) + 1), 0, (x + y) MOD 4)
     END
   END;
   FOR y := H TO h - 1 DO
     FOR x := 0 TO w - 1 DO
-      T.SetCell(x, y, CHR(ORD(ch) + 1), 0, (x * y) MOD 16)
+      T.SetCell(x, y, CHR(ORD(ch) + 1), 0, (x * y) MOD 4)
     END
   END;
   W := w; H := h;

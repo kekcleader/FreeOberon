@@ -432,6 +432,8 @@ PROCEDURE acknowledge_resize* ["al_acknowledge_resize"] (display: Display);
 PROCEDURE get_display_width* ["al_get_display_width"] (display: Display): INTEGER;
 PROCEDURE get_display_height* ["al_get_display_height"] (display: Display): INTEGER;
 PROCEDURE destroy_display* ["al_destroy_display"] (display: Display);
+PROCEDURE set_display_icon* ["al_set_display_icon"] (display: Display; icon: Bitmap);
+PROCEDURE set_display_icons* ["al_set_display_icons"] (display: Display; numIcons: INTEGER; icons: ARRAY OF Bitmap);
 
 PROCEDURE create_bitmap* ["al_create_bitmap"] (w, h: INTEGER): Bitmap;
 PROCEDURE destroy_bitmap* ["al_destroy_bitmap"] (bmp: Bitmap);
@@ -516,5 +518,9 @@ PROCEDURE rest* ["al_rest"] (seconds: LONGREAL);
 PROCEDURE identity_transform* ["al_identity_transform"] (VAR trans: Transform);
 PROCEDURE build_transform* ["al_build_transform"] (VAR trans: Transform; x, y, sx, sy, theta: REAL);
 PROCEDURE use_transform* ["al_use_transform"] (VAR trans: Transform);
+
+PROCEDURE get_clipboard_text* ["al_get_clipboard_text"] (display: Display): ADRINT;
+PROCEDURE set_clipboard_text* ["al_set_clipboard_text"] (display: Display; text: ADRINT): BOOLEAN;
+PROCEDURE clipboard_has_text* ["al_clipboard_has_text"] (display: Display): BOOLEAN;
 
 END Allegro5.
