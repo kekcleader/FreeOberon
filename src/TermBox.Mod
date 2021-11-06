@@ -335,7 +335,9 @@ END Set;
 PROCEDURE ToggleFS;
 BEGIN
   IF ~(G.window IN G.GetWindowOptions(screen)) THEN
-    G.SetWindowScale(screen, 1.0, 1.0);
+    IF wantZoom >= 6/5 - 0.01 THEN G.SetWindowScale(screen, 5/6, 1.0)
+    ELSE G.SetWindowScale(screen, 1.0, 1.0)
+    END;
     G.SetWindowOption(screen, G.topleft, TRUE)
   ELSE G.SetWindowScale(screen, 5/6, 1.0);
     G.SetWindowOption(screen, G.topleft, FALSE)

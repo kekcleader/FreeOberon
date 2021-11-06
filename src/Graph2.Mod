@@ -892,8 +892,9 @@ BEGIN
     fs := ~(Al.windowed IN Al.get_display_flags(win.display));
     IF fs THEN EXCL(win.options, fullscreen); INCL(win.options, window)
     ELSE INCL(win.options, fullscreen); EXCL(win.options, window);
-      win.initW := Al.get_display_width(win.display);
-      win.initH := Al.get_display_height(win.display)
+      win.initW := FLOOR(Al.get_display_width(win.display) / win.rzoom / win.scaleX + 0.1);
+      win.initH := FLOOR(Al.get_display_height(win.display) / win.rzoom / win.scaleY + 0.1);
+      ApplySizeStep(win, win.initW, win.initH)
     END;
     RecreateDisplay(win, FALSE);
     win.resized := TRUE; anyWindowResized := TRUE
