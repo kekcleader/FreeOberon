@@ -318,28 +318,14 @@ BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
   END
 END ResizeBuffer;
 
-PROCEDURE Set(s: SET);
-VAR i: INTEGER;
-  f: BOOLEAN;
-BEGIN f := TRUE;
-  Out.Char('{');
-  FOR i := 0 TO 31 DO
-    IF i IN s THEN
-      IF f THEN f := FALSE ELSE Out.String(', ') END;
-      Out.Int(i, 0)
-    END
-  END;
-  Out.Char('}')
-END Set;
-
 PROCEDURE ToggleFS;
 BEGIN
   IF ~(G.window IN G.GetWindowOptions(screen)) THEN
-    IF wantZoom >= 6/5 - 0.01 THEN G.SetWindowScale(screen, 5/6, 1.0)
-    ELSE G.SetWindowScale(screen, 1.0, 1.0)
+    IF wantZoom >= 6/5 - 0.01 THEN G.SetNewWindowScale(5/6, 1.0)
+    ELSE G.SetNewWindowScale(1.0, 1.0)
     END;
     G.SetWindowOption(screen, G.topleft, TRUE)
-  ELSE G.SetWindowScale(screen, 5/6, 1.0);
+  ELSE G.SetNewWindowScale(5/6, 1.0);
     G.SetWindowOption(screen, G.topleft, FALSE)
   END;
   G.ToggleFullscreen(screen)

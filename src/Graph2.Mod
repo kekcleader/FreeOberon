@@ -216,7 +216,7 @@ TYPE
     zoom: INTEGER; (* See constants above; based on this rzoom/izoom is used *)
     izoom: INTEGER; (* Window.izoom is used if Window.zoom = intZoom  *)
     rzoom: REAL;    (* Window.rzoom is used if Window.zoom = realZoom *)
-    hasScale: BOOLEAN; (* If TRUE, scaleX and scaleY are used *)
+    scaleOn: BOOLEAN; (* If TRUE, scaleX and scaleY are used *)
     scaleX, scaleY: REAL; (* Deforms pixels on Flip, but zoom is for drawing *)
     sizeStepX, sizeStepY: INTEGER;
     flipX, flipY, flipW, flipH: REAL; (* Where to flip the window bitmap to *)
@@ -365,7 +365,7 @@ VAR w, h: INTEGER;
 BEGIN
   IF W.zoom = intZoom THEN
     w := W.w * W.izoom; h := W.h * W.izoom;
-    IF W.hasScale THEN
+    IF W.scaleOn THEN
       W.flipW := FLT(FLOOR(FLT(w) * W.scaleX + 0.9));
       W.flipH := FLT(FLOOR(FLT(h) * W.scaleY + 0.9));
       W.iFlipX := (W.winW - FLOOR(W.flipW + 0.1)) DIV 2;
@@ -400,7 +400,7 @@ BEGIN scaled := FALSE;
   END;
   IF ~(exact IN W.options) THEN
     IF W.zoom = noZoom THEN w := W.winW; h := W.winH
-    ELSIF (W.zoom = intZoom) & ~W.hasScale THEN
+    ELSIF (W.zoom = intZoom) & ~W.scaleOn THEN
       w := W.winW DIV W.izoom; h := W.winH DIV W.izoom
     ELSE scaled := TRUE;
       w := FLOOR(W.winW / W.rzoom / W.scaleX + 0.1);
@@ -408,7 +408,7 @@ BEGIN scaled := FALSE;
     END
   ELSE w := W.w; h := W.h
   END;
-  IF W.hasScale & ~scaled THEN
+  IF W.scaleOn & ~scaled THEN
     w := FLOOR(w / W.scaleX + 0.1); h := FLOOR(h / W.scaleY + 0.1)
   END;
 
@@ -493,7 +493,7 @@ BEGIN IF on THEN INCL(W.options, key) ELSE EXCL(W.options, key) END
 END SetWindowOption;
 
 PROCEDURE SetWindowScale*(W: Window; x, y: REAL);
-BEGIN W.hasScale := (x # 1.0) OR (y # 1.0);
+BEGIN W.scaleOn := (x # 1.0) OR (y # 1.0);
   W.scaleX := x; W.scaleY := y; ApplyScale(W)
 END SetWindowScale;
 
@@ -762,7 +762,7 @@ BEGIN isCurTarget := target = W;
   Al.set_new_display_option(Al.sampleBuffers, n, Al.suggest);
 
   GetDesktopResolution(dw, dh);
-  dw := FLOOR(FLT(dw) / W.scaleX + 0.1);
+  dw := FLOOR(FLT(dw) / wantScaleX + 0.1);
   dh := FLOOR(FLT(dh) / W.scaleY + 0.1);
 
   IF fullscreen IN W.options THEN w := W.fsW; h := W.fsH
@@ -853,7 +853,7 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1; W.resized := FALSE;
   W.options := options;
   W.title := title;
   W.wantZoom := wantZoom;
-  W.hasScale := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
+  W.scaleOn := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
   W.scaleX := wantScaleX; W.scaleY := wantScaleY;
   W.initX := x; W.initY := y; W.initW := w; W.initH := h;
   W.fsW := w; W.fsH := h;
@@ -886,16 +886,21 @@ RETURN W END GetWindow;
 
 PROCEDURE ToggleFullscreen*(win: Window);
 VAR fs: BOOLEAN;
+  w, h: REAL;
 BEGIN
   IF (win = NIL) & (screen # NIL) THEN win := screen END;
   IF (win # NIL) & (win.display # NIL) THEN
     fs := ~(Al.windowed IN Al.get_display_flags(win.display));
     IF fs THEN EXCL(win.options, fullscreen); INCL(win.options, window)
     ELSE INCL(win.options, fullscreen); EXCL(win.options, window);
-      win.initW := FLOOR(Al.get_display_width(win.display) / win.rzoom / win.scaleX + 0.1);
-      win.initH := FLOOR(Al.get_display_height(win.display) / win.rzoom / win.scaleY + 0.1);
+      w := Al.get_display_width(win.display) / win.rzoom;
+      h := Al.get_display_height(win.display) / win.rzoom;
+      IF win.scaleOn THEN w := w / win.scaleX; h := h / win.scaleY END;
+      win.initW := FLOOR(w + 0.1); win.initH := FLOOR(h + 0.1);
       ApplySizeStep(win, win.initW, win.initH)
     END;
+    win.scaleX := wantScaleX;
+    win.scaleY := wantScaleY;
     RecreateDisplay(win, FALSE);
     win.resized := TRUE; anyWindowResized := TRUE
   END
@@ -937,7 +942,7 @@ BEGIN
         ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
           y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
         END;
-        IF W.hasScale THEN
+        IF W.scaleOn THEN
           x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
         END;
         IF (x # W.lastX) OR (y # W.lastY) OR (ME.dz # 0) OR (ME.dw # 0) THEN
@@ -967,7 +972,7 @@ BEGIN
         ELSE event.x := FLOOR(ME.x / W.rzoom + 0.1);
           event.y := FLOOR(ME.y / W.rzoom + 0.1)
         END;
-        IF W.hasScale THEN event.x := FLOOR(event.x / W.scaleX + 0.1);
+        IF W.scaleOn THEN event.x := FLOOR(event.x / W.scaleX + 0.1);
           event.y := FLOOR(event.y / W.scaleY + 0.1)
         END;
         event.z := ME.z; event.w := ME.w;
@@ -984,7 +989,7 @@ BEGIN
           event.x := FLOOR(ME.x / W.rzoom + 0.1);
           event.y := FLOOR(ME.y / W.rzoom + 0.1)
         END;
-        IF W.hasScale THEN event.x := FLOOR(event.x / W.scaleX + 0.1);
+        IF W.scaleOn THEN event.x := FLOOR(event.x / W.scaleX + 0.1);
           event.y := FLOOR(event.y / W.scaleY + 0.1)
         END;
         event.z := ME.z; event.w := ME.w;
@@ -1024,7 +1029,7 @@ BEGIN
         W.winW := Al.get_display_width(DE.source);
         W.winH := Al.get_display_height(DE.source);
         fw := W.winW / W.rzoom; fh := W.winH / W.rzoom;
-        IF W.hasScale THEN fw := fw / W.scaleX; fh := fh / W.scaleY END;
+        IF W.scaleOn THEN fw := fw / W.scaleX; fh := fh / W.scaleY END;
         w := FLOOR(fw + 0.1); h := FLOOR(fh + 0.1);
         ApplySizeStep(W, w, h);
         IF (w # W.lastW) OR (h # W.lastH) THEN W.lastW := w; W.lastH := h;
