@@ -684,6 +684,13 @@ BEGIN
     FLT(dx), FLT(dy), {})
 END DrawPart;
 
+PROCEDURE DrawTintedPart*(bmp: Bitmap; color: Color;
+    sx, sy, sw, sh, dx, dy: INTEGER);
+BEGIN
+  Al.draw_tinted_bitmap_region(bmp.bmp, SYSTEM.VAL(Al.Color, color),
+    FLT(sx), FLT(sy), FLT(sw), FLT(sh), FLT(dx), FLT(dy), {})
+END DrawTintedPart;
+
 PROCEDURE DrawFlip*(bmp: Bitmap; x, y: INTEGER; flags: SET);
 BEGIN Al.draw_bitmap(bmp.bmp, FLT(x), FLT(y), flags)
 END DrawFlip;
@@ -1066,7 +1073,7 @@ PROCEDURE DrawCharEx*(ch: CHAR; x, y: INTEGER; font: Font; color: Color;
 VAR sx, sy, h: INTEGER;
   bmp: Bitmap;
 BEGIN FindFontChar(font, ch, bmp, sx, sy, w, h);
-  DrawPart(bmp, sx, sy, w, h, x, y)
+  DrawTintedPart(bmp, color, sx, sy, w, h, x, y)
 END DrawCharEx;
 
 PROCEDURE DrawChar*(ch: CHAR; x, y: INTEGER; font: Font; color: Color);

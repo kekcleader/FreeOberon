@@ -10,12 +10,12 @@ BEGIN
   T.Size(w, h);
   T.ClearTo(14, 4);
   T.SetCell(0, 0, 'К', 3, 1);
-  T.SetCell(1, 23, 'й', 2, 1);
-  T.SetCell(0, 24, 'Ю', 3, 1);
+  T.SetCell(1, 23, 'й', 2, 4);
+  T.SetCell(0, 24, 'Ю', 3, 5);
   T.SetCell(78, 23, 'щ', 0, 7);
-  T.SetCell(79, 24, 'ц', 3, 1);
-  T.SetCell(w - 1, h - 1, '*', 3, 1);
-  T.SetCell(w - 2, h - 2, '+', 3, 1);
+  T.SetCell(79, 24, 'ц', 3, 6);
+  T.SetCell(w - 1, h - 1, '*', 3, 0);
+  T.SetCell(w - 2, h - 2, '+', 3, 12);
   FOR x := 0 TO 31 DO
     T.SetCell(x + 3, 3, CHR(ORD('А') + x), 15, 4);
     T.SetChar(x + 3, 5, 2566X);
@@ -29,8 +29,7 @@ END DrawOnce;
 
 PROCEDURE Draw;
 BEGIN
-  T.SetCell(X, Y, ch, 0, 4);
-  T.SetCell(40, 15, ch, 9, 1);
+  T.SetCell(X, Y, ch, (X + Y + 8) MOD 16, (X + Y) MOD 16);
   T.Flush
 END Draw;
 
@@ -40,31 +39,17 @@ BEGIN
   T.Size(w, h);
   FOR y := 0 TO h - 1 DO
     FOR x := W TO w - 1 DO
-      T.SetCell(x, y, CHR(ORD(ch) + 1), 0, (x + y) MOD 4)
+      T.SetCell(x, y, CHR(ORD(ch) + 1), y MOD 16, (x + y) MOD 4)
     END
   END;
   FOR y := H TO h - 1 DO
     FOR x := 0 TO w - 1 DO
-      T.SetCell(x, y, CHR(ORD(ch) + 1), 0, (x * y) MOD 4)
+      T.SetCell(x, y, CHR(ORD(ch) + 1), x MOD 16, (x * y) MOD 4)
     END
   END;
   W := w; H := h;
   T.Flush
 END OnResize;
-
-PROCEDURE Set(s: SET);
-VAR i: INTEGER;
-  f: BOOLEAN;
-BEGIN f := TRUE;
-  Out.Char('{');
-  FOR i := 0 TO 31 DO
-    IF i IN s THEN
-      IF f THEN f := FALSE ELSE Out.String(', ') END;
-      Out.Int(i, 0)
-    END
-  END;
-  Out.Char('}')
-END Set;
 
 PROCEDURE Paste;
 VAR s: ARRAY 256 OF CHAR;
