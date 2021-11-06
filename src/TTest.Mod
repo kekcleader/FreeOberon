@@ -5,14 +5,17 @@ VAR ch: CHAR;
   W, H: INTEGER;
 
 PROCEDURE DrawOnce;
-VAR x: INTEGER;
+VAR x, w, h: INTEGER;
 BEGIN
+  T.Size(w, h);
   T.ClearTo(14, 4);
   T.SetCell(0, 0, 'К', 3, 1);
   T.SetCell(1, 23, 'й', 2, 1);
   T.SetCell(0, 24, 'Ю', 3, 1);
   T.SetCell(78, 23, 'щ', 0, 7);
   T.SetCell(79, 24, 'ц', 3, 1);
+  T.SetCell(w - 1, h - 1, '*', 3, 1);
+  T.SetCell(w - 2, h - 2, '+', 3, 1);
   FOR x := 0 TO 31 DO
     T.SetCell(x + 3, 3, CHR(ORD('А') + x), 15, 4);
     T.SetChar(x + 3, 5, 2566X);

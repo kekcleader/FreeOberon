@@ -327,8 +327,10 @@ END Set;
 PROCEDURE ToggleFS;
 BEGIN
   IF ~(G.window IN G.GetWindowOptions(screen)) THEN
-    G.SetWindowScale(screen, 1.0, 1.0)
-  ELSE G.SetWindowScale(screen, 5/6, 1.0)
+    G.SetWindowScale(screen, 1.0, 1.0);
+    G.SetWindowOption(screen, G.topleft, TRUE)
+  ELSE G.SetWindowScale(screen, 5/6, 1.0);
+    G.SetWindowOption(screen, G.topleft, FALSE)
   END;
   G.ToggleFullscreen(screen)
 END ToggleFS;

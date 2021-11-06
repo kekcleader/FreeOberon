@@ -483,6 +483,10 @@ BEGIN
   Al.use_transform(t)*)
 END ApplyScale;
 
+PROCEDURE SetWindowOption*(W: Window; key: INTEGER; on: BOOLEAN);
+BEGIN IF on THEN INCL(W.options, key) ELSE EXCL(W.options, key) END
+END SetWindowOption;
+
 PROCEDURE SetWindowScale*(W: Window; x, y: REAL);
 BEGIN W.hasScale := (x # 1.0) OR (y # 1.0);
   W.scaleX := x; W.scaleY := y; ApplyScale(W)
@@ -876,7 +880,9 @@ BEGIN
   IF (win # NIL) & (win.display # NIL) THEN
     fs := ~(Al.windowed IN Al.get_display_flags(win.display));
     IF fs THEN EXCL(win.options, fullscreen); INCL(win.options, window)
-    ELSE INCL(win.options, fullscreen); EXCL(win.options, window)
+    ELSE INCL(win.options, fullscreen); EXCL(win.options, window);
+      win.initW := Al.get_display_width(win.display);
+      win.initH := Al.get_display_height(win.display)
     END;
     RecreateDisplay(win)
   END
