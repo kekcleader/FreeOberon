@@ -427,6 +427,7 @@ PROCEDURE create_display* ["al_create_display"] (w, h: INTEGER): Display;
 PROCEDURE get_current_display* ["al_get_current_display"] (): Display;
 PROCEDURE resize_display* ["al_resize_display"] (display: Display; width, height: INTEGER): BOOLEAN;
 PROCEDURE set_window_position* ["al_set_window_position"] (display: Display; x, y: INTEGER);
+PROCEDURE get_window_position* ["al_get_window_position"] (display: Display; VAR x, y: INTEGER);
 PROCEDURE flip_display* ["al_flip_display"] ();
 PROCEDURE acknowledge_resize* ["al_acknowledge_resize"] (display: Display);
 PROCEDURE get_display_width* ["al_get_display_width"] (display: Display): INTEGER;

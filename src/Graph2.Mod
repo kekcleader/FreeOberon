@@ -897,6 +897,8 @@ BEGIN
       h := Al.get_display_height(win.display) / win.rzoom;
       IF win.scaleOn THEN w := w / win.scaleX; h := h / win.scaleY END;
       win.initW := FLOOR(w + 0.1); win.initH := FLOOR(h + 0.1);
+      EXCL(win.options, center);
+      Al.get_window_position(win.display, win.initX, win.initY);
       ApplySizeStep(win, win.initW, win.initH)
     END;
     win.scaleX := wantScaleX;
