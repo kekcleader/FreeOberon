@@ -50,7 +50,7 @@ TYPE
     type*: INTEGER;
     x*, y*: INTEGER;
     w*, h*: INTEGER;  (* Size of screen in cells on resize *)
-    button*: INTEGER; (* Mouse button that is pressed *)
+    button*: INTEGER; (* Mouse button that is pressed, 0 means release *)
     key*: INTEGER;    (* Physical key code *)
     ch*: CHAR;        (* Typed character *)
     mod*: SET         (* Key modifiers *)
@@ -84,6 +84,9 @@ VAR
   wantScaleX, wantScaleY: REAL;
   settings: SET;
   buffer: Buffer;
+
+  mouseDown: BOOLEAN;
+  lastX, lastY, mouseButton: INTEGER;
 
   screen: G.Window;
   font: G.MonoFont;
@@ -331,6 +334,14 @@ BEGIN
   G.ToggleFullscreen(screen)
 END ToggleFS;
 
+PROCEDURE GetMousePos(e: G.Event; VAR x, y: INTEGER);
+VAR fw, fh: INTEGER;
+BEGIN G.GetMonoFontSize(font, fw, fh);
+  x := e.x DIV fw; y := e.y DIV fh;
+  IF x < 0 THEN x := 0 ELSIF x >= buffer.w THEN x := buffer.w - 1 END;
+  IF y < 0 THEN y := 0 ELSIF y >= buffer.h THEN y := buffer.h - 1 END
+END GetMousePos;
+
 PROCEDURE WaitEvent*(VAR event: Event);
 VAR e: G.Event;
   skip: BOOLEAN;
@@ -340,8 +351,22 @@ BEGIN
   event.ch := '&';
     G.WaitEvent(e);
     IF e.type = G.mouseMove THEN
-    ELSIF e.type = G.mouseDown THEN
-    ELSIF e.type = G.mouseUp THEN
+      IF mouseDown THEN event.type := mouse; GetMousePos(e, event.x, event.y);
+        IF (event.x # lastX) OR (event.y # lastY) THEN
+          event.button := mouseButton;
+          lastX := event.x; lastY := event.y;
+          skip := FALSE
+        END
+      END
+    ELSIF e.type = G.mouseDown THEN event.type := mouse;
+      mouseDown := TRUE; GetMousePos(e, lastX, lastY);
+      event.x := lastX; event.y := lastY;
+      mouseButton := e.button; event.button := mouseButton;
+      skip := FALSE
+    ELSIF e.type = G.mouseUp THEN event.type := mouse;
+      mouseDown := FALSE; GetMousePos(e, event.x, event.y);
+      event.button := 0; (* 0 means release *)
+      skip := FALSE
     ELSIF e.type = G.timer THEN
     ELSIF e.type = G.keyDown THEN
       IF (e.key = G.kEnter) & (e.mod * G.mAltKeys # {}) THEN ToggleFS; Sync END
@@ -472,6 +497,7 @@ BEGIN Done := FALSE;
     InitScreen;
     InitColors;
     InitBuffer;
+    mouseDown := FALSE;
     Done := TRUE
   END
 END Init;

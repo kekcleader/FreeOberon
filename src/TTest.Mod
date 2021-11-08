@@ -79,6 +79,10 @@ BEGIN done := FALSE;
       IF X < 0 THEN X := 0 ELSIF X >= W THEN X := W - 1 END;
       IF Y < 0 THEN Y := 0 ELSIF Y >= H THEN Y := H - 1 END;
       IF e.ch = 'q' THEN done := TRUE END
+    ELSIF e.type = T.mouse THEN
+      Out.String('MOUSE '); Out.Int(e.button, 0); Out.Char(' ');
+      Out.Int(e.x, 0); Out.Char('x'); Out.Int(e.y, 0); Out.Ln;
+      X := e.x; Y := e.y
     END
   UNTIL done
 END Run;
