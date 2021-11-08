@@ -163,19 +163,23 @@ CONST
   kMax*        = 226;
 
   (* Modifiers Set *)
-  mShift*    = 0;
-  mCtrl*     = 1;
-  mAlt*      = 2;
-  mLMeta*    = 3;
-  mRMeta*    = 4;
-  mAltGr*    = 5; (*!FIXME check this*)
-  mMenu*     = 6; (*!FIXME check this*)
-  mCommand*  = 7;
-  mScroll*   = 8;
-  mNum*      = 9;
-  mCaps*     = 10;
-  mAltKeys*  = {mAlt, mAltGr};
-  mMetaKeys* = {mLMeta, mRMeta};
+  mLShift*   = 0;
+  mRShift*   = 1;
+  mLCtrl*    = 6;
+  mRCtrl*    = 7;
+  mLAlt*     = 8;
+  mRAlt*     = 9;
+  mLMeta*    = 10;
+  mRMeta*    = 11;
+  mNumLock*  = 12;
+  mCapsLock* = 13;
+  mMenu*     = 14;
+  mCommand*  = 29;
+  mScrLock*  = 30;
+  mCtrl*  = {mLCtrl, mRCtrl};
+  mShift* = {mLShift, mRShift};
+  mAlt*   = {mLAlt, mRAlt};
+  mMeta*   = {mLMeta, mRMeta};
 
 TYPE
   ADRINT = SYSTEM.ADRINT;
@@ -283,6 +287,33 @@ VAR
   target: Bitmap;
   black: Color;
   anyWindowResized: BOOLEAN;
+
+  (* Keyboard modifier keys *)
+  keyModMap: ARRAY 256 OF INTEGER;
+  keyMods: SET;
+
+PROCEDURE InitKeyMod;
+VAR i: INTEGER;
+BEGIN keyMods := {};
+  FOR i := 0 TO LEN(keyModMap) - 1 DO keyModMap[i] := -1 END;
+  keyModMap[kLShift] := mLShift; keyModMap[kRShift] := mRShift;
+  keyModMap[kLCtrl] := mLCtrl; keyModMap[kRCtrl] := mRCtrl;
+  keyModMap[kAlt] := mLAlt; keyModMap[kAltGr] := mRAlt;
+  keyModMap[kLMeta] := mLMeta; keyModMap[kRMeta] := mRMeta;
+  keyModMap[kNumLock] := mNumLock; keyModMap[kCapsLock] := mCapsLock;
+  keyModMap[kScrLock] := mScrLock; keyModMap[kCommand] := mCommand;
+  keyModMap[kMenu] := mMenu
+END InitKeyMod;
+
+PROCEDURE SetKeyMod(key: INTEGER; on: BOOLEAN);
+BEGIN
+  IF key < LEN(keyModMap) THEN
+    key := keyModMap[key];
+    IF key >= 0 THEN
+      IF on THEN INCL(keyMods, key) ELSE EXCL(keyMods, key) END
+    END
+  END
+END SetKeyMod;
 
 PROCEDURE Error(s: ARRAY OF CHAR);
 BEGIN Out.String(s); Out.Ln
@@ -920,6 +951,13 @@ BEGIN W := windowList;
   IF W = NIL THEN anyWindowResized := FALSE END
 END MakeResizeEvent;
 
+PROCEDURE SSet(s: SET);
+VAR i: INTEGER;
+BEGIN Out.Char('{');
+  FOR i := 0 TO 31 DO IF i IN s THEN Out.Int(i, 3) END END;
+  Out.Char('}')
+END SSet;
+
 PROCEDURE WaitEvent*(VAR event: Event);
 VAR E: Al.Event;
   DE: Al.PDisplayEvent;
@@ -961,6 +999,7 @@ BEGIN
             W.lastX := event.x; W.lastY := event.y
           END;
           event.button := ME.button;
+          event.mod := keyMods;
           event.display := ME.display; event.window := W
         ELSE skip := TRUE
         END
@@ -979,6 +1018,7 @@ BEGIN
         END;
         event.z := ME.z; event.w := ME.w;
         event.button := ME.button;
+        event.mod := keyMods;
         event.display := ME.display
       ELSIF E.type = Al.eventMouseButtonUp THEN
         event.type := mouseUp;
@@ -996,6 +1036,7 @@ BEGIN
         END;
         event.z := ME.z; event.w := ME.w;
         event.button := ME.button;
+        event.mod := keyMods;
         event.display := ME.display
       ELSIF E.type = Al.eventTimer THEN
         event.type := timer;
@@ -1006,14 +1047,17 @@ BEGIN
         event.type := keyDown;
         KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
         event.key := KE.keycode;
-        event.mod := KE.modifiers;
+        SetKeyMod(event.key, TRUE);
+        event.mod := keyMods;
+        Out.Int(event.key, 3); Out.String(' : ');SSet(event.mod);Out.Ln;
         event.display := KE.display;
         event.window := GetWindow(event.display)
       ELSIF E.type = Al.eventKeyUp THEN
         event.type := keyUp;
         KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
         event.key := KE.keycode;
-        event.mod := KE.modifiers;
+        event.mod := keyMods;
+        SetKeyMod(event.key, FALSE);
         event.display := KE.display;
         event.window := GetWindow(event.display)
       ELSIF E.type = Al.eventKeyChar THEN
@@ -1198,6 +1242,7 @@ BEGIN ok := TRUE; anyWindowResized := FALSE;
 
     Al.register_event_source(queue, Al.get_keyboard_event_source());
     Al.register_event_source(queue, Al.get_mouse_event_source());
+    InitKeyMod;
 
     IF ~(manual IN settings) THEN
       IF ~InitScreen() THEN ok := FALSE END

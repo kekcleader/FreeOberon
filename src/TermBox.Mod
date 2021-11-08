@@ -2,6 +2,11 @@ MODULE TermBox;
 IMPORT G := Graph2, Out;
 
 CONST
+  partW = 512;
+  partH = 256;
+  emptyCh = ' ';
+  nofcolors = 16;
+
   (* Settings set members *)
   fullscreen*  = 1;
   window*      = 2;
@@ -23,27 +28,144 @@ CONST
   none*   = 14;
   error*  = 15;
 
+  (* Key Codes *)
+  kA*          = 1;
+  kB*          = 2;
+  kC*          = 3;
+  kD*          = 4;
+  kE*          = 5;
+  kF*          = 6;
+  kG*          = 7;
+  kH*          = 8;
+  kI*          = 9;
+  kJ*          = 10;
+  kK*          = 11;
+  kL*          = 12;
+  kM*          = 13;
+  kN*          = 14;
+  kO*          = 15;
+  kP*          = 16;
+  kQ*          = 17;
+  kR*          = 18;
+  kS*          = 19;
+  kT*          = 20;
+  kU*          = 21;
+  kV*          = 22;
+  kW*          = 23;
+  kX*          = 24;
+  kY*          = 25;
+  kZ*          = 26;
+  k0*          = 27;
+  k1*          = 28;
+  k2*          = 29;
+  k3*          = 30;
+  k4*          = 31;
+  k5*          = 32;
+  k6*          = 33;
+  k7*          = 34;
+  k8*          = 35;
+  k9*          = 36;
+  k0Pad*       = 37;
+  k1Pad*       = 38;
+  k2Pad*       = 39;
+  k3Pad*       = 40;
+  k4Pad*       = 41;
+  k5Pad*       = 42;
+  k6Pad*       = 43;
+  k7Pad*       = 44;
+  k8Pad*       = 45;
+  k9Pad*       = 46;
+  kF1*         = 47;
+  kF2*         = 48;
+  kF3*         = 49;
+  kF4*         = 50;
+  kF5*         = 51;
+  kF6*         = 52;
+  kF7*         = 53;
+  kF8*         = 54;
+  kF9*         = 55;
+  kF10*        = 56;
+  kF11*        = 57;
+  kF12*        = 58;
+  kEsc*        = 59;
+  kTilde*      = 60;
+  kMinus*      = 61;
+  kEquals*     = 62;
+  kBackspace*  = 63;
+  kTab*        = 64;
+  kOpenBrace*  = 65;
+  kCloseBrace* = 66;
+  kEnter*      = 67;
+  kColon*      = 68;
+  kQuote*      = 69;
+  kBackslash*  = 70;
+  kBackslash2* = 71;
+  kComma*      = 72;
+  kStop*       = 73;
+  kSlash*      = 74;
+  kSpace*      = 75;
+  kInsert*     = 76;
+  kDel*        = 77;
+  kHome*       = 78;
+  kEnd*        = 79;
+  kPgUp*       = 80;
+  kPgDn*       = 81;
+  kLeft*       = 82;
+  kRight*      = 83;
+  kUp*         = 84;
+  kDown*       = 85;
+  kSlashPad*   = 86;
+  kAsterisk*   = 87;
+  kMinusPad*   = 88;
+  kPlusPad*    = 89;
+  kDelPad*     = 90;
+  kEnterPad*   = 91;
+  kPrtScr*     = 92;
+  kPause*      = 93;
+  kEqualsPad*  = 103;
+  kBackquote*  = 104;
+  kSemicolon2* = 105;
+  kCommand*    = 106;
+
+  kBack*       = 107;
+  kVolumeUp*   = 108;
+  kVolumeDown* = 109;
+
+  kModifers*   = 215;
+
+  kLShift*     = 215;
+  kRShift*     = 216;
+  kLCtrl*      = 217;
+  kRCtrl*      = 218;
+  kAlt*        = 219;
+  kAltGr*      = 220;
+  kLMeta*      = 221;
+  kRMeta*      = 222;
+  kMenu*       = 223;
+  kScrLock*    = 224;
+  kNumLock*    = 225;
+  kCapsLock*   = 226;
+
+  kMax*        = 226;
+
   (* Modifiers Set *)
-  mShift*    = 0;
-  mCtrl*     = 1;
-  mAlt*      = 2;
-  mLMeta*    = 3;
-  mRMeta*    = 4;
-  mAltGr*    = 5; (*!FIXME check this*)
-  mMenu*     = 6; (*!FIXME check this*)
-  mCommand*  = 7;
-  mScroll*   = 8;
-  mNum*      = 9;
-  mCaps*     = 10;
-  mAltKeys*  = {mAlt, mAltGr};
-  mMetaKeys* = {mLMeta, mRMeta};
-
-  emptyCh = ' ';
-
-  partW = 800;
-  partH = 250;
-
-  nofcolors = 16;
+  mLShift*   = 0;
+  mRShift*   = 1;
+  mLCtrl*    = 6;
+  mRCtrl*    = 7;
+  mLAlt*     = 8;
+  mRAlt*     = 9;
+  mLMeta*    = 10;
+  mRMeta*    = 11;
+  mNumLock*  = 12;
+  mCapsLock* = 13;
+  mMenu*     = 14;
+  mCommand*  = 29;
+  mScrLock*  = 30;
+  mCtrl*  = {mLCtrl, mRCtrl};
+  mShift* = {mLShift, mRShift};
+  mAlt*   = {mLAlt, mRAlt};
+  mMeta*   = {mLMeta, mRMeta};
 
 TYPE
   Event* = RECORD
@@ -369,7 +491,7 @@ BEGIN
       skip := FALSE
     ELSIF e.type = G.timer THEN
     ELSIF e.type = G.keyDown THEN
-      IF (e.key = G.kEnter) & (e.mod * G.mAltKeys # {}) THEN ToggleFS; Sync END
+      IF (e.key = G.kEnter) & (e.mod * G.mAlt # {}) THEN ToggleFS; Sync END
     ELSIF e.type = G.char THEN
       event.type := key;
       event.key := e.key;
