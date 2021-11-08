@@ -1,4 +1,5 @@
 OFRDIR="../data/bin/OfrontPlus/Target/Linux_amd64"
+PATH="$OFRDIR:$PATH"
 export OBERON=.:$OFRDIR/Lib/Sym
 
 ofront+ -887ws Allegro5.Mod && \
