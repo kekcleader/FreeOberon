@@ -90,7 +90,7 @@ END Run;
 BEGIN
   T.Settings(80, 25, {T.center, T.window, T.resizable});
   (*T.Settings(80, 25, {T.center, T.resizable});*)
-  T.SetZoomF(6/5(*1.7*));
+  (*T.SetZoomF(6/5(*1.7*));*)
   T.SetTitle('Oberon TermBox Module');
   T.Init;
   T.Size(W, H);

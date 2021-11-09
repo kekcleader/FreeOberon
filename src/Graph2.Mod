@@ -794,7 +794,10 @@ BEGIN isCurTarget := target = W;
 
   GetDesktopResolution(dw, dh);
   dw := FLOOR(FLT(dw) / wantScaleX + 0.1);
-  dh := FLOOR(FLT(dh) / W.scaleY + 0.1);
+  dh := FLOOR(FLT(dh) / wantScaleY + 0.1);
+
+  W.scaleOn := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
+  W.scaleX := wantScaleX; W.scaleY := wantScaleY;
 
   IF fullscreen IN W.options THEN w := W.fsW; h := W.fsH
   ELSE w := W.initW; h := W.initH
@@ -951,13 +954,6 @@ BEGIN W := windowList;
   IF W = NIL THEN anyWindowResized := FALSE END
 END MakeResizeEvent;
 
-PROCEDURE SSet(s: SET);
-VAR i: INTEGER;
-BEGIN Out.Char('{');
-  FOR i := 0 TO 31 DO IF i IN s THEN Out.Int(i, 3) END END;
-  Out.Char('}')
-END SSet;
-
 PROCEDURE WaitEvent*(VAR event: Event);
 VAR E: Al.Event;
   DE: Al.PDisplayEvent;
@@ -1049,7 +1045,6 @@ BEGIN
         event.key := KE.keycode;
         SetKeyMod(event.key, TRUE);
         event.mod := keyMods;
-        Out.Int(event.key, 3); Out.String(' : ');SSet(event.mod);Out.Ln;
         event.display := KE.display;
         event.window := GetWindow(event.display)
       ELSIF E.type = Al.eventKeyUp THEN
