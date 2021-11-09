@@ -1,97 +1,72 @@
 MODULE TTest;
 IMPORT T := TermBox, Out, Kernel;
 VAR ch: CHAR;
-  X, Y: INTEGER;
   W, H: INTEGER;
+  needRedraw: BOOLEAN;
 
-PROCEDURE DrawOnce;
-VAR x, w, h: INTEGER;
+PROCEDURE DoubleBox(x1, y1, x2, y2, fg, bg: INTEGER);
+VAR i: INTEGER;
 BEGIN
-  T.Size(w, h);
-  T.ClearTo(14, 4);
-  T.SetCell(0, 0, 'К', 3, 1);
-  T.SetCell(1, 23, 'й', 2, 4);
-  T.SetCell(0, 24, 'Ю', 3, 5);
-  T.SetCell(78, 23, 'щ', 0, 7);
-  T.SetCell(79, 24, 'ц', 3, 6);
-  T.SetCell(w - 1, h - 1, '*', 3, 0);
-  T.SetCell(w - 2, h - 2, '+', 3, 12);
-  FOR x := 0 TO 31 DO
-    T.SetCell(x + 3, 3, CHR(ORD('А') + x), 15, 4);
-    T.SetChar(x + 3, 5, 2566X);
-    T.SetChar(x + 3, 6, 2569X)
+  IF x1 > x2 THEN i := x1; x1 := x2; x2 := i END;
+  IF y1 > y2 THEN i := y1; y1 := y2; y2 := i END;
+  FOR i := x1 + 1 TO x2 - 1 DO
+    T.SetCell(i, y1, 2550X, fg, bg);
+    T.SetCell(i, y2, 2550X, fg, bg)
   END;
-  T.SetChar(3, 5, 2554X);
-  T.SetChar(3, 6, 255AX);
-  T.SetChar(34, 5, 2557X);
-  T.SetChar(34, 6, 255DX)
-END DrawOnce;
+  FOR i := y1 + 1 TO y2 - 1 DO
+    T.SetCell(x1, i, 2551X, fg, bg);
+    T.SetCell(x2, i, 2551X, fg, bg)
+  END
+END DoubleBox;
 
 PROCEDURE Draw;
 BEGIN
-  T.SetCell(X, Y, ch, (X + Y + 8) MOD 16, (X + Y) MOD 16);
+  T.ClearTo(15, 1);
+  DoubleBox(0, 1, W - 1, H - 2, 15, 1);
   T.Flush
 END Draw;
 
 PROCEDURE OnResize;
-VAR x, y, w, h: INTEGER;
 BEGIN
-  T.Size(w, h);
-  FOR y := 0 TO h - 1 DO
-    FOR x := W TO w - 1 DO
-      T.SetCell(x, y, CHR(ORD(ch) + 1), y MOD 16, (x + y) MOD 4)
-    END
-  END;
-  FOR y := H TO h - 1 DO
-    FOR x := 0 TO w - 1 DO
-      T.SetCell(x, y, CHR(ORD(ch) + 1), x MOD 16, (x * y) MOD 4)
-    END
-  END;
-  W := w; H := h;
-  T.Flush
+  T.Size(W, H);
+  raw;
+  needRedraw := TRUE
 END OnResize;
 
 PROCEDURE Paste;
 VAR s: ARRAY 256 OF CHAR;
 BEGIN
   T.TESTCB(s);
-  T.Print(X + 1, Y, s, 3, 1);
+  T.Print(5, 5, s, 3, 1);
+  needRedraw := TRUE
 END Paste;
 
 PROCEDURE Run;
 VAR e: T.Event;
   done: BOOLEAN;
-BEGIN done := FALSE;
-  DrawOnce;
+BEGIN done := FALSE; needRedraw := TRUE;
+  Draw;
   REPEAT
-    Draw;
+    IF needRedraw THEN T.Flush; needRedraw := FALSE END;
     T.WaitEvent(e);
     IF e.type = T.quit THEN done := TRUE
     ELSIF e.type = T.resize THEN OnResize
     ELSIF e.type = T.key THEN
-      IF e.key = 82 THEN DEC(X)
-      ELSIF e.key = 83 THEN INC(X)
-      ELSIF e.key = 84 THEN DEC(Y)
-      ELSIF e.key = 85 THEN INC(Y)
-      ELSIF e.ch = 'p' THEN Paste
+      IF e.ch = 'p' THEN Paste
+      ELSIF e.ch = 'q' THEN done := TRUE
       ELSE ch := e.ch
       END;
-      IF X < 0 THEN X := 0 ELSIF X >= W THEN X := W - 1 END;
-      IF Y < 0 THEN Y := 0 ELSIF Y >= H THEN Y := H - 1 END;
-      IF e.ch = 'q' THEN done := TRUE END
+      needRedraw := TRUE
     ELSIF e.type = T.mouse THEN
-      Out.String('MOUSE '); Out.Int(e.button, 0); Out.Char(' ');
-      Out.Int(e.x, 0); Out.Char('x'); Out.Int(e.y, 0); Out.Ln;
-      X := e.x; Y := e.y
+      T.SetChar(e.x, e.y, ch);
+      needRedraw := TRUE
     END
   UNTIL done
 END Run;
 
 BEGIN
   T.Settings(80, 25, {T.center, T.window, T.resizable});
-  (*T.Settings(80, 25, {T.center, T.resizable});*)
-  (*T.SetZoomF(6/5(*1.7*));*)
-  T.SetTitle('Oberon TermBox Module');
+  T.SetTitle('Oberon TermBox Test');
   T.Init;
   T.Size(W, H);
   ch := ' ';
