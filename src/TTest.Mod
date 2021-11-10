@@ -9,6 +9,10 @@ VAR i: INTEGER;
 BEGIN
   IF x1 > x2 THEN i := x1; x1 := x2; x2 := i END;
   IF y1 > y2 THEN i := y1; y1 := y2; y2 := i END;
+  T.SetCell(x1, y1, 2554X, fg, bg);
+  T.SetCell(x2, y1, 2557X, fg, bg);
+  T.SetCell(x1, y2, 255AX, fg, bg);
+  T.SetCell(x2, y2, 255DX, fg, bg);
   FOR i := x1 + 1 TO x2 - 1 DO
     T.SetCell(i, y1, 2550X, fg, bg);
     T.SetCell(i, y2, 2550X, fg, bg)
@@ -19,9 +23,23 @@ BEGIN
   END
 END DoubleBox;
 
+PROCEDURE Rect(x1, y1, x2, y2, fg, bg: INTEGER);
+VAR x, y: INTEGER;
+BEGIN
+  IF x1 > x2 THEN x := x1; x1 := x2; x2 := x END;
+  IF y1 > y2 THEN y := y1; y1 := y2; y2 := y END;
+  FOR y := y1 TO y2 DO
+    FOR x := x1 TO x2 DO
+      T.SetCell(x, y, ' ', fg, bg)
+    END
+  END
+END Rect;
+
 PROCEDURE Draw;
 BEGIN
   T.ClearTo(15, 1);
+  Rect(0, 0, W - 1, 0, 0, 7);
+  Rect(0, H - 1, W - 1, H - 1, 0, 7);
   DoubleBox(0, 1, W - 1, H - 2, 15, 1);
   T.Flush
 END Draw;
@@ -29,7 +47,7 @@ END Draw;
 PROCEDURE OnResize;
 BEGIN
   T.Size(W, H);
-  raw;
+  Draw;
   needRedraw := TRUE
 END OnResize;
 
