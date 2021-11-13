@@ -208,7 +208,7 @@ VAR
   buffer: Buffer;
 
   mouseDown: BOOLEAN;
-  lastX, lastY, mouseButton: INTEGER;
+  mouseX, mouseY, mouseButton: INTEGER;
 
   screen: G.Window;
   font: G.MonoFont;
@@ -283,11 +283,19 @@ PROCEDURE Clear;
 BEGIN ClearTo(7, 0)
 END Clear;
 
+PROCEDURE InvertColor(color: INTEGER): INTEGER;
+BEGIN IF color >= 8 THEN color := 15 - color ELSE color := 7 - color END
+RETURN color END InvertColor;
+
 PROCEDURE DrawCell(x, y: INTEGER; cell: Cell);
-VAR w, h: INTEGER;
-BEGIN G.GetMonoFontSize(font, w, h); x := x * w; y := y * h;
-  G.FillRect(x, y, x + w - 1, y + h - 1, colors[cell.bg MOD nofcolors]);
-  G.DrawChar(cell.ch, x, y, font, colors[cell.fg MOD nofcolors])
+VAR w, h, fg, bg: INTEGER;
+BEGIN
+  IF (x # mouseX) OR (y # mouseY) THEN fg := cell.fg; bg := cell.bg
+  ELSE fg := InvertColor(cell.fg); bg := InvertColor(cell.bg)
+  END;
+  G.GetMonoFontSize(font, w, h); x := x * w; y := y * h;
+  G.FillRect(x, y, x + w - 1, y + h - 1, colors[bg MOD nofcolors]);
+  G.DrawChar(cell.ch, x, y, font, colors[fg MOD nofcolors])
 END DrawCell;
 
 PROCEDURE Flip;
@@ -464,6 +472,14 @@ BEGIN G.GetMonoFontSize(font, fw, fh);
   IF y < 0 THEN y := 0 ELSIF y >= buffer.h THEN y := buffer.h - 1 END
 END GetMousePos;
 
+PROCEDURE MoveMouse(x, y: INTEGER);
+BEGIN
+  UpdateCell(mouseX, mouseY);
+  mouseX := x; mouseY := y;
+  UpdateCell(x, y);
+  Flush
+END MoveMouse;
+
 PROCEDURE WaitEvent*(VAR event: Event);
 VAR e: G.Event;
   skip: BOOLEAN;
@@ -472,21 +488,22 @@ BEGIN
   REPEAT skip := TRUE;
   event.ch := '&';
     G.WaitEvent(e);
-    IF e.type = G.mouseMove THEN
-      IF mouseDown THEN event.type := mouse; GetMousePos(e, event.x, event.y);
-        IF (event.x # lastX) OR (event.y # lastY) THEN
+    IF e.type = G.mouseMove THEN GetMousePos(e, event.x, event.y);
+      IF (event.x # mouseX) OR (event.y # mouseY) THEN
+        IF mouseDown THEN event.type := mouse;
           event.button := mouseButton;
-          lastX := event.x; lastY := event.y;
           skip := FALSE
-        END
+        END;
+        MoveMouse(event.x, event.y)
       END
     ELSIF e.type = G.mouseDown THEN event.type := mouse;
-      mouseDown := TRUE; GetMousePos(e, lastX, lastY);
-      event.x := lastX; event.y := lastY;
+      mouseDown := TRUE; GetMousePos(e, event.x, event.y);
+      MoveMouse(event.x, event.y);
       mouseButton := e.button; event.button := mouseButton;
       skip := FALSE
     ELSIF e.type = G.mouseUp THEN event.type := mouse;
       mouseDown := FALSE; GetMousePos(e, event.x, event.y);
+      MoveMouse(event.x, event.y);
       event.button := 0; (* 0 means release *)
       skip := FALSE
     ELSIF e.type = G.timer THEN
