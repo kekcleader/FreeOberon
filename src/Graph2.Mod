@@ -11,7 +11,7 @@ CONST
   exact*       = 3;
   smooth*      = 4;
   software*    = 5;
-  initMouse*   = 6;
+  noMouse*     = 6;
   center*      = 7;
   resizable*   = 8;
   maximized*   = 9;
@@ -228,6 +228,7 @@ TYPE
     options: SET;
     title: ARRAY 256 OF CHAR;
     resized: BOOLEAN; (* TRUE if fullscreen mode has been toggled for window *)
+    showMouse: BOOLEAN;
     next: Window (* See windowList below *)
   END;
 
@@ -510,6 +511,21 @@ END SetZoom;
 PROCEDURE SetWindowFullscreenSize*(win: Window; width, height: INTEGER);
 BEGIN win.fsW := width; win.fsH := height
 END SetWindowFullscreenSize;
+
+PROCEDURE ShowWindowMouse*(W: Window; show: BOOLEAN);
+BEGIN
+  IF W.showMouse # show THEN
+    IF show THEN
+      IF Al.show_mouse_cursor(W.display) THEN W.showMouse := TRUE END
+    ELSE
+      IF Al.hide_mouse_cursor(W.display) THEN W.showMouse := FALSE END
+    END
+  END
+END ShowWindowMouse;
+
+PROCEDURE ShowMouse*(show: BOOLEAN);
+BEGIN IF screen # NIL THEN ShowWindowMouse(screen, show) END
+END ShowMouse;
 
 PROCEDURE ApplyScale*(W: Window);
 VAR t: Al.Transform;
@@ -891,6 +907,7 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1; W.resized := FALSE;
   W.scaleX := wantScaleX; W.scaleY := wantScaleY;
   W.initX := x; W.initY := y; W.initW := w; W.initH := h;
   W.fsW := w; W.fsH := h;
+  W.showMouse := TRUE;
 
   W.display := NIL; RecreateDisplay(W, TRUE);
   IF W.display # NIL THEN W.next := windowList; windowList := W
@@ -1218,7 +1235,7 @@ BEGIN ok := TRUE; anyWindowResized := FALSE;
       Error('Could not install keyboard.'); ok := FALSE
     END;
 
-    IF ~Al.install_mouse() THEN
+    IF ~(noMouse IN settings) & ~Al.install_mouse() THEN
       Error('Could not install mouse.'); ok := FALSE
     END;
 
@@ -1235,14 +1252,18 @@ BEGIN ok := TRUE; anyWindowResized := FALSE;
       Error('Could not create queue.'); ok := FALSE
     END;
 
-    Al.register_event_source(queue, Al.get_keyboard_event_source());
-    Al.register_event_source(queue, Al.get_mouse_event_source());
-    InitKeyMod;
+    IF ok THEN
+      Al.register_event_source(queue, Al.get_keyboard_event_source());
+      IF ~(noMouse IN settings) THEN
+        Al.register_event_source(queue, Al.get_mouse_event_source())
+      END;
+      InitKeyMod
+    END;
 
     IF ~(manual IN settings) THEN
       IF ~InitScreen() THEN ok := FALSE END
     END
-  ELSE Error('Coult not init Allegro.'); ok := FALSE
+  ELSE Error('Could not init Allegro.'); ok := FALSE
   END;
   Done := ok
 END Init;

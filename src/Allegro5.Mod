@@ -435,6 +435,8 @@ PROCEDURE get_display_height* ["al_get_display_height"] (display: Display): INTE
 PROCEDURE destroy_display* ["al_destroy_display"] (display: Display);
 PROCEDURE set_display_icon* ["al_set_display_icon"] (display: Display; icon: Bitmap);
 PROCEDURE set_display_icons* ["al_set_display_icons"] (display: Display; numIcons: INTEGER; icons: ARRAY OF Bitmap);
+PROCEDURE show_mouse_cursor* ["al_show_mouse_cursor"] (display: Display): BOOLEAN;
+PROCEDURE hide_mouse_cursor* ["al_hide_mouse_cursor"] (display: Display): BOOLEAN;
 
 PROCEDURE create_bitmap* ["al_create_bitmap"] (w, h: INTEGER): Bitmap;
 PROCEDURE destroy_bitmap* ["al_destroy_bitmap"] (bmp: Bitmap);
