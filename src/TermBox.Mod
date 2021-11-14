@@ -213,6 +213,7 @@ VAR
   cursorShown: BOOLEAN; (* TRUE if text cursor is show while it is blinking *)
   timer: G.Timer; (* Text cursor tick timer *)
 
+  needFlip: BOOLEAN;
   screen: G.Window;
   font: G.MonoFont;
   colors: ARRAY nofcolors OF G.Color;
@@ -311,7 +312,8 @@ BEGIN
 END DrawCell;
 
 PROCEDURE Flip;
-BEGIN G.Flip
+BEGIN
+  IF G.NoEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
 END Flip;
 
 PROCEDURE UpdateCell(x, y: INTEGER);
@@ -512,7 +514,8 @@ BEGIN
         cursorShown := ~cursorShown;
         UpdateCell(curX, curY);
         Flush
-      END
+      END;
+      IF needFlip THEN G.Flip; needFlip := FALSE END
     ELSIF e.type = G.mouseDown THEN event.type := mouse;
       mouseDown := TRUE; GetMousePos(e, event.x, event.y);
       MoveMouse(event.x, event.y);
