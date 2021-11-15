@@ -2,7 +2,6 @@ MODULE TTest;
 IMPORT T := TermBox, Out, Kernel;
 VAR ch: CHAR;
   W, H: INTEGER;
-  needRedraw: BOOLEAN;
 
 PROCEDURE DoubleBox(x1, y1, x2, y2, fg, bg: INTEGER);
 VAR i: INTEGER;
@@ -51,16 +50,14 @@ END Draw;
 PROCEDURE OnResize;
 BEGIN
   T.Size(W, H);
-  Draw;
-  needRedraw := TRUE
+  Draw
 END OnResize;
 
 PROCEDURE Paste;
 VAR s: ARRAY 256 OF CHAR;
 BEGIN
   T.TESTCB(s);
-  T.Print(5, 5, s, 3, 1);
-  needRedraw := TRUE
+  T.Print(5, 5, s, 3, 1)
 END Paste;
 
 PROCEDURE Menu;
@@ -80,10 +77,10 @@ END Menu;
 PROCEDURE Run;
 VAR e: T.Event;
   done: BOOLEAN;
-BEGIN done := FALSE; needRedraw := TRUE;
+BEGIN done := FALSE;
   Draw;
   REPEAT
-    IF needRedraw THEN T.Flush; needRedraw := FALSE END;
+    T.Flush;
     T.WaitEvent(e);
     IF e.type = T.quit THEN done := TRUE
     ELSIF e.type = T.resize THEN OnResize
@@ -92,12 +89,10 @@ BEGIN done := FALSE; needRedraw := TRUE;
       ELSIF e.ch = 'q' THEN done := TRUE
       ELSE ch := e.ch
       END;
-      Menu;
-      needRedraw := TRUE
+      Menu
     ELSIF e.type = T.mouse THEN
       T.SetChar(e.x, e.y, ch);
-      T.SetCursor(e.x, e.y);
-      needRedraw := TRUE
+      T.SetCursor(e.x, e.y)
     END
   UNTIL done
 END Run;
@@ -107,7 +102,7 @@ BEGIN
   T.SetTitle('Oberon TermBox Test');
   T.Init;
   T.Size(W, H);
-  ch := ' ';
+  ch := '+';
   Run;
   T.Close
 END TTest.

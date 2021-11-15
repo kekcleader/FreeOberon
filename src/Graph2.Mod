@@ -514,12 +514,10 @@ END SetWindowFullscreenSize;
 
 PROCEDURE ShowWindowMouse*(W: Window; show: BOOLEAN);
 BEGIN
-  IF W.showMouse # show THEN
-    IF show THEN
-      IF Al.show_mouse_cursor(W.display) THEN W.showMouse := TRUE END
-    ELSE
-      IF Al.hide_mouse_cursor(W.display) THEN W.showMouse := FALSE END
-    END
+  IF show THEN
+    IF Al.show_mouse_cursor(W.display) THEN W.showMouse := TRUE END
+  ELSE
+    IF Al.hide_mouse_cursor(W.display) THEN W.showMouse := FALSE END
   END
 END ShowWindowMouse;
 
@@ -789,6 +787,7 @@ VAR d: Al.Display;
   isCurTarget: BOOLEAN;
 BEGIN isCurTarget := target = W;
   IF W.display # NIL THEN Al.destroy_display(W.display) END;
+  keyMods := {};
 
   W.rzoom := W.wantZoom;
   IF W.wantZoom = 1.0 THEN W.zoom := noZoom
@@ -883,7 +882,8 @@ BEGIN isCurTarget := target = W;
     W.w := w; W.h := h;
     ResetWindowBitmap(W);
     Al.register_event_source(queue, Al.get_display_event_source(W.display));
-    IF isCurTarget THEN Target(W) END
+    IF isCurTarget THEN Target(W) END;
+    IF ~W.showMouse THEN ShowWindowMouse(W, FALSE) END
   END
 END RecreateDisplay;
 

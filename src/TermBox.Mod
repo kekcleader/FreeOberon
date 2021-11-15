@@ -430,10 +430,11 @@ BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL;
 RETURN p END NewPart;
 
 PROCEDURE ResizePart(p: Part; w, h: INTEGER);
-VAR x, y: INTEGER;
+VAR x0, x, y: INTEGER;
 BEGIN p.redraw := TRUE;
-  FOR y := p.h TO h - 1 DO
-    FOR x := p.w TO w - 1 DO
+  FOR y := 0 TO h - 1 DO
+    IF y < p.h THEN x0 := p.w ELSE x0 := 0 END;
+    FOR x := x0 TO w - 1 DO
       p.cells[y, x].ch := emptyCh;
       p.cells[y, x].fg := 7;
       p.cells[y, x].bg := 0;
