@@ -1,0 +1,2 @@
+MODULE TestModule;
+END TestModule.
