@@ -1,3 +1,4 @@
+(* Graph2 Test Module *)
 MODULE GTest;
 IMPORT G := Graph2, Random, Out;
 VAR main: G.Window;
@@ -57,10 +58,10 @@ BEGIN
     END
   END;
 
-  IF mX # -1 THEN G.Draw(B, mX, mY) END;
+  IF mX # -1 THEN G.Draw(B, mX - B.w, mY - B.h) END;
 
   G.DrawString('Привет, Оберон!', 16, 16, font, c2);
-  G.DrawString('Aŭ! Ķolorōĵ ne ļāboŗaš!', 16, 32, font, c1);
+  G.DrawString('Aŭ! Ķolorōĵ jam ļāboŗaš!', 16, 32, font, c2);
 
   G.Flip
 END DrawWin;
@@ -127,7 +128,6 @@ BEGIN
       redraw := TRUE
     ELSIF e.type = G.resize THEN
       Out.String('Resize '); Out.Int(e.window.w, 0);Out.Char('x');Out.Int(e.window.h, 0);Out.Ln;
-      G.ApplyResize(e.window);
       redraw := TRUE
     ELSIF e.type = G.quit THEN
       IF e.window = main THEN quit := TRUE
@@ -141,9 +141,9 @@ PROCEDURE RunSingle;
 VAR i, n, W, H: INTEGER;
   c3, c4, c5: G.Color;
 BEGIN
-  (*G.Settings(640, 400, {G.window, G.resizable, G.center(*, G.exact*)});*)
   G.Settings(640, 400, {G.smooth, G.window, G.resizable, G.nobuffer});
-  G.SetZoomF(2.0);
+  G.Settings(320, 200, {G.window, G.resizable});
+  (*G.SetZoomF(2.0);*)
   (*G.SetScale(5/6, 1.0);*)
   G.Init;
   G.GetScreenSize(W, H);
@@ -151,7 +151,7 @@ BEGIN
   G.MakeCol(c2, 0, 255, 0);
   G.MakeCol(c3, 255, 255, 255);
   G.MakeCol(c4, 50, 30, 255);
-  B := G.LoadBitmap('fb.png');
+  B := G.LoadBitmap('img.png');
   IF B = NIL THEN Out.String('COULD NOT LOAD img.png'); Out.Ln END;
   font := G.LoadFont('mainfont');
   IF font = NIL THEN Out.String('COULD NOT LOAD mainfont'); Out.Ln END;

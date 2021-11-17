@@ -1,3 +1,4 @@
+(* TermBox Test Module *)
 MODULE TTest;
 IMPORT T := TermBox, Out, Kernel;
 VAR ch: CHAR;

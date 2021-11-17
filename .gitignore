@@ -22,3 +22,6 @@
 *.dll
 !/data/bin/mingw32/bin/*.dll
 !/data/bin/mingw32/libexec/gcc/i686-w64-mingw32/6.2.0/*.dll
+/src/GTest
+/src/TTest
+/src/TestModule
