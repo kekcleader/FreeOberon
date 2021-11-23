@@ -3,6 +3,7 @@ MODULE TTest;
 IMPORT T := TermBox, Out, Kernel;
 VAR ch: CHAR;
   W, H: INTEGER;
+  X, Y: INTEGER; (* Text Cursor *)
 
 PROCEDURE DoubleBox(x1, y1, x2, y2, fg, bg: INTEGER);
 VAR i: INTEGER;
@@ -75,6 +76,37 @@ BEGIN s := S; i := 0; a := ORD(ch) MOD 16;
   END
 END Menu;
 
+PROCEDURE GoToXY(x, y: INTEGER);
+BEGIN X := x; Y := y; T.SetCursor(x, y)
+END GoToXY;
+
+PROCEDURE Move(dx, dy: INTEGER);
+BEGIN INC(dx, X); INC(dy, Y);
+  IF (0 <= dx) & (dx < W) & (0 <= dy) & (dy < H) THEN GoToXY(dx, dy) END
+END Move;
+
+PROCEDURE Type(ch: CHAR);
+BEGIN
+  IF ch = 8X (* Backspace *) THEN
+    IF X = 0 THEN Move(0, -1); GoToXY(W - 1, Y) ELSE Move(-1, 0) END;
+    T.SetChar(X, Y, ' ')
+  ELSIF ch = 0DX (* Enter *) THEN
+    Move(0, 1); GoToXY(0, Y)
+  ELSE
+    T.SetChar(X, Y, ch);
+    IF X = W - 1 THEN Move(0, 1); GoToXY(0, Y) ELSE Move(1, 0) END
+  END
+END Type;
+
+(*PROCEDURE SSET(x: SET);
+VAR i: INTEGER;
+BEGIN
+  FOR i := 0 TO 31 DO
+    IF i IN x THEN Out.Int(i, 3) END
+  END;
+  Out.Ln
+END SSET;*)
+
 PROCEDURE Run;
 VAR e: T.Event;
   done: BOOLEAN;
@@ -86,14 +118,21 @@ BEGIN done := FALSE;
     IF e.type = T.quit THEN done := TRUE
     ELSIF e.type = T.resize THEN OnResize
     ELSIF e.type = T.key THEN
-      IF e.ch = 'p' THEN Paste
-      ELSIF e.ch = 'q' THEN done := TRUE
-      ELSE ch := e.ch
+      IF e.mod * T.mCtrl # {} THEN
+        IF e.key = T.kP THEN Paste
+        ELSIF e.key = T.kQ THEN done := TRUE
+        END
+      ELSIF e.ch # 0X THEN
+        ch := e.ch; Type(ch)
+      ELSIF e.key = T.kUp THEN Move(0, -1)
+      ELSIF e.key = T.kDown THEN Move(0, 1)
+      ELSIF e.key = T.kLeft THEN Move(-1, 0)
+      ELSIF e.key = T.kRight THEN Move(1, 0)
       END;
       Menu
     ELSIF e.type = T.mouse THEN
       T.SetChar(e.x, e.y, ch);
-      T.SetCursor(e.x, e.y)
+      GoToXY(e.x, e.y)
     END
   UNTIL done
 END Run;
@@ -102,6 +141,7 @@ BEGIN
   T.Settings(80, 25, {T.center, T.window, T.resizable(*, T.noMouse*)});
   T.SetTitle('Oberon TermBox Test');
   T.Init;
+  GoToXY(1, 2);
   T.Size(W, H);
   ch := '+';
   Run;

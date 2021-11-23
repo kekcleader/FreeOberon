@@ -1077,7 +1077,7 @@ BEGIN
         KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
         event.key := KE.keycode;
         event.ch := CHR(KE.unichar);
-        event.mod := KE.modifiers;
+        event.mod := keyMods;
         event.repeat := KE.repeat;
         event.display := KE.display;
         event.window := GetWindow(event.display)
