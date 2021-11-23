@@ -313,7 +313,7 @@ END DrawCell;
 
 PROCEDURE Flip;
 BEGIN
-  IF G.NoEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
+  IF ~G.HasEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
 END Flip;
 
 PROCEDURE UpdateCell(x, y: INTEGER);
@@ -494,6 +494,14 @@ BEGIN
   UpdateCell(x, y);
   Flush
 END MoveMouse;
+
+PROCEDURE HasEvents*(): BOOLEAN;
+RETURN G.HasEvents()
+END HasEvents;
+
+PROCEDURE Delay*(ms: INTEGER);
+BEGIN G.Delay(ms)
+END Delay;
 
 PROCEDURE WaitEvent*(VAR event: Event);
 VAR e: G.Event;

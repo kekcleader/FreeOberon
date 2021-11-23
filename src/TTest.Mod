@@ -138,7 +138,7 @@ BEGIN done := FALSE;
 END Run;
 
 BEGIN
-  T.Settings(80, 25, {T.center, T.window, T.resizable(*, T.noMouse*)});
+  T.Settings(80, 25, {T.center, (*T.window,*) T.resizable(*, T.noMouse*)});
   T.SetTitle('Oberon TermBox Test');
   T.Init;
   GoToXY(1, 2);

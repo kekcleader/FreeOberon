@@ -926,8 +926,8 @@ BEGIN NEW(T); T.tmr := Al.create_timer(speed);
   Al.register_event_source(queue, Al.get_timer_event_source(T.tmr))
 RETURN T END NewTimer;
 
-PROCEDURE NoEvents*(): BOOLEAN;
-RETURN Al.is_event_queue_empty(queue) END NoEvents;
+PROCEDURE HasEvents*(): BOOLEAN;
+RETURN ~Al.is_event_queue_empty(queue) END HasEvents;
 
 PROCEDURE GetWindow(d: Al.Display): Window;
 VAR W: Window;
