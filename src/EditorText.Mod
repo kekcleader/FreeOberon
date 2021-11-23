@@ -131,10 +131,9 @@ RETURN L END GetFirstSelLine;
 PROCEDURE (t: Text) SelectAll*, NEW;
 VAR count: INTEGER; L: Line;
 BEGIN t.selected := TRUE;
-  t.selT := 0; t.selL := 0;
-  L := t.first; WHILE L # NIL DO INC(count); L := L.next END;
-  t.selB := count;
-  t.selR := 5
+  t.selT := 0; t.selL := 0; t.selB := 0; L := t.first;
+  WHILE L.next # NIL DO INC(t.selB); L := L.next END;
+  t.selR := L.len
 END SelectAll;
 
 (**Returns true if at least one whole line is selected,
@@ -327,9 +326,8 @@ VAR i, x, len, y: INTEGER; L: Line;
 BEGIN
   L := t.GetFirstSelLine();
   y := t.selT; i := 0; x := t.selL;
-  WHILE y <= t.selB DO (* TODO: Use Dijkstra's loop *)
-    IF y = t.selB THEN len := t.selR
-    ELSE len := L.len END;
+  WHILE y <= t.selB DO (* TODO Use Dijkstra's loop *)
+    IF y = t.selB THEN len := t.selR ELSE len := L.len END;
     WHILE (i < LEN(buf) - 1) & (x < len) DO
       buf[i] := L.s[x]; INC(i); INC(x)
     END;
