@@ -8,7 +8,7 @@ TYPE
 
 VAR W, H: INTEGER;
   stars: ARRAY 50 OF Star;
-  starChars: ARRAY 4 OF CHAR;
+  starChars: ARRAY 5 OF CHAR;
 
 PROCEDURE OnResize;
 BEGIN
@@ -21,6 +21,8 @@ BEGIN
   IF star.n # 0 THEN
     IF star.n = 1 THEN fg := 11 ELSE fg := 15 END;
     T.SetCell(star.x, star.y, starChars[star.n], fg, 0)
+  ELSE
+    T.SetChar(star.x, star.y, ' ')
   END
 END DrawStar;
 
@@ -33,11 +35,11 @@ END Draw;
 
 PROCEDURE AnimateStar(VAR star: Star);
 BEGIN
-  IF FALSE & (Random.Int(10000) < 10) THEN
+  IF Random.Int(1000) < 10 THEN
     IF star.n = 0 THEN
       star.n := 1
     ELSIF star.n > 0 THEN
-      IF star.n < 3 THEN INC(star.n) ELSE star.n := 0 END;
+      IF star.n < LEN(starChars) - 1 THEN INC(star.n) ELSE star.n := 0 END;
       DrawStar(star)
     END
   END
@@ -81,11 +83,12 @@ BEGIN
   starChars[0] := 0B7X;
   starChars[1] := 80X;
   starChars[2] := 7X;
-  starChars[3] := '*'
+  starChars[3] := '*';
+  starChars[4] := 0FX
 END InitStars;
 
 BEGIN
-  T.Settings(80, 25, {T.noMouse});
+  (*T.Settings(0, 0, {T.noMouse});*)
   T.Init;
   T.Size(W, H);
   InitStars;

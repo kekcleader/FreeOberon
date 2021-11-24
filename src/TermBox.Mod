@@ -7,6 +7,8 @@ CONST
   emptyCh = ' ';
   nofcolors = 16;
   cursorTickSpeed = 0.25;
+  stdW = 80;
+  stdH = 25;
 
   (* Settings set members *)
   fullscreen*  = 1;
@@ -682,7 +684,9 @@ BEGIN Done := FALSE;
 END Init;
 
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
-BEGIN wantW := w; wantH := h;
+BEGIN
+  IF w = 0 THEN wantW := stdW ELSE wantW := w END;
+  IF h = 0 THEN wantH := stdH ELSE wantH := h END;
   IF {fullscreen, window} * flags = {} THEN INCL(flags, fullscreen)
   ELSIF fullscreen IN flags THEN EXCL(flags, window)
   END;
@@ -693,6 +697,6 @@ PROCEDURE TESTCB*(VAR s: ARRAY OF CHAR);
 BEGIN G.GetClipboardText(screen, s)
 END TESTCB;
 
-BEGIN wantW := 80; wantH := 25; wantScaleX := 0.0; wantScaleY := 0.0;
+BEGIN wantW := stdW; wantH := stdH; wantScaleX := 0.0; wantScaleY := 0.0;
   settings := {fullscreen}; Done := FALSE
 END TermBox.
