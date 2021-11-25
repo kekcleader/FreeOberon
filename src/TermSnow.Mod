@@ -35,13 +35,16 @@ END Draw;
 
 PROCEDURE AnimateStar(VAR star: Star);
 BEGIN
-  IF Random.Int(1000) < 10 THEN
-    IF star.n = 0 THEN
-      star.n := 1
-    ELSIF star.n > 0 THEN
-      IF star.n < LEN(starChars) - 1 THEN INC(star.n) ELSE star.n := 0 END;
-      DrawStar(star)
-    END
+  IF star.n > 1 THEN
+    IF star.n < LEN(starChars) - 1 THEN INC(star.n) ELSE star.n := 0 END;
+    DrawStar(star)
+  ELSIF Random.Int(20) < 10 THEN
+    INC(star.n);
+    IF star.n = 1 THEN
+      star.x := Random.Int(W);
+      star.y := Random.Int(H)
+    END;
+    DrawStar(star)
   END
 END AnimateStar;
 
