@@ -60,18 +60,23 @@ VAR e: T.Event;
 BEGIN done := FALSE;
   Draw;
   T.Flush;
+  ;Out.String('RUN');Out.Ln;;;;;;;;
   REPEAT
+    ;Out.String('RUN LOOP ITERATION');Out.Ln;;;;;;;;
     IF T.HasEvents() THEN
+      ;Out.String('HAS EVENTS');Out.Ln;;;;;;;;
       T.WaitEvent(e);
       IF e.type = T.quit THEN done := TRUE
       ELSIF e.type = T.resize THEN OnResize
       END
     ELSE
+      ;Out.String('NO EVENTS');Out.Ln;;;;;;;;
       Animate;
       T.Flush;
       T.Delay(100)
     END
   UNTIL done
+  ;Out.String('END RUN');Out.Ln;;;;;;;;
 END Run;
 
 PROCEDURE InitStars;
@@ -91,7 +96,7 @@ BEGIN
 END InitStars;
 
 BEGIN
-  (*T.Settings(0, 0, {T.noMouse});*)
+  T.Settings(0, 0, {T.window, T.center});
   T.Init;
   T.Size(W, H);
   InitStars;

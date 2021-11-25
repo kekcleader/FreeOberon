@@ -6,7 +6,7 @@ CONST
   partH = 256;
   emptyCh = ' ';
   nofcolors = 16;
-  cursorTickSpeed = 0.25;
+  cursorTickSpeed = 3.0;
   stdW = 80;
   stdH = 25;
 
@@ -313,9 +313,13 @@ BEGIN
   END
 END DrawCell;
 
+PROCEDURE HasEvents*(): BOOLEAN;
+RETURN G.HasEvents()
+END HasEvents;
+
 PROCEDURE Flip;
 BEGIN
-  IF ~G.HasEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
+  IF ~HasEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
 END Flip;
 
 PROCEDURE UpdateCell(x, y: INTEGER);
@@ -497,10 +501,6 @@ BEGIN
   Flush
 END MoveMouse;
 
-PROCEDURE HasEvents*(): BOOLEAN;
-RETURN G.HasEvents()
-END HasEvents;
-
 PROCEDURE Delay*(ms: INTEGER);
 BEGIN G.Delay(ms)
 END Delay;
@@ -511,7 +511,9 @@ VAR e: G.Event;
   fw, fh: INTEGER;
 BEGIN
   REPEAT skip := TRUE;
+    ;Out.String('AAA');Out.Ln;;;;;;;;
     G.WaitEvent(e);
+    ;Out.String('BBB');Out.Ln;;;;;;;;
     IF e.type = G.mouseMove THEN GetMousePos(e, event.x, event.y);
       IF (event.x # mouseX) OR (event.y # mouseY) THEN
         IF mouseDown THEN event.type := mouse;
@@ -537,7 +539,6 @@ BEGIN
       MoveMouse(event.x, event.y);
       event.button := 0; (* 0 means release *)
       skip := FALSE
-    ELSIF e.type = G.timer THEN
     ELSIF e.type = G.keyDown THEN
       IF (e.key = G.kEnter) & (e.mod * G.mAlt # {}) THEN ToggleFS; Sync END
     ELSIF e.type = G.char THEN
@@ -679,6 +680,7 @@ BEGIN Done := FALSE;
     InitBuffer;
     InitTimer;
     mouseDown := FALSE;
+    needFlip := FALSE;
     Done := TRUE
   END
 END Init;

@@ -405,7 +405,11 @@ PROCEDURE get_display_event_source* ["al_get_display_event_source"] (display: Di
 PROCEDURE get_timer_event_source* ["al_get_timer_event_source"] (timer: Timer): EventSource;
 PROCEDURE start_timer* ["al_start_timer"] (timer: Timer);
 PROCEDURE register_event_source* ["al_register_event_source"] (queue: EventQueue; source: EventSource);
+PROCEDURE get_next_event* ["al_get_next_event"] (queue: EventQueue; VAR event: Event): BOOLEAN;
+PROCEDURE peek_next_event* ["al_peek_next_event"] (queue: EventQueue; VAR event: Event): BOOLEAN;
+PROCEDURE drop_next_event* ["al_drop_next_event"] (queue: EventQueue): BOOLEAN;
 PROCEDURE wait_for_event* ["al_wait_for_event"] (queue: EventQueue; VAR event: Event);
+PROCEDURE wait_for_event_timed* ["al_wait_for_event_timed"] (queue: EventQueue; VAR event: Event; secs: REAL);
 PROCEDURE clear_to_color* ["al_clear_to_color"] (color: Color);
 PROCEDURE destroy_timer* ["al_destroy_timer"] (timer: Timer);
 PROCEDURE destroy_event_queue* ["al_destroy_event_queue"] (queue: EventQueue);

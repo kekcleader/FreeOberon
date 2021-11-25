@@ -275,6 +275,7 @@ TYPE
 
 VAR
   Done*: BOOLEAN;
+  ZZ: INTEGER;
 
   settings: SET; (* See list of constants Settings above *)
   wantW, wantH: INTEGER; (* Assigned in procedure Settings *)
@@ -926,9 +927,6 @@ BEGIN NEW(T); T.tmr := Al.create_timer(speed);
   Al.register_event_source(queue, Al.get_timer_event_source(T.tmr))
 RETURN T END NewTimer;
 
-PROCEDURE HasEvents*(): BOOLEAN;
-RETURN ~Al.is_event_queue_empty(queue) END HasEvents;
-
 PROCEDURE GetWindow(d: Al.Display): Window;
 VAR W: Window;
 BEGIN W := windowList;
@@ -959,152 +957,175 @@ BEGIN
   END
 END ToggleFullscreen;
 
-PROCEDURE MakeResizeEvent(VAR event: Event);
+PROCEDURE MakeResizeEvent(VAR event: Event; wait: BOOLEAN);
 VAR W: Window;
 BEGIN W := windowList;
   WHILE (W # NIL) & ~W.resized DO W := W.next END;
   event.type := resize;
   event.window := W; event.display := W.display;
   event.w := W.w; event.h := W.h;
-  W.resized := FALSE;
-  WHILE (W # NIL) & ~W.resized DO W := W.next END;
-  IF W = NIL THEN anyWindowResized := FALSE END
+  IF wait THEN
+    W.resized := FALSE;
+    WHILE (W # NIL) & ~W.resized DO W := W.next END;
+    IF W = NIL THEN anyWindowResized := FALSE END
+  END
 END MakeResizeEvent;
 
-PROCEDURE WaitEvent*(VAR event: Event);
+PROCEDURE PeekEvent(VAR event: Event; wait: BOOLEAN): BOOLEAN;
 VAR E: Al.Event;
   DE: Al.PDisplayEvent;
   TE: Al.PTimerEvent;
   KE: Al.PKeyboardEvent;
   ME: Al.PMouseEvent;
   W: Window;
-  skip: BOOLEAN;
+  skip, gotEvent: BOOLEAN;
   x, y, w, h: INTEGER;
   fw, fh: REAL;
 BEGIN
+    (*;Out.String('START');Out.Ln;;;;;;;;;;*)
   REPEAT skip := FALSE;
-    IF anyWindowResized THEN MakeResizeEvent(event)
-    ELSE Al.wait_for_event(queue, E);
-      event.time := E.timestamp;
-      IF E.type = Al.eventMouseAxes THEN
-        ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
-        W := GetWindow(ME.display);
-        IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
-        ELSIF W.zoom = intZoom THEN
-          x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
-        ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
-          y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
-        END;
-        IF W.scaleOn THEN
-          x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
-        END;
-        IF (x # W.lastX) OR (y # W.lastY) OR (ME.dz # 0) OR (ME.dw # 0) THEN
-          IF (ME.dz # 0) OR (ME.dw # 0) THEN event.type := mouseWheel;
-            event.dz := ME.dz; event.dw := ME.dw;
-            event.x := W.lastX; event.y := W.lastY;
-            event.z := ME.z; event.w := ME.w;
-            event.dx := 0; event.dy := 0
-          ELSE event.type := mouseMove;
-            IF x = -1 THEN event.dx := 0; event.dy := 0
-            ELSE event.dx := x - W.lastX; event.dy := y - W.lastY
-            END;
-            event.x := x; event.y := y;
-            W.lastX := event.x; W.lastY := event.y
+    (*;Out.String('EV?');Out.Int(ZZ, 4);INC(ZZ);Out.Ln;;;;;;;;;;*)
+    IF anyWindowResized THEN MakeResizeEvent(event, wait); gotEvent := TRUE
+    ELSE
+      IF wait THEN Al.wait_for_event(queue, E); gotEvent := TRUE
+      ELSE gotEvent := Al.peek_next_event(queue, E)
+      END;
+      IF gotEvent THEN
+        event.time := E.timestamp;
+        IF E.type = Al.eventMouseAxes THEN
+          ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
+          W := GetWindow(ME.display);
+          IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
+          ELSIF W.zoom = intZoom THEN
+            x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
+          ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
+            y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
           END;
+          IF W.scaleOn THEN
+            x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
+          END;
+          IF (x # W.lastX) OR (y # W.lastY) OR (ME.dz # 0) OR (ME.dw # 0) THEN
+            IF (ME.dz # 0) OR (ME.dw # 0) THEN event.type := mouseWheel;
+              event.dz := ME.dz; event.dw := ME.dw;
+              event.x := W.lastX; event.y := W.lastY;
+              event.z := ME.z; event.w := ME.w;
+              event.dx := 0; event.dy := 0
+            ELSE event.type := mouseMove;
+              IF x = -1 THEN event.dx := 0; event.dy := 0
+              ELSE event.dx := x - W.lastX; event.dy := y - W.lastY
+              END;
+              event.x := x; event.y := y;
+              W.lastX := event.x; W.lastY := event.y
+            END;
+            event.button := ME.button;
+            event.mod := keyMods;
+            event.display := ME.display; event.window := W
+          ELSE skip := TRUE
+          END
+        ELSIF E.type = Al.eventMouseButtonDown THEN
+          event.type := mouseDown;
+          ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
+          W := GetWindow(ME.display); event.window := W;
+          IF W.zoom = noZoom THEN event.x := ME.x; event.y := ME.y
+          ELSIF W.zoom = intZoom THEN
+            event.x := ME.x DIV W.izoom; event.y := ME.y DIV W.izoom
+          ELSE event.x := FLOOR(ME.x / W.rzoom + 0.1);
+            event.y := FLOOR(ME.y / W.rzoom + 0.1)
+          END;
+          IF W.scaleOn THEN event.x := FLOOR(event.x / W.scaleX + 0.1);
+            event.y := FLOOR(event.y / W.scaleY + 0.1)
+          END;
+          event.z := ME.z; event.w := ME.w;
           event.button := ME.button;
           event.mod := keyMods;
-          event.display := ME.display; event.window := W
+          event.display := ME.display
+        ELSIF E.type = Al.eventMouseButtonUp THEN
+          event.type := mouseUp;
+          ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
+          W := GetWindow(ME.display); event.window := W;
+          IF W.zoom = noZoom THEN event.x := ME.x; event.y := ME.y
+          ELSIF W.zoom = intZoom THEN
+            event.x := ME.x DIV W.izoom; event.y := ME.y DIV W.izoom
+          ELSE
+            event.x := FLOOR(ME.x / W.rzoom + 0.1);
+            event.y := FLOOR(ME.y / W.rzoom + 0.1)
+          END;
+          IF W.scaleOn THEN event.x := FLOOR(event.x / W.scaleX + 0.1);
+            event.y := FLOOR(event.y / W.scaleY + 0.1)
+          END;
+          event.z := ME.z; event.w := ME.w;
+          event.button := ME.button;
+          event.mod := keyMods;
+          event.display := ME.display
+        ELSIF E.type = Al.eventTimer THEN
+          event.type := timer;
+          TE := SYSTEM.VAL(Al.PTimerEvent, SYSTEM.ADR(E));
+          event.count := TE.count;
+          event.source := SYSTEM.VAL(ADRINT, TE.source)
+        ELSIF E.type = Al.eventKeyDown THEN
+          event.type := keyDown;
+          KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
+          event.key := KE.keycode;
+          SetKeyMod(event.key, TRUE);
+          event.mod := keyMods;
+          event.display := KE.display;
+          event.window := GetWindow(event.display)
+        ELSIF E.type = Al.eventKeyUp THEN
+          event.type := keyUp;
+          KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
+          event.key := KE.keycode;
+          event.mod := keyMods;
+          SetKeyMod(event.key, FALSE);
+          event.display := KE.display;
+          event.window := GetWindow(event.display)
+        ELSIF E.type = Al.eventKeyChar THEN
+          event.type := char;
+          KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
+          event.key := KE.keycode;
+          event.ch := CHR(KE.unichar);
+          event.mod := keyMods;
+          event.repeat := KE.repeat;
+          event.display := KE.display;
+          event.window := GetWindow(event.display)
+        ELSIF E.type = Al.eventDisplayResize THEN
+          DE := SYSTEM.VAL(Al.PDisplayEvent, SYSTEM.ADR(E));
+          Al.acknowledge_resize(DE.source); W := GetWindow(DE.source);
+          W.winW := Al.get_display_width(DE.source);
+          W.winH := Al.get_display_height(DE.source);
+          fw := W.winW / W.rzoom; fh := W.winH / W.rzoom;
+          IF W.scaleOn THEN fw := fw / W.scaleX; fh := fh / W.scaleY END;
+          w := FLOOR(fw + 0.1); h := FLOOR(fh + 0.1);
+          ApplySizeStep(W, w, h);
+          IF (w # W.lastW) OR (h # W.lastH) THEN W.lastW := w; W.lastH := h;
+            event.type := resize; event.window := W; event.display := DE.source;
+            event.w := w; event.h := h; event.x := DE.x; event.y := DE.y;
+            ResetWindowBitmap(W)
+          ELSE ResetFlipVars(W); Flip; skip := TRUE
+          END
+        ELSIF E.type = Al.eventDisplayClose THEN
+          event.type := quit;
+          event.display := SYSTEM.VAL(Al.Display, E.source);
+          event.window := GetWindow(event.display)
         ELSE skip := TRUE
         END
-      ELSIF E.type = Al.eventMouseButtonDown THEN
-        event.type := mouseDown;
-        ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
-        W := GetWindow(ME.display); event.window := W;
-        IF W.zoom = noZoom THEN event.x := ME.x; event.y := ME.y
-        ELSIF W.zoom = intZoom THEN
-          event.x := ME.x DIV W.izoom; event.y := ME.y DIV W.izoom
-        ELSE event.x := FLOOR(ME.x / W.rzoom + 0.1);
-          event.y := FLOOR(ME.y / W.rzoom + 0.1)
-        END;
-        IF W.scaleOn THEN event.x := FLOOR(event.x / W.scaleX + 0.1);
-          event.y := FLOOR(event.y / W.scaleY + 0.1)
-        END;
-        event.z := ME.z; event.w := ME.w;
-        event.button := ME.button;
-        event.mod := keyMods;
-        event.display := ME.display
-      ELSIF E.type = Al.eventMouseButtonUp THEN
-        event.type := mouseUp;
-        ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
-        W := GetWindow(ME.display); event.window := W;
-        IF W.zoom = noZoom THEN event.x := ME.x; event.y := ME.y
-        ELSIF W.zoom = intZoom THEN
-          event.x := ME.x DIV W.izoom; event.y := ME.y DIV W.izoom
-        ELSE
-          event.x := FLOOR(ME.x / W.rzoom + 0.1);
-          event.y := FLOOR(ME.y / W.rzoom + 0.1)
-        END;
-        IF W.scaleOn THEN event.x := FLOOR(event.x / W.scaleX + 0.1);
-          event.y := FLOOR(event.y / W.scaleY + 0.1)
-        END;
-        event.z := ME.z; event.w := ME.w;
-        event.button := ME.button;
-        event.mod := keyMods;
-        event.display := ME.display
-      ELSIF E.type = Al.eventTimer THEN
-        event.type := timer;
-        TE := SYSTEM.VAL(Al.PTimerEvent, SYSTEM.ADR(E));
-        event.count := TE.count;
-        event.source := SYSTEM.VAL(ADRINT, TE.source)
-      ELSIF E.type = Al.eventKeyDown THEN
-        event.type := keyDown;
-        KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
-        event.key := KE.keycode;
-        SetKeyMod(event.key, TRUE);
-        event.mod := keyMods;
-        event.display := KE.display;
-        event.window := GetWindow(event.display)
-      ELSIF E.type = Al.eventKeyUp THEN
-        event.type := keyUp;
-        KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
-        event.key := KE.keycode;
-        event.mod := keyMods;
-        SetKeyMod(event.key, FALSE);
-        event.display := KE.display;
-        event.window := GetWindow(event.display)
-      ELSIF E.type = Al.eventKeyChar THEN
-        event.type := char;
-        KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
-        event.key := KE.keycode;
-        event.ch := CHR(KE.unichar);
-        event.mod := keyMods;
-        event.repeat := KE.repeat;
-        event.display := KE.display;
-        event.window := GetWindow(event.display)
-      ELSIF E.type = Al.eventDisplayResize THEN
-        DE := SYSTEM.VAL(Al.PDisplayEvent, SYSTEM.ADR(E));
-        Al.acknowledge_resize(DE.source); W := GetWindow(DE.source);
-        W.winW := Al.get_display_width(DE.source);
-        W.winH := Al.get_display_height(DE.source);
-        fw := W.winW / W.rzoom; fh := W.winH / W.rzoom;
-        IF W.scaleOn THEN fw := fw / W.scaleX; fh := fh / W.scaleY END;
-        w := FLOOR(fw + 0.1); h := FLOOR(fh + 0.1);
-        ApplySizeStep(W, w, h);
-        IF (w # W.lastW) OR (h # W.lastH) THEN W.lastW := w; W.lastH := h;
-          event.type := resize; event.window := W; event.display := DE.source;
-          event.w := w; event.h := h; event.x := DE.x; event.y := DE.y;
-          ResetWindowBitmap(W)
-        ELSE ResetFlipVars(W); Flip; skip := TRUE
-        END
-      ELSIF E.type = Al.eventDisplayClose THEN
-        event.type := quit;
-        event.display := SYSTEM.VAL(Al.Display, E.source);
-        event.window := GetWindow(event.display)
-      ELSE skip := TRUE
+      ELSE skip := FALSE
+      END;
+      IF ~wait & gotEvent THEN
+        IF Al.drop_next_event(queue) THEN END
       END
     END
-  UNTIL ~skip
+  UNTIL ~skip OR ~gotEvent
+    (*;Out.String('  FINISH');Out.Ln;;;;;;;;;;*)
+RETURN gotEvent END PeekEvent;
+
+PROCEDURE WaitEvent*(VAR event: Event);
+BEGIN IF PeekEvent(event, TRUE) THEN END
 END WaitEvent;
+
+PROCEDURE HasEvents*(): BOOLEAN;
+VAR e: Event;
+RETURN PeekEvent(e, FALSE)
+END HasEvents;
 
 PROCEDURE StartTimer*(timer: Timer);
 BEGIN Al.start_timer(timer.tmr)
@@ -1286,4 +1307,5 @@ END Close;
 BEGIN Done := FALSE;
   MakeCol(black, 0, 0, 0);
   ResetDefaults
+  ;ZZ := 0;
 END Graph2.
