@@ -6,7 +6,7 @@ CONST
   partH = 256;
   emptyCh = ' ';
   nofcolors = 16;
-  cursorTickSpeed = 3.0;
+  cursorTickSpeed = 2.0;
   stdW = 80;
   stdH = 25;
 
@@ -202,6 +202,7 @@ TYPE
   END;
 
 VAR
+  ZZ: INTEGER;
   wantTitle: ARRAY 256 OF CHAR; (* Assigned in procedure SetTitle *)
   wantZoom: REAL;
   wantW, wantH: INTEGER;
@@ -209,6 +210,7 @@ VAR
   settings: SET;
   buffer: Buffer;
 
+  processingEvent: BOOLEAN;
   mouseDown: BOOLEAN;
   mouseX, mouseY, mouseButton: INTEGER;
   curX, curY: INTEGER; (* Text cursor position *)
@@ -221,6 +223,8 @@ VAR
   colors: ARRAY nofcolors OF G.Color;
 
   Done*: BOOLEAN;
+
+  Flip0: PROCEDURE;
 
 PROCEDURE SetPartCell(p: Part; x, y: INTEGER; ch: CHAR; fg, bg: INTEGER);
 BEGIN
@@ -313,20 +317,214 @@ BEGIN
   END
 END DrawCell;
 
-PROCEDURE HasEvents*(): BOOLEAN;
-RETURN G.HasEvents()
-END HasEvents;
-
-PROCEDURE Flip;
-BEGIN
-  IF ~HasEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
-END Flip;
+PROCEDURE GetMousePos(e: G.Event; VAR x, y: INTEGER);
+VAR fw, fh: INTEGER;
+BEGIN G.GetMonoFontSize(font, fw, fh);
+  x := e.x DIV fw; y := e.y DIV fh;
+  IF x < 0 THEN x := 0 ELSIF x >= buffer.w THEN x := buffer.w - 1 END;
+  IF y < 0 THEN y := 0 ELSIF y >= buffer.h THEN y := buffer.h - 1 END
+END GetMousePos;
 
 PROCEDURE UpdateCell(x, y: INTEGER);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN p.updated[y, x] := TRUE; p.redraw := TRUE END
 END UpdateCell;
+
+PROCEDURE Flush*;
+VAR x, y, X, Y: INTEGER;
+  l, p: Part;
+BEGIN
+  l := buffer.first; Y := 0;
+  WHILE l # NIL DO p := l; X := 0;
+    WHILE p # NIL DO
+      IF p.redraw OR buffer.redrawAll THEN
+        FOR y := 0 TO p.h - 1 DO
+          FOR x := 0 TO p.w - 1 DO
+            IF p.updated[y, x] OR buffer.redrawAll THEN
+              DrawCell(X + x, Y + y, p.cells[y, x]);
+              p.updated[y, x] := FALSE
+            END
+          END
+        END;
+        p.redraw := FALSE
+      END;
+      INC(X, l.w); p := p.right
+    END;
+    INC(Y, l.h); l := l.down
+  END;
+  buffer.redrawAll := FALSE;
+  Flip0
+END Flush;
+
+PROCEDURE Sync*;
+BEGIN
+  buffer.redrawAll := TRUE;
+  Flush
+END Sync;
+
+PROCEDURE MoveMouse(x, y: INTEGER);
+BEGIN
+  UpdateCell(mouseX, mouseY);
+  mouseX := x; mouseY := y;
+  UpdateCell(x, y);
+  Flush
+END MoveMouse;
+
+PROCEDURE ToggleFS;
+BEGIN
+  IF ~(G.window IN G.GetWindowOptions(screen)) THEN
+    IF wantZoom >= 6/5 - 0.01 THEN G.SetNewWindowScale(5/6, 1.0)
+    ELSE G.SetNewWindowScale(1.0, 1.0)
+    END;
+    G.SetWindowOption(screen, G.topleft, TRUE)
+  ELSE G.SetNewWindowScale(5/6, 1.0);
+    G.SetWindowOption(screen, G.topleft, FALSE)
+  END;
+  G.ToggleFullscreen(screen)
+END ToggleFS;
+
+PROCEDURE NewPart(w, h: INTEGER): Part;
+VAR p: Part;
+  x, y: INTEGER;
+BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL;
+  p.w := w; p.h := h;
+  FOR y := 0 TO h - 1 DO
+    FOR x := 0 TO w - 1 DO
+      p.cells[y, x].ch := emptyCh;
+      p.cells[y, x].fg := 7;
+      p.cells[y, x].bg := 0;
+      p.updated[y, x] := TRUE
+    END
+  END
+RETURN p END NewPart;
+
+PROCEDURE ResizePart(p: Part; w, h: INTEGER);
+VAR x0, x, y: INTEGER;
+BEGIN p.redraw := TRUE;
+  FOR y := 0 TO h - 1 DO
+    IF y < p.h THEN x0 := p.w ELSE x0 := 0 END;
+    FOR x := x0 TO w - 1 DO
+      p.cells[y, x].ch := emptyCh;
+      p.cells[y, x].fg := 7;
+      p.cells[y, x].bg := 0;
+      p.updated[y, x] := TRUE
+    END
+  END;
+  p.w := w; p.h := h
+END ResizePart;
+
+PROCEDURE InitBuffer;
+VAR W, H, fw, fh: INTEGER;
+BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
+  buffer.w := W DIV fw; buffer.h := H DIV fh;
+  IF buffer.w > partW THEN buffer.w := partW END; (*!FIXME*)
+  IF buffer.h > partH THEN buffer.h := partH END;
+  buffer.first := NewPart(buffer.w, buffer.h);
+  curX := -1; curY := -1; buffer.redrawAll := TRUE
+END InitBuffer;
+
+PROCEDURE ResizeBuffer;
+VAR W, H, fw, fh, nw, nh: INTEGER;
+BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
+  nw := W DIV fw; nh := H DIV fh;
+  IF nw > partW THEN nw := partW END; (*!FIXME*)
+  IF nh > partH THEN nh := partH END;
+  IF (nw # buffer.w) OR (nh # buffer.h) THEN
+    buffer.w := nw; buffer.h := nh;
+    ResizePart(buffer.first, nw, nh)
+  END
+END ResizeBuffer;
+
+PROCEDURE PeekOrWaitEvent(VAR event: Event; wait: BOOLEAN): BOOLEAN;
+VAR e: G.Event;
+  skip, gotEvent: BOOLEAN;
+  fw, fh: INTEGER;
+BEGIN
+  processingEvent := TRUE;
+    ;Out.String('T PeekOrWait BEGIN====');Out.Ln;;;;;;;;
+  REPEAT skip := TRUE;
+    ;Out.String('AAA');Out.Ln;;;;;;;;
+    IF wait THEN
+      ;Out.String('   -a');Out.Ln;;;;;;;;
+      G.WaitEvent(e); gotEvent := TRUE
+    ELSE
+      ;Out.String('   -b');Out.Ln;;;;;;;;
+      gotEvent := G.PeekEvent(e)
+      ;Out.String('   -b END');Out.Ln;;;;;;;;
+    END;
+    ;Out.String('BBB');Out.Int(ZZ, 5);INC(ZZ);Out.Ln;;;;;;;;
+    IF gotEvent THEN
+      IF e.type = G.mouseMove THEN GetMousePos(e, event.x, event.y);
+        IF (event.x # mouseX) OR (event.y # mouseY) THEN
+          IF mouseDown THEN event.type := mouse;
+            event.button := mouseButton;
+            skip := FALSE
+          END;
+          MoveMouse(event.x, event.y)
+        END
+      ELSIF e.type = G.timer THEN
+        IF curX > 0 THEN
+          cursorShown := ~cursorShown;
+          UpdateCell(curX, curY);
+          Flush
+        END;
+        IF needFlip THEN G.Flip; needFlip := FALSE END
+      ELSIF e.type = G.mouseDown THEN event.type := mouse;
+        mouseDown := TRUE; GetMousePos(e, event.x, event.y);
+        MoveMouse(event.x, event.y);
+        mouseButton := e.button; event.button := mouseButton;
+        skip := FALSE
+      ELSIF e.type = G.mouseUp THEN event.type := mouse;
+        mouseDown := FALSE; GetMousePos(e, event.x, event.y);
+        MoveMouse(event.x, event.y);
+        event.button := 0; (* 0 means release *)
+        skip := FALSE
+      ELSIF e.type = G.keyDown THEN
+        IF (e.key = G.kEnter) & (e.mod * G.mAlt # {}) THEN ToggleFS; Sync END
+      ELSIF e.type = G.char THEN
+        event.type := key;
+        event.key := e.key;
+        event.ch := e.ch;
+        event.mod := e.mod;
+        skip := FALSE
+      ELSIF e.type = G.resize THEN
+        event.type := resize; G.GetMonoFontSize(font, fw, fh);
+        event.w := e.w DIV fw; event.h := e.h DIV fh;
+        ResizeBuffer;
+        Sync;
+        skip := FALSE
+      ELSIF e.type = G.quit THEN
+        event.type := quit;
+        skip := FALSE
+      END
+    END;
+    IF ~wait & gotEvent THEN G.DropNextEvent END
+  UNTIL ~skip OR ~gotEvent
+    ;Out.String('T PeekOrWait END======');Out.Ln;;;;;;;;
+  processingEvent := FALSE
+RETURN gotEvent END PeekOrWaitEvent;
+
+PROCEDURE WaitEvent*(VAR event: Event);
+BEGIN IF PeekOrWaitEvent(event, TRUE) THEN END
+END WaitEvent;
+
+PROCEDURE HasEvents*(): BOOLEAN;
+VAR e: Event;
+  x: BOOLEAN;
+BEGIN
+  IF ~processingEvent THEN
+    ;Out.String('T Has Events');Out.Ln;;;;;;;;;;
+    x := PeekOrWaitEvent(e, FALSE);
+    ;Out.String('T Has Events = '); Out.Int(ORD(x),0);Out.Ln;;;;;;;;;;
+  END
+  RETURN ~processingEvent & x
+END HasEvents;
+
+PROCEDURE Flip;
+BEGIN
+  IF ~HasEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
+END Flip;
 
 PROCEDURE SetCursor*(x, y: INTEGER);
 BEGIN
@@ -388,177 +586,9 @@ BEGIN p := GetPart(buffer, x, y);
   END
 END GetCell;
 
-PROCEDURE Flush*;
-VAR x, y, X, Y: INTEGER;
-  l, p: Part;
-BEGIN
-  l := buffer.first; Y := 0;
-  WHILE l # NIL DO p := l; X := 0;
-    WHILE p # NIL DO
-      IF p.redraw OR buffer.redrawAll THEN
-        FOR y := 0 TO p.h - 1 DO
-          FOR x := 0 TO p.w - 1 DO
-            IF p.updated[y, x] OR buffer.redrawAll THEN
-              DrawCell(X + x, Y + y, p.cells[y, x]);
-              p.updated[y, x] := FALSE
-            END
-          END
-        END;
-        p.redraw := FALSE
-      END;
-      INC(X, l.w); p := p.right
-    END;
-    INC(Y, l.h); l := l.down
-  END;
-  buffer.redrawAll := FALSE;
-  Flip
-END Flush;
-
-PROCEDURE Sync*;
-BEGIN
-  buffer.redrawAll := TRUE;
-  Flush
-END Sync;
-
-PROCEDURE NewPart(w, h: INTEGER): Part;
-VAR p: Part;
-  x, y: INTEGER;
-BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL;
-  p.w := w; p.h := h;
-  FOR y := 0 TO h - 1 DO
-    FOR x := 0 TO w - 1 DO
-      p.cells[y, x].ch := emptyCh;
-      p.cells[y, x].fg := 7;
-      p.cells[y, x].bg := 0;
-      p.updated[y, x] := TRUE
-    END
-  END
-RETURN p END NewPart;
-
-PROCEDURE ResizePart(p: Part; w, h: INTEGER);
-VAR x0, x, y: INTEGER;
-BEGIN p.redraw := TRUE;
-  FOR y := 0 TO h - 1 DO
-    IF y < p.h THEN x0 := p.w ELSE x0 := 0 END;
-    FOR x := x0 TO w - 1 DO
-      p.cells[y, x].ch := emptyCh;
-      p.cells[y, x].fg := 7;
-      p.cells[y, x].bg := 0;
-      p.updated[y, x] := TRUE
-    END
-  END;
-  p.w := w; p.h := h
-END ResizePart;
-
-PROCEDURE InitBuffer;
-VAR W, H, fw, fh: INTEGER;
-BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
-  buffer.w := W DIV fw; buffer.h := H DIV fh;
-  IF buffer.w > partW THEN buffer.w := partW END; (*!FIXME*)
-  IF buffer.h > partH THEN buffer.h := partH END;
-  buffer.first := NewPart(buffer.w, buffer.h);
-  curX := -1; curY := -1; buffer.redrawAll := TRUE
-END InitBuffer;
-
-PROCEDURE ResizeBuffer;
-VAR W, H, fw, fh, nw, nh: INTEGER;
-BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
-  nw := W DIV fw; nh := H DIV fh;
-  IF nw > partW THEN nw := partW END; (*!FIXME*)
-  IF nh > partH THEN nh := partH END;
-  IF (nw # buffer.w) OR (nh # buffer.h) THEN
-    buffer.w := nw; buffer.h := nh;
-    ResizePart(buffer.first, nw, nh)
-  END
-END ResizeBuffer;
-
-PROCEDURE ToggleFS;
-BEGIN
-  IF ~(G.window IN G.GetWindowOptions(screen)) THEN
-    IF wantZoom >= 6/5 - 0.01 THEN G.SetNewWindowScale(5/6, 1.0)
-    ELSE G.SetNewWindowScale(1.0, 1.0)
-    END;
-    G.SetWindowOption(screen, G.topleft, TRUE)
-  ELSE G.SetNewWindowScale(5/6, 1.0);
-    G.SetWindowOption(screen, G.topleft, FALSE)
-  END;
-  G.ToggleFullscreen(screen)
-END ToggleFS;
-
-PROCEDURE GetMousePos(e: G.Event; VAR x, y: INTEGER);
-VAR fw, fh: INTEGER;
-BEGIN G.GetMonoFontSize(font, fw, fh);
-  x := e.x DIV fw; y := e.y DIV fh;
-  IF x < 0 THEN x := 0 ELSIF x >= buffer.w THEN x := buffer.w - 1 END;
-  IF y < 0 THEN y := 0 ELSIF y >= buffer.h THEN y := buffer.h - 1 END
-END GetMousePos;
-
-PROCEDURE MoveMouse(x, y: INTEGER);
-BEGIN
-  UpdateCell(mouseX, mouseY);
-  mouseX := x; mouseY := y;
-  UpdateCell(x, y);
-  Flush
-END MoveMouse;
-
 PROCEDURE Delay*(ms: INTEGER);
 BEGIN G.Delay(ms)
 END Delay;
-
-PROCEDURE WaitEvent*(VAR event: Event);
-VAR e: G.Event;
-  skip: BOOLEAN;
-  fw, fh: INTEGER;
-BEGIN
-  REPEAT skip := TRUE;
-    ;Out.String('AAA');Out.Ln;;;;;;;;
-    G.WaitEvent(e);
-    ;Out.String('BBB');Out.Ln;;;;;;;;
-    IF e.type = G.mouseMove THEN GetMousePos(e, event.x, event.y);
-      IF (event.x # mouseX) OR (event.y # mouseY) THEN
-        IF mouseDown THEN event.type := mouse;
-          event.button := mouseButton;
-          skip := FALSE
-        END;
-        MoveMouse(event.x, event.y)
-      END
-    ELSIF e.type = G.timer THEN
-      IF curX > 0 THEN
-        cursorShown := ~cursorShown;
-        UpdateCell(curX, curY);
-        Flush
-      END;
-      IF needFlip THEN G.Flip; needFlip := FALSE END
-    ELSIF e.type = G.mouseDown THEN event.type := mouse;
-      mouseDown := TRUE; GetMousePos(e, event.x, event.y);
-      MoveMouse(event.x, event.y);
-      mouseButton := e.button; event.button := mouseButton;
-      skip := FALSE
-    ELSIF e.type = G.mouseUp THEN event.type := mouse;
-      mouseDown := FALSE; GetMousePos(e, event.x, event.y);
-      MoveMouse(event.x, event.y);
-      event.button := 0; (* 0 means release *)
-      skip := FALSE
-    ELSIF e.type = G.keyDown THEN
-      IF (e.key = G.kEnter) & (e.mod * G.mAlt # {}) THEN ToggleFS; Sync END
-    ELSIF e.type = G.char THEN
-      event.type := key;
-      event.key := e.key;
-      event.ch := e.ch;
-      event.mod := e.mod;
-      skip := FALSE
-    ELSIF e.type = G.resize THEN
-      event.type := resize; G.GetMonoFontSize(font, fw, fh);
-      event.w := e.w DIV fw; event.h := e.h DIV fh;
-      ResizeBuffer;
-      Sync;
-      skip := FALSE
-    ELSIF e.type = G.quit THEN
-      event.type := quit;
-      skip := FALSE
-    END
-  UNTIL ~skip
-END WaitEvent;
 
 PROCEDURE Close*;
 BEGIN
@@ -681,6 +711,7 @@ BEGIN Done := FALSE;
     InitTimer;
     mouseDown := FALSE;
     needFlip := FALSE;
+    processingEvent := FALSE;
     Done := TRUE
   END
 END Init;
@@ -700,5 +731,7 @@ BEGIN G.GetClipboardText(screen, s)
 END TESTCB;
 
 BEGIN wantW := stdW; wantH := stdH; wantScaleX := 0.0; wantScaleY := 0.0;
-  settings := {fullscreen}; Done := FALSE
+  settings := {fullscreen}; Done := FALSE;
+  Flip0 := Flip
+  ;ZZ := 0
 END TermBox.

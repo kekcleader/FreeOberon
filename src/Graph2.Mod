@@ -971,7 +971,7 @@ BEGIN W := windowList;
   END
 END MakeResizeEvent;
 
-PROCEDURE PeekEvent(VAR event: Event; wait: BOOLEAN): BOOLEAN;
+PROCEDURE PeekOrWaitEvent(VAR event: Event; wait: BOOLEAN): BOOLEAN;
 VAR E: Al.Event;
   DE: Al.PDisplayEvent;
   TE: Al.PTimerEvent;
@@ -984,10 +984,13 @@ VAR E: Al.Event;
 BEGIN
     (*;Out.String('START');Out.Ln;;;;;;;;;;*)
   REPEAT skip := FALSE;
-    (*;Out.String('EV?');Out.Int(ZZ, 4);INC(ZZ);Out.Ln;;;;;;;;;;*)
+    ;Out.String('EV?');Out.Int(ZZ, 4);INC(ZZ);Out.Ln;;;;;;;;;;
     IF anyWindowResized THEN MakeResizeEvent(event, wait); gotEvent := TRUE
     ELSE
-      IF wait THEN Al.wait_for_event(queue, E); gotEvent := TRUE
+      IF wait THEN
+        ;Out.String('AL wait_for_event');Out.Ln;;;;;;;;;;
+        Al.wait_for_event(queue, E); gotEvent := TRUE
+        ;Out.String('  END AL wait_for_event');Out.Ln;;;;;;;;;;
       ELSE gotEvent := Al.peek_next_event(queue, E)
       END;
       IF gotEvent THEN
@@ -1116,16 +1119,30 @@ BEGIN
     END
   UNTIL ~skip OR ~gotEvent
     (*;Out.String('  FINISH');Out.Ln;;;;;;;;;;*)
-RETURN gotEvent END PeekEvent;
+RETURN gotEvent END PeekOrWaitEvent;
+
+PROCEDURE PeekEvent*(VAR event: Event): BOOLEAN;
+RETURN PeekOrWaitEvent(event, FALSE)
+END PeekEvent;
 
 PROCEDURE WaitEvent*(VAR event: Event);
-BEGIN IF PeekEvent(event, TRUE) THEN END
+BEGIN IF PeekOrWaitEvent(event, TRUE) THEN END
 END WaitEvent;
 
 PROCEDURE HasEvents*(): BOOLEAN;
 VAR e: Event;
-RETURN PeekEvent(e, FALSE)
+  x: BOOLEAN;
+BEGIN
+  ;Out.String('G Has Events');Out.Ln;;;;;;;;;;
+  x := PeekOrWaitEvent(e, FALSE);
+  ;Out.String('G Has Events = '); Out.Int(ORD(x),0);Out.Ln;;;;;;;;;;
+  RETURN x
 END HasEvents;
+
+PROCEDURE DropNextEvent*;
+VAR e: Event;
+BEGIN WaitEvent(e)
+END DropNextEvent;
 
 PROCEDURE StartTimer*(timer: Timer);
 BEGIN Al.start_timer(timer.tmr)
