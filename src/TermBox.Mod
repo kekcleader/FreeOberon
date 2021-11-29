@@ -24,12 +24,13 @@ CONST
   frameless*   = 11;
 
   (* Event.type possible values *)
-  quit*   = 0;
-  key*    = 1;
-  mouse*  = 2;
-  resize* = 11;
-  none*   = 14;
-  error*  = 15;
+  noEvent* = 0;
+  quit*    = 1;
+  key*     = 2;
+  mouse*   = 3;
+  resize*  = 11;
+  none*    = 14;
+  error*   = 15;
 
   (* Key Codes *)
   kA*          = 1;
@@ -224,8 +225,6 @@ VAR
 
   Done*: BOOLEAN;
 
-  Flip0: PROCEDURE;
-
 PROCEDURE SetPartCell(p: Part; x, y: INTEGER; ch: CHAR; fg, bg: INTEGER);
 BEGIN
   fg := fg MOD nofcolors; bg := bg MOD nofcolors;
@@ -331,6 +330,11 @@ BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN p.updated[y, x] := TRUE; p.redraw := TRUE END
 END UpdateCell;
 
+PROCEDURE Flip;
+BEGIN
+  IF ~G.HasEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
+END Flip;
+
 PROCEDURE Flush*;
 VAR x, y, X, Y: INTEGER;
   l, p: Part;
@@ -354,7 +358,7 @@ BEGIN
     INC(Y, l.h); l := l.down
   END;
   buffer.redrawAll := FALSE;
-  Flip0
+  Flip
 END Flush;
 
 PROCEDURE Sync*;
@@ -436,95 +440,97 @@ BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
   END
 END ResizeBuffer;
 
-PROCEDURE PeekOrWaitEvent(VAR event: Event; wait: BOOLEAN): BOOLEAN;
-VAR e: G.Event;
-  skip, gotEvent: BOOLEAN;
-  fw, fh: INTEGER;
+PROCEDURE ParseEvent(e: G.Event; VAR event: Event);
+VAR fw, fh: INTEGER;
 BEGIN
   processingEvent := TRUE;
-    ;Out.String('T PeekOrWait BEGIN====');Out.Ln;;;;;;;;
-  REPEAT skip := TRUE;
-    ;Out.String('AAA');Out.Ln;;;;;;;;
-    IF wait THEN
-      ;Out.String('   -a');Out.Ln;;;;;;;;
-      G.WaitEvent(e); gotEvent := TRUE
-    ELSE
-      ;Out.String('   -b');Out.Ln;;;;;;;;
-      gotEvent := G.PeekEvent(e)
-      ;Out.String('   -b END');Out.Ln;;;;;;;;
+  IF e.type = G.mouseMove THEN GetMousePos(e, event.x, event.y);
+    IF (event.x # mouseX) OR (event.y # mouseY) THEN
+      IF mouseDown THEN event.type := mouse;
+        event.button := mouseButton
+      END;
+      MoveMouse(event.x, event.y)
+    END
+  ELSIF e.type = G.timer THEN
+    IF curX > 0 THEN
+      cursorShown := ~cursorShown;
+      UpdateCell(curX, curY);
+      Flush
     END;
-    ;Out.String('BBB');Out.Int(ZZ, 5);INC(ZZ);Out.Ln;;;;;;;;
-    IF gotEvent THEN
-      IF e.type = G.mouseMove THEN GetMousePos(e, event.x, event.y);
-        IF (event.x # mouseX) OR (event.y # mouseY) THEN
-          IF mouseDown THEN event.type := mouse;
-            event.button := mouseButton;
-            skip := FALSE
-          END;
-          MoveMouse(event.x, event.y)
-        END
-      ELSIF e.type = G.timer THEN
-        IF curX > 0 THEN
-          cursorShown := ~cursorShown;
-          UpdateCell(curX, curY);
-          Flush
-        END;
-        IF needFlip THEN G.Flip; needFlip := FALSE END
-      ELSIF e.type = G.mouseDown THEN event.type := mouse;
-        mouseDown := TRUE; GetMousePos(e, event.x, event.y);
-        MoveMouse(event.x, event.y);
-        mouseButton := e.button; event.button := mouseButton;
-        skip := FALSE
-      ELSIF e.type = G.mouseUp THEN event.type := mouse;
-        mouseDown := FALSE; GetMousePos(e, event.x, event.y);
-        MoveMouse(event.x, event.y);
-        event.button := 0; (* 0 means release *)
-        skip := FALSE
-      ELSIF e.type = G.keyDown THEN
-        IF (e.key = G.kEnter) & (e.mod * G.mAlt # {}) THEN ToggleFS; Sync END
-      ELSIF e.type = G.char THEN
-        event.type := key;
-        event.key := e.key;
-        event.ch := e.ch;
-        event.mod := e.mod;
-        skip := FALSE
-      ELSIF e.type = G.resize THEN
-        event.type := resize; G.GetMonoFontSize(font, fw, fh);
-        event.w := e.w DIV fw; event.h := e.h DIV fh;
-        ResizeBuffer;
-        Sync;
-        skip := FALSE
-      ELSIF e.type = G.quit THEN
-        event.type := quit;
-        skip := FALSE
-      END
-    END;
-    IF ~wait & gotEvent THEN G.DropNextEvent END
-  UNTIL ~skip OR ~gotEvent
-    ;Out.String('T PeekOrWait END======');Out.Ln;;;;;;;;
+    IF needFlip THEN G.Flip; needFlip := FALSE END
+  ELSIF e.type = G.mouseDown THEN event.type := mouse;
+    mouseDown := TRUE; GetMousePos(e, event.x, event.y);
+    MoveMouse(event.x, event.y);
+    mouseButton := e.button; event.button := mouseButton;
+  ELSIF e.type = G.mouseUp THEN event.type := mouse; mouseDown := FALSE; GetMousePos(e, event.x, event.y);
+    MoveMouse(event.x, event.y);
+    event.button := 0; (* 0 means release *)
+  ELSIF e.type = G.keyDown THEN
+    IF (e.key = G.kEnter) & (e.mod * G.mAlt # {}) THEN ToggleFS; Sync END;
+    event.type := noEvent
+  ELSIF e.type = G.char THEN
+    event.type := key;
+    event.key := e.key;
+    event.ch := e.ch;
+    event.mod := e.mod;
+  ELSIF e.type = G.resize THEN
+    event.type := resize; G.GetMonoFontSize(font, fw, fh);
+    event.w := e.w DIV fw; event.h := e.h DIV fh;
+    ResizeBuffer;
+    Sync;
+  ELSIF e.type = G.quit THEN event.type := quit
+  ELSE event.type := noEvent
+  END;
   processingEvent := FALSE
-RETURN gotEvent END PeekOrWaitEvent;
+END ParseEvent;
+
+PROCEDURE WaitAndParseEvent(VAR event: Event);
+VAR E: G.Event;
+BEGIN
+  G.WaitEvent(E);
+  ParseEvent(E, event)
+END WaitAndParseEvent;
+
+PROCEDURE PeekAndParseEvent(VAR event: Event): BOOLEAN;
+VAR E: G.Event;
+  got: BOOLEAN;
+BEGIN
+  ;Out.String('       --- A');Out.Ln;;;;;;;;
+  IF G.PeekEvent(E) THEN
+    ;Out.String('       --- B');Out.Ln;;;;;;;;
+    ParseEvent(E, event); got := TRUE;
+    IF event.type = noEvent THEN G.DropNextEvent END
+  ELSE
+    ;Out.String('       --- C');Out.Ln;;;;;;;;
+    G.DropNextEvent; got := FALSE
+  END
+  ;Out.String('       --- D');Out.Ln;;;;;;;;
+RETURN got END PeekAndParseEvent;
 
 PROCEDURE WaitEvent*(VAR event: Event);
-BEGIN IF PeekOrWaitEvent(event, TRUE) THEN END
+BEGIN REPEAT WaitAndParseEvent(event) UNTIL event.type # noEvent
 END WaitEvent;
+
+PROCEDURE PeekEvent*(VAR event: Event): BOOLEAN;
+VAR got: BOOLEAN;
+BEGIN
+  ;Out.String('    [[ 1');Out.Ln;;;;;;;;
+  got := PeekAndParseEvent(event);
+  ;Out.String('    [[ 2');Out.Ln;;;;;;;;
+  WHILE got & (event.type = noEvent) DO
+  ;Out.String('    [[ 3');Out.Ln;;;;;;;;
+    got := PeekAndParseEvent(event)
+  ;Out.String('    [[ 4');Out.Ln;;;;;;;;
+  END
+  ;Out.String('    [[ 5');Out.Ln;;;;;;;;
+RETURN got END PeekEvent;
 
 PROCEDURE HasEvents*(): BOOLEAN;
 VAR e: Event;
   x: BOOLEAN;
 BEGIN
-  IF ~processingEvent THEN
-    ;Out.String('T Has Events');Out.Ln;;;;;;;;;;
-    x := PeekOrWaitEvent(e, FALSE);
-    ;Out.String('T Has Events = '); Out.Int(ORD(x),0);Out.Ln;;;;;;;;;;
-  END
-  RETURN ~processingEvent & x
-END HasEvents;
-
-PROCEDURE Flip;
-BEGIN
-  IF ~HasEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
-END Flip;
+  IF processingEvent THEN x := FALSE ELSE x := PeekEvent(e) END
+RETURN x END HasEvents;
 
 PROCEDURE SetCursor*(x, y: INTEGER);
 BEGIN
@@ -732,6 +738,5 @@ END TESTCB;
 
 BEGIN wantW := stdW; wantH := stdH; wantScaleX := 0.0; wantScaleY := 0.0;
   settings := {fullscreen}; Done := FALSE;
-  Flip0 := Flip
   ;ZZ := 0
 END TermBox.

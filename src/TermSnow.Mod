@@ -72,8 +72,10 @@ BEGIN done := FALSE;
     ELSE
       ;Out.String('NO EVENTS');Out.Ln;;;;;;;;
       Animate;
+      ;Out.String('PRE FLUSH');Out.Ln;;;;;;;;
       T.Flush;
-      T.Delay(100)
+      ;Out.String('AFTER FLUSH');Out.Ln;;;;;;;;
+      (*T.Delay(10)*)
     END
   UNTIL done
   ;Out.String('END RUN');Out.Ln;;;;;;;;
