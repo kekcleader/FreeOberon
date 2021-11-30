@@ -1,2 +1,2 @@
 #!/bin/bash
-vim -p TermSnow.Mod TermBox.Mod Graph2.Mod Allegro5.Mod
+vim -p Tetragon.Mod TermBox.Mod Graph2.Mod Allegro5.Mod
