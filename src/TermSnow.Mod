@@ -73,6 +73,18 @@ VAR x1, y1, x2, y2, x, y: INTEGER;
     t := y1; y1 := y2; y2 := t
   END Swap;
 
+  PROCEDURE Put(x, y, color: INTEGER);
+  VAR cell: T.Cell;
+  BEGIN
+    T.GetCell(x, y, cell);
+    IF color # 4 THEN
+      IF cell.bg = 4 THEN color := 2
+      ELSIF cell.bg = 2 THEN color := 4
+      END
+    END;
+    T.SetCell(x, y, ' ', 7, color)
+  END Put;
+
 BEGIN
   x1 := mouse.x1; y1 := mouse.y1; x2 := mouse.x2; y2 := mouse.y2;
   IF ABS(x1 - x2) <= ABS(y1 - y2) THEN
@@ -82,7 +94,7 @@ BEGIN
       IF y1 = y2 THEN x := x1
       ELSE x := ((y - y1) * (x2 - x1) + D2) DIV D + x1
       END;
-      T.SetCell(x, y, ' ', 7, color)
+      Put(x, y, color)
     END
   ELSE
     IF x1 > x2 THEN Swap(x1, y1, x2, y2) END;
@@ -91,7 +103,7 @@ BEGIN
       IF x1 = x2 THEN y := y1
       ELSE y := ((x - x1) * (y2 - y1) + D2) DIV D + y1
       END;
-      T.SetCell(x, y, ' ', 7, color)
+      Put(x, y, color)
     END
   END
 END Line;
