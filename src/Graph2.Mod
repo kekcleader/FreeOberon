@@ -1090,14 +1090,12 @@ BEGIN
   ELSIF (E.type = Al.eventDisplayResize) OR (E.type = eventUserResize) THEN
     IF E.type = Al.eventDisplayResize THEN
       DE := SYSTEM.VAL(Al.PDisplayEvent, SYSTEM.ADR(E));
-      d := DE.source
-    ELSE
-      UE := SYSTEM.VAL(Al.PUserEvent, SYSTEM.ADR(E));
-      d := SYSTEM.VAL(Al.Display, UE.data4)
+      d := DE.source; W := GetWindow(d);
+      W.winW := DE.width; W.winH := DE.height
+    ELSE UE := SYSTEM.VAL(Al.PUserEvent, SYSTEM.ADR(E));
+      d := SYSTEM.VAL(Al.Display, UE.data4); W := GetWindow(d);
+      W.winW := Al.get_display_width(d); W.winH := Al.get_display_height(d)
     END;
-    W := GetWindow(d);
-    W.winW := Al.get_display_width(d);
-    W.winH := Al.get_display_height(d);
     fw := W.winW / W.rzoom; fh := W.winH / W.rzoom;
     IF W.scaleOn THEN fw := fw / W.scaleX; fh := fh / W.scaleY END;
     w := FLOOR(fw + 0.1); h := FLOOR(fh + 0.1);
@@ -1134,14 +1132,8 @@ PROCEDURE PeekAndParseEvent(VAR event: Event): BOOLEAN;
 VAR E: Al.Event;
   got: BOOLEAN;
 BEGIN
-  IF Al.peek_next_event(queue, E) THEN
-    ParseEvent(E, event); got := TRUE;
-    IF event.type = noEvent THEN
-      IF Al.drop_next_event(queue) THEN END
-    END
-  ELSE got := FALSE;
-    IF Al.drop_next_event(queue) THEN END
-  END
+  got := Al.peek_next_event(queue, E);
+  IF got THEN ParseEvent(E, event) END
 RETURN got END PeekAndParseEvent;
 
 PROCEDURE WaitEvent*(VAR event: Event);
@@ -1153,6 +1145,7 @@ VAR got: BOOLEAN;
 BEGIN
   got := PeekAndParseEvent(event);
   WHILE got & (event.type = noEvent) DO
+    IF Al.drop_next_event(queue) THEN END;
     got := PeekAndParseEvent(event)
   END
 RETURN got END PeekEvent;

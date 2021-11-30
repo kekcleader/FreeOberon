@@ -86,7 +86,7 @@ BEGIN
   redraw := TRUE;
   G.StartTimer(t);
   REPEAT
-    IF redraw & G.NoEvents() THEN
+    IF redraw & ~G.HasEvents() THEN
       Draw;
       redraw := FALSE
     END;
