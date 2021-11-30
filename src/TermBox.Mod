@@ -6,7 +6,7 @@ CONST
   partH = 256;
   emptyCh = ' ';
   nofcolors = 16;
-  cursorTickSpeed = 2.0;
+  cursorTickSpeed = 1.0;
   stdW = 80;
   stdH = 25;
 
@@ -29,7 +29,7 @@ CONST
   key*     = 2;
   mouse*   = 3;
   resize*  = 11;
-  none*    = 14;
+  timer*   = 14;
   error*   = 15;
 
   (* Key Codes *)
@@ -203,7 +203,6 @@ TYPE
   END;
 
 VAR
-  ZZ: INTEGER;
   wantTitle: ARRAY 256 OF CHAR; (* Assigned in procedure SetTitle *)
   wantZoom: REAL;
   wantW, wantH: INTEGER;
@@ -216,7 +215,8 @@ VAR
   mouseX, mouseY, mouseButton: INTEGER;
   curX, curY: INTEGER; (* Text cursor position *)
   cursorShown: BOOLEAN; (* TRUE if text cursor is show while it is blinking *)
-  timer: G.Timer; (* Text cursor tick timer *)
+  cursorTimer: G.Timer; (* Text cursor tick timer *)
+  userTimer: G.Timer; (* User timer set by StartTimer *)
 
   needFlip: BOOLEAN;
   screen: G.Window;
@@ -445,6 +445,7 @@ VAR fw, fh: INTEGER;
 BEGIN
   processingEvent := TRUE;
   IF e.type = G.mouseMove THEN GetMousePos(e, event.x, event.y);
+    event.type := noEvent;
     IF (event.x # mouseX) OR (event.y # mouseY) THEN
       IF mouseDown THEN event.type := mouse;
         event.button := mouseButton
@@ -452,17 +453,23 @@ BEGIN
       MoveMouse(event.x, event.y)
     END
   ELSIF e.type = G.timer THEN
-    IF curX > 0 THEN
-      cursorShown := ~cursorShown;
-      UpdateCell(curX, curY);
-      Flush
-    END;
-    IF needFlip THEN G.Flip; needFlip := FALSE END
+    IF e.timer = cursorTimer THEN
+      event.type := noEvent;
+      IF curX > 0 THEN
+        cursorShown := ~cursorShown;
+        UpdateCell(curX, curY);
+        Flush
+      END;
+      IF needFlip THEN G.Flip; needFlip := FALSE END
+    ELSE
+      event.type := timer
+    END
   ELSIF e.type = G.mouseDown THEN event.type := mouse;
     mouseDown := TRUE; GetMousePos(e, event.x, event.y);
     MoveMouse(event.x, event.y);
     mouseButton := e.button; event.button := mouseButton;
-  ELSIF e.type = G.mouseUp THEN event.type := mouse; mouseDown := FALSE; GetMousePos(e, event.x, event.y);
+  ELSIF e.type = G.mouseUp THEN event.type := mouse;
+    mouseDown := FALSE; GetMousePos(e, event.x, event.y);
     MoveMouse(event.x, event.y);
     event.button := 0; (* 0 means release *)
   ELSIF e.type = G.keyDown THEN
@@ -477,7 +484,7 @@ BEGIN
     event.type := resize; G.GetMonoFontSize(font, fw, fh);
     event.w := e.w DIV fw; event.h := e.h DIV fh;
     ResizeBuffer;
-    Sync;
+    Sync
   ELSIF e.type = G.quit THEN event.type := quit
   ELSE event.type := noEvent
   END;
@@ -495,16 +502,12 @@ PROCEDURE PeekAndParseEvent(VAR event: Event): BOOLEAN;
 VAR E: G.Event;
   got: BOOLEAN;
 BEGIN
-  ;Out.String('       --- A');Out.Ln;;;;;;;;
   IF G.PeekEvent(E) THEN
-    ;Out.String('       --- B');Out.Ln;;;;;;;;
     ParseEvent(E, event); got := TRUE;
     IF event.type = noEvent THEN G.DropNextEvent END
   ELSE
-    ;Out.String('       --- C');Out.Ln;;;;;;;;
     G.DropNextEvent; got := FALSE
   END
-  ;Out.String('       --- D');Out.Ln;;;;;;;;
 RETURN got END PeekAndParseEvent;
 
 PROCEDURE WaitEvent*(VAR event: Event);
@@ -514,15 +517,10 @@ END WaitEvent;
 PROCEDURE PeekEvent*(VAR event: Event): BOOLEAN;
 VAR got: BOOLEAN;
 BEGIN
-  ;Out.String('    [[ 1');Out.Ln;;;;;;;;
   got := PeekAndParseEvent(event);
-  ;Out.String('    [[ 2');Out.Ln;;;;;;;;
   WHILE got & (event.type = noEvent) DO
-  ;Out.String('    [[ 3');Out.Ln;;;;;;;;
     got := PeekAndParseEvent(event)
-  ;Out.String('    [[ 4');Out.Ln;;;;;;;;
   END
-  ;Out.String('    [[ 5');Out.Ln;;;;;;;;
 RETURN got END PeekEvent;
 
 PROCEDURE HasEvents*(): BOOLEAN;
@@ -697,11 +695,17 @@ BEGIN G.GetMonoFontSize(font, fw, fh); G.GetDesktopResolution(dw, dh);
   G.SetWindowFullscreenSize(screen, W, H)
 END InitScreen;
 
+PROCEDURE StartTimer*(speed: REAL);
+BEGIN
+  userTimer := G.NewTimer(speed);
+  G.StartTimer(userTimer)
+END StartTimer;
+
 PROCEDURE InitTimer;
 BEGIN
   cursorShown := TRUE;
-  timer := G.NewTimer(cursorTickSpeed);
-  G.StartTimer(timer)
+  cursorTimer := G.NewTimer(cursorTickSpeed);
+  G.StartTimer(cursorTimer)
 END InitTimer;
 
 PROCEDURE Init*;
@@ -737,6 +741,5 @@ BEGIN G.GetClipboardText(screen, s)
 END TESTCB;
 
 BEGIN wantW := stdW; wantH := stdH; wantScaleX := 0.0; wantScaleY := 0.0;
-  settings := {fullscreen}; Done := FALSE;
-  ;ZZ := 0
+  settings := {fullscreen}; Done := FALSE
 END TermBox.

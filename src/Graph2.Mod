@@ -34,6 +34,8 @@ CONST
   mouseWheel*  = 10;
   resize*      = 11;
 
+  eventUserResize = 2005;
+
   (* Window.zoom possible values *)
   noZoom   = 0; (* The screen is not zoomed *)
   intZoom  = 1; (* The zoom value is an integer: 2x, 3x etc. *)
@@ -199,7 +201,8 @@ TYPE
 
   Timer* = POINTER TO TimerDesc;
   TimerDesc* = RECORD
-    tmr: Al.Timer
+    tmr: Al.Timer;
+    next: Timer (* See timerList below *)
   END;
 
   Bitmap* = POINTER TO BitmapDesc;
@@ -247,8 +250,8 @@ TYPE
     mod*: SET; (* Key modifiers *)
     repeat*: BOOLEAN;
     window*: Window;
-    display: Al.Display;
-    source: ADRINT
+    timer*: Timer;
+    display: Al.Display
   END;
 
   FontMessage* = POINTER TO FontMessageDesc;
@@ -276,7 +279,6 @@ TYPE
 
 VAR
   Done*: BOOLEAN;
-  ZZ: INTEGER;
 
   settings: SET; (* See list of constants Settings above *)
   wantW, wantH: INTEGER; (* Assigned in procedure Settings *)
@@ -285,11 +287,12 @@ VAR
   wantScaleX, wantScaleY: REAL; (* Assigned in procedure SetScale *)
   wantTitle: ARRAY 256 OF CHAR; (* Assigned in procedure SetTitle *)
   queue: Al.EventQueue;
+  userEventSource: Al.EventSource;
   windowList: Window;
+  timerList: Timer;
   screen: Window;
   target: Bitmap;
   black: Color;
-  anyWindowResized: BOOLEAN;
 
   (* Keyboard modifier keys *)
   keyModMap: ARRAY 256 OF INTEGER;
@@ -925,7 +928,11 @@ END CloseWindow;
 PROCEDURE NewTimer*(speed: REAL): Timer;
 VAR T: Timer;
 BEGIN NEW(T); T.tmr := Al.create_timer(speed);
-  Al.register_event_source(queue, Al.get_timer_event_source(T.tmr))
+  IF T.tmr # NIL THEN
+    Al.register_event_source(queue, Al.get_timer_event_source(T.tmr));
+    T.next := timerList; timerList := T
+  ELSE T := NIL
+  END;
 RETURN T END NewTimer;
 
 PROCEDURE GetWindow(d: Al.Display): Window;
@@ -933,6 +940,20 @@ VAR W: Window;
 BEGIN W := windowList;
   WHILE (W # NIL) & (W.display # d) DO W := W.next END
 RETURN W END GetWindow;
+
+PROCEDURE GetTimer(a: Al.Timer): Timer;
+VAR t: Timer;
+BEGIN t := timerList;
+  WHILE (t # NIL) & (t.tmr # a) DO t := t.next END
+RETURN t END GetTimer;
+
+PROCEDURE EmitResizeEvent(W: Window);
+VAR E: Al.UserEvent;
+BEGIN
+  E.type := eventUserResize;
+  E.data4 := SYSTEM.VAL(ADRINT, W.display);
+  IF Al.emit_user_event(userEventSource, SYSTEM.VAL(Al.Event, E), 0) THEN END
+END EmitResizeEvent;
 
 PROCEDURE ToggleFullscreen*(win: Window);
 VAR fs: BOOLEAN;
@@ -954,34 +975,21 @@ BEGIN
     win.scaleX := wantScaleX;
     win.scaleY := wantScaleY;
     RecreateDisplay(win, FALSE);
-    win.resized := TRUE; anyWindowResized := TRUE
+    EmitResizeEvent(win)
   END
 END ToggleFullscreen;
-
-PROCEDURE MakeResizeEvent(VAR event: Event; wait: BOOLEAN);
-VAR W: Window;
-BEGIN W := windowList;
-  WHILE (W # NIL) & ~W.resized DO W := W.next END;
-  event.type := resize;
-  event.window := W; event.display := W.display;
-  event.w := W.w; event.h := W.h;
-  IF wait THEN
-    W.resized := FALSE;
-    WHILE (W # NIL) & ~W.resized DO W := W.next END;
-    IF W = NIL THEN anyWindowResized := FALSE END
-  END
-END MakeResizeEvent;
 
 PROCEDURE ParseEvent(E: Al.Event; VAR event: Event);
 VAR DE: Al.PDisplayEvent;
   TE: Al.PTimerEvent;
   KE: Al.PKeyboardEvent;
   ME: Al.PMouseEvent;
+  UE: Al.PUserEvent;
   W: Window;
+  d: Al.Display;
   x, y, w, h: INTEGER;
   fw, fh: REAL;
 BEGIN
-  (*IF anyWindowResized THEN MakeResizeEvent(event, wait); gotEvent := TRUE*)
   event.time := E.timestamp;
   IF E.type = Al.eventMouseAxes THEN
     ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
@@ -1052,7 +1060,7 @@ BEGIN
     event.type := timer;
     TE := SYSTEM.VAL(Al.PTimerEvent, SYSTEM.ADR(E));
     event.count := TE.count;
-    event.source := SYSTEM.VAL(ADRINT, TE.source)
+    event.timer := GetTimer(SYSTEM.VAL(Al.Timer, TE.source))
   ELSIF E.type = Al.eventKeyDown THEN
     event.type := keyDown;
     KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
@@ -1078,18 +1086,31 @@ BEGIN
     event.repeat := KE.repeat;
     event.display := KE.display;
     event.window := GetWindow(event.display)
-  ELSIF E.type = Al.eventDisplayResize THEN
-    DE := SYSTEM.VAL(Al.PDisplayEvent, SYSTEM.ADR(E));
-    Al.acknowledge_resize(DE.source); W := GetWindow(DE.source);
-    W.winW := Al.get_display_width(DE.source);
-    W.winH := Al.get_display_height(DE.source);
+  ELSIF (E.type = Al.eventDisplayResize) OR (E.type = eventUserResize) THEN
+    IF E.type = Al.eventDisplayResize THEN
+      DE := SYSTEM.VAL(Al.PDisplayEvent, SYSTEM.ADR(E));
+      d := DE.source
+    ELSE
+      UE := SYSTEM.VAL(Al.PUserEvent, SYSTEM.ADR(E));
+      d := SYSTEM.VAL(Al.Display, UE.data4)
+    END;
+    W := GetWindow(d);
+    W.winW := Al.get_display_width(d);
+    W.winH := Al.get_display_height(d);
     fw := W.winW / W.rzoom; fh := W.winH / W.rzoom;
     IF W.scaleOn THEN fw := fw / W.scaleX; fh := fh / W.scaleY END;
     w := FLOOR(fw + 0.1); h := FLOOR(fh + 0.1);
-    ApplySizeStep(W, w, h);
-    IF (w # W.lastW) OR (h # W.lastH) THEN W.lastW := w; W.lastH := h;
-      event.type := resize; event.window := W; event.display := DE.source;
-      event.w := w; event.h := h; event.x := DE.x; event.y := DE.y;
+    IF E.type = Al.eventDisplayResize THEN
+      Al.acknowledge_resize(d);
+      ApplySizeStep(W, w, h)
+    END;
+    IF (w # W.lastW) OR (h # W.lastH) THEN
+      W.lastW := w; W.lastH := h;
+      event.type := resize; event.window := W; event.display := d;
+      event.w := w; event.h := h;
+      IF E.type = Al.eventDisplayResize THEN event.x := DE.x; event.y := DE.y
+      ELSE Al.get_window_position(d, event.x, event.y)
+      END;
       ResetWindowBitmap(W)
     ELSE ResetFlipVars(W); Flip; event.type := noEvent
     END
@@ -1268,7 +1289,7 @@ RETURN NewWindow(-1, -1, wantW, wantH, wantTitle, opt) # NIL END InitScreen;
 
 PROCEDURE Init*;
 VAR ok: BOOLEAN;
-BEGIN ok := TRUE; anyWindowResized := FALSE;
+BEGIN ok := TRUE;
   IF Al.install_system(Al.get_allegro_version(), 0) THEN
     IF ~Al.install_keyboard() THEN
       Error('Could not install keyboard.'); ok := FALSE
@@ -1292,6 +1313,9 @@ BEGIN ok := TRUE; anyWindowResized := FALSE;
     END;
 
     IF ok THEN
+      Al.init_user_event_source(userEventSource);
+      Al.register_event_source(queue,
+        SYSTEM.VAL(Al.PEventSource, SYSTEM.ADR(userEventSource)));
       Al.register_event_source(queue, Al.get_keyboard_event_source());
       IF ~(noMouse IN settings) THEN
         Al.register_event_source(queue, Al.get_mouse_event_source())
@@ -1312,18 +1336,19 @@ BEGIN
   wantW := 640; wantH := 400; wantSizeStepX := 1; wantSizeStepY := 1;
   wantScaleX := 1.0; wantScaleY := 1.0; wantZoom := 1.0;
   settings := {};
-  wantTitle := 'Oberon'
+  wantTitle := 'Oberon';
+  (* Reset global variables *)
+  queue := NIL; windowList := NIL; timerList := NIL;
+  screen := NIL; target := NIL
 END ResetDefaults;
 
 PROCEDURE Close*;
 BEGIN
   Al.uninstall_system;
-  queue := NIL; windowList := NIL; screen := NIL; target := NIL;
   ResetDefaults
 END Close;
 
 BEGIN Done := FALSE;
   MakeCol(black, 0, 0, 0);
   ResetDefaults
-  ;ZZ := 0;
 END Graph2.

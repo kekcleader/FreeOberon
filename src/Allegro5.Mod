@@ -322,9 +322,10 @@ TYPE
 
   Display* = POINTER [1] TO RECORD [1] END;
   Bitmap* = POINTER [1] TO RECORD [1] END;
-  EventQueue* = POINTER [1] TO RECORD [1] END;
   Timer* = POINTER [1] TO RECORD [1] END;
-  EventSource* = POINTER [1] TO RECORD [1] END;
+  EventQueue* = POINTER [1] TO RECORD [1] END;
+  EventSource* = RECORD [1] pad: ARRAY 32 OF INTEGER END;
+  PEventSource* = POINTER [1] TO EventSource;
 
   DisplayEvent* = RECORD [1]
     type*: INTEGER;
@@ -332,7 +333,8 @@ TYPE
     timestamp*: LONGREAL;
     x*, y*: INTEGER;
     width*, height*: INTEGER;
-    orientation*: INTEGER
+    orientation*: INTEGER;
+    pad: ARRAY 40 OF BYTE
   END;
 
   KeyboardEvent* = RECORD [1]
@@ -376,18 +378,27 @@ TYPE
     error*: LONGREAL
   END;
 
+  UserEvent* = RECORD [1]
+    type*: INTEGER;
+    source*: ADRINT;
+    timestamp*: LONGREAL;
+    data1*, data2*, data3*, data4*: ADRINT;
+    pad: ARRAY 52 OF BYTE
+  END;
+
   Event* = RECORD [1]
     type*: INTEGER;
     source*: ADRINT;
     timestamp*: LONGREAL;
-    pad: ARRAY 1000 OF BYTE
+    pad: ARRAY 52 OF BYTE
   END;
 
-  PEvent* = POINTER TO Event;
+  PEvent* = POINTER [1] TO Event;
   PTimerEvent* = POINTER [1] TO TimerEvent;
   PKeyboardEvent* = POINTER [1] TO KeyboardEvent;
   PMouseEvent* = POINTER [1] TO MouseEvent;
   PDisplayEvent* = POINTER [1] TO DisplayEvent;
+  PUserEvent* = POINTER [1] TO UserEvent;
 
   MonitorInfo* = RECORD [1]
     x1*, y1*, x2*, y2*: INTEGER
@@ -399,12 +410,14 @@ PROCEDURE uninstall_system* ["al_uninstall_system"] ();
 PROCEDURE install_keyboard* ["al_install_keyboard"] (): BOOLEAN;
 PROCEDURE install_mouse* ["al_install_mouse"] (): BOOLEAN;
 PROCEDURE create_timer* ["al_create_timer"] (period: LONGREAL): Timer;
-PROCEDURE get_keyboard_event_source* ["al_get_keyboard_event_source"] (): EventSource;
-PROCEDURE get_mouse_event_source* ["al_get_mouse_event_source"] (): EventSource;
-PROCEDURE get_display_event_source* ["al_get_display_event_source"] (display: Display): EventSource;
-PROCEDURE get_timer_event_source* ["al_get_timer_event_source"] (timer: Timer): EventSource;
+PROCEDURE get_keyboard_event_source* ["al_get_keyboard_event_source"] (): PEventSource;
+PROCEDURE get_mouse_event_source* ["al_get_mouse_event_source"] (): PEventSource;
+PROCEDURE get_display_event_source* ["al_get_display_event_source"] (display: Display): PEventSource;
+PROCEDURE get_timer_event_source* ["al_get_timer_event_source"] (timer: Timer): PEventSource;
 PROCEDURE start_timer* ["al_start_timer"] (timer: Timer);
-PROCEDURE register_event_source* ["al_register_event_source"] (queue: EventQueue; source: EventSource);
+PROCEDURE register_event_source* ["al_register_event_source"] (queue: EventQueue; source: PEventSource);
+PROCEDURE init_user_event_source* ["al_init_user_event_source"] (VAR src: EventSource);
+PROCEDURE emit_user_event* ["al_emit_user_event"] (VAR src: EventSource; VAR event: Event; dtor: ADRINT): BOOLEAN;
 PROCEDURE get_next_event* ["al_get_next_event"] (queue: EventQueue; VAR event: Event): BOOLEAN;
 PROCEDURE peek_next_event* ["al_peek_next_event"] (queue: EventQueue; VAR event: Event): BOOLEAN;
 PROCEDURE drop_next_event* ["al_drop_next_event"] (queue: EventQueue): BOOLEAN;
