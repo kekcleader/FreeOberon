@@ -1025,15 +1025,16 @@ BEGIN
     event.type := mouseDown;
     ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
     W := GetWindow(ME.display); event.window := W;
-    IF W.zoom = noZoom THEN event.x := ME.x; event.y := ME.y
+    IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
     ELSIF W.zoom = intZoom THEN
-      event.x := ME.x DIV W.izoom; event.y := ME.y DIV W.izoom
-    ELSE event.x := FLOOR(ME.x / W.rzoom + 0.1);
-      event.y := FLOOR(ME.y / W.rzoom + 0.1)
+      x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
+    ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
+      y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
     END;
-    IF W.scaleOn THEN event.x := FLOOR(event.x / W.scaleX + 0.1);
-      event.y := FLOOR(event.y / W.scaleY + 0.1)
+    IF W.scaleOn THEN
+      x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
     END;
+    event.x := x; event.y := y;
     event.z := ME.z; event.w := ME.w;
     event.button := ME.button;
     event.mod := keyMods;
@@ -1042,16 +1043,16 @@ BEGIN
     event.type := mouseUp;
     ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
     W := GetWindow(ME.display); event.window := W;
-    IF W.zoom = noZoom THEN event.x := ME.x; event.y := ME.y
+    IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
     ELSIF W.zoom = intZoom THEN
-      event.x := ME.x DIV W.izoom; event.y := ME.y DIV W.izoom
-    ELSE
-      event.x := FLOOR(ME.x / W.rzoom + 0.1);
-      event.y := FLOOR(ME.y / W.rzoom + 0.1)
+      x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
+    ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
+      y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
     END;
-    IF W.scaleOn THEN event.x := FLOOR(event.x / W.scaleX + 0.1);
-      event.y := FLOOR(event.y / W.scaleY + 0.1)
+    IF W.scaleOn THEN
+      x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
     END;
+    event.x := x; event.y := y;
     event.z := ME.z; event.w := ME.w;
     event.button := ME.button;
     event.mod := keyMods;

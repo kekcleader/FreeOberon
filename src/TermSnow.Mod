@@ -27,7 +27,7 @@ BEGIN
   T.GetCell(star.x, star.y, cell);
   IF cell.bg = 0 THEN (* Do not draw on non-black background *)
     IF star.n # 0 THEN
-      IF star.n = 1 THEN fg := 11 ELSE fg := 15 END;
+      IF star.n = 1 THEN fg := 3 ELSE fg := 15 END;
       T.SetCell(star.x, star.y, starChars[star.n], fg, 0)
     ELSE
       T.SetChar(star.x, star.y, ' ')
@@ -47,7 +47,7 @@ BEGIN
   IF star.n > 1 THEN
     IF star.n < LEN(starChars) - 1 THEN INC(star.n) ELSE star.n := 0 END;
     DrawStar(star)
-  ELSIF Random.Int(20) < 10 THEN
+  ELSIF Random.Int(1000) < 15 THEN
     INC(star.n);
     IF star.n = 1 THEN
       star.x := Random.Int(W);
@@ -124,7 +124,7 @@ VAR e: T.Event;
 BEGIN done := FALSE;
   Draw;
   T.Flush;
-  T.StartTimer(1/10);
+  T.StartTimer(1/5);
   REPEAT
     T.WaitEvent(e);
     IF e.type = T.timer THEN
@@ -159,7 +159,7 @@ BEGIN
 END InitVars;
 
 BEGIN
-  T.Settings(0, 0, {T.window, T.center, T.resizable});
+  T.Settings(0, 0, {(*T.window, *)T.center, T.resizable});
   T.Init;
   T.Size(W, H);
   InitVars;
