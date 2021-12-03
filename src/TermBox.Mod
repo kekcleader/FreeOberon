@@ -691,7 +691,8 @@ VAR icons: ARRAY 5 OF G.Bitmap;
 BEGIN
   n := 0; b := Load(0);
   WHILE (n < LEN(icons)) & (b # NIL) DO
-    icons[n] := b; b := Load(0); INC(n)
+    icons[n] := b;
+    INC(n); b := Load(n)
   END;
   IF n > 0 THEN G.SetWindowIconsEx(screen, icons, 0, n) END
 END SetIcons;

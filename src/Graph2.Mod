@@ -233,6 +233,8 @@ TYPE
     title: ARRAY 256 OF CHAR;
     resized: BOOLEAN; (* TRUE if fullscreen mode has been toggled for window *)
     showMouse: BOOLEAN;
+    icons: ARRAY 64 OF Al.Bitmap;
+    noficons: INTEGER;
     next: Window (* See windowList below *)
   END;
 
@@ -888,7 +890,10 @@ BEGIN isCurTarget := target = W;
     ResetWindowBitmap(W);
     Al.register_event_source(queue, Al.get_display_event_source(W.display));
     IF isCurTarget THEN Target(W) END;
-    IF ~W.showMouse THEN ShowWindowMouse(W, FALSE) END
+    IF ~W.showMouse THEN ShowWindowMouse(W, FALSE) END;
+    IF W.noficons > 0 THEN
+      Al.set_display_icons(W.display, W.noficons, W.icons)
+    END
   END
 END RecreateDisplay;
 
@@ -898,7 +903,7 @@ VAR W: Window;
   d: Al.Display;
   q: ARRAY 256 OF SHORTCHAR;
   opt: SET;
-  n, dw, dh, nw, nh, sw, sh: INTEGER;
+  i, n, dw, dh, nw, nh, sw, sh: INTEGER;
   nwf, nhf: REAL;
 BEGIN NEW(W); W.lastX := -1; W.lastY := -1; W.resized := FALSE;
   W.sizeStepX := wantSizeStepX; W.sizeStepY := wantSizeStepY;
@@ -913,6 +918,8 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1; W.resized := FALSE;
   W.initX := x; W.initY := y; W.initW := w; W.initH := h;
   W.fsW := w; W.fsH := h;
   W.showMouse := TRUE;
+  FOR i := 0 TO LEN(W.icons) - 1 DO W.icons[i] := NIL END;
+  W.noficons := 0;
 
   W.display := NIL; RecreateDisplay(W, TRUE);
   IF W.display # NIL THEN W.next := windowList; windowList := W
@@ -1274,14 +1281,23 @@ PROCEDURE SetWindowIconsEx*(win: Window; icons: ARRAY OF Bitmap;
 VAR m: ARRAY 64 OF Al.Bitmap;
   i: INTEGER;
 BEGIN
-  ASSERT((0 <= from) & (from < LEN(icons)) & (from + len <= LEN(icons)));
   FOR i := 0 TO len - 1 DO m[i] := icons[from + i].bmp END;
+  FOR i := 0 TO len - 1 DO win.icons[i] := m[i] END;
+  win.noficons := len;
   Al.set_display_icons(win.display, len, m)
 END SetWindowIconsEx;
 
 PROCEDURE SetWindowIcons*(win: Window; icons: ARRAY OF Bitmap);
 BEGIN SetWindowIconsEx(win, icons, 0, LEN(icons))
 END SetWindowIcons;
+
+PROCEDURE SetWindowIcon*(win: Window; icon: Bitmap);
+VAR i: INTEGER;
+BEGIN
+  FOR i := 1 TO LEN(win.icons) - 1 DO win.icons[i] := NIL END;
+  win.icons[0] := icon.bmp; win.noficons := 1;
+  Al.set_display_icon(win.display, icon.bmp)
+END SetWindowIcon;
 
 (* Init *)
 
