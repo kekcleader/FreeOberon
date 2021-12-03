@@ -171,7 +171,7 @@ BEGIN
 END InitVars;
 
 BEGIN
-  T.Settings(0, 0, {T.window, T.center, T.resizable});
+  (*T.Settings(0, 0, {T.window, T.center, T.resizable});*)
   T.Init;
   T.Size(W, H);
   InitVars;
