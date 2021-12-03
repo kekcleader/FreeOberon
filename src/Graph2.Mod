@@ -859,7 +859,7 @@ BEGIN isCurTarget := target = W;
     sh := FLOOR(h * W.wantZoom * W.scaleY + 0.999)
   END;
 
-  W.lastW := w; W.lastH := h;
+  W.lastW := 0; W.lastH := 0;
 
   IF center IN W.options THEN GetDesktopResolution(dw, dh);
     x := (dw - sw) DIV 2; y := (dh - sh) DIV 2;
@@ -1266,6 +1266,22 @@ BEGIN
   ELSE s[0] := 0X
   END
 END GetClipboardText;
+
+(* Window Icons *)
+
+PROCEDURE SetWindowIconsEx*(win: Window; icons: ARRAY OF Bitmap;
+    from, len: INTEGER);
+VAR m: ARRAY 64 OF Al.Bitmap;
+  i: INTEGER;
+BEGIN
+  ASSERT((0 <= from) & (from < LEN(icons)) & (from + len <= LEN(icons)));
+  FOR i := 0 TO len - 1 DO m[i] := icons[from + i].bmp END;
+  Al.set_display_icons(win.display, len, m)
+END SetWindowIconsEx;
+
+PROCEDURE SetWindowIcons*(win: Window; icons: ARRAY OF Bitmap);
+BEGIN SetWindowIconsEx(win, icons, 0, LEN(icons))
+END SetWindowIcons;
 
 (* Init *)
 

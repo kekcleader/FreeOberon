@@ -1,5 +1,5 @@
 MODULE TermBox;
-IMPORT G := Graph2, Out;
+IMPORT G := Graph2, Strings, Int, Out;
 
 CONST
   partW = 512;
@@ -603,7 +603,7 @@ END Close;
 PROCEDURE LoadFont(): BOOLEAN;
 VAR f: G.Font;
 BEGIN
-  f := G.LoadFont('mainfont');
+  f := G.LoadFont('Data/Fonts/Main');
   IF f # NIL THEN 
     IF f IS G.MonoFont THEN font := f(G.MonoFont)
     ELSE Out.String('The font is not monospaced.'); Out.Ln
@@ -677,6 +677,25 @@ BEGIN s := {};
   IF frameless IN settings THEN INCL(s, G.frameless) END;
 RETURN s END MakeGraphSettings;
 
+PROCEDURE SetIcons;
+VAR icons: ARRAY 5 OF G.Bitmap;
+  b: G.Bitmap;
+  n: INTEGER;
+
+  PROCEDURE Load(n: INTEGER): G.Bitmap;
+  VAR s: ARRAY 40 OF CHAR;
+  BEGIN s := 'Data/Images/TermIcon'; Int.Append(n, s);
+    Strings.Append('.png', s)
+  RETURN G.LoadBitmap(s) END Load;
+
+BEGIN
+  n := 0; b := Load(0);
+  WHILE (n < LEN(icons)) & (b # NIL) DO
+    icons[n] := b; b := Load(0); INC(n)
+  END;
+  IF n > 0 THEN G.SetWindowIconsEx(screen, icons, 0, n) END
+END SetIcons;
+
 PROCEDURE InitScreen;
 VAR W, H, dw, dh, fw, fh: INTEGER;
 BEGIN G.GetMonoFontSize(font, fw, fh); G.GetDesktopResolution(dw, dh);
@@ -692,7 +711,8 @@ BEGIN G.GetMonoFontSize(font, fw, fh); G.GetDesktopResolution(dw, dh);
   G.SetSizeStep(fw, fh);
   screen := G.NewWindow(-1, -1, W, H, wantTitle, MakeGraphSettings());
   G.ShowMouse(noMouse IN settings);
-  G.SetWindowFullscreenSize(screen, W, H)
+  G.SetWindowFullscreenSize(screen, W, H);
+  SetIcons
 END InitScreen;
 
 PROCEDURE StartTimer*(speed: REAL);

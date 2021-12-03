@@ -151,10 +151,10 @@ BEGIN
   G.MakeCol(c2, 0, 255, 0);
   G.MakeCol(c3, 255, 255, 255);
   G.MakeCol(c4, 50, 30, 255);
-  B := G.LoadBitmap('img.png');
-  IF B = NIL THEN Out.String('COULD NOT LOAD img.png'); Out.Ln END;
-  font := G.LoadFont('mainfont');
-  IF font = NIL THEN Out.String('COULD NOT LOAD mainfont'); Out.Ln END;
+  B := G.LoadBitmap('Data/Images/img.png');
+  IF B = NIL THEN Out.String('COULD NOT LOAD Data/Images/img.png'); Out.Ln END;
+  font := G.LoadFont('Data/Fonts/Main');
+  IF font = NIL THEN Out.String('COULD NOT LOAD Data/Fonts/Main'); Out.Ln END;
 
   main := G.GetScreen();
   t := G.NewTimer(0.5);

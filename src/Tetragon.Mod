@@ -1,7 +1,7 @@
 MODULE Tetragon;
 IMPORT T := TermBox, Out, Random, Kernel;
 CONST
-  maxW = 20; maxH = 12; (* Field maximum size *)
+  maxW = 19; maxH = 12; (* Field maximum size *)
 
   (** Field contents (values of Cell.n) *)
   nothing = 0;
@@ -155,7 +155,7 @@ END OnKey;
 PROCEDURE OnResize;
 BEGIN
   T.Size(SW, SH);
-  ;;;;;;Out.Int(SW, 0);Out.Int(SH, 10);Out.Ln;;;;;;
+  ;;;;;;Out.Int(SW, 7);Out.Int(SH, 7);Out.Ln;;;;;;
   fieldX := (SW - W * cellW) DIV 2;
   fieldY := (SH - H * cellH) DIV 2;
   Draw;
@@ -187,7 +187,7 @@ BEGIN
 END InitVars;
 
 BEGIN
-  T.Settings(80, 25, {T.window, T.center});
+  T.Settings(80, 25, {T.window, T.center, T.resizable});
   T.Init;
   T.Size(SW, SH);
   InitVars;
