@@ -1,5 +1,5 @@
 MODULE Mandelbrot2;
-IMPORT G := Graph, M := Math;
+IMPORT G := Graph, M := Math, Random;
 CONST iter = 768;
 VAR s: G.Bitmap;
   col: INTEGER;
@@ -42,25 +42,38 @@ BEGIN shine := (1 - M.cos(angle)) * 1;
   END
 END Draw;
 
-PROCEDURE Do;
+PROCEDURE Set(cx, cy, r: REAL);
 VAR x, y: INTEGER;
   x0, y0, x1, y1: REAL;
-BEGIN G.Settings(0, 0, {G.fullscreen});
-  s := G.Init(); G.Flip; NEW(m, s.h, s.w);
-  x0 := -0.63; x1 := -0.61; y0 := -0.45; y1 := -0.47;
-  FOR y := 0 TO s.h - 1 DO
+BEGIN
+  x0 := cx - r; x1 := cx + r;
+  y0 := cy + r * s.h / s.w; y1 := 2 * cy - y0;
+  y := 0;
+  WHILE (y < s.h) & ~G.KeyPressed() DO
     FOR x := 0 TO s.w - 1 DO
       Go(x, y, x0 + x / (s.w - 1) * (x1 - x0),
                y0 + y / (s.h - 1) * (y1 - y0))
-    END
-  END;
-  angle := 0; col := 0;
-  REPEAT Draw; angle := angle + M.pi / 90;
-    IF angle > M.pi * 2 THEN
-      angle := angle - M.pi * 2;
-      col := (col + 1) MOD 7;
     END;
-    G.Flip; G.Delay(10)
+    INC(y)
+  END
+END Set;
+
+PROCEDURE Do;
+VAR x, y, r: REAL;
+BEGIN G.Settings(0, 0, {G.fullscreen, G.spread});
+  s := G.Init(); G.Flip; NEW(m, s.h, s.w);
+  x := -0.619; y := -0.456; r := 0.1;
+  Set(x, y, r);
+  angle := 0.0; col := 0;
+  REPEAT Draw; angle := angle + M.pi / 90.0 * 4;
+    IF angle > M.pi * 2.0 THEN
+      angle := 0.0;
+      col := (col + 1) MOD 7;
+      G.ClearScreen; G.Flip;
+      r := r / 2;
+      Set(x, y, r)
+    ELSE G.Flip; G.Delay(10)
+    END
   UNTIL G.KeyPressed();
   G.Close
 END Do;

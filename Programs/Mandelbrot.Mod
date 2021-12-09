@@ -22,8 +22,8 @@ VAR x, y: INTEGER;
   x0, y0, x1, y1: REAL;
 BEGIN G.Settings(0, 0, {G.fullscreen});
   s := G.Init(); G.Flip;
-  y0 := 1; y1 := -1;
-  x1 := 2 * s.w / s.h / 3; x0 := -x1 * 2;
+  y0 := 1.0; y1 := -1.0;
+  x1 := 2.0 * s.w / s.h / 3.0; x0 := -x1 * 2.0;
   FOR y := 0 TO s.h - 1 DO
     FOR x := 0 TO s.w - 1 DO
       Go(x, y, x0 + x / (s.w - 1) * (x1 - x0),
