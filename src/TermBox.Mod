@@ -209,6 +209,7 @@ VAR
   wantScaleX, wantScaleY: REAL;
   settings: SET;
   buffer: Buffer;
+  iconFile, fontFile: ARRAY 256 OF CHAR;
 
   processingEvent: BOOLEAN;
   mouseDown: BOOLEAN;
@@ -564,6 +565,16 @@ BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartCell(p, x, y, ch, fg, bg) END
 END SetCell;
 
+PROCEDURE Fill*(x, y, w, h: INTEGER; ch: CHAR; fg, bg: INTEGER);
+VAR X, Y: INTEGER;
+BEGIN
+  FOR Y := y TO y + h - 1 DO
+    FOR X := x TO x + w - 1 DO
+      SetCell(X, Y, ch, fg, bg)
+    END
+  END
+END Fill;
+
 PROCEDURE Print*(x, y: INTEGER; s: ARRAY OF CHAR; fg, bg: INTEGER);
 VAR i, w, h: INTEGER;
 BEGIN i := 0;
@@ -603,12 +614,13 @@ END Close;
 PROCEDURE LoadFont(): BOOLEAN;
 VAR f: G.Font;
 BEGIN
-  f := G.LoadFont('Data/Fonts/Main');
+  f := G.LoadFont(fontFile);
   IF f # NIL THEN 
     IF f IS G.MonoFont THEN font := f(G.MonoFont)
     ELSE Out.String('The font is not monospaced.'); Out.Ln
     END
-  ELSE Out.String('Could not load font.'); Out.Ln
+  ELSE Out.String('Could not load font "');
+    Out.String(fontFile); Out.String('".'); Out.Ln
   END
 RETURN font # NIL END LoadFont;
 
@@ -677,25 +689,12 @@ BEGIN s := {};
   IF frameless IN settings THEN INCL(s, G.frameless) END;
 RETURN s END MakeGraphSettings;
 
-PROCEDURE SetIcons;
-VAR icons: ARRAY 5 OF G.Bitmap;
-  b: G.Bitmap;
-  n: INTEGER;
-
-  PROCEDURE Load(n: INTEGER): G.Bitmap;
-  VAR s: ARRAY 40 OF CHAR;
-  BEGIN s := 'Data/Images/TermIcon'; Int.Append(n, s);
-    Strings.Append('.png', s)
-  RETURN G.LoadBitmap(s) END Load;
-
+PROCEDURE InitIcon;
+VAR b: G.Bitmap;
 BEGIN
-  n := 0; b := Load(0);
-  WHILE (n < LEN(icons)) & (b # NIL) DO
-    icons[n] := b;
-    INC(n); b := Load(n)
-  END;
-  IF n > 0 THEN G.SetWindowIconsEx(screen, icons, 0, n) END
-END SetIcons;
+  b := G.LoadBitmap(iconFile);
+  IF b # NIL THEN G.SetWindowIcon(screen, b) END
+END InitIcon;
 
 PROCEDURE InitScreen;
 VAR W, H, dw, dh, fw, fh: INTEGER;
@@ -713,7 +712,7 @@ BEGIN G.GetMonoFontSize(font, fw, fh); G.GetDesktopResolution(dw, dh);
   screen := G.NewWindow(-1, -1, W, H, wantTitle, MakeGraphSettings());
   G.ShowMouse(noMouse IN settings);
   G.SetWindowFullscreenSize(screen, W, H);
-  SetIcons
+  InitIcon
 END InitScreen;
 
 PROCEDURE StartTimer*(speed: REAL);
@@ -761,6 +760,16 @@ PROCEDURE TESTCB*(VAR s: ARRAY OF CHAR);
 BEGIN G.GetClipboardText(screen, s)
 END TESTCB;
 
+PROCEDURE SetIcon*(s: ARRAY OF CHAR);
+BEGIN iconFile := s
+END SetIcon;
+
+PROCEDURE SetFontFile*(s: ARRAY OF CHAR);
+BEGIN fontFile := s
+END SetFontFile;
+
 BEGIN wantW := stdW; wantH := stdH; wantScaleX := 0.0; wantScaleY := 0.0;
-  settings := {fullscreen}; Done := FALSE
+  settings := {fullscreen}; Done := FALSE;
+  iconFile := 'Data/Images/Icon.png';
+  fontFile := 'Data/Fonts/Main';
 END TermBox.

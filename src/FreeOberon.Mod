@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT G := Graph2, T := TermBox, Files, Args, Utf8,
+IMPORT T := TermBox, Files, Args, Utf8,
        OV, Editor, Term, Config, Strings, Int, Out, Kernel;
 CONST
   version* = '1.0.4';

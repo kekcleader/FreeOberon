@@ -963,8 +963,8 @@ PROCEDURE EditorMouseUp*(c: OV.Control; x, y, button: INTEGER);
 BEGIN OV.WindowMouseUp(c, x, y, button)
 END EditorMouseUp;
 
-PROCEDURE EditorMouseMove*(c: OV.Control; x, y: INTEGER; buttons: SET);
-BEGIN OV.WindowMouseMove(c, x, y, buttons)
+PROCEDURE EditorMouseMove*(c: OV.Control; x, y: INTEGER; button: INTEGER);
+BEGIN OV.WindowMouseMove(c, x, y, button)
 END EditorMouseMove;
 
 PROCEDURE EditorTextInput(c: OV.Control; ch: CHAR);
@@ -980,7 +980,7 @@ BEGIN E := c(Editor);
   (*IF E.text.changed THEN cancel := TRUE END*) (*!TODO Ask*)
 END EditorClose;
 
-PROCEDURE EditorKeyDown*(c: OV.Control; E: T.Event);
+PROCEDURE EditorKeyDown*(c: OV.Control; VAR E: T.Event);
 BEGIN OV.WindowKeyDown(c, E);
   CASE E.key OF
     T.kLeft:
