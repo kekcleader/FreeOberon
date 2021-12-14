@@ -294,7 +294,7 @@ BEGIN l := buffer.first;
   END
 END ClearTo;
 
-PROCEDURE Clear;
+PROCEDURE Clear*;
 BEGIN ClearTo(7, 0)
 END Clear;
 

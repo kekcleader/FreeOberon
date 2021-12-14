@@ -36,9 +36,11 @@ $OFR -7w StrList.Mod
 
 $OFR -7w Dir.Mod
 
-$OFR -Ci SDL2.Mod
+$OFR -7w Allegro5.Mod
 
-$OFR -C Graph.Mod
+$OFR -7w Graph2.Mod
+
+$OFR -7w TermBox.Mod
 
 $OFR -C Terminal.Mod
 
@@ -65,17 +67,18 @@ $CCFULL -c Texts.c
 $CCFULL -c Random.c
 $CCFULL -c StrList.c
 $CCFULL -c Dir.c
-$CCFULL -c SDL2.c
-$CCFULL -c Graph.c
+$CCFULL -c Graph2.c
+$CCFULL -c TermBox.c
 $AR -crs ../data/bin/libFreeOberon.a \
   Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o Texts.o Random.o \
-  StrList.o Dir.o SDL2.o Graph.o
+  StrList.o Dir.o Graph2.o TermBox.o
 
-$CCFULL Config.c term/term_linux.c \
-  Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o Texts.o Random.o \
-  StrList.o Dir.o SDL2.o Graph.o \
+$CCFULL -o ../$PROG -g3 -O0 -fno-exceptions \
+  $PROG.c Config.c term/term_linux.c \
   Term.c Terminal.c OV.c EditorText.c Editor.c \
-  $PROG.c -o ../$PROG \
+  ../data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a \
-  $SDL2Opts -lSDL2_image
-
+  $(pkg-config \
+    allegro_primitives-5 allegro_image-5 allegro_audio-5 \
+    allegro_acodec-5 allegro_font-5 allegro_dialog-5 \
+    allegro-5 --libs --cflags)

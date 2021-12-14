@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT G := Graph, T := Terminal, Files, Args, Utf8,
+IMPORT G := Graph2, T := TermBox, Files, Args, Utf8,
        OV, Editor, Term, Config, Strings, Int, Out, Kernel;
 CONST
   version* = '1.0.4';
@@ -66,6 +66,9 @@ VAR
   workDir: ARRAY 256 OF CHAR; (* Directory of main file of compiled program *)
   app: OV.App;
 
+  curX, curY: INTEGER; (* Cursor position *)
+  curFg, curBg: INTEGER; (* Current foreground and background of proc. Write *)
+
 PROCEDURE CountLines(s: ARRAY OF CHAR; width: INTEGER): INTEGER;
 VAR i, x, lines: INTEGER;
 BEGIN
@@ -85,6 +88,7 @@ RETURN lines END CountLines;
 PROCEDURE ShowErrors(s: ARRAY OF CHAR);
 VAR lines, width, x0, x, y, i: INTEGER;
 BEGIN
+(*
   width := T.charsX - 2;
   lines := CountLines(s, width);
   IF lines > 10 THEN lines := 10 END;
@@ -110,6 +114,7 @@ BEGIN
     END
   END;
   IF T.Draw() THEN G.Flip; G.Pause END (*!FIXME*)
+  *)
 END ShowErrors;
 
 (* !TODO move out, rewrite *)
@@ -143,6 +148,7 @@ PROCEDURE FileNew(c: OV.Control);
 VAR e: Editor.Editor;
   p, br: OV.Control;
   count: INTEGER;
+  tW, tH: INTEGER;
 BEGIN e := Editor.NewEditor();
   p := app.windows; br := p; count := 0;
   WHILE p # NIL DO INC(count);
@@ -151,10 +157,11 @@ BEGIN e := Editor.NewEditor();
   IF app.windows # NIL THEN
     e.x := app.windows.x + 1; e.y := app.windows.y + 1;
     e.w := app.windows.w; e.h := app.windows.h;
-    IF e.x + e.w >= T.charsX THEN e.w := T.charsX - e.x END;
-    IF e.y + e.h >= T.charsY - 1 THEN e.h := T.charsY - e.y - 1 END;
+    T.Size(tW, tH);
+    IF e.x + e.w >= tW THEN e.w := tW - e.x END;
+    IF e.y + e.h >= tH - 1 THEN e.h := tH - e.y - 1 END;
     IF (e.w < 10) OR (e.h < 3) THEN
-      e.x := 0; e.y := 1; e.w := T.charsX; e.h := T.charsY - 2
+      e.x := 0; e.y := 1; e.w := tW; e.h := tH - 2
     END
   END;
   e.caption := 'NONAME??.Mod';
@@ -210,6 +217,61 @@ BEGIN res := 0;
   END
 END ReadInt;
 
+PROCEDURE ScrollScreen;
+VAR x, y, tW, tH: INTEGER;
+  cell: T.Cell;
+BEGIN
+  T.Size(tW, tH);
+  FOR y := 0 TO tH - 2 DO
+    FOR x := 0 TO tW - 1 DO
+      T.GetCell(x, y + 1, cell);
+      T.SetCell(x, y, cell.ch, cell.fg, cell.bg)
+    END
+  END;
+  FOR x := 0 TO tW - 1 DO
+    T.SetCell(x, tH - 1, ' ', curFg, curBg)
+  END
+END ScrollScreen;
+
+PROCEDURE Ln;
+VAR tW, tH: INTEGER;
+BEGIN T.Size(tW, tH); curX := 0;
+  IF curY >= tH - 1 THEN ScrollScreen; curY := tH - 1 ELSE INC(curY) END
+END Ln;
+
+PROCEDURE Write(ch: CHAR);
+VAR tW, tH: INTEGER;
+BEGIN
+  IF ch = 0AX THEN Ln
+  ELSE
+    T.SetCell(curX, curY, ch, curFg, curBg);
+    T.Size(tW, tH);
+    IF curX >= tW - 1 THEN
+      curX := 0;
+      IF curY >= tH - 1 THEN ScrollScreen; curY := tH - 1 ELSE INC(curY) END
+    ELSE INC(curX)
+    END
+  END
+END Write;
+
+PROCEDURE WriteString(s: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN i := 0;
+  WHILE s[i] # 0X DO Write(s[i]); INC(i) END
+END WriteString;
+
+PROCEDURE Backspace;
+VAR tW, tH: INTEGER;
+BEGIN
+  IF curX = 0 THEN
+    T.Size(tW, tH);
+    IF curY # 0 THEN curX := tW - 1; DEC(curY) END
+  ELSE
+    DEC(curX);
+  END;
+  T.SetCell(curX, curY, ' ', curBg, curFg)
+END Backspace;
+
 PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; fname: ARRAY OF CHAR;
     VAR line, col: INTEGER);
 VAR i, j, st, len, skip: INTEGER; found: BOOLEAN;
@@ -235,14 +297,6 @@ BEGIN fname[0] := 0X; line := 1; col := 1;
   END
 END ParseErrors;
 
-PROCEDURE HandleMouseMotion;
-VAR x, y, newX, newY: INTEGER;
-BEGIN
-  G.GetMousePos(x, y);
-  newX := x DIV T.charW;  newY := y DIV T.charH;
-  IF (newX # T.mouseX) OR (newY # T.mouseY) THEN T.MouseXY(newX, newY) END
-END HandleMouseMotion;
-
 PROCEDURE PollProgram;
 VAR len, i: INTEGER;
     err: INTEGER;
@@ -263,7 +317,7 @@ VAR len, i: INTEGER;
         INC(i); ch := CHR(ORD(progBuf[i]) + 96)
       ELSIF ch >= 080X THEN ch := '?'
       END;
-      T.Write(ch); INC(i)
+      Write(ch); INC(i)
     END
   END WriteProgBuf;
 
@@ -275,7 +329,7 @@ VAR len, i: INTEGER;
       Term.ReadFromProcess(progBuf, len, LEN(progBuf));
       IF len > 0 THEN
         IF inputBufLen > 0 THEN
-          FOR i := 0 TO inputBufLen - 1 DO T.Backspace END;
+          FOR i := 0 TO inputBufLen - 1 DO Backspace END;
           inputBufLen := 0
         END;
         WriteProgBuf
@@ -288,11 +342,11 @@ BEGIN
     IF Term.ProcessFinished(err) THEN
       Read(TRUE); (* Read everything until pipe is empty *)
       programFinished := TRUE;
-      IF tempWindowed THEN G.SwitchToFullscreen END;
+      IF tempWindowed THEN (*T.SwitchToFullscreen !FIXME *) END;
       IF err = 0 THEN
-        T.WriteString(' Press any key to return to IDE')
+        WriteString(' Press any key to return to IDE')
       ELSE s := ' Runtime error '; Int.Append(err, s);
-        T.WriteString(s)
+        WriteString(s)
       END
     ELSE
       Read(FALSE) (* Attempt several reads *)
@@ -313,61 +367,56 @@ BEGIN bufLen := 0; i := 0;
   Term.WriteToProcess(buf, bufLen)
 END WriteToProcess;
 
-PROCEDURE HandleTerminalKeyDown(key: G.Key; VAR quit: BOOLEAN);
+PROCEDURE HandleTerminalTextInput(ch: CHAR);
+BEGIN
+  IF (ch # 0X) & (inputBufLen < LEN(inputBuf)) THEN
+    inputBuf[inputBufLen] := ch; INC(inputBufLen); Write(ch)
+  END
+END HandleTerminalTextInput;
+
+PROCEDURE HandleTerminalKeyDown(VAR E: T.Event; VAR quit: BOOLEAN);
 VAR code: INTEGER; ch: CHAR; buf: ARRAY 2 OF SHORTCHAR;
 BEGIN
   IF programFinished THEN
-    IF (key.code = G.kEnter) & (key.mod * G.mAlt # {}) THEN
-      T.ToggleFullscreen
-    ELSIF (key.code # G.kAlt) & (key.code # G.kAltGr) THEN quit := TRUE
+    IF (E.key = T.kEnter) & (E.mod * T.mAlt # {}) THEN
+      (*T.ToggleFullscreen !FIXME *)
+    ELSIF (E.key # T.kAlt) & (E.key # T.kAltGr) THEN quit := TRUE
     END
   ELSE
-    CASE key.code OF
-      G.kEnter, G.kEnterPad:
-      IF key.mod * G.mAlt # {} THEN T.ToggleFullscreen
-      ELSE T.Ln;
+    CASE E.key OF
+      T.kEnter, T.kEnterPad:
+      IF E.mod * T.mAlt # {} THEN (*T.ToggleFullscreen !FIXME*)
+      ELSE Ln;
         WriteToProcess(inputBuf, inputBufLen);
         inputBufLen := 0; buf[0] := SHORT(CHR(0AH));
         Term.WriteToProcess(buf, 1)
       END
-    | G.kBackspace:
+    | T.kBackspace:
       IF inputBufLen > 0 THEN
-        DEC(inputBufLen); T.Backspace
+        DEC(inputBufLen); Backspace
       END
-    | G.kPause:
-      IF G.CtrlPressed() THEN
+    | T.kPause:
+      IF E.mod * T.mCtrl # {} THEN
         programFinished := TRUE;
         quit := TRUE (* !FIXME Kill the process *)
       END
     ELSE
+      HandleTerminalTextInput(E.ch)
     END
   END
 END HandleTerminalKeyDown;
 
-PROCEDURE HandleTerminalTextInput(s: ARRAY OF CHAR; ch: CHAR);
-BEGIN
-  IF (ch # 0X) & (inputBufLen < LEN(inputBuf)) THEN
-    inputBuf[inputBufLen] := ch; INC(inputBufLen); T.Write(ch)
-  END
-END HandleTerminalTextInput;
-
 PROCEDURE RunTerminal;
-VAR event: G.Event; quit: BOOLEAN;
+VAR E: T.Event; quit: BOOLEAN;
 BEGIN quit := FALSE;
-  T.ClearScreen; T.GoToXY(0, 0);
+  T.Clear; curX := 0; curY := 0; T.SetCursor(0, 0);
   REPEAT
-    G.WaitEvents(50);
-    WHILE G.PollEvent(event) DO
-      CASE event.type OF
-        G.mouseMove: HandleMouseMotion
-      | G.keyDown: HandleTerminalKeyDown(event.key, quit)
-      | G.textInput: HandleTerminalTextInput(event.s, event.ch)
-      ELSE
-      END
+    T.WaitEvent(E);
+    IF E.type = T.key THEN
+      HandleTerminalKeyDown(E, quit)
     END;
     PollProgram;
-    T.Act;
-    IF T.Draw() THEN G.Flip ELSE G.RepeatFlip END
+    T.Flush
   UNTIL quit
 END RunTerminal;
 
@@ -432,8 +481,10 @@ VAR buf: ARRAY bufLen OF SHORTCHAR;
   z: ARRAY 1024 OF CHAR;
   cmd: ARRAY 1024 OF CHAR;
   s, sN: ARRAY 80 OF CHAR;
+  tW, tH: INTEGER;
   success: BOOLEAN;
 BEGIN
+  T.Size(tW, tH);
   IF ~link THEN command := 'compile'
   ELSIF graph THEN command := 'link_graph'
   ELSE command := 'link_console'
@@ -445,7 +496,7 @@ BEGIN
       Strings.Append('" /C data\bin\', cmd);
       Strings.Append(command, cmd);
       Strings.Append('.bat ', cmd)
-    ELSE T.PutString(0, T.charsY - 1, 'Could not find cmd.exe', 15, 4, 0)
+    ELSE T.Print(0, tH - 1, 'Could not find cmd.exe', 15, 4)
     END
   ELSE (* Linux *)
     cmd := 'data/bin/'; Strings.Append(command, cmd);
@@ -485,8 +536,7 @@ BEGIN
       FocusOrOpenFile(fname);
       e := app.windows(Editor.Editor);
       e.text.MoveToLineCol(line, col, e.h - 2);
-      Editor.PrintText(app.windows(Editor.Editor));
-      T.ResetCursorBlink (* !FIXME *)
+      Editor.PrintText(app.windows(Editor.Editor))
     ELSIF link THEN z := 'Linking failed.'
     ELSE z := 'Compilation failed.'
     END;
@@ -559,15 +609,18 @@ PROCEDURE RunProgram(IN prg: ARRAY OF CHAR);
 VAR dir: ARRAY 256 OF CHAR;
   s, d: ARRAY 2048 OF SHORTCHAR;
   i: INTEGER;
+  tW, tH: INTEGER;
 BEGIN dir := prg$;
+  T.Size(tW, tH);
   i := 0; WHILE dir[i] # 0X DO INC(i) END;
   WHILE (i # -1) & (dir[i] # '/') & (dir[i] # '\') DO DEC(i) END; INC(i);
   dir[i] := 0X;
   Utf8.Encode(prg, s);
   Utf8.Encode(dir, d);
   IF ~Term.StartProcessIn(s, d) THEN
-    T.PutString(0, T.charsY - 1, ' Program execution failed ', 15, 4, 0);
-    IF T.Draw() THEN G.Flip; G.Pause END
+    T.Print(0, tH - 1, ' Program execution failed ', 15, 4);
+    T.Flush
+    (* ; T.Pause !FIXME*)
   ELSE
     programFinished := FALSE;
     RunTerminal
@@ -775,8 +828,8 @@ BEGIN w := c.app.windows;
       graph := ImportsGraph(modules);
       needWindowed := graph;
       IF CompileAll(modules, graph, exename) THEN
-        tempWindowed := needWindowed & T.isFullscreen;
-        IF tempWindowed THEN G.SwitchToWindowed END;
+        tempWindowed := needWindowed (*& T.isFullscreen !FIXME*);
+        IF tempWindowed THEN (*G.SwitchToWindowed !FIXME *) END;
         RunProgram(exename)
       END
     END
@@ -788,8 +841,10 @@ CONST W = 37; H = 13;
 VAR w: OV.Window; L: OV.Label; b: OV.Button;
   s: ARRAY 40 OF CHAR;
   Y: INTEGER;
+  tW, tH: INTEGER;
 BEGIN w := OV.NewWindow(); w.modal := TRUE; w.caption := 'About';
-  w.do.resize(w, (T.charsX - W) DIV 2, (T.charsY - H) DIV 2, W, H);
+  T.Size(tW, tH);
+  w.do.resize(w, (tW - W) DIV 2, (tH - H) DIV 2, W, H);
   Y := 2;
 
   L := OV.NewLabel('Free Oberon'); L.align := OV.center;
@@ -817,7 +872,9 @@ PROCEDURE TileWindows*(c: OV.Control);
 VAR W, E: OV.Control;
   count, cols, rows, i, col, x, y, w, h, w2, h2: INTEGER;
   aw, ah, dw, dh: INTEGER; (* Accumulator, delta *)
+  tW, tH: INTEGER;
 BEGIN E := app.windows; count := 0;
+  T.Size(tW, tH);
   IF E # NIL THEN W := E.next;
     WHILE W # NIL DO
       INC(count);
@@ -829,10 +886,10 @@ BEGIN E := app.windows; count := 0;
     END;
     rows := count DIV cols; col := 1;
     x := 0; y := 1;
-    w := T.charsX DIV cols; w2 := w;
-    dw := T.charsX MOD cols;
-    h := (T.charsY - 2) DIV rows;
-    dh := (T.charsY - 2) MOD rows;
+    w := tW DIV cols; w2 := w;
+    dw := tW MOD cols;
+    h := (tH - 2) DIV rows;
+    dh := (tH - 2) MOD rows;
     IF h < 2 THEN h := 2; dh := 0 END;
     aw := dw; ah := 0;
     W := E.next; i := 0;
@@ -848,9 +905,9 @@ BEGIN E := app.windows; count := 0;
         IF aw < cols THEN w2 := w ELSE w2 := w + 1; DEC(aw, cols) END;
         IF col = cols THEN (* Last column *)
           rows := count - rows * (cols - 1);
-          w := T.charsX - x;
-          h := (T.charsY - 2) DIV rows;
-          dh := (T.charsY - 2) MOD rows;
+          w := tW - x;
+          h := (tH - 2) DIV rows;
+          dh := (tH - 2) MOD rows;
           IF h < 2 THEN h := 2; dh := 0 END
         END
       END
@@ -861,14 +918,16 @@ END TileWindows;
 PROCEDURE CascadeWindows*(c: OV.Control);
 VAR W, E: OV.Control;
   x, y, w, h: INTEGER;
+  tW, tH: INTEGER;
 BEGIN E := app.windows;
-  x := 0; y := 1; w := T.charsX; h := T.charsY - 2;
+  T.Size(tW, tH);
+  x := 0; y := 1; w := tW; h := tH - 2;
   IF E # NIL THEN W := E.next;
     WHILE W # NIL DO
       OV.WindowResize(W, x, y, w, h);
       INC(x); INC(y); DEC(w); DEC(h);
       IF (w < 10) OR (h < 3) THEN
-        x := 0; y := 1; w := T.charsX; h := T.charsY - 2
+        x := 0; y := 1; w := tW; h := tH - 2
       END;
       IF W = E THEN W := NIL ELSE W := W.next END
     END
@@ -1086,9 +1145,12 @@ VAR success, fs, sw: BOOLEAN;
   w, h: INTEGER;
   fnames: Fnames;
 BEGIN
+  curX := 0; curY := 0;
   success := FALSE;
   ParseArgs(fs, sw, w, h, fnames);
-  IF T.Init(fs, sw, w, h) THEN
+  (*!FIXME Use T.Settings*)
+  T.Init;
+  IF T.Done THEN
     InitIDE;
     needWindowed := TRUE;
     ResetSysModules;
