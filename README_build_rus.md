@@ -18,35 +18,42 @@ cd FreeOberon
 mkdir bin
 ```
 
-3. Клонируйте репозиторий OfrontPlus:
+3. Клонируйте репозиторий OfrontPlus с помощью команды загрузки подмодулей:
 
-Сделайте это в подкаталоге `data/bin` так, чтобы
-появился каталог `FreeOberon/data/bin/OfrontPlus` .
 ```
-cd data/bin
-git clone https://github.com/Oleg-N-Cher/OfrontPlus.git
+git submodule update --init
 ```
+
+Каталог `FreeOberon/data/bin/OfrontPlus` заполнится файлами.
 
 4. Соберите OfrontPlus:
 
 ```
-cd OfrontPlus/Target/Linux_amd64/Bin
+cd data/bin/OfrontPlus/Target/Linux_amd64/Bin
 ./build
+
+cd ../../../../../../..
 ```
 
 5. Соберите Free Oberon:
 
 ```
-cd ../../../../../../..
 cd FreeOberon/src
 ./make.sh
 ```
 
 6. Запустите FreeOberon.
 
-Делайте это из каталога, в котором находится исполнимый файл `FreeOberon`.
+Это делается из каталога, в котором находится исполнимый файл `FreeOberon`.
+```
+./FreeOberon
+```
 
 Примечания:
 
 1. В будущем Free Oberon будет использовать Allegro5 вместо SDL2.
-2. При сохранении файла в Free Oberon, убедитесь, что вводимое вами название файла не содержит в своём начале `../`.
+2. Имя файла должно совпадать с названием модуля и иметь
+   расширение Mod (с заглавной буквы).
+
+
+Документ обновлён 14 декабря 2021 года
