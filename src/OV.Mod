@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT G := Graph, T := Terminal, Strings, StrList, Out, SYSTEM;
+IMPORT G := Graph, T := TermBox, Strings, StrList, Out, SYSTEM;
 CONST
   dblClickDelay* = 500;
 
@@ -599,7 +599,7 @@ TYPE
     refresh*: PROCEDURE (c: Control);
     click*: PROCEDURE (c: Control);
     dblClick*: PROCEDURE (c: Control);
-    keyDown*: PROCEDURE (c: Control; key: G.Key);
+    keyDown*: PROCEDURE (c: Control; E: T.Event);
     textInput*: PROCEDURE (c: Control; ch: CHAR);
     getFocus*: PROCEDURE (c: Control);
     lostFocus*: PROCEDURE (c: Control);
@@ -990,8 +990,8 @@ BEGIN c.focused := TRUE
 END ControlGetFocus;
 
 PROCEDURE ControlLostFocus*(c: Control);
-BEGIN c.focused := FALSE; G.StopTextInput;
-  T.ShowCursor(FALSE); NeedRedraw(c.app)
+BEGIN c.focused := FALSE;
+  T.HideCursor; NeedRedraw(c.app)
 END ControlLostFocus;
 
 PROCEDURE ControlClick*(c: Control);
@@ -1187,25 +1187,25 @@ PROCEDURE MenuKeyDown*(c: Control; key: G.Key);
 VAR p, p2, br: Control; found: BOOLEAN;
 BEGIN
   CASE key.code OF
-    G.kUp, G.kDown:
+    T.kUp, T.kDown:
     IF c.parent # c.app.menu THEN
       p := c;
       REPEAT
-        IF key.code = G.kUp THEN p := p.prev ELSE p := p.next END
+        IF key.code = T.kUp THEN p := p.prev ELSE p := p.next END
       UNTIL (p = c) OR (p.caption # '-') & (p.status # disabled);
       c.status := normal; p.status := selected; SetFocus(p);
       NeedRedraw(c.app)
     END
-  | G.kLeft, G.kRight: p := c;
+  | T.kLeft, T.kRight: p := c;
     WHILE p.parent # p.app.menu DO p := p.parent END;
-    IF key.code = G.kLeft THEN p := p.prev ELSE p := p.next END;
+    IF key.code = T.kLeft THEN p := p.prev ELSE p := p.next END;
     p.status := open;
     p2 := FindSelectedChild(p);
     IF p2 = NIL THEN p2 := p END;
     SetFocus(p2);
     NeedRedraw(c.app)
-  | G.kEnter: c.do.click(c)
-  | G.kEsc:
+  | T.kEnter: c.do.click(c)
+  | T.kEsc:
     IF c.parent.parent = c.app.menu THEN
       c.parent.status := normal; UnsetFocus(c.app)
     ELSE
@@ -1736,13 +1736,13 @@ PROCEDURE EditKeyDown*(c: Control; key: G.Key);
 VAR e: Edit; redraw: BOOLEAN;
 BEGIN e := c(Edit); redraw := TRUE;
   CASE key.code OF
-    G.kLeft: IF e.pos > 0 THEN DEC(e.pos) END
-  | G.kRight: IF e.pos < e.len THEN INC(e.pos) END
-  | G.kBackspace:
+    T.kLeft: IF e.pos > 0 THEN DEC(e.pos) END
+  | T.kRight: IF e.pos < e.len THEN INC(e.pos) END
+  | T.kBackspace:
     IF e.pos > 0 THEN DeleteChar(e.caption, e.pos - 1, e.len); DEC(e.pos) END
-  | G.kDel: IF e.pos < e.len THEN DeleteChar(e.caption, e.pos, e.len) END
-  | G.kHome: e.pos := 0
-  | G.kEnd: e.pos := e.len
+  | T.kDel: IF e.pos < e.len THEN DeleteChar(e.caption, e.pos, e.len) END
+  | T.kHome: e.pos := 0
+  | T.kEnd: e.pos := e.len
   ELSE redraw := FALSE
   END;
   IF redraw THEN NeedRedraw(c.app); T.ResetCursorBlink END
@@ -1907,14 +1907,14 @@ VAR C: ColumnList; sb: Scrollbar;
   h, cur: INTEGER;
 BEGIN C := c(ColumnList); sb := C.scrollbar; cur := C.cur; h := C.h - 1;
   CASE key.code OF
-    G.kLeft: DEC(cur, h)
-  | G.kRight: INC(cur, h)
-  | G.kUp: DEC(cur)
-  | G.kDown: INC(cur)
-  | G.kHome: cur := sb.cur * h
-  | G.kEnd: cur := (sb.cur + C.cols) * h - 1
-  | G.kPgUp: DEC(cur, C.cols * h); DEC(sb.cur, C.cols)
-  | G.kPgDn: INC(cur, C.cols * h); INC(sb.cur, C.cols)
+    T.kLeft: DEC(cur, h)
+  | T.kRight: INC(cur, h)
+  | T.kUp: DEC(cur)
+  | T.kDown: INC(cur)
+  | T.kHome: cur := sb.cur * h
+  | T.kEnd: cur := (sb.cur + C.cols) * h - 1
+  | T.kPgUp: DEC(cur, C.cols * h); DEC(sb.cur, C.cols)
+  | T.kPgDn: INC(cur, C.cols * h); INC(sb.cur, C.cols)
   ELSE END;
   ColumnListSetCur(C, cur)
 END ColumnListKeyDown;
@@ -2213,12 +2213,12 @@ BEGIN p := c.children;
   END ;
 RETURN p END FindDefaultControl;
 
-PROCEDURE WindowKeyDown*(c: Control; key: G.Key);
+PROCEDURE WindowKeyDown*(c: Control; E: T.Event);
 VAR d: Control;
 BEGIN
-  CASE key.code OF
-    G.kEsc: IF c(Window).closeOnEsc THEN CloseCurWindow(c) END
-  | G.kEnter: d := FindDefaultControl(c);
+  CASE E.key OF
+    T.kEsc: IF c(Window).closeOnEsc THEN CloseCurWindow(c) END
+  | T.kEnter: d := FindDefaultControl(c);
     IF (d # NIL) & (d.do.click # NIL) THEN d.do.click(d) END
   ELSE END
 END WindowKeyDown;
@@ -2336,9 +2336,9 @@ VAR m: Menu;
   handled: BOOLEAN;
 BEGIN handled := FALSE; hotkey := key.code;
   IF (hotkey # 0) & ~HasModalWindow(app) THEN
-    IF key.mod * G.mCtrl  # {} THEN INC(hotkey, 100H) END;
-    IF key.mod * G.mAlt   # {} THEN INC(hotkey, 200H) END;
-    IF key.mod * G.mShift # {} THEN INC(hotkey, 400H) END;
+    IF key.mod * T.mCtrl  # {} THEN INC(hotkey, 100H) END;
+    IF key.mod * T.mAlt   # {} THEN INC(hotkey, 200H) END;
+    IF key.mod * T.mShift # {} THEN INC(hotkey, 400H) END;
     m := FindMenuWithHotkey(app.menu, hotkey);
     IF m # NIL THEN handled := TRUE;
       IF m.do.click # NIL THEN m.do.click(m) END
@@ -2389,22 +2389,29 @@ BEGIN worked := FALSE; p := app.cur;
   END ;
 RETURN worked END OnTabPress;
 
+PROCEDURE OnTextInput(app: App; ch: CHAR);
+BEGIN
+  IF (app.cur # NIL) & (app.cur.do.textInput # NIL) THEN
+    app.cur.do.textInput(app.cur, ch)
+  END
+END OnTextInput;
+
 PROCEDURE OnKeyDown(app: App; key: G.Key);
 VAR handled: BOOLEAN; p: Control;
 BEGIN handled := FALSE; p := app.cur;
-  IF (key.mod * (G.mCtrl + G.mAlt + G.mShift) # {}) OR
-     (G.kF1 <= key.code) & (key.code <= G.kF12) OR
-     (key.code = G.kPause) THEN
+  IF (key.mod * (T.mCtrl + T.mAlt + T.mShift) # {}) OR
+     (T.kF1 <= key.code) & (key.code <= T.kF12) OR
+     (key.code = T.kPause) THEN
     handled := CheckHotkey(app, key);
-    IF ~handled & (key.mod * G.mAlt # {}) THEN
+    IF ~handled & (key.mod * T.mAlt # {}) THEN
       handled := CheckMenuOpenKey(app, key)
     END
   END;
   IF ~handled THEN
-    IF (key.code = G.kEnter) & (key.mod * G.mAlt # {}) THEN
+    IF (key.code = T.kEnter) & (key.mod * T.mAlt # {}) THEN
       T.ToggleFullscreen
     ELSIF p # NIL THEN
-      IF (key.code # G.kTab) OR ~OnTabPress(app, key.mod * G.mShift # {}) THEN
+      IF (key.code # T.kTab) OR ~OnTabPress(app, key.mod * T.mShift # {}) THEN
         IF p.do.keyDown # NIL THEN p.do.keyDown(p, key) END;
         IF (p.parent # NIL) & (p.parent IS Window) &
            (p.parent.do.keyDown # NIL) THEN
@@ -2412,15 +2419,9 @@ BEGIN handled := FALSE; p := app.cur;
         END
       END
     END
-  END
+  END;
+  (*!FIXME OnTextInput(app, E.ch) ??*)
 END OnKeyDown;
-
-PROCEDURE OnTextInput(app: App; ch: CHAR);
-BEGIN
-  IF (app.cur # NIL) & (app.cur.do.textInput # NIL) THEN
-    app.cur.do.textInput(app.cur, ch)
-  END
-END OnTextInput;
 
 PROCEDURE GetWindowAt(app: App; x, y: INTEGER): Control;
 VAR p, br: Control;
@@ -2494,22 +2495,19 @@ BEGIN x := event.x DIV T.charW; y := event.y DIV T.charH;
 END OnMouseUp;
 
 PROCEDURE RunApp*(app: App);
-VAR event: G.Event;
+VAR E: T.Event;
 BEGIN
   app.quit := FALSE;
   DrawApp(app);
   REPEAT
-    G.WaitEvents(50);
-    WHILE G.PollEvent(event) DO
-      CASE event.type OF
-        G.mouseMove: OnMouseMove(app, event)
-      | G.mouseDown: OnMouseDown(app, event)
-      | G.mouseUp: OnMouseUp(app, event)
-      | G.keyDown: OnKeyDown(app, event.key)
-      | G.textInput: OnTextInput(app, event.ch)
-      | G.quit: app.quit := TRUE
-      ELSE
-      END
+    T.WaitEvent(E);
+    CASE E.type OF
+      T.mouseMove: OnMouseMove(app, E)
+    | T.mouseDown: OnMouseDown(app, E)
+    | T.mouseUp: OnMouseUp(app, E)
+    | T.key: OnKeyDown(app, E);
+    | T.quit: app.quit := TRUE
+    ELSE
     END;
     T.Act;
     IF app.needRedraw THEN DrawApp(app) END;

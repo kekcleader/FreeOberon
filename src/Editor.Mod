@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT OV, T := Terminal, G := Graph, Text := EditorText,
+IMPORT OV, T := TermBox, Text := EditorText,
   Strings, StrList, Dir, Out;
 CONST
   stdPath* = 'Programs/';
@@ -509,12 +509,14 @@ RETURN color END GetTokenColor;
 PROCEDURE PutStringH*(x, y: INTEGER; s: ARRAY OF CHAR;
   bg, limit: INTEGER; VAR comLevel: INTEGER);
 VAR i, fg, class, len: INTEGER;
+  tW, tH: INTEGER;
 BEGIN
-  IF limit = 0 THEN limit := T.charsX END;
+  T.Size(tW, tH);
+  IF limit = 0 THEN limit := tW END;
   GetToken(s, 0, class, len, comLevel);
   fg := GetTokenColor(class); i := 0;
   WHILE (s[i] # 0X) & (x < limit) DO
-    T.PutChar(x, y, s[i], fg, bg);
+    T.SetCell(x, y, s[i], fg, bg);
     INC(i); INC(x); DEC(len);
     IF len <= 0 THEN
       GetToken(s, i, class, len, comLevel);
@@ -524,7 +526,7 @@ BEGIN
   DEC(i);
   WHILE (i >= 0) & (s[i] = ' ') DO
     DEC(x);
-    T.PutChar(x, y, 0FAX, 3, bg);
+    T.SetCell(x, y, 0FAX(*!FIXME*), 3, bg);
     DEC(i)
   END
 END PutStringH;
@@ -541,8 +543,8 @@ BEGIN
   WHILE (s[i] # 0X) & (x < limit) DO
     IF i = x1 + 1 THEN sel := FALSE
     ELSIF i = x0 THEN sel := TRUE END;
-    IF sel THEN T.PutChar(x, y, s[i], fgSel, bgSel)
-    ELSE T.PutChar(x, y, s[i], fg, bg) END;
+    IF sel THEN T.SetCell(x, y, s[i], fgSel, bgSel)
+    ELSE T.SetCell(x, y, s[i], fg, bg) END;
     INC(i); INC(x); DEC(len);
     IF len <= 0 THEN
       GetToken(s, i, class, len, comLevel);
@@ -555,11 +557,23 @@ PROCEDURE TextChanged*(c: Editor): BOOLEAN;
 BEGIN RETURN c.text.changed
 END TextChanged;
 
+PROCEDURE CharFill(x, y, w, h: INTEGER; ch: CHAR; fg, bg: INTEGER);
+VAR X, Y: INTEGER;
+BEGIN
+  FOR Y := y TO y + h - 1 DO
+    FOR X := x TO x + w - 1 DO
+      T.SetCell(X, Y, ch, fg, bg)
+    END
+  END
+END CharFill;
+
 PROCEDURE PrintText*(c: Editor);
 VAR L: Text.Line; scrY: INTEGER;
   textY, x0, x1, minX, maxX, maxY, comLevel: INTEGER;
   cursorHandled: BOOLEAN;
-BEGIN T.CharFill(c.x + 1, c.y + 1, c.w - 2, c.h - 2, ' ', 15, c.bg);
+  tW, tH: INTEGER;
+BEGIN T.Size(tW, tH);
+  CharFill(c.x + 1, c.y + 1, c.w - 2, c.h - 2, ' ', 15, c.bg);
   L := c.text.scrFirst; scrY := c.y + 1; textY := c.text.scrY;
   minX := c.x + 1; maxX := c.x + c.w - 1;
   maxY := c.y + c.h - 1; comLevel := L.comLevel;
@@ -571,18 +585,18 @@ BEGIN T.CharFill(c.x + 1, c.y + 1, c.w - 2, c.h - 2, ' ', 15, c.bg);
       PutSelStringH(minX, scrY, L.s, c.bg, maxX, comLevel, 1, 7, x0, x1)
     ELSE PutStringH(minX, scrY, L.s, c.bg, maxX, comLevel)
     END;
-    IF (L = c.text.cur) & (c.text.x + 1 < T.charsX) &
+    IF (L = c.text.cur) & (c.text.x + 1 < tW) &
        ~OV.HasModalWindow(c.app) THEN
       x0 := minX + c.text.x;
       IF c.focused & (x0 <= maxX) THEN
-        T.ShowCursor(TRUE); T.GoToXY(x0, scrY);
+        T.SetCursor(x0, scrY);
         cursorHandled := TRUE
       END
     END;
     L := L.next; INC(scrY); INC(textY);
     IF L # NIL THEN L.comLevel := comLevel END
   END;
-  IF c.focused & ~cursorHandled THEN T.ShowCursor(FALSE) END
+  IF c.focused & ~cursorHandled THEN T.HideCursor END
 END PrintText;
 
 PROCEDURE StartSelection(c: Editor);
@@ -614,7 +628,7 @@ END Order;
 PROCEDURE HandleSelection(c: Editor; dir: INTEGER; viaHoriz: BOOLEAN);
 VAR mod: SET; onLeft, onRight: BOOLEAN;
 BEGIN
-  IF ~G.ShiftPressed() THEN c.text.selected := FALSE
+  IF FALSE (*!FIXME ~T.ShiftPressed()*) THEN c.text.selected := FALSE
   ELSE CheckSelBorders(c, onLeft, onRight);
     IF ~c.text.selected OR (~onLeft & ~onRight) THEN
       StartSelection(c); (* Reset/new selection *)
@@ -689,8 +703,7 @@ BEGIN
   ELSE (* Up *)
     ASSERT(c.text.scrFirst.prev # NIL, 98); ASSERT(c.text.scrY > 0, 99);
     c.text.scrFirst := c.text.scrFirst.prev; DEC(c.text.scrY)
-  END;
-  T.ResetCursorBlink
+  END
 END MoveScreenByLine;
 
 PROCEDURE MoveScreen(c: Editor; delta: INTEGER);
@@ -728,8 +741,7 @@ BEGIN c.text.MaybeRemoveIndent; moved := FALSE;
   IF moved THEN
     IF c.text.x > c.text.cur.len THEN c.text.x := c.text.cur.len END;
     PrintText(c)
-  END;
-  T.ResetCursorBlink
+  END
 END MoveByLine;
 
 (* Moves input cursor up and down by page *)
@@ -753,7 +765,6 @@ BEGIN c.text.MaybeRemoveIndent; i := c.h - 3;
       DEC(i)
     END
   END;
-  T.ResetCursorBlink;
   IF moved THEN PrintText(c) END
 END MoveByPage;
 
@@ -774,8 +785,7 @@ BEGIN
       MoveByLine(c, FALSE, TRUE);
       c.text.x := c.text.cur.len;
     END
-  END;
-  T.ResetCursorBlink
+  END
 END MoveInLine;
 
 (* Moves input cursor left and right by one word *)
@@ -801,7 +811,7 @@ END MoveByWord;
 PROCEDURE MoveToLineEdge(c: Editor; end: BOOLEAN);
 VAR onLeft, onRight: BOOLEAN;
 BEGIN
-  IF G.ShiftPressed() THEN
+  IF FALSE (*!FIXME T.ShiftPressed()*) THEN
     IF ~c.text.selected THEN StartSelection(c)
     ELSE
       CheckSelBorders(c, onLeft, onRight);
@@ -822,7 +832,6 @@ BEGIN
   ELSE (* Home *)
     IF c.text.x > 0 THEN c.text.x := 0 END
   END;
-  T.ResetCursorBlink;
   PrintText(c)
 END MoveToLineEdge;
 
@@ -944,7 +953,7 @@ BEGIN OV.WindowMouseDown(c, x, y, button);
       t.cur := L; t.y := y + t.scrY;
       IF x > L.len THEN x := L.len END;
       t.x := x;
-      T.GoToXY(c.x + x + 1, c.y + y + 1)
+      T.SetCursor(c.x + x + 1, c.y + y + 1)
     END;
     PrintText(c(Editor))
   END
@@ -960,7 +969,7 @@ END EditorMouseMove;
 
 PROCEDURE EditorTextInput(c: OV.Control; ch: CHAR);
 BEGIN
-  IF ch # 0X THEN c(Editor).text.InsertChar(ch); T.ResetCursorBlink;
+  IF ch # 0X THEN c(Editor).text.InsertChar(ch);
     c(Editor).text.selected := FALSE; PrintText(c(Editor))
   END
 END EditorTextInput;
@@ -971,36 +980,36 @@ BEGIN E := c(Editor);
   (*IF E.text.changed THEN cancel := TRUE END*) (*!TODO Ask*)
 END EditorClose;
 
-PROCEDURE EditorKeyDown*(c: OV.Control; key: G.Key);
-BEGIN OV.WindowKeyDown(c, key);
-  CASE key.code OF
-    G.kLeft:
-    IF key.mod * G.mCtrl # {} THEN MoveByWord(c(Editor), FALSE)
+PROCEDURE EditorKeyDown*(c: OV.Control; E: T.Event);
+BEGIN OV.WindowKeyDown(c, E);
+  CASE E.key OF
+    T.kLeft:
+    IF E.mod * T.mCtrl # {} THEN MoveByWord(c(Editor), FALSE)
     ELSE MoveInLine(c(Editor), FALSE)
     END;
     PrintText(c(Editor))
-  | G.kRight:
-    IF key.mod * G.mCtrl # {} THEN MoveByWord(c(Editor), TRUE)
+  | T.kRight:
+    IF E.mod * T.mCtrl # {} THEN MoveByWord(c(Editor), TRUE)
     ELSE MoveInLine(c(Editor), TRUE)
     END;
     PrintText(c(Editor))
-  | G.kUp:        MoveByLine(c(Editor), FALSE, FALSE)
-  | G.kDown:      MoveByLine(c(Editor), TRUE, FALSE)
-  | G.kHome:      MoveToLineEdge(c(Editor), FALSE)
-  | G.kEnd:       MoveToLineEdge(c(Editor), TRUE)
-  | G.kPgUp:      MoveByPage(c(Editor), FALSE)
-  | G.kPgDn:      MoveByPage(c(Editor), TRUE)
-  | G.kBackspace: HandleBackspace(c(Editor))
-  | G.kDel:       HandleDelete(c(Editor))
-  | G.kEnter, G.kEnterPad: HandleEnter(c(Editor))
-  | G.kTab:       HandleTab(c(Editor), key.mod * G.mShift # {})
+  | T.kUp:        MoveByLine(c(Editor), FALSE, FALSE)
+  | T.kDown:      MoveByLine(c(Editor), TRUE, FALSE)
+  | T.kHome:      MoveToLineEdge(c(Editor), FALSE)
+  | T.kEnd:       MoveToLineEdge(c(Editor), TRUE)
+  | T.kPgUp:      MoveByPage(c(Editor), FALSE)
+  | T.kPgDn:      MoveByPage(c(Editor), TRUE)
+  | T.kBackspace: HandleBackspace(c(Editor))
+  | T.kDel:       HandleDelete(c(Editor))
+  | T.kEnter, T.kEnterPad: HandleEnter(c(Editor))
+  | T.kTab:       HandleTab(c(Editor), E.mod * T.mShift # {})
   ELSE END
 END EditorKeyDown;
 
 PROCEDURE EditorGetFocus*(c: OV.Control);
 BEGIN
   IF OV.windowMethod.getFocus # NIL THEN OV.windowMethod.getFocus(c) END;
-  G.StartTextInput; T.ShowCursor(TRUE)
+  T.SetCursor(c.x, c.y) (*!FIXME correct?*)
 END EditorGetFocus;
 
 PROCEDURE EditorRefresh(c: OV.Control);

@@ -1164,5 +1164,5 @@ BEGIN
   IF ~Init() THEN Out.String('Could not initialize.'); Out.Ln
   ELSE OV.RunApp(app)
   END;
-  G.Close
+  T.Close
 END FreeOberon.
