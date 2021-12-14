@@ -250,6 +250,7 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.colFiles.onDblClick := FileDialogOkClick;
   c.colFiles.do.resize(c.colFiles, 3, 6, c.w - 18, c.h - 8);
   FileDialogUpdateFileList(c);
+  OV.EditSetCaption(c.edtFilename, '');
   OV.Refresh(c.colFiles);
   OV.Add(c, c.colFiles)
 END InitFileDialog;
