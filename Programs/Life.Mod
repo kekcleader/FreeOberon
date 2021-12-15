@@ -1,5 +1,5 @@
 MODULE Life;
-IMPORT G := Graph;
+IMPORT G := Graph, Random;
 CONST maxW = 60*4; maxH = 33*4;
   cellSize = 4;
   initial = 0.44;
@@ -92,7 +92,7 @@ BEGIN
 
   FOR y := 0 TO H - 1 DO
     FOR x := 0 TO W - 1 DO
-      m[y, x] := G.Uniform() < initial
+      m[y, x] := Random.Uniform() < initial
     END
   END;
   x0 := (S.w - cellSize * W) DIV 2;
