@@ -65,7 +65,7 @@ BEGIN G.Settings(0, 0, {G.fullscreen, G.spread});
   x := -0.619; y := -0.456; r := 0.1;
   Set(x, y, r);
   angle := 0.0; col := 0;
-  REPEAT Draw; angle := angle + M.pi / 90.0 * 4;
+  REPEAT Draw; angle := angle + M.pi / 90.0;
     IF angle > M.pi * 2.0 THEN
       angle := 0.0;
       col := (col + 1) MOD 7;
