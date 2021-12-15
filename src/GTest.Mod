@@ -60,8 +60,10 @@ BEGIN
 
   IF mX # -1 THEN G.Draw(B, mX - B.w, mY - B.h) END;
 
+  G.DrawString('Привет, Оберон!', 17, 17, font, c1);
   G.DrawString('Привет, Оберон!', 16, 16, font, c2);
-  G.DrawString('Aŭ! Ķolorōĵ jam ļāboŗaš!', 16, 32, font, c2);
+  G.DrawString('Lai dzīvo Oberona nedēļa!', 17, 33, font, c1);
+  G.DrawString('Lai dzīvo Oberona nedēļa!', 16, 32, font, c2);
 
   G.Flip
 END DrawWin;
@@ -102,7 +104,7 @@ BEGIN
       IF e.dz # 0 THEN
         Out.String('e.dz = '); Out.Int(e.dz, 0); Out.Ln;
         G.ColorToRGB(c1, r, g, b);
-        r := (r + e.dz * 8) MOD 256;
+        g := (g + e.dz * 8) MOD 256;
         G.MakeCol(c1, r, g, b);
         z := (FLT(FLOOR(G.GetWindowZoom(e.window) * 10 + 0.5)) + e.dz) / 10;
         IF z < 0.3 THEN z := 0.3 END;
