@@ -18,6 +18,9 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT T := TermBox, Strings, StrList, Out, SYSTEM;
 CONST
+  minInt = -70000000H-1;
+  maxInt = 7FFFFFFFH;
+
   dblClickDelay* = 500;
 
   (* ControlDesc.status possible values *)
@@ -574,7 +577,7 @@ TYPE
   ClickHandler* = PROCEDURE (c: Control);
   ChangeHandler* = ClickHandler;
 
-  ControlDesc* = EXTENSIBLE RECORD
+  ControlDesc* = RECORD
     app*: App;
     parent*, children*: Control;
     prev*, next*: Control;
@@ -592,7 +595,7 @@ TYPE
     do*: ControlMethod
   END;
 
-  ControlMethodDesc* = EXTENSIBLE RECORD
+  ControlMethodDesc* = RECORD
     added*: PROCEDURE (c, child: Control);
     draw*: PROCEDURE (c: Control; x, y: INTEGER);
     resize*: PROCEDURE (c: Control; x, y, w, h: INTEGER);
@@ -610,7 +613,7 @@ TYPE
   END;
 
   Menu* = POINTER TO MenuDesc;
-  MenuDesc* = EXTENSIBLE RECORD(ControlDesc)
+  MenuDesc* = RECORD(ControlDesc)
     innerW*, innerH*: INTEGER;
     hint*: ARRAY 40 OF CHAR;
     hintW*: INTEGER;
@@ -619,22 +622,22 @@ TYPE
   END;
 
   Label* = POINTER TO LabelDesc;
-  LabelDesc* = EXTENSIBLE RECORD(ControlDesc)
+  LabelDesc* = RECORD(ControlDesc)
     len*: INTEGER;
     align*: INTEGER (* See constants above *)
   END;
 
   QuickBtn* = POINTER TO QuickBtnDesc;
-  QuickBtnDesc* = EXTENSIBLE RECORD(MenuDesc) END;
+  QuickBtnDesc* = RECORD(MenuDesc) END;
 
   Button* = POINTER TO ButtonDesc;
-  ButtonDesc* = EXTENSIBLE RECORD(ControlDesc) END;
+  ButtonDesc* = RECORD(ControlDesc) END;
 
   WinBtn* = POINTER TO WinBtnDesc;
-  WinBtnDesc* = EXTENSIBLE RECORD(ButtonDesc) END;
+  WinBtnDesc* = RECORD(ButtonDesc) END;
 
   Scrollbar* = POINTER TO ScrollbarDesc;
-  ScrollbarDesc* = EXTENSIBLE RECORD(ControlDesc)
+  ScrollbarDesc* = RECORD(ControlDesc)
     max*, cur*: INTEGER; (* cur is runner position in range 0..max *)
     runnerOffset*: INTEGER; (* Current visual position of runner *)
     runnerW*: INTEGER; (* Visual width of runner *)
@@ -642,13 +645,13 @@ TYPE
   END;
 
   Edit* = POINTER TO EditDesc;
-  EditDesc* = EXTENSIBLE RECORD(ControlDesc)
+  EditDesc* = RECORD(ControlDesc)
     len*: INTEGER; (* Actual amount of characters before 0X *)
     pos*: INTEGER
   END;
 
   ColumnList* = POINTER TO ColumnListDesc;
-  ColumnListDesc* = EXTENSIBLE RECORD(ControlDesc)
+  ColumnListDesc* = RECORD(ControlDesc)
     cols*: INTEGER; (* Column count *)
     items*: StrList.List;
     begin*: INTEGER; (* What index list begins with visually *)
@@ -658,7 +661,7 @@ TYPE
   END;
 
   Window* = POINTER TO WindowDesc;
-  WindowDesc* = EXTENSIBLE RECORD(ControlDesc)
+  WindowDesc* = RECORD(ControlDesc)
     cur*: Control;
     modal*: BOOLEAN;
     resizable*: BOOLEAN;
@@ -670,7 +673,7 @@ TYPE
     mx*, my*, mw*, mh*: INTEGER (* To store x, y, w, h when maximized *)
   END;
 
-  AppDesc* = EXTENSIBLE RECORD
+  AppDesc* = RECORD
     windows*: Window;
     menu*: Menu;
     statusbar*: Menu;
@@ -685,16 +688,16 @@ TYPE
   END;
 
 VAR
-  controlMethod-: ControlMethod;
-  labelMethod-: ControlMethod;
-  quickBtnMethod-: ControlMethod;
-  buttonMethod-: ControlMethod;
-  winBtnMethod-: ControlMethod;
-  scrollbarMethod-: ControlMethod;
-  editMethod-: ControlMethod;
-  columnListMethod-: ControlMethod;
-  windowMethod-: ControlMethod;
-  menuMethod-: ControlMethod;
+  controlMethod*: ControlMethod;
+  labelMethod*: ControlMethod;
+  quickBtnMethod*: ControlMethod;
+  buttonMethod*: ControlMethod;
+  winBtnMethod*: ControlMethod;
+  scrollbarMethod*: ControlMethod;
+  editMethod*: ControlMethod;
+  columnListMethod*: ControlMethod;
+  windowMethod*: ControlMethod;
+  menuMethod*: ControlMethod;
 
   ticks: INTEGER;
 
@@ -702,7 +705,7 @@ PROCEDURE DrawAppWindows*(app: App);
 VAR w, br: Control;
   tW, tH: INTEGER;
 BEGIN T.Size(tW, tH);
-  T.Fill(0, 1, tW, tH - 2, CHR(176), 1, 7);
+  T.Fill(0, 1, tW, tH - 2, T.lightShade, 1, 7);
   IF app.windows # NIL THEN
     w := app.windows.next; br := w;
     REPEAT w.do.draw(w, 0, 0); w := w.next UNTIL w = br
@@ -850,39 +853,45 @@ BEGIN single := moving OR inactive;
     IF bg = 7 THEN fg := 8 ELSE fg := 7 END
   END;
   x2 := x + w - 1; y2 := y + h - 1;
-  IF single THEN ch := 0C4X(*-*) ELSE ch := 0CDX(*=*) END;
+  IF single THEN ch := T.lineHor ELSE ch := T.doubleHor END;
   FOR i := x + 1 TO x2 - 1 DO
     T.SetCell(i, y, ch, fg, bg);
     T.SetCell(i, y2, ch, fg, bg)
   END;
-  IF single THEN ch := 0B3X(*|*) ELSE ch := 0BAX(*||*) END;
+  IF single THEN ch := T.lineVert ELSE ch := T.doubleVert END;
   FOR i := y + 1 TO y2 - 1 DO T.SetCell(x, i, ch, fg, bg) END;
   IF resizable & ~inactive THEN (* Vertical Scrollbarbar: *)
-    FOR i := y + 2 TO y2 - 2 DO T.SetCell(x2, i, 0B1X, bg, 3) END;
-    T.SetCell(x2, y + 1, 01EX, bg, 3);
-    T.SetCell(x2, y2 - 1, 01FX, bg, 3)
+    FOR i := y + 2 TO y2 - 2 DO T.SetCell(x2, i, T.mediumShade, bg, 3) END;
+    T.SetCell(x2, y + 1, T.triangleUp, bg, 3);
+    T.SetCell(x2, y2 - 1, T.triangleDown, bg, 3)
   ELSE
-    IF single THEN ch := 0B3X(*|*) ELSE ch := 0BAX(*||*) END;
+    IF single THEN ch := T.lineVert ELSE ch := T.doubleVert END;
     FOR i := y + 1 TO y2 - 1 DO T.SetCell(x2, i, ch, fg, bg) END
   END; (* Corners: *)
-  IF single THEN T.SetCell(x, y, 0DAX, fg, bg);
-    T.SetCell(x2, y, 0BFX, fg, bg); T.SetCell(x, y2, 0C0X, fg, bg)
-  ELSE T.SetCell(x, y, 0C9X, fg, bg);
-    T.SetCell(x2, y, 0BBX, fg, bg); T.SetCell(x, y2, 0C8X, fg, bg)
+  IF single THEN
+    T.SetCell(x, y, T.lineDownRight, fg, bg);
+    T.SetCell(x2, y, T.lineDownLeft, fg, bg);
+    T.SetCell(x, y2, T.lineUpRight, fg, bg)
+  ELSE
+    T.SetCell(x, y, T.doubleDownRight, fg, bg);
+    T.SetCell(x2, y, T.doubleDownLeft, fg, bg);
+    T.SetCell(x, y2, T.doubleUpRight, fg, bg)
   END;
   IF resizable & ~inactive THEN (* Corner: *)
-    T.SetCell(x2 - 1, y2, 0C4X, 10, bg);
-    T.SetCell(x2, y2, 0D9X, 10, bg); (* Maximize button: *)
-    T.SetCell(x2 - 4, y, '[', fg, bg);
-    IF (w = tW) & (h = tH - 2) THEN i := 18 ELSE i := 24 END;
-    T.SetCell(x2 - 3, y, CHR(i), 10, bg);
+    T.SetCell(x2 - 1, y2, T.lineHor, 10, bg);
+    T.SetCell(x2, y2, T.lineUpLeft, 10, bg);
+    T.SetCell(x2 - 4, y, '[', fg, bg); (* Maximize button *)
+    IF (w = tW) & (h = tH - 2) THEN ch := T.arrowUpDown
+    ELSE ch := T.arrowUp
+    END;
+    T.SetCell(x2 - 3, y, ch, 10, bg);
     T.SetCell(x2 - 2, y, ']', fg, bg);
   ELSIF single THEN T.SetCell(x2, y2, 0D9X, fg, bg)
   ELSE T.SetCell(x2, y2, 0BCX, fg, bg)
   END; (* Close button: *)
   IF ~inactive THEN
     T.SetCell(x + 2, y, '[', fg, bg);
-    T.SetCell(x + 3, y, 0FEX, 10, bg);
+    T.SetCell(x + 3, y, T.blackSquare, 10, bg);
     T.SetCell(x + 4, y, ']', fg, bg)
   END;
   IF x2 < tW - 1 THEN (* Right shadow: *)
@@ -1063,9 +1072,9 @@ END InitControlMethod;
 PROCEDURE InitMenu*(m: Menu; caption, hint: ARRAY OF CHAR;
     hotkey: INTEGER; onClick: ClickHandler);
 BEGIN InitControl(m);
-  m.caption := caption$;
+  m.caption := caption;
   m.innerW := 0; m.innerH := 0;
-  m.hint := hint$; m.hintW := 0;
+  m.hint := hint; m.hintW := 0;
   m.hotkey := hotkey;
   m.lastSelected := NIL;
   m.onClick := onClick;
@@ -1207,17 +1216,15 @@ RETURN (c.caption[i] # 0X) & (CAP(c.caption[i + 1]) = CAP(ch)) END MenuHotkey;
 PROCEDURE MenuKeyDown*(c: Control; VAR E: T.Event);
 VAR p, p2, br: Control; found: BOOLEAN;
 BEGIN
-  CASE E.key OF
-    T.kUp, T.kDown:
-    IF c.parent # c.app.menu THEN
-      p := c;
+  IF (E.key = T.kUp) OR (E.key = T.kDown) THEN
+    IF c.parent # c.app.menu THEN p := c;
       REPEAT
         IF E.key = T.kUp THEN p := p.prev ELSE p := p.next END
       UNTIL (p = c) OR (p.caption # '-') & (p.status # disabled);
       c.status := normal; p.status := selected; SetFocus(p);
       NeedRedraw(c.app)
     END
-  | T.kLeft, T.kRight: p := c;
+  ELSIF (E.key = T.kLeft) OR (E.key = T.kRight) THEN p := c;
     WHILE p.parent # p.app.menu DO p := p.parent END;
     IF E.key = T.kLeft THEN p := p.prev ELSE p := p.next END;
     p.status := open;
@@ -1225,8 +1232,8 @@ BEGIN
     IF p2 = NIL THEN p2 := p END;
     SetFocus(p2);
     NeedRedraw(c.app)
-  | T.kEnter: c.do.click(c)
-  | T.kEsc:
+  ELSIF E.key = T.kEnter THEN c.do.click(c)
+  ELSIF E.key = T.kEsc THEN
     IF c.parent.parent = c.app.menu THEN
       c.parent.status := normal; UnsetFocus(c.app)
     ELSE
@@ -1413,7 +1420,7 @@ END InitMenuMethod;
 
 PROCEDURE InitLabel*(c: Label; caption: ARRAY OF CHAR);
 BEGIN InitControl(c); c.do := labelMethod;
-  c.caption := caption$; c.len := Strings.Length(caption);
+  c.caption := caption; c.len := Strings.Length(caption);
   c.align := left
 END InitLabel;
 
@@ -1490,7 +1497,7 @@ END InitQuickBtnMethod;
 PROCEDURE InitButton*(c: Button; caption: ARRAY OF CHAR);
 BEGIN InitControl(c);
   c.w := 10; c.h := 1;
-  c.caption := caption$;
+  c.caption := caption;
   c.do := buttonMethod
 END InitButton;
 
@@ -1757,14 +1764,16 @@ END EditMouseDown;
 PROCEDURE EditKeyDown*(c: Control; VAR E: T.Event);
 VAR e: Edit; redraw: BOOLEAN;
 BEGIN e := c(Edit); redraw := TRUE;
-  CASE E.key OF
-    T.kLeft: IF e.pos > 0 THEN DEC(e.pos) END
-  | T.kRight: IF e.pos < e.len THEN INC(e.pos) END
-  | T.kBackspace:
+  IF E.key = T.kLeft THEN
+    IF e.pos > 0 THEN DEC(e.pos) END
+  ELSIF E.key = T.kRight THEN
+    IF e.pos < e.len THEN INC(e.pos) END
+  ELSIF E.key = T.kBackspace THEN
     IF e.pos > 0 THEN DeleteChar(e.caption, e.pos - 1, e.len); DEC(e.pos) END
-  | T.kDel: IF e.pos < e.len THEN DeleteChar(e.caption, e.pos, e.len) END
-  | T.kHome: e.pos := 0
-  | T.kEnd: e.pos := e.len
+  ELSIF E.key = T.kDel THEN
+    IF e.pos < e.len THEN DeleteChar(e.caption, e.pos, e.len) END
+  ELSIF E.key = T.kHome THEN e.pos := 0
+  ELSIF E.key = T.kEnd THEN e.pos := e.len
   ELSE redraw := FALSE
   END;
   IF redraw THEN NeedRedraw(c.app) END
@@ -1928,16 +1937,15 @@ PROCEDURE ColumnListKeyDown*(c: Control; VAR E: T.Event);
 VAR C: ColumnList; sb: Scrollbar;
   h, cur: INTEGER;
 BEGIN C := c(ColumnList); sb := C.scrollbar; cur := C.cur; h := C.h - 1;
-  CASE E.key OF
-    T.kLeft: DEC(cur, h)
-  | T.kRight: INC(cur, h)
-  | T.kUp: DEC(cur)
-  | T.kDown: INC(cur)
-  | T.kHome: cur := sb.cur * h
-  | T.kEnd: cur := (sb.cur + C.cols) * h - 1
-  | T.kPgUp: DEC(cur, C.cols * h); DEC(sb.cur, C.cols)
-  | T.kPgDn: INC(cur, C.cols * h); INC(sb.cur, C.cols)
-  ELSE END;
+  IF E.key = T.kLeft THEN DEC(cur, h)
+  ELSIF E.key = T.kRight THEN INC(cur, h)
+  ELSIF E.key = T.kUp THEN DEC(cur)
+  ELSIF E.key = T.kDown THEN INC(cur)
+  ELSIF E.key = T.kHome THEN cur := sb.cur * h
+  ELSIF E.key = T.kEnd THEN cur := (sb.cur + C.cols) * h - 1
+  ELSIF E.key = T.kPgUp THEN DEC(cur, C.cols * h); DEC(sb.cur, C.cols)
+  ELSIF E.key = T.kPgDn THEN INC(cur, C.cols * h); INC(sb.cur, C.cols)
+  END;
   ColumnListSetCur(C, cur)
 END ColumnListKeyDown;
 
@@ -2244,11 +2252,12 @@ RETURN p END FindDefaultControl;
 PROCEDURE WindowKeyDown*(c: Control; VAR E: T.Event);
 VAR d: Control;
 BEGIN
-  CASE E.key OF
-    T.kEsc: IF c(Window).closeOnEsc THEN CloseCurWindow(c) END
-  | T.kEnter: d := FindDefaultControl(c);
+  IF E.key = T.kEsc THEN
+    IF c(Window).closeOnEsc THEN CloseCurWindow(c) END
+  ELSIF E.key = T.kEnter THEN
+    d := FindDefaultControl(c);
     IF (d # NIL) & (d.do.click # NIL) THEN d.do.click(d) END
-  ELSE END
+  END
 END WindowKeyDown;
 
 PROCEDURE WindowGetFocus*(c: Control);
@@ -2330,7 +2339,7 @@ BEGIN SetApp(m, app); Add(app.menu, m); RefreshAppMenu(app.menu)
 END AddMenu;
 
 PROCEDURE SetStatusText*(app: App; text: ARRAY OF CHAR);
-BEGIN app.statusText := text$
+BEGIN app.statusText := text
 END SetStatusText;
 
 PROCEDURE CheckMenuOpenKey(app: App; VAR E: T.Event): BOOLEAN;
@@ -2380,7 +2389,7 @@ PROCEDURE FindNextTabControl(p: Control; back: BOOLEAN): Control;
 VAR br, next: Control;
   t, nextT: INTEGER;
 BEGIN t := p.tabIndex; next := NIL;
-  IF back THEN nextT := MIN(INTEGER) ELSE nextT := MAX(INTEGER) END;
+  IF back THEN nextT := minInt ELSE nextT := maxInt END;
   br := p; p := p.next;
   WHILE p # br DO
     IF ~back & (p.tabIndex >= t) & (p.tabIndex < nextT) OR
@@ -2391,13 +2400,13 @@ BEGIN t := p.tabIndex; next := NIL;
   END;
   IF next = NIL THEN
     IF back THEN
-      nextT := MIN(INTEGER);
+      nextT := minInt;
       REPEAT
         IF p.tabIndex > nextT THEN next := p; nextT := p.tabIndex END;
         p := p.next
       UNTIL p = br
     ELSE
-      nextT := MAX(INTEGER);
+      nextT := maxInt;
       REPEAT
         IF p.tabIndex < nextT THEN next := p; nextT := p.tabIndex END;
         p := p.next
@@ -2437,9 +2446,7 @@ BEGIN handled := FALSE; p := app.cur;
     END
   END;
   IF ~handled THEN
-    IF (E.key = T.kEnter) & (E.mod * T.mAlt # {}) THEN
-      (*T.ToggleFullscreen !FIXME *)
-    ELSIF p # NIL THEN
+    IF p # NIL THEN
       IF (E.key # T.kTab) OR ~OnTabPress(app, E.mod * T.mShift # {}) THEN
         IF p.do.keyDown # NIL THEN p.do.keyDown(p, E) END;
         IF (p.parent # NIL) & (p.parent IS Window) &
@@ -2519,12 +2526,10 @@ BEGIN
   DrawApp(app);
   REPEAT
     T.WaitEvent(E);
-    CASE E.type OF
-      T.mouse: OnMouse(app, E)
-    | T.timer: INC(ticks)
-    | T.key: OnKey(app, E)
-    | T.quit: app.quit := TRUE
-    ELSE
+    IF E.type = T.mouse THEN OnMouse(app, E)
+    ELSIF E.type = T.timer THEN INC(ticks)
+    ELSIF E.type = T.key THEN OnKey(app, E)
+    ELSIF E.type = T.quit THEN app.quit := TRUE
     END;
     IF app.needRedraw THEN DrawApp(app) END;
     T.Flush

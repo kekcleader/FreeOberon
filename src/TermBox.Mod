@@ -171,6 +171,69 @@ CONST
   mAlt*   = {mLAlt, mRAlt};
   mMeta*   = {mLMeta, mRMeta};
 
+  (* Characters *)
+  lineHor*         = 2500X;
+  lineVert*        = 2502X;
+
+  lineUpRight*     = 2514X;
+  lineUpLeft*      = 2518X;
+  lineDownLeft*    = 2510X;
+  lineDownRight*   = 250CX;
+
+  lineVertRight*   = 251CX;
+  lineVertLeft*    = 2524X;
+  lineHorUp*       = 2534X;
+  lineHorDown*     = 252CX;
+  lineCross*       = 253CX;
+
+  doubleHor*       = 2550X;
+  doubleVert*      = 2551X;
+
+  doubleUpRight*   = 255AX;
+  doubleUpLeft*    = 255DX;
+  doubleDownLeft*  = 2557X;
+  doubleDownRight* = 2554X;
+
+  doubleVertRight* = 2560X;
+  doubleVertLeft*  = 2563X;
+  doubleHorUp*     = 2569X;
+  doubleHorDown*   = 2566X;
+  doubleCross*     = 256CX;
+
+  doubleUpLineRight*   = 2559X;
+  doubleUpLineLeft*    = 255CX;
+  doubleDownLineRight* = 2553X;
+  doubleDownLineLeft*  = 2556X;
+  doubleLeftLineUp*    = 255BX;
+  doubleLeftLineDown*  = 2555X;
+  doubleRightLineUp*   = 2558X;
+  doubleRightLineDown* = 2552X;
+
+  doubleVertLineLeft*  = 2562X;
+  doubleVertLineRight* = 255FX;
+  doubleVertLineHor*   = 256BX;
+  doubleHorLineUp*     = 2567X;
+  doubleHorLineDown*   = 2564X;
+  doubleHorLineVert*   = 256AX;
+
+  lightShade*      = 2591X;
+  mediumShade*     = 2592X;
+  darkShade*       = 2593X;
+
+  triangleUp*    = 1EX (*25B2X*);
+  triangleDown*  = 1FX (*25BCX*);
+  triangleRight* = 11X (*25B6X*);
+  triangleLeft*  = 10X (*25C0X*);
+
+  arrowUp*        = 18X (*2191X*);
+  arrowDown*      = 19X (*2193X*);
+  arrowRight*     = 1AX (*2192X*);
+  arrowLeft*      = 1BX (*2190X*);
+  arrowLeftRight* = 1DX (*2194X*);
+  arrowUpDown*    = 12X (*2195X*);
+
+  blackSquare*    = 25A0X;
+
 TYPE
   Event* = RECORD
     type*: INTEGER;

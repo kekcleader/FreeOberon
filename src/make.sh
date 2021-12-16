@@ -26,9 +26,8 @@ $OFR -7w Dir.Mod
 $OFR -7w Allegro5.Mod
 $OFR -7w Graph2.Mod
 $OFR -7w TermBox.Mod
-$OFR -C Terminal.Mod
 $OFR -C Term.Mod
-$OFR -C OV.Mod
+$OFR -7w OV.Mod
 $OFR -C EditorText.Mod
 $OFR -C Editor.Mod
 $OFR -Cm FreeOberon.Mod
