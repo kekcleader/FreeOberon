@@ -30,7 +30,7 @@ VAR P, n, err: INTEGER;
   s: ARRAY 50 OF CHAR;
 BEGIN
   Out.String('Введите P: '); In.Int(P);
-  Out.String('Введите чисор в '); Out.Int(P, 0);
+  Out.String('Введите число в '); Out.Int(P, 0);
   Out.String('-ичной системе счисления: '); In.Line(s);
   n := Convert(s, P, err);
   IF err = -1 THEN
