@@ -6,7 +6,7 @@ CONST
   partH = 256;
   emptyCh = ' ';
   nofcolors = 16;
-  cursorTickSpeed = 1.0;
+  cursorTickSpeed = 4.0;
   stdW = 80;
   stdH = 25;
 
@@ -287,7 +287,7 @@ VAR
   cursorTimer: G.Timer; (* Text cursor tick timer *)
   userTimer: G.Timer; (* User timer set by StartTimer *)
 
-  needFlip: BOOLEAN;
+  needFlip: INTEGER;
   screen: G.Window;
   font: G.MonoFont;
   colors: ARRAY nofcolors OF G.Color;
@@ -403,9 +403,11 @@ END UpdateCell;
 
 PROCEDURE Flip(forse: BOOLEAN);
 BEGIN
-  IF ~G.HasEvents() OR forse THEN
-    G.Flip; needFlip := FALSE
-  ELSE needFlip := TRUE
+  IF ~G.HasEvents() OR forse OR (needFlip > 4) THEN
+    G.Flip; needFlip := 0
+    ;Out.String('ОБНОВЛЕНИЕ');Out.Ln
+  ELSE INC(needFlip)
+    ;Out.String(' отложено');Out.Ln
   END
 END Flip;
 
@@ -535,7 +537,9 @@ BEGIN
         UpdateCell(curX, curY);
         Flush
       END;
-      IF needFlip THEN G.Flip; needFlip := FALSE END
+      IF needFlip # 0 THEN G.Flip; needFlip := 0
+        ;Out.String('    По таймеру');Out.Ln
+      END
     ELSE
       event.type := timer
     END
@@ -569,6 +573,10 @@ END ParseEvent;
 PROCEDURE WaitAndParseEvent(VAR event: Event);
 VAR E: G.Event;
 BEGIN
+  IF (needFlip # 0) & ~G.PeekEvent(E) THEN
+    G.Flip; needFlip := 0
+    ;Out.String('    По ожиданию');Out.Ln
+  END;
   G.WaitEvent(E);
   ParseEvent(E, event)
 END WaitAndParseEvent;
@@ -814,7 +822,7 @@ BEGIN Done := FALSE;
     InitBuffer;
     InitTimer;
     mouseDown := FALSE;
-    needFlip := FALSE;
+    needFlip := 0;
     processingEvent := FALSE;
     Done := TRUE
   END

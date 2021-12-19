@@ -1150,7 +1150,7 @@ BEGIN
   curX := 0; curY := 0;
   success := FALSE;
   ParseArgs(fs, sw, w, h, fnames);
-  T.Settings(0, 0, {T.resizable});
+  T.Settings(0, 0, {T.resizable, T.window, T.center});
   T.Init;
   IF T.Done THEN
     InitIDE;
