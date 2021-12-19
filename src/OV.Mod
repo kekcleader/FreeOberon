@@ -724,7 +724,7 @@ BEGIN T.Size(tW, tH); x := 0;
     UNTIL m = br
   END;
   IF app.statusText[0] # 0X THEN
-    T.SetCell(x, tH - 1, 0B3X, 0, 7);
+    T.SetCell(x, tH - 1, T.lineVert, 0, 7);
     T.Print(x + 2, tH - 1, app.statusText, 0, 7)
   END
 END DrawAppStatusbar;
@@ -832,11 +832,12 @@ PROCEDURE SetCharColor(x, y, fg, bg: INTEGER);
 BEGIN T.SetFg(x, y, fg); T.SetBg(x, y, bg)
 END SetCharColor;
 
-PROCEDURE PrintLimited(x, y: INTEGER; s: ARRAY OF CHAR; fg, bg, limit: INTEGER);
+PROCEDURE PrintLimited(x, y: INTEGER; s: ARRAY OF CHAR;
+  fg, bg, limit: INTEGER);
 VAR i: INTEGER;
 BEGIN
   i := 0;
-  WHILE (s[i] # 0X) & (x # limit) DO
+  WHILE (s[i] # 0X) & (x <= limit) DO
     T.SetCell(x, y, s[i], fg, bg);
     INC(i); INC(x)
   END;
@@ -886,8 +887,8 @@ BEGIN single := moving OR inactive;
     END;
     T.SetCell(x2 - 3, y, ch, 10, bg);
     T.SetCell(x2 - 2, y, ']', fg, bg);
-  ELSIF single THEN T.SetCell(x2, y2, 0D9X, fg, bg)
-  ELSE T.SetCell(x2, y2, 0BCX, fg, bg)
+  ELSIF single THEN T.SetCell(x2, y2, T.lineUpLeft, fg, bg)
+  ELSE T.SetCell(x2, y2, T.doubleUpLeft, fg, bg)
   END; (* Close button: *)
   IF ~inactive THEN
     T.SetCell(x + 2, y, '[', fg, bg);
@@ -1093,9 +1094,9 @@ VAR i, w, bg, fg: INTEGER;
 BEGIN
   INC(x, m.x); INC(y, m.y); w := m.w - 2;
   IF m.caption = '-' THEN
-    T.Fill(x, y, m.w, 1, 0C4X, 0, 7); (* - *)
-    T.SetCell(x - 1, y, 0C3X, 0, 7);
-    T.SetCell(x + w + 2, y, 0B4X, 0, 7)
+    T.Fill(x, y, m.w, 1, T.lineHor, 0, 7); (* - *)
+    T.SetCell(x - 1, y, T.lineVertRight, 0, 7);
+    T.SetCell(x + w + 2, y, T.lineVertLeft, 0, 7)
   ELSE
     IF (m.status = selected) OR (m.status = open) THEN bg := 2
     ELSE bg := 7
@@ -1123,7 +1124,7 @@ BEGIN
     IF m(Menu).hint[0] # 0X THEN
       T.Print(x - m(Menu).hintW - 1, y, m(Menu).hint, fg, bg)
     ELSIF (m.children # NIL) & (m.y # 0) THEN
-      T.SetCell(x - 2, y, 10X, fg, bg)
+      T.SetCell(x - 2, y, T.triangleRight, fg, bg)
     END
   END
 END DrawMenuCaption;
@@ -1132,16 +1133,16 @@ PROCEDURE DrawSubmenuFrame(x, y, w, h: INTEGER);
 VAR i: INTEGER;
 BEGIN
   T.Fill(x, y, 1, h, ' ', 0, 7);
-  T.Fill(x + 1, y + 1, 1, h - 2, 0B3X, 0, 7); (* | *)
-  T.Fill(x + w - 2, y + 1, 1, h - 2, 0B3X, 0, 7);
+  T.Fill(x + 1, y + 1, 1, h - 2, T.lineVert, 0, 7); (* | *)
+  T.Fill(x + w - 2, y + 1, 1, h - 2, T.lineVert, 0, 7);
   T.Fill(x + w - 1, y, 1, h, ' ', 0, 7);
   T.Fill(x + 2, y, w - 4, h, ' ', 0, 7);
-  T.Fill(x + 2, y, w - 4, 1, 0C4X, 0, 7); (* - *)
-  T.Fill(x + 2, y + h - 1, w - 4, 1, 0C4X, 0, 7);
-  T.SetCell(x + 1, y, 0DAX, 0, 7); (* Corners *)
-  T.SetCell(x + w - 2, y, 0BFX, 0, 7); (* Corners *)
-  T.SetCell(x + w - 2, y + h - 1, 0D9X, 0, 7); (* Corners *)
-  T.SetCell(x + 1, y + h - 1, 0C0X, 0, 7); (* Corners *)
+  T.Fill(x + 2, y, w - 4, 1, T.lineHor, 0, 7); (* - *)
+  T.Fill(x + 2, y + h - 1, w - 4, 1, T.lineHor, 0, 7);
+  T.SetCell(x + 1, y, T.lineDownRight, 0, 7); (* Corners *)
+  T.SetCell(x + w - 2, y, T.lineDownLeft, 0, 7); (* Corners *)
+  T.SetCell(x + w - 2, y + h - 1, T.lineUpLeft, 0, 7); (* Corners *)
+  T.SetCell(x + 1, y + h - 1, T.lineUpRight, 0, 7); (* Corners *)
   FOR i := y + 1 TO y + h DO
     SetCharColor(x + w, i, 8, 0);
     SetCharColor(x + w + 1, i, 8, 0)
@@ -1523,9 +1524,9 @@ BEGIN INC(x, c.x); INC(y, c.y);
   PutMarkedString(x + (c.w - n) DIV 2, y + c.h DIV 2,
     c.caption, fg, 14, 2, x + c.w - 1);
   IF c.status # selected THEN
-    T.SetCell(x + c.w, y, 0DCX, 0, bg);
-    T.Fill(x + c.w, y + 1, 1, c.h - 1, 0DBX, 0, bg);
-    T.Fill(x + 1, y + c.h, c.w, 1, 0DFX, 0, bg)
+    T.SetCell(x + c.w, y, T.lowerHalfBlock, 0, bg);
+    T.Fill(x + c.w, y + 1, 1, c.h - 1, T.fullBlock, 0, bg);
+    T.Fill(x + 1, y + c.h, c.w, 1, T.upperHalfBlock, 0, bg)
   END
 END ButtonDraw;
 
@@ -1654,12 +1655,12 @@ VAR S: Scrollbar;
   w, fg, bg: INTEGER;
   ch: CHAR;
 BEGIN S := c(Scrollbar); INC(x, S.x); INC(y, S.y); fg := 3; bg := 1;
-  IF S.enabled THEN ch := 0B0X ELSE ch := 0B1X END;
+  IF S.enabled THEN ch := T.lightShade ELSE ch := T.mediumShade END;
   T.Fill(x + 1, y, S.w - 1, 1, ch, fg, bg);
-  T.SetCell(x, y, 11X, fg, bg);
-  T.SetCell(x + S.w - 1, y, 10X, fg, bg);
+  T.SetCell(x, y, T.triangleLeft, fg, bg);
+  T.SetCell(x + S.w - 1, y, T.triangleRight, fg, bg);
   IF S.enabled THEN
-    T.Fill(x + S.runnerOffset, y, S.runnerW, 1, 0B1X, fg, bg)
+    T.Fill(x + S.runnerOffset, y, S.runnerW, 1, T.mediumShade, fg, bg)
   END
 END ScrollbarDraw;
 
@@ -1850,7 +1851,7 @@ BEGIN C := c(ColumnList); INC(x, C.x); INC(y, C.y);
   (* Column separators *)
   i := x + colw;
   WHILE i < x + C.w - 2 DO
-    T.Fill(i, y, 1, C.h - 1, 0B3X, 1, bg); INC(i, colw + 1)
+    T.Fill(i, y, 1, C.h - 1, T.lineVert, 1, bg); INC(i, colw + 1)
   END;
 
   i := C.scrollbar.cur * (C.h - 1);
@@ -2088,7 +2089,7 @@ BEGIN InitControl(w); T.Size(tW, tH);
   w.modal := FALSE; w.resizable := FALSE;
   w.closeable := TRUE; w.closeOnEsc := TRUE;
   w.bg := 7; w.minW := 10; w.minH := 3;
-  w.closeBtn := NewWinBtn(0FEX); (* Square *)
+  w.closeBtn := NewWinBtn(T.blackSquare); (* Square *)
   w.closeBtn.x := 2; w.closeBtn.w := 3;
   w.closeBtn.parent := w;
   w.closeBtn.onClick := CloseCurWindow;
@@ -2517,22 +2518,27 @@ BEGIN
   END
 END OnMouse;
 
+PROCEDURE OnResize(app: App; E: T.Event);
+BEGIN
+  app.needRedraw := TRUE
+END OnResize;
+
 PROCEDURE RunApp*(app: App);
 VAR E: T.Event;
 BEGIN
   ticks := 0;
   T.StartTimer(1/4);
   app.quit := FALSE;
-  DrawApp(app);
+  DrawApp(app); T.Flush;
   REPEAT
     T.WaitEvent(E);
     IF E.type = T.mouse THEN OnMouse(app, E)
     ELSIF E.type = T.timer THEN INC(ticks)
     ELSIF E.type = T.key THEN OnKey(app, E)
+    ELSIF E.type = T.resize THEN OnResize(app, E)
     ELSIF E.type = T.quit THEN app.quit := TRUE
     END;
-    IF app.needRedraw THEN DrawApp(app) END;
-    T.Flush
+    IF app.needRedraw THEN DrawApp(app); T.Flush END
   UNTIL app.quit
 END RunApp;
 

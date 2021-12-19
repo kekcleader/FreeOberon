@@ -222,8 +222,8 @@ CONST
 
   triangleUp*    = 1EX (*25B2X*);
   triangleDown*  = 1FX (*25BCX*);
-  triangleRight* = 11X (*25B6X*);
-  triangleLeft*  = 10X (*25C0X*);
+  triangleRight* = 10X (*25BAX*);
+  triangleLeft*  = 11X (*25C4X*);
 
   arrowUp*        = 18X (*2191X*);
   arrowDown*      = 19X (*2193X*);
@@ -233,6 +233,11 @@ CONST
   arrowUpDown*    = 12X (*2195X*);
 
   blackSquare*    = 25A0X;
+  upperHalfBlock* = 2580X;
+  lowerHalfBlock* = 2584X;
+  fullBlock*      = 2588X;
+  leftHalfBlock*  = 258CX;
+  rightHalfBlock* = 2590X;
 
 TYPE
   Event* = RECORD
@@ -318,6 +323,7 @@ BEGIN
   fg := fg MOD nofcolors;
   IF p.cells[y, x].fg # fg THEN
     p.cells[y, x].fg := fg;
+    p.updated[y, x] := TRUE;
     p.redraw := TRUE
   END
 END SetPartFg;
@@ -327,6 +333,7 @@ BEGIN
   bg := bg MOD nofcolors;
   IF p.cells[y, x].bg # bg THEN
     p.cells[y, x].bg := bg;
+    p.updated[y, x] := TRUE;
     p.redraw := TRUE
   END
 END SetPartBg;
@@ -394,9 +401,12 @@ BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN p.updated[y, x] := TRUE; p.redraw := TRUE END
 END UpdateCell;
 
-PROCEDURE Flip;
+PROCEDURE Flip(forse: BOOLEAN);
 BEGIN
-  IF ~G.HasEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
+  IF ~G.HasEvents() OR forse THEN
+    G.Flip; needFlip := FALSE
+  ELSE needFlip := TRUE
+  END
 END Flip;
 
 PROCEDURE Flush*;
@@ -421,8 +431,9 @@ BEGIN
     END;
     INC(Y, l.h); l := l.down
   END;
-  buffer.redrawAll := FALSE;
-  Flip
+  IF buffer.redrawAll THEN Flip(TRUE); buffer.redrawAll := FALSE
+  ELSE Flip(FALSE)
+  END
 END Flush;
 
 PROCEDURE Sync*;

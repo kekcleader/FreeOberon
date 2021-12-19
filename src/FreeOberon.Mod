@@ -1128,7 +1128,9 @@ BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := -1; h := -1;
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--software' THEN sw := TRUE
     ELSIF s = '--size' THEN
-      IF i + 1 # Args.argc THEN INC(i); Args.Get(i, q); Utf8.Decode(q, s); ParseSize(s, w, h) END
+      IF i + 1 # Args.argc THEN
+        INC(i); Args.Get(i, q); Utf8.Decode(q, s); ParseSize(s, w, h)
+      END
     ELSIF nofnames < LEN(fnames) THEN
       ParseFileNameArg(s);
       fnames[nofnames] := s$;
@@ -1148,7 +1150,7 @@ BEGIN
   curX := 0; curY := 0;
   success := FALSE;
   ParseArgs(fs, sw, w, h, fnames);
-  (*!FIXME Use T.Settings*)
+  T.Settings(0, 0, {T.resizable});
   T.Init;
   IF T.Done THEN
     InitIDE;
