@@ -301,6 +301,7 @@ TYPE
   ADRINT* = SYSTEM.ADRINT;
   SHORTCHAR* = SYSTEM.CHAR8;
   SHORTINT* = SYSTEM.INT16;
+  REAL* = SYSTEM.REAL32;
   LONGREAL* = SYSTEM.REAL64;
   LONGINT* = SYSTEM.INT64;
 
@@ -544,5 +545,6 @@ PROCEDURE set_clipboard_text* ["al_set_clipboard_text"] (display: Display; text:
 PROCEDURE clipboard_has_text* ["al_clipboard_has_text"] (display: Display): BOOLEAN;
 
 PROCEDURE free_with_context* ["al_free_with_context"] (ptr: ADRINT; line: INTEGER; file, func: ARRAY OF SHORTCHAR);
+PROCEDURE get_time* ["al_get_time"] (): LONGREAL;
 
 END Allegro5.
