@@ -1,5 +1,5 @@
 MODULE TermBox;
-IMPORT G := Graph2, Strings, Int, Out;
+IMPORT G := Graph2, Strings, Int, Out, Platform;
 
 CONST
   partW = 512;
@@ -7,6 +7,7 @@ CONST
   emptyCh = ' ';
   nofcolors = 16;
   cursorTickSpeed = 4.0;
+  flipSpeed = 1 / 60;
   stdW = 80;
   stdH = 25;
 
@@ -250,15 +251,16 @@ TYPE
     mod*: SET         (* Key modifiers *)
   END;
 
-  Cell* = RECORD
-    ch*: CHAR;
-    fg*, bg*: INTEGER
+  Cell = RECORD
+    ch, oldCh: CHAR;
+    fg, oldFg: INTEGER;
+    bg, oldBg: INTEGER;
+    updated: INTEGER (* > 0 means need to redraw, 2 means redraw in any case *)
   END;
 
   Part* = POINTER TO PartDesc; (* Part of screen buffer *)
   PartDesc* = RECORD
     cells: ARRAY partH, partW OF Cell;
-    updated: ARRAY partH, partW OF BOOLEAN; (* TRUE means need to redraw *)
     w, h: INTEGER; (* Actually used sizes of array *)
     redraw: BOOLEAN; (* TRUE if any cell needs to be redrawn *)
     down, right: Part
@@ -271,6 +273,8 @@ TYPE
   END;
 
 VAR
+  t0, t1: REAL;
+
   wantTitle: ARRAY 256 OF CHAR; (* Assigned in procedure SetTitle *)
   wantZoom: REAL;
   wantW, wantH: INTEGER;
@@ -285,6 +289,7 @@ VAR
   curX, curY: INTEGER; (* Text cursor position *)
   cursorShown: BOOLEAN; (* TRUE if text cursor is show while it is blinking *)
   cursorTimer: G.Timer; (* Text cursor tick timer *)
+  flipTimer: G.Timer; (* Frame change timer *)
   userTimer: G.Timer; (* User timer set by StartTimer *)
 
   needFlip: INTEGER;
@@ -294,48 +299,45 @@ VAR
 
   Done*: BOOLEAN;
 
+PROCEDURE SetPartCellUpdated(p: Part; VAR cell: Cell);
+BEGIN
+  IF (cell.ch # cell.oldCh) OR
+     (cell.fg # cell.oldFg) OR
+     (cell.bg # cell.oldBg)
+  THEN cell.updated := 1; p.redraw := TRUE
+  ELSIF cell.updated # 2 THEN cell.updated := 0
+  END
+END SetPartCellUpdated;
+
+PROCEDURE ClearUpdated(VAR cell: Cell);
+BEGIN cell.updated := 0; cell.oldCh := cell.ch;
+  cell.oldFg := cell.fg; cell.oldBg := cell.bg
+END ClearUpdated;
+
 PROCEDURE SetPartCell(p: Part; x, y: INTEGER; ch: CHAR; fg, bg: INTEGER);
 BEGIN
-  fg := fg MOD nofcolors; bg := bg MOD nofcolors;
-  IF (p.cells[y, x].ch # ch) OR
-     (p.cells[y, x].fg # fg) OR
-     (p.cells[y, x].bg # bg)
-  THEN
-    p.cells[y, x].ch := ch;
-    p.cells[y, x].fg := fg;
-    p.cells[y, x].bg := bg;
-    p.updated[y, x] := TRUE;
-    p.redraw := TRUE
-  END
+  p.cells[y, x].ch := ch;
+  p.cells[y, x].fg := fg MOD nofcolors;
+  p.cells[y, x].bg := bg MOD nofcolors;
+  SetPartCellUpdated(p, p.cells[y, x])
 END SetPartCell;
 
 PROCEDURE SetPartChar(p: Part; x, y: INTEGER; ch: CHAR);
 BEGIN
-  IF p.cells[y, x].ch # ch THEN
-    p.cells[y, x].ch := ch;
-    p.updated[y, x] := TRUE;
-    p.redraw := TRUE
-  END
+  p.cells[y, x].ch := ch;
+  SetPartCellUpdated(p, p.cells[y, x])
 END SetPartChar;
 
 PROCEDURE SetPartFg(p: Part; x, y, fg: INTEGER);
 BEGIN
-  fg := fg MOD nofcolors;
-  IF p.cells[y, x].fg # fg THEN
-    p.cells[y, x].fg := fg;
-    p.updated[y, x] := TRUE;
-    p.redraw := TRUE
-  END
+  p.cells[y, x].fg := fg MOD nofcolors;
+  SetPartCellUpdated(p, p.cells[y, x])
 END SetPartFg;
 
 PROCEDURE SetPartBg(p: Part; x, y, bg: INTEGER);
 BEGIN
-  bg := bg MOD nofcolors;
-  IF p.cells[y, x].bg # bg THEN
-    p.cells[y, x].bg := bg;
-    p.updated[y, x] := TRUE;
-    p.redraw := TRUE
-  END
+  p.cells[y, x].bg := bg MOD nofcolors;
+  SetPartCellUpdated(p, p.cells[y, x])
 END SetPartBg;
 
 PROCEDURE GetPart(S: Buffer; VAR x, y: INTEGER): Part;
@@ -398,16 +400,13 @@ END GetMousePos;
 PROCEDURE UpdateCell(x, y: INTEGER);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
-  IF p # NIL THEN p.updated[y, x] := TRUE; p.redraw := TRUE END
+  IF p # NIL THEN p.cells[y, x].updated := 2; p.redraw := TRUE END
 END UpdateCell;
 
 PROCEDURE Flip(forse: BOOLEAN);
 BEGIN
-  IF ~G.HasEvents() OR forse OR (needFlip > 4) THEN
-    G.Flip; needFlip := 0
-    ;Out.String('ОБНОВЛЕНИЕ');Out.Ln
+  IF ~G.HasEvents() OR forse THEN G.Flip; needFlip := 0
   ELSE INC(needFlip)
-    ;Out.String(' отложено');Out.Ln
   END
 END Flip;
 
@@ -421,9 +420,9 @@ BEGIN
       IF p.redraw OR buffer.redrawAll THEN
         FOR y := 0 TO p.h - 1 DO
           FOR x := 0 TO p.w - 1 DO
-            IF p.updated[y, x] OR buffer.redrawAll THEN
+            IF buffer.redrawAll OR (p.cells[y, x].updated # 0) THEN
               DrawCell(X + x, Y + y, p.cells[y, x]);
-              p.updated[y, x] := FALSE
+              ClearUpdated(p.cells[y, x])
             END
           END
         END;
@@ -465,6 +464,13 @@ BEGIN
   G.ToggleFullscreen(screen)
 END ToggleFS;
 
+PROCEDURE ResetCell(VAR cell: Cell);
+BEGIN
+  cell.ch := emptyCh; cell.fg := 7; cell.bg := 0;
+  cell.oldCh := cell.ch; cell.oldFg := cell.fg; cell.oldBg := cell.bg;
+  cell.updated := 2
+END ResetCell;
+
 PROCEDURE NewPart(w, h: INTEGER): Part;
 VAR p: Part;
   x, y: INTEGER;
@@ -472,10 +478,7 @@ BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL;
   p.w := w; p.h := h;
   FOR y := 0 TO h - 1 DO
     FOR x := 0 TO w - 1 DO
-      p.cells[y, x].ch := emptyCh;
-      p.cells[y, x].fg := 7;
-      p.cells[y, x].bg := 0;
-      p.updated[y, x] := TRUE
+      ResetCell(p.cells[y, x])
     END
   END
 RETURN p END NewPart;
@@ -489,7 +492,7 @@ BEGIN p.redraw := TRUE;
       p.cells[y, x].ch := emptyCh;
       p.cells[y, x].fg := 7;
       p.cells[y, x].bg := 0;
-      p.updated[y, x] := TRUE
+      p.cells[y, x].updated := 2
     END
   END;
   p.w := w; p.h := h
@@ -530,15 +533,15 @@ BEGIN
       MoveMouse(event.x, event.y)
     END
   ELSIF e.type = G.timer THEN
-    IF e.timer = cursorTimer THEN
+    IF e.timer = flipTimer THEN
+      event.type := noEvent;
+      IF needFlip # 0 THEN G.Flip; needFlip := 0 END
+    ELSIF e.timer = cursorTimer THEN
       event.type := noEvent;
       IF curX > 0 THEN
         cursorShown := ~cursorShown;
         UpdateCell(curX, curY);
         Flush
-      END;
-      IF needFlip # 0 THEN G.Flip; needFlip := 0
-        ;Out.String('    По таймеру');Out.Ln
       END
     ELSE
       event.type := timer
@@ -573,10 +576,7 @@ END ParseEvent;
 PROCEDURE WaitAndParseEvent(VAR event: Event);
 VAR E: G.Event;
 BEGIN
-  IF (needFlip # 0) & ~G.PeekEvent(E) THEN
-    G.Flip; needFlip := 0
-    ;Out.String('    По ожиданию');Out.Ln
-  END;
+  IF (needFlip # 0) & ~G.PeekEvent(E) THEN G.Flip; needFlip := 0 END;
   G.WaitEvent(E);
   ParseEvent(E, event)
 END WaitAndParseEvent;
@@ -675,11 +675,13 @@ PROCEDURE Size*(VAR width, height: INTEGER);
 BEGIN width := buffer.w; height := buffer.h
 END Size;
 
-PROCEDURE GetCell*(x, y: INTEGER; VAR cell: Cell);
+PROCEDURE GetCell*(x, y: INTEGER; VAR ch: CHAR; VAR fg, bg: INTEGER);
 VAR p: Part;
+  cell: Cell;
 BEGIN p := GetPart(buffer, x, y);
-  IF p # NIL THEN cell := p.cells[y, x]
-  ELSE cell.ch := emptyCh; cell.fg := 7; cell.bg := 0
+  IF p # NIL THEN cell := p.cells[y, x];
+    ch := cell.ch; fg := cell.fg; bg := cell.bg
+  ELSE ch := emptyCh; fg := 0; bg := 0
   END
 END GetCell;
 
@@ -803,12 +805,15 @@ BEGIN
   G.StartTimer(userTimer)
 END StartTimer;
 
-PROCEDURE InitTimer;
+PROCEDURE InitTimers;
 BEGIN
   cursorShown := TRUE;
   cursorTimer := G.NewTimer(cursorTickSpeed);
-  G.StartTimer(cursorTimer)
-END InitTimer;
+  G.StartTimer(cursorTimer);
+
+  flipTimer := G.NewTimer(flipSpeed);
+  G.StartTimer(flipTimer)
+END InitTimers;
 
 PROCEDURE Init*;
 VAR opt: SET;
@@ -820,7 +825,7 @@ BEGIN Done := FALSE;
     InitScreen;
     InitColors;
     InitBuffer;
-    InitTimer;
+    InitTimers;
     mouseDown := FALSE;
     needFlip := 0;
     processingEvent := FALSE;
@@ -853,5 +858,5 @@ END SetFontFile;
 BEGIN wantW := stdW; wantH := stdH; wantScaleX := 0.0; wantScaleY := 0.0;
   settings := {fullscreen}; Done := FALSE;
   iconFile := 'Data/Images/Icon.png';
-  fontFile := 'Data/Fonts/Main';
+  fontFile := 'Data/Fonts/Main'
 END TermBox.
