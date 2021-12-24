@@ -219,13 +219,14 @@ END ReadInt;
 
 PROCEDURE ScrollScreen;
 VAR x, y, tW, tH: INTEGER;
-  cell: T.Cell;
+  ch: CHAR;
+  fg, bg: INTEGER;
 BEGIN
   T.Size(tW, tH);
   FOR y := 0 TO tH - 2 DO
     FOR x := 0 TO tW - 1 DO
-      T.GetCell(x, y + 1, cell);
-      T.SetCell(x, y, cell.ch, cell.fg, cell.bg)
+      T.GetCell(x, y + 1, ch, fg, bg);
+      T.SetCell(x, y, ch, fg, bg)
     END
   END;
   FOR x := 0 TO tW - 1 DO
@@ -1151,6 +1152,7 @@ BEGIN
   success := FALSE;
   ParseArgs(fs, sw, w, h, fnames);
   T.Settings(0, 0, {T.resizable, T.window, T.center});
+  T.SetTitle('Free Oberon');
   T.Init;
   IF T.Done THEN
     InitIDE;
