@@ -186,13 +186,13 @@ CONST
 
 TYPE
   ADRINT = SYSTEM.ADRINT;
-  REAL = SYSTEM.REAL64;
-  SHORTREAL = SYSTEM.REAL32;
+  REAL = SYSTEM.REAL32;
+  LONGREAL = SYSTEM.REAL64;
   LONGINT = SYSTEM.INT64;
   SHORTCHAR = SYSTEM.CHAR8;
 
   Color* = RECORD
-    r, g, b, a: SHORTREAL
+    r, g, b, a: REAL
   END;
 
   Transform* = RECORD
@@ -1273,6 +1273,9 @@ BEGIN
   ELSE s[0] := 0X
   END
 END GetClipboardText;
+
+PROCEDURE Time*(): REAL;
+RETURN Al.get_time() END Time;
 
 (* Window Icons *)
 
