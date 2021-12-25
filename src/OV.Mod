@@ -823,7 +823,7 @@ END SetApp;
 
 PROCEDURE Cap*(ch: CHAR): CHAR;
 BEGIN
-  IF ('a' <= ch) & (ch <= 'z') THEN ch := CAP(ch) END ;
+  IF ('a' <= ch) & (ch <= 'z') THEN ch := CAP(ch) END
 RETURN ch END Cap;
 
 PROCEDURE Refresh*(c: Control);
@@ -945,7 +945,7 @@ BEGIN
       (p.x <= x) & (x < p.x + p.w) &
       (p.y <= y) & (y < p.y + p.h)) DO
     IF p.next = br THEN p := NIL ELSE p := p.next END
-  END ;
+  END
 RETURN p END FindChildAt;
 
 PROCEDURE PassMouseDown*(c: Control; x, y, button: INTEGER): BOOLEAN;
@@ -953,7 +953,7 @@ VAR p: Control;
 BEGIN p := FindChildAt(c, x, y);
   IF (p # NIL) & (p.do.mouseDown # NIL) THEN
     p.do.mouseDown(p, x - p.x, y - p.y, button)
-  END ;
+  END
 RETURN p # NIL END PassMouseDown;
 
 PROCEDURE PassMouseMove*(c: Control; x, y: INTEGER; button: INTEGER): BOOLEAN;
@@ -961,7 +961,7 @@ VAR p: Control;
 BEGIN p := FindChildAt(c, x, y);
   IF (p # NIL) & (p.do.mouseMove # NIL) THEN
     p.do.mouseMove(p, x - p.x, y - p.y, button)
-  END ;
+  END
 RETURN p # NIL END PassMouseMove;
 
 PROCEDURE SetEnabled*(c: Control; enabled: BOOLEAN);
@@ -1222,7 +1222,7 @@ BEGIN p := c.children;
       IF p.next = c.children THEN p := NIL ELSE p := p.next END
     END
   END;
-  IF p # NIL THEN p.status := selected END ;
+  IF p # NIL THEN p.status := selected END
 RETURN p END FindSelectedChild;
 
 PROCEDURE MenuHotkey*(c: Control; ch: CHAR): BOOLEAN;
@@ -1232,7 +1232,7 @@ BEGIN i := 0; x := c.caption[0];
         ~((x = '&') & (c.caption[i + 1] # '&')) DO
     IF (x = '&') & (c.caption[i + 1] = '&') THEN INC(i, 2) ELSE INC(i) END;
     x := c.caption[i]
-  END ;
+  END
 RETURN (c.caption[i] # 0X) & (CAP(c.caption[i + 1]) = CAP(ch)) END MenuHotkey;
 
 PROCEDURE MenuKeyDown*(c: Control; VAR E: T.Event);
@@ -1332,7 +1332,7 @@ BEGIN p := NIL;
         IF p # NIL THEN DEC(x, p.x); DEC(y, p.y) END
       END
     END
-  END ;
+  END
 RETURN p END GetMenuAt;
 
 PROCEDURE GetStatusbarAt(app: App; x, y: INTEGER): Control;
@@ -1345,7 +1345,7 @@ BEGIN T.Size(tW, tH);
       IF p.next = br THEN p := NIL ELSE p := p.next END
     END
   ELSE p := NIL
-  END ;
+  END
 RETURN p END GetStatusbarAt;
 
 PROCEDURE MenuMouseMove*(c: Control; x, y: INTEGER; button: INTEGER);
@@ -1999,7 +1999,7 @@ BEGIN StrList.First(L, s); n := 0;
   WHILE ~L.eol & ~((Cap(s[0]) = ch) OR (s[0] = '[') & (Cap(s[1]) = ch)) DO
     StrList.Next(L, s); INC(n)
   END;
-  IF L.eol THEN n := -1 END ;
+  IF L.eol THEN n := -1 END
 RETURN n END FindFirstLetterInList;
 
 PROCEDURE ColumnListTextInput*(c: Control; ch: CHAR);
@@ -2268,7 +2268,7 @@ BEGIN p := c.children;
   IF p # NIL THEN br := p;
     REPEAT p := p.next UNTIL (p = br) OR p.default;
     IF ~p.default THEN p := NIL END
-  END ;
+  END
 RETURN p END FindDefaultControl;
 
 PROCEDURE WindowKeyDown*(c: Control; VAR E: T.Event);
@@ -2434,7 +2434,7 @@ BEGIN t := p.tabIndex; next := NIL;
         p := p.next
       UNTIL p = br
     END
-  END ;
+  END
 RETURN next END FindNextTabControl;
 
 PROCEDURE OnTabPress(app: App; back: BOOLEAN): BOOLEAN;
@@ -2446,29 +2446,28 @@ BEGIN worked := FALSE; p := app.cur;
       SetAppFocus(app, p);
       worked := TRUE
     END
-  END ;
+  END
 RETURN worked END OnTabPress;
 
 PROCEDURE OnKey(app: App; VAR E: T.Event);
 VAR handled: BOOLEAN; p: Control;
 BEGIN handled := FALSE; p := app.cur;
+  ;;;;;;Out.Int(ORD(E.ch), 5); Out.Int(E.key, 5); Out.Ln;;;;;;
   IF (E.mod * (T.mCtrl + T.mAlt + T.mShift) # {}) OR
-     (T.kF1 <= E.key) & (E.key <= T.kF12) OR
-     (E.key = T.kPause) THEN
-    handled := CheckHotkey(app, E);
+     (T.kF1 <= E.key) & (E.key <= T.kF12) OR (E.key = T.kPause)
+  THEN handled := CheckHotkey(app, E);
     IF ~handled & (E.mod * T.mAlt # {}) THEN
       handled := CheckMenuOpenKey(app, E)
     END
   END;
-  IF ~handled THEN
-    IF p # NIL THEN
-      IF (E.key # T.kTab) OR ~OnTabPress(app, E.mod * T.mShift # {}) THEN
-        IF p.do.keyDown # NIL THEN p.do.keyDown(p, E) END;
-        IF (p.parent # NIL) & (p.parent IS Window) &
-           (p.parent.do.keyDown # NIL) THEN
-          p.parent.do.keyDown(p.parent, E)
-        END
-      END
+  IF ~handled & (p # NIL) &
+     ((E.key # T.kTab) OR ~OnTabPress(app, E.mod * T.mShift # {}))
+  THEN
+    IF p.do.keyDown # NIL THEN p.do.keyDown(p, E) END;
+    IF (p.parent # NIL) & (p.parent IS Window) &
+       (p.parent.do.keyDown # NIL) THEN
+      p.parent.do.keyDown(p.parent, E);
+      handled := TRUE (*!FIXME does it block text input? *)
     END
   END;
   IF ~handled & (E.ch >= 20X) THEN

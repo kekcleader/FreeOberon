@@ -284,6 +284,7 @@ VAR
   iconFile, fontFile: ARRAY 256 OF CHAR;
 
   processingEvent: BOOLEAN;
+  skipEnter: BOOLEAN; (* If TRUE, skip the G.char event with key = enter *)
   mouseDown: BOOLEAN;
   mouseX, mouseY, mouseButton: INTEGER;
   curX, curY: INTEGER; (* Text cursor position *)
@@ -463,7 +464,8 @@ BEGIN
   ELSE G.SetNewWindowScale(5/6, 1.0);
     G.SetWindowOption(screen, G.topleft, FALSE)
   END;
-  G.ToggleFullscreen(screen)
+  G.ToggleFullscreen(screen);
+  Sync
 END ToggleFS;
 
 PROCEDURE ResetCell(VAR cell: Cell);
@@ -557,13 +559,18 @@ BEGIN
     MoveMouse(event.x, event.y);
     event.button := 0; (* 0 means release *)
   ELSIF e.type = G.keyDown THEN
-    IF (e.key = G.kEnter) & (e.mod * G.mAlt # {}) THEN ToggleFS; Sync END;
+    IF (e.key = G.kEnter) & (e.mod * G.mAlt # {}) THEN
+      ToggleFS; skipEnter := TRUE
+    END;
     event.type := noEvent
   ELSIF e.type = G.char THEN
-    event.type := key;
-    event.key := e.key;
-    event.ch := e.ch;
-    event.mod := e.mod
+    IF skipEnter & (e.key = G.kEnter) THEN
+      event.type := noEvent; skipEnter := FALSE
+    ELSE event.type := key;
+      event.key := e.key;
+      event.ch := e.ch;
+      event.mod := e.mod
+    END
   ELSIF e.type = G.resize THEN
     event.type := resize; G.GetMonoFontSize(font, fw, fh);
     event.w := e.w DIV fw; event.h := e.h DIV fh;
@@ -832,6 +839,7 @@ BEGIN Done := FALSE;
     InitBuffer;
     InitTimers;
     mouseDown := FALSE;
+    skipEnter := FALSE;
     needFlip := 0;
     processingEvent := FALSE;
     Done := TRUE
