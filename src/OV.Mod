@@ -37,19 +37,19 @@ CONST
   right*  = 2;
 
   (* Simple Hotkeys *)
-  hF1*    = 58;
-  hF2*    = 59;
-  hF3*    = 60;
-  hF4*    = 61;
-  hF5*    = 62;
-  hF6*    = 63;
-  hF7*    = 64;
-  hF8*    = 65;
-  hF9*    = 66;
-  hF10*   = 67;
-  hF11*   = 68;
-  hF12*   = 69;
-  hPause* = 72;
+  hF1*    = 47;
+  hF2*    = 48;
+  hF3*    = 49;
+  hF4*    = 50;
+  hF5*    = 51;
+  hF6*    = 52;
+  hF7*    = 53;
+  hF8*    = 54;
+  hF9*    = 55;
+  hF10*   = 56;
+  hF11*   = 57;
+  hF12*   = 58;
+  hPause* = 93;
 
   (* Ctrl Hotkeys *)
   hCtrlA*         = 100H + 4;
@@ -88,18 +88,21 @@ CONST
   hCtrl8*         = 100H + 37;
   hCtrl9*         = 100H + 38;
   hCtrl0*         = 100H + 39;
-  hCtrlF1*        = 100H + 58;
-  hCtrlF2*        = 100H + 59;
-  hCtrlF3*        = 100H + 60;
-  hCtrlF4*        = 100H + 61;
-  hCtrlF5*        = 100H + 62;
-  hCtrlF6*        = 100H + 63;
-  hCtrlF7*        = 100H + 64;
-  hCtrlF8*        = 100H + 65;
-  hCtrlF9*        = 100H + 66;
-  hCtrlF10*       = 100H + 67;
-  hCtrlF11*       = 100H + 68;
-  hCtrlF12*       = 100H + 69;
+
+  (* THIS SMALL PART IS FIXED (F1..F12) *)
+  hCtrlF1*        = 100H + 47;
+  hCtrlF2*        = 100H + 48;
+  hCtrlF3*        = 100H + 49;
+  hCtrlF4*        = 100H + 50;
+  hCtrlF5*        = 100H + 51;
+  hCtrlF6*        = 100H + 52;
+  hCtrlF7*        = 100H + 53;
+  hCtrlF8*        = 100H + 54;
+  hCtrlF9*        = 100H + 55;
+  hCtrlF10*       = 100H + 56;
+  hCtrlF11*       = 100H + 57;
+  hCtrlF12*       = 100H + 58;
+
   hCtrlEsc*       = 100H + 41;
   hCtrlTilde*     = 100H + 53;
   hCtrlMinus*     = 100H + 45;
@@ -162,18 +165,21 @@ CONST
   hAlt8*         = 200H + 37;
   hAlt9*         = 200H + 38;
   hAlt0*         = 200H + 39;
-  hAltF1*        = 200H + 58;
-  hAltF2*        = 200H + 59;
-  hAltF3*        = 200H + 60;
-  hAltF4*        = 200H + 61;
-  hAltF5*        = 200H + 62;
-  hAltF6*        = 200H + 63;
-  hAltF7*        = 200H + 64;
-  hAltF8*        = 200H + 65;
-  hAltF9*        = 200H + 66;
-  hAltF10*       = 200H + 67;
-  hAltF11*       = 200H + 68;
-  hAltF12*       = 200H + 69;
+
+  (* THIS SMALL PART IS FIXED (F1..F12) *)
+  hAltF1*        = 200H + 47;
+  hAltF2*        = 200H + 48;
+  hAltF3*        = 200H + 49;
+  hAltF4*        = 200H + 50;
+  hAltF5*        = 200H + 51;
+  hAltF6*        = 200H + 52;
+  hAltF7*        = 200H + 53;
+  hAltF8*        = 200H + 54;
+  hAltF9*        = 200H + 55;
+  hAltF10*       = 200H + 56;
+  hAltF11*       = 200H + 57;
+  hAltF12*       = 200H + 58;
+
   hAltEsc*       = 200H + 41;
   hAltTilde*     = 200H + 53;
   hAltMinus*     = 200H + 45;
@@ -236,18 +242,21 @@ CONST
   hShift8*         = 400H + 37;
   hShift9*         = 400H + 38;
   hShift0*         = 400H + 39;
-  hShiftF1*        = 400H + 58;
-  hShiftF2*        = 400H + 59;
-  hShiftF3*        = 400H + 60;
-  hShiftF4*        = 400H + 61;
-  hShiftF5*        = 400H + 62;
-  hShiftF6*        = 400H + 63;
-  hShiftF7*        = 400H + 64;
-  hShiftF8*        = 400H + 65;
-  hShiftF9*        = 400H + 66;
-  hShiftF10*       = 400H + 67;
-  hShiftF11*       = 400H + 68;
-  hShiftF12*       = 400H + 69;
+
+  (* THIS SMALL PART IS FIXED (F1..F12) *)
+  hShiftF1*        = 400H + 47;
+  hShiftF2*        = 400H + 48;
+  hShiftF3*        = 400H + 49;
+  hShiftF4*        = 400H + 50;
+  hShiftF5*        = 400H + 51;
+  hShiftF6*        = 400H + 52;
+  hShiftF7*        = 400H + 53;
+  hShiftF8*        = 400H + 54;
+  hShiftF9*        = 400H + 55;
+  hShiftF10*       = 400H + 56;
+  hShiftF11*       = 400H + 57;
+  hShiftF12*       = 400H + 58;
+
   hShiftEsc*       = 400H + 41;
   hShiftTilde*     = 400H + 53;
   hShiftMinus*     = 400H + 45;
@@ -310,18 +319,21 @@ CONST
   hCtrlShift8*         = 500H + 37;
   hCtrlShift9*         = 500H + 38;
   hCtrlShift0*         = 500H + 39;
-  hCtrlShiftF1*        = 500H + 58;
-  hCtrlShiftF2*        = 500H + 59;
-  hCtrlShiftF3*        = 500H + 60;
-  hCtrlShiftF4*        = 500H + 61;
-  hCtrlShiftF5*        = 500H + 62;
-  hCtrlShiftF6*        = 500H + 63;
-  hCtrlShiftF7*        = 500H + 64;
-  hCtrlShiftF8*        = 500H + 65;
-  hCtrlShiftF9*        = 500H + 66;
-  hCtrlShiftF10*       = 500H + 67;
-  hCtrlShiftF11*       = 500H + 68;
-  hCtrlShiftF12*       = 500H + 69;
+
+  (* THIS SMALL PART IS FIXED (F1..F12) *)
+  hCtrlShiftF1*        = 500H + 47;
+  hCtrlShiftF2*        = 500H + 48;
+  hCtrlShiftF3*        = 500H + 49;
+  hCtrlShiftF4*        = 500H + 50;
+  hCtrlShiftF5*        = 500H + 51;
+  hCtrlShiftF6*        = 500H + 52;
+  hCtrlShiftF7*        = 500H + 53;
+  hCtrlShiftF8*        = 500H + 54;
+  hCtrlShiftF9*        = 500H + 55;
+  hCtrlShiftF10*       = 500H + 56;
+  hCtrlShiftF11*       = 500H + 57;
+  hCtrlShiftF12*       = 500H + 58;
+
   hCtrlShiftEsc*       = 500H + 41;
   hCtrlShiftTilde*     = 500H + 53;
   hCtrlShiftMinus*     = 500H + 45;
@@ -384,18 +396,21 @@ CONST
   hCtrlAlt8*         = 300H + 37;
   hCtrlAlt9*         = 300H + 38;
   hCtrlAlt0*         = 300H + 39;
-  hCtrlAltF1*        = 300H + 58;
-  hCtrlAltF2*        = 300H + 59;
-  hCtrlAltF3*        = 300H + 60;
-  hCtrlAltF4*        = 300H + 61;
-  hCtrlAltF5*        = 300H + 62;
-  hCtrlAltF6*        = 300H + 63;
-  hCtrlAltF7*        = 300H + 64;
-  hCtrlAltF8*        = 300H + 65;
-  hCtrlAltF9*        = 300H + 66;
-  hCtrlAltF10*       = 300H + 67;
-  hCtrlAltF11*       = 300H + 68;
-  hCtrlAltF12*       = 300H + 69;
+
+  (* THIS SMALL PART IS FIXED (F1..F12) *)
+  hCtrlAltF1*        = 300H + 47;
+  hCtrlAltF2*        = 300H + 48;
+  hCtrlAltF3*        = 300H + 49;
+  hCtrlAltF4*        = 300H + 50;
+  hCtrlAltF5*        = 300H + 51;
+  hCtrlAltF6*        = 300H + 52;
+  hCtrlAltF7*        = 300H + 53;
+  hCtrlAltF8*        = 300H + 54;
+  hCtrlAltF9*        = 300H + 55;
+  hCtrlAltF10*       = 300H + 56;
+  hCtrlAltF11*       = 300H + 57;
+  hCtrlAltF12*       = 300H + 58;
+
   hCtrlAltEsc*       = 300H + 41;
   hCtrlAltTilde*     = 300H + 53;
   hCtrlAltMinus*     = 300H + 45;
@@ -458,18 +473,21 @@ CONST
   hAltShift8*         = 600H + 37;
   hAltShift9*         = 600H + 38;
   hAltShift0*         = 600H + 39;
-  hAltShiftF1*        = 600H + 58;
-  hAltShiftF2*        = 600H + 59;
-  hAltShiftF3*        = 600H + 60;
-  hAltShiftF4*        = 600H + 61;
-  hAltShiftF5*        = 600H + 62;
-  hAltShiftF6*        = 600H + 63;
-  hAltShiftF7*        = 600H + 64;
-  hAltShiftF8*        = 600H + 65;
-  hAltShiftF9*        = 600H + 66;
-  hAltShiftF10*       = 600H + 67;
-  hAltShiftF11*       = 600H + 68;
-  hAltShiftF12*       = 600H + 69;
+
+  (* THIS SMALL PART IS FIXED (F1..F12) *)
+  hAltShiftF1*        = 600H + 47;
+  hAltShiftF2*        = 600H + 48;
+  hAltShiftF3*        = 600H + 49;
+  hAltShiftF4*        = 600H + 50;
+  hAltShiftF5*        = 600H + 51;
+  hAltShiftF6*        = 600H + 52;
+  hAltShiftF7*        = 600H + 53;
+  hAltShiftF8*        = 600H + 54;
+  hAltShiftF9*        = 600H + 55;
+  hAltShiftF10*       = 600H + 56;
+  hAltShiftF11*       = 600H + 57;
+  hAltShiftF12*       = 600H + 58;
+
   hAltShiftEsc*       = 600H + 41;
   hAltShiftTilde*     = 600H + 53;
   hAltShiftMinus*     = 600H + 45;
@@ -532,18 +550,21 @@ CONST
   hCtrlAltShift8*         = 700H + 37;
   hCtrlAltShift9*         = 700H + 38;
   hCtrlAltShift0*         = 700H + 39;
-  hCtrlAltShiftF1*        = 700H + 58;
-  hCtrlAltShiftF2*        = 700H + 59;
-  hCtrlAltShiftF3*        = 700H + 60;
-  hCtrlAltShiftF4*        = 700H + 61;
-  hCtrlAltShiftF5*        = 700H + 62;
-  hCtrlAltShiftF6*        = 700H + 63;
-  hCtrlAltShiftF7*        = 700H + 64;
-  hCtrlAltShiftF8*        = 700H + 65;
-  hCtrlAltShiftF9*        = 700H + 66;
-  hCtrlAltShiftF10*       = 700H + 67;
-  hCtrlAltShiftF11*       = 700H + 68;
-  hCtrlAltShiftF12*       = 700H + 69;
+
+  (* THIS SMALL PART IS FIXED (F1..F12) *)
+  hCtrlAltShiftF1*        = 700H + 47;
+  hCtrlAltShiftF2*        = 700H + 48;
+  hCtrlAltShiftF3*        = 700H + 49;
+  hCtrlAltShiftF4*        = 700H + 50;
+  hCtrlAltShiftF5*        = 700H + 51;
+  hCtrlAltShiftF6*        = 700H + 52;
+  hCtrlAltShiftF7*        = 700H + 53;
+  hCtrlAltShiftF8*        = 700H + 54;
+  hCtrlAltShiftF9*        = 700H + 55;
+  hCtrlAltShiftF10*       = 700H + 56;
+  hCtrlAltShiftF11*       = 700H + 57;
+  hCtrlAltShiftF12*       = 700H + 58;
+
   hCtrlAltShiftEsc*       = 700H + 41;
   hCtrlAltShiftTilde*     = 700H + 53;
   hCtrlAltShiftMinus*     = 700H + 45;
@@ -2428,13 +2449,6 @@ BEGIN worked := FALSE; p := app.cur;
   END ;
 RETURN worked END OnTabPress;
 
-PROCEDURE OnTextInput(app: App; ch: CHAR);
-BEGIN
-  IF (app.cur # NIL) & (app.cur.do.textInput # NIL) THEN
-    app.cur.do.textInput(app.cur, ch)
-  END
-END OnTextInput;
-
 PROCEDURE OnKey(app: App; VAR E: T.Event);
 VAR handled: BOOLEAN; p: Control;
 BEGIN handled := FALSE; p := app.cur;
@@ -2457,7 +2471,9 @@ BEGIN handled := FALSE; p := app.cur;
       END
     END
   END;
-  (*!FIXME OnTextInput(app, E.ch) ??*)
+  IF ~handled & (E.ch >= 20X) THEN
+    IF p.do.textInput # NIL THEN p.do.textInput(p, E.ch) END
+  END
 END OnKey;
 
 PROCEDURE GetWindowAt(app: App; x, y: INTEGER): Control;

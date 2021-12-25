@@ -596,7 +596,8 @@ BEGIN T.Size(tW, tH);
     L := L.next; INC(scrY); INC(textY);
     IF L # NIL THEN L.comLevel := comLevel END
   END;
-  IF c.focused & ~cursorHandled THEN T.HideCursor END
+  IF c.focused & ~cursorHandled THEN T.HideCursor END;
+  OV.NeedRedraw(c.app)
 END PrintText;
 
 PROCEDURE StartSelection(c: Editor);

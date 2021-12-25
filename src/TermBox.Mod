@@ -6,7 +6,7 @@ CONST
   partH = 256;
   emptyCh = ' ';
   nofcolors = 16;
-  cursorTickSpeed = 4.0;
+  cursorTickSpeed = 1 / 2;
   flipSpeed = 1 / 60;
   stdW = 80;
   stdH = 25;
@@ -301,11 +301,13 @@ VAR
 
 PROCEDURE SetPartCellUpdated(p: Part; VAR cell: Cell);
 BEGIN
-  IF (cell.ch # cell.oldCh) OR
-     (cell.fg # cell.oldFg) OR
-     (cell.bg # cell.oldBg)
-  THEN cell.updated := 1; p.redraw := TRUE
-  ELSIF cell.updated # 2 THEN cell.updated := 0
+  IF cell.updated # 2 THEN
+    IF (cell.ch # cell.oldCh) OR
+       (cell.fg # cell.oldFg) OR
+       (cell.bg # cell.oldBg)
+    THEN cell.updated := 1; p.redraw := TRUE
+    ELSE cell.updated := 0
+    END
   END
 END SetPartCellUpdated;
 
@@ -561,7 +563,7 @@ BEGIN
     event.type := key;
     event.key := e.key;
     event.ch := e.ch;
-    event.mod := e.mod;
+    event.mod := e.mod
   ELSIF e.type = G.resize THEN
     event.type := resize; G.GetMonoFontSize(font, fw, fh);
     event.w := e.w DIV fw; event.h := e.h DIV fh;
@@ -621,7 +623,10 @@ BEGIN
       curX := x; curY := y;
       UpdateCell(x, y)
     ELSE curX := -1; curY := -1
-    END
+    END;
+    cursorShown := TRUE;
+    G.StopTimer(cursorTimer);
+    G.StartTimer(cursorTimer)
   END
 END SetCursor;
 
