@@ -1171,6 +1171,14 @@ PROCEDURE StartTimer*(timer: Timer);
 BEGIN Al.start_timer(timer.tmr)
 END StartTimer;
 
+PROCEDURE StopTimer*(timer: Timer);
+BEGIN Al.stop_timer(timer.tmr)
+END StopTimer;
+
+PROCEDURE ResumeTimer*(timer: Timer);
+BEGIN Al.resume_timer(timer.tmr)
+END ResumeTimer;
+
 (* Font *)
 
 PROCEDURE GetMonoFontSize*(font: Font; VAR charW, charH: INTEGER);
