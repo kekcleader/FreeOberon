@@ -1370,7 +1370,7 @@ END MenuMouseDown;
 PROCEDURE MenuMouseUp*(c: Control; x, y, button: INTEGER);
 VAR p: Control;
 BEGIN
-  IF button = 1 (*!FIXME BTN LEFT*) THEN
+  IF button = 1 THEN
     IF c = c.app.menu THEN p := GetMenuAt(c.app, x, y)
     ELSIF c = c.app.statusbar THEN p := GetStatusbarAt(c.app, x, y)
     ELSE p := c
@@ -2488,16 +2488,17 @@ END GetControlAt;
 
 PROCEDURE OnMouse(app: App; VAR E: T.Event);
 VAR c: Control;
+  btn: INTEGER;
 BEGIN
   IF E.button = 0 THEN (* Release mouse *)
-    app.mouseBtn := 0;
+    btn := app.mouseBtn; app.mouseBtn := 0;
     IF app.dragged # NIL THEN c := app.dragged
     ELSE c := GetControlAt(app, E.x, E.y);
       IF HasModalWindow(app) & (c # app.windows) THEN c := NIL END
     END;
     app.dragged := NIL;
     IF (c # NIL) & (c.do.mouseUp # NIL) THEN
-      c.do.mouseUp(c, E.x - app.dragX, E.y - app.dragY, app.mouseBtn)
+      c.do.mouseUp(c, E.x - app.dragX, E.y - app.dragY, btn)
     END
   ELSIF app.mouseBtn = 0 THEN (* Mouse down event *)
     app.mouseBtn := E.button;
