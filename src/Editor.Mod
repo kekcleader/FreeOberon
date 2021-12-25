@@ -770,7 +770,7 @@ BEGIN c.text.MaybeRemoveIndent; i := c.h - 3;
 END MoveByPage;
 
 (* Moves input cursor left and right by one char *)
-PROCEDURE MoveInLine(c: Editor; right: BOOLEAN);
+PROCEDURE MoveByChar(c: Editor; right: BOOLEAN);
 BEGIN
   IF right THEN c.text.MaybeRemoveIndent;
     IF c.text.x < c.text.cur.len THEN
@@ -787,24 +787,24 @@ BEGIN
       c.text.x := c.text.cur.len;
     END
   END
-END MoveInLine;
+END MoveByChar;
 
 (* Moves input cursor left and right by one word *)
 PROCEDURE MoveByWord(c: Editor; right: BOOLEAN);
 VAR kind: INTEGER;
 BEGIN
   IF ~right THEN
-    REPEAT MoveInLine(c, FALSE)
+    REPEAT MoveByChar(c, FALSE)
     UNTIL c.text.IsEdge() OR (c.text.CurCharKind() # Text.whitespace)
   END;
   kind := c.text.CurCharKind();
-  REPEAT MoveInLine(c, right)
+  REPEAT MoveByChar(c, right)
   UNTIL c.text.IsEdge() OR (c.text.CurCharKind() # kind);
   IF right THEN
     WHILE ~c.text.IsEdge() & (c.text.CurCharKind() = Text.whitespace) DO
-      MoveInLine(c, TRUE)
+      MoveByChar(c, TRUE)
     END
-  ELSIF ~c.text.IsEdge() THEN MoveInLine(c, TRUE)
+  ELSIF ~c.text.IsEdge() THEN MoveByChar(c, TRUE)
   END
 END MoveByWord;
 
@@ -986,12 +986,12 @@ BEGIN OV.WindowKeyDown(c, E);
   CASE E.key OF
     T.kLeft:
     IF E.mod * T.mCtrl # {} THEN MoveByWord(c(Editor), FALSE)
-    ELSE MoveInLine(c(Editor), FALSE)
+    ELSE MoveByChar(c(Editor), FALSE)
     END;
     PrintText(c(Editor))
   | T.kRight:
     IF E.mod * T.mCtrl # {} THEN MoveByWord(c(Editor), TRUE)
-    ELSE MoveInLine(c(Editor), TRUE)
+    ELSE MoveByChar(c(Editor), TRUE)
     END;
     PrintText(c(Editor))
   | T.kUp:        MoveByLine(c(Editor), FALSE, FALSE)
