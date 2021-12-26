@@ -170,7 +170,7 @@ CONST
   mCtrl*  = {mLCtrl, mRCtrl};
   mShift* = {mLShift, mRShift};
   mAlt*   = {mLAlt, mRAlt};
-  mMeta*   = {mLMeta, mRMeta};
+  mMeta*  = {mLMeta, mRMeta};
 
   (* Characters *)
   lineHor*         = 2500X;
