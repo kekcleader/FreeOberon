@@ -1086,8 +1086,8 @@ BEGIN
     event.display := KE.display;
     event.window := GetWindow(event.display)
   ELSIF E.type = Al.eventKeyChar THEN
-    event.type := char;
     KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
+    event.type := char;
     event.key := KE.keycode;
     event.ch := CHR(KE.unichar);
     event.mod := keyMods;

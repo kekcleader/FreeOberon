@@ -624,12 +624,13 @@ BEGIN
   IF a > b THEN tmp := a; a := b; b := tmp END
 END Order;
 
-(* Starts, removes, upgrades selection if Shift held. *)
-(* dir is one of Direction of Selection constants. *)
-PROCEDURE HandleSelection(c: Editor; dir: INTEGER; viaHoriz: BOOLEAN);
+(** Starts, removes, upgrades selection if Shift held.
+    dir is one of Direction of Selection constants. *)
+PROCEDURE HandleSelection(c: Editor; dir: INTEGER;
+    viaHoriz, shiftPressed: BOOLEAN);
 VAR mod: SET; onLeft, onRight: BOOLEAN;
 BEGIN
-  IF FALSE (*!FIXME ~T.ShiftPressed()*) THEN c.text.selected := FALSE
+  IF ~shiftPressed THEN c.text.selected := FALSE
   ELSE CheckSelBorders(c, onLeft, onRight);
     IF ~c.text.selected OR (~onLeft & ~onRight) THEN
       StartSelection(c); (* Reset/new selection *)
@@ -721,19 +722,19 @@ BEGIN
 END MoveScreen;
 
 (* Moves input cursor up and down *)
-PROCEDURE MoveByLine(c: Editor; down, viaHoriz: BOOLEAN);
+PROCEDURE MoveByLine(c: Editor; down, viaHoriz, shiftPressed: BOOLEAN);
 VAR moved: BOOLEAN;
 BEGIN c.text.MaybeRemoveIndent; moved := FALSE;
   IF down THEN
     IF c.text.cur.next # NIL THEN
-      HandleSelection(c, dirDown, viaHoriz);
+      HandleSelection(c, dirDown, viaHoriz, shiftPressed);
       moved := TRUE;
       c.text.cur := c.text.cur.next; INC(c.text.y);
       IF c.text.y >= c.text.scrY + c.h - 2 THEN MoveScreenByLine(c, TRUE) END
     END
   ELSE (* Up *)
     IF c.text.cur.prev # NIL THEN
-      HandleSelection(c, dirUp, viaHoriz);
+      HandleSelection(c, dirUp, viaHoriz, shiftPressed);
       moved := TRUE;
       IF c.text.scrFirst = c.text.cur THEN MoveScreenByLine(c, FALSE) END;
       c.text.cur := c.text.cur.prev; DEC(c.text.y)
@@ -746,14 +747,14 @@ BEGIN c.text.MaybeRemoveIndent; moved := FALSE;
 END MoveByLine;
 
 (* Moves input cursor up and down by page *)
-PROCEDURE MoveByPage(c: Editor; down: BOOLEAN);
+PROCEDURE MoveByPage(c: Editor; down, shiftPressed: BOOLEAN);
 VAR i: INTEGER; moved: BOOLEAN;
 BEGIN c.text.MaybeRemoveIndent; i := c.h - 3;
   IF down THEN
     moved := c.text.cur.next # NIL;
     WHILE (i > 0) & (c.text.cur.next # NIL) DO
       c.text.scrFirst := c.text.scrFirst.next; INC(c.text.scrY);
-      MoveByLine(c, TRUE, FALSE);
+      MoveByLine(c, TRUE, FALSE, shiftPressed);
       DEC(i)
     END
   ELSE (* Up *)
@@ -762,7 +763,7 @@ BEGIN c.text.MaybeRemoveIndent; i := c.h - 3;
       IF c.text.scrY > 0 THEN
         c.text.scrFirst := c.text.scrFirst.prev; DEC(c.text.scrY)
       END;
-      MoveByLine(c, FALSE, FALSE);
+      MoveByLine(c, FALSE, FALSE, shiftPressed);
       DEC(i)
     END
   END;
@@ -770,49 +771,49 @@ BEGIN c.text.MaybeRemoveIndent; i := c.h - 3;
 END MoveByPage;
 
 (* Moves input cursor left and right by one char *)
-PROCEDURE MoveByChar(c: Editor; right: BOOLEAN);
+PROCEDURE MoveByChar(c: Editor; right, shiftPressed: BOOLEAN);
 BEGIN
   IF right THEN c.text.MaybeRemoveIndent;
     IF c.text.x < c.text.cur.len THEN
-      HandleSelection(c, dirRight, FALSE); INC(c.text.x)
+      HandleSelection(c, dirRight, FALSE, shiftPressed); INC(c.text.x)
     ELSIF c.text.cur.next # NIL THEN
-      MoveByLine(c, TRUE, TRUE);
+      MoveByLine(c, TRUE, TRUE, shiftPressed);
       c.text.x := 0;
     END
   ELSE (* Left *) c.text.newLineCreated := FALSE;
     IF c.text.x > 0 THEN
-      HandleSelection(c, dirLeft, FALSE); DEC(c.text.x)
+      HandleSelection(c, dirLeft, FALSE, shiftPressed); DEC(c.text.x)
     ELSIF c.text.cur.prev # NIL THEN
-      MoveByLine(c, FALSE, TRUE);
+      MoveByLine(c, FALSE, TRUE, shiftPressed);
       c.text.x := c.text.cur.len;
     END
   END
 END MoveByChar;
 
 (* Moves input cursor left and right by one word *)
-PROCEDURE MoveByWord(c: Editor; right: BOOLEAN);
+PROCEDURE MoveByWord(c: Editor; right, shiftPressed: BOOLEAN);
 VAR kind: INTEGER;
 BEGIN
   IF ~right THEN
-    REPEAT MoveByChar(c, FALSE)
+    REPEAT MoveByChar(c, FALSE, shiftPressed)
     UNTIL c.text.IsEdge() OR (c.text.CurCharKind() # Text.whitespace)
   END;
   kind := c.text.CurCharKind();
-  REPEAT MoveByChar(c, right)
+  REPEAT MoveByChar(c, right, shiftPressed)
   UNTIL c.text.IsEdge() OR (c.text.CurCharKind() # kind);
   IF right THEN
     WHILE ~c.text.IsEdge() & (c.text.CurCharKind() = Text.whitespace) DO
-      MoveByChar(c, TRUE)
+      MoveByChar(c, TRUE, shiftPressed)
     END
-  ELSIF ~c.text.IsEdge() THEN MoveByChar(c, TRUE)
+  ELSIF ~c.text.IsEdge() THEN MoveByChar(c, TRUE, shiftPressed)
   END
 END MoveByWord;
 
 (* Moves input cursor to start and to end *)
-PROCEDURE MoveToLineEdge(c: Editor; end: BOOLEAN);
+PROCEDURE MoveToLineEdge(c: Editor; end, shiftPressed: BOOLEAN);
 VAR onLeft, onRight: BOOLEAN;
 BEGIN
-  IF FALSE (*!FIXME T.ShiftPressed()*) THEN
+  IF shiftPressed THEN
     IF ~c.text.selected THEN StartSelection(c)
     ELSE
       CheckSelBorders(c, onLeft, onRight);
@@ -982,28 +983,30 @@ BEGIN E := c(Editor);
 END EditorClose;
 
 PROCEDURE EditorKeyDown*(c: OV.Control; VAR E: T.Event);
+VAR shiftPressed: BOOLEAN;
 BEGIN OV.WindowKeyDown(c, E);
+  shiftPressed := E.mod * T.mShift # {};
   CASE E.key OF
     T.kLeft:
-    IF E.mod * T.mCtrl # {} THEN MoveByWord(c(Editor), FALSE)
-    ELSE MoveByChar(c(Editor), FALSE)
+    IF E.mod * T.mCtrl # {} THEN MoveByWord(c(Editor), FALSE, shiftPressed)
+    ELSE MoveByChar(c(Editor), FALSE, shiftPressed)
     END;
     PrintText(c(Editor))
   | T.kRight:
-    IF E.mod * T.mCtrl # {} THEN MoveByWord(c(Editor), TRUE)
-    ELSE MoveByChar(c(Editor), TRUE)
+    IF E.mod * T.mCtrl # {} THEN MoveByWord(c(Editor), TRUE, shiftPressed)
+    ELSE MoveByChar(c(Editor), TRUE, shiftPressed)
     END;
     PrintText(c(Editor))
-  | T.kUp:        MoveByLine(c(Editor), FALSE, FALSE)
-  | T.kDown:      MoveByLine(c(Editor), TRUE, FALSE)
-  | T.kHome:      MoveToLineEdge(c(Editor), FALSE)
-  | T.kEnd:       MoveToLineEdge(c(Editor), TRUE)
-  | T.kPgUp:      MoveByPage(c(Editor), FALSE)
-  | T.kPgDn:      MoveByPage(c(Editor), TRUE)
+  | T.kUp:        MoveByLine(c(Editor), FALSE, FALSE, shiftPressed)
+  | T.kDown:      MoveByLine(c(Editor), TRUE, FALSE, shiftPressed)
+  | T.kHome:      MoveToLineEdge(c(Editor), FALSE, shiftPressed)
+  | T.kEnd:       MoveToLineEdge(c(Editor), TRUE, shiftPressed)
+  | T.kPgUp:      MoveByPage(c(Editor), FALSE, shiftPressed)
+  | T.kPgDn:      MoveByPage(c(Editor), TRUE, shiftPressed)
   | T.kBackspace: HandleBackspace(c(Editor))
-  | T.kDel:       HandleDelete(c(Editor))
+  | T.kDel, T.kDelPad:     HandleDelete(c(Editor))
   | T.kEnter, T.kEnterPad: HandleEnter(c(Editor))
-  | T.kTab:       HandleTab(c(Editor), E.mod * T.mShift # {})
+  | T.kTab:       HandleTab(c(Editor), shiftPressed)
   ELSE END
 END EditorKeyDown;
 

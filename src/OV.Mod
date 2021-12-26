@@ -2467,10 +2467,10 @@ BEGIN handled := FALSE; p := app.cur;
     IF (p.parent # NIL) & (p.parent IS Window) &
        (p.parent.do.keyDown # NIL) THEN
       p.parent.do.keyDown(p.parent, E);
-      handled := TRUE (*!FIXME does it block text input? *)
+      handled := TRUE
     END
   END;
-  IF ~handled & (E.ch >= 20X) THEN
+  IF ~handled & (E.ch >= 20X) & (E.ch # 07FX) THEN
     IF p.do.textInput # NIL THEN p.do.textInput(p, E.ch) END
   END
 END OnKey;
