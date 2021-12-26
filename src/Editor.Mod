@@ -20,6 +20,7 @@ IMPORT OV, T := TermBox, Text := EditorText,
   Strings, StrList, Dir, Out;
 CONST
   stdPath* = 'Programs/';
+  dotChar = 0B7X; (* To higlight spaces *)
 
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -392,7 +393,9 @@ BEGIN
       KW('PROCEDURE') OR KW('RECORD') OR KW('REPEAT') OR KW('RETURN') OR
       KW('THEN') OR KW('TO') OR KW('TYPE') OR KW('VAR') OR KW('WHILE') OR
       KW('ELSE') OR KW('OF') OR KW('WITH') OR KW('LONGSET') OR
-      KW('UNTIL') OR KW('CONST') OR KW('MOD') OR KW('FLOOR')
+      KW('UNTIL') OR KW('CONST') OR KW('MOD') OR KW('FLOOR') OR KW('LSL') OR
+      KW('ASR') OR KW('ROR') OR KW('ASSERT') OR KW('BYTE') OR
+      KW('SHORTCHAR') OR KW('SYSTEM')
   ELSE result := FALSE
   END ;
 RETURN result END IsKeywordInString;
@@ -508,8 +511,7 @@ RETURN color END GetTokenColor;
 (* Like T.PutString, but highlighted *)
 PROCEDURE PutStringH*(x, y: INTEGER; s: ARRAY OF CHAR;
   bg, limit: INTEGER; VAR comLevel: INTEGER);
-VAR i, fg, class, len: INTEGER;
-  tW, tH: INTEGER;
+VAR i, fg, class, len, tW, tH: INTEGER;
 BEGIN
   T.Size(tW, tH);
   IF limit = 0 THEN limit := tW END;
@@ -526,7 +528,7 @@ BEGIN
   DEC(i);
   WHILE (i >= 0) & (s[i] = ' ') DO
     DEC(x);
-    T.SetCell(x, y, 0FAX(*!FIXME*), 3, bg);
+    T.SetCell(x, y, dotChar, 3, bg);
     DEC(i)
   END
 END PutStringH;
@@ -585,8 +587,7 @@ BEGIN T.Size(tW, tH);
       PutSelStringH(minX, scrY, L.s, c.bg, maxX, comLevel, 1, 7, x0, x1)
     ELSE PutStringH(minX, scrY, L.s, c.bg, maxX, comLevel)
     END;
-    IF (L = c.text.cur) & (c.text.x + 1 < tW) &
-       ~OV.HasModalWindow(c.app) THEN
+    IF (L = c.text.cur) & (c.text.x + 1 < tW) & ~OV.HasModalWindow(c.app) THEN
       x0 := minX + c.text.x;
       IF c.focused & (x0 <= maxX) THEN
         T.SetCursor(x0, scrY);
@@ -690,9 +691,9 @@ BEGIN
         THEN c.text.selL := c.text.cur.next.len END
       END
     ELSE END;
-    IF ((c.text.selT >= c.text.selB) & (c.text.selL >= c.text.selR)) OR
-       (c.text.selT > c.text.selB) THEN
-      c.text.selected := FALSE
+    IF (c.text.selT = c.text.selB) & (c.text.selL >= c.text.selR) OR
+       (c.text.selT > c.text.selB)
+    THEN c.text.selected := FALSE
     END
   END
 END HandleSelection;
@@ -909,9 +910,8 @@ END EditClear;
 PROCEDURE EditPaste*(c: OV.Control);
 VAR e: Editor;
 BEGIN
-  IF (c.app.windows # NIL) & (c.app.windows IS Editor) &
-      (clipboard[0] # 0X) THEN
-    e := c.app.windows(Editor);
+  IF (c.app.windows # NIL) & (c.app.windows IS Editor) & (clipboard[0] # 0X)
+  THEN e := c.app.windows(Editor);
     e.text.DeleteSelection;
     e.text.Insert(clipboard, FALSE);
     IF e.text.y >= e.text.scrY + e.h - 2 THEN
@@ -971,6 +971,7 @@ END EditorMouseMove;
 
 PROCEDURE EditorTextInput(c: OV.Control; ch: CHAR);
 BEGIN
+  IF c(Editor).text.selected THEN c(Editor).text.DeleteSelection END;
   IF ch # 0X THEN c(Editor).text.InsertChar(ch);
     c(Editor).text.selected := FALSE; PrintText(c(Editor))
   END
