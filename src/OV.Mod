@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT T := TermBox, Strings, StrList, Out, SYSTEM;
+IMPORT T := TermBox, Strings, StrList, Out, SYSTEM, Kernel;
 CONST
   minInt = -70000000H-1;
   maxInt = 7FFFFFFFH;
@@ -1228,8 +1228,7 @@ RETURN p END FindSelectedChild;
 PROCEDURE MenuHotkey*(c: Control; ch: CHAR): BOOLEAN;
 VAR i: INTEGER; x: CHAR;
 BEGIN i := 0; x := c.caption[0];
-  WHILE (x # 0X) &
-        ~((x = '&') & (c.caption[i + 1] # '&')) DO
+  WHILE (x # 0X) & ~((x = '&') & (c.caption[i + 1] # '&')) DO
     IF (x = '&') & (c.caption[i + 1] = '&') THEN INC(i, 2) ELSE INC(i) END;
     x := c.caption[i]
   END
@@ -1256,14 +1255,13 @@ BEGIN
     NeedRedraw(c.app)
   ELSIF E.key = T.kEnter THEN c.do.click(c)
   ELSIF E.key = T.kEsc THEN
-    IF c.parent.parent = c.app.menu THEN
+    IF (c.parent.parent = NIL) OR (c.parent.parent.parent = NIL) THEN
       c.parent.status := normal; UnsetFocus(c.app)
-    ELSE
-      c.parent.status := selected; SetFocus(c.parent)
+    ELSE c.parent.status := selected; SetFocus(c.parent)
     END;
     NeedRedraw(c.app)
   ELSE p := c;
-    WHILE (p # NIL) & ~MenuHotkey(p, CHR(E.key)) DO
+    WHILE (p # NIL) & ~MenuHotkey(p, E.ch) DO
       IF p.next = c THEN p := NIL ELSE p := p.next END
     END;
     IF p # NIL THEN
@@ -2370,7 +2368,7 @@ BEGIN found := FALSE;
   IF ('a' <= E.ch) & (E.ch <= 'z') & ~HasModalWindow(app) THEN
     p := app.menu.children.prev; br := p;
     REPEAT p := p.next; found := MenuHotkey(p(Menu), E.ch)
-    UNTIL found OR (p = br); (* !FIXME use loop pattern *)
+    UNTIL found OR (p = br);
     IF found THEN UnsetFocus(app); p.do.click(p) END
   END;
   RETURN found
@@ -2466,8 +2464,7 @@ BEGIN handled := FALSE; p := app.cur;
     IF p.do.keyDown # NIL THEN p.do.keyDown(p, E) END;
     IF (p.parent # NIL) & (p.parent IS Window) &
        (p.parent.do.keyDown # NIL) THEN
-      p.parent.do.keyDown(p.parent, E);
-      handled := TRUE
+      p.parent.do.keyDown(p.parent, E)
     END
   END;
   IF ~handled & (E.ch >= 20X) & (E.ch # 07FX) THEN
