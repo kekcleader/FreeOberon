@@ -881,11 +881,12 @@ BEGIN E := app.windows; count := 0;
       INC(count);
       IF W = E THEN W := NIL ELSE W := W.next END
     END;
-    IF count < 4 THEN cols := 1
-    ELSIF count < 9 THEN cols := 2
-    ELSE cols := 3
+    IF count < 4 THEN rows := 1
+    ELSIF count < 9 THEN rows := 2
+    ELSE rows := 3
     END;
-    rows := count DIV cols; col := 1;
+    cols := count DIV rows; col := 1;
+
     x := 0; y := 1;
     w := tW DIV cols; w2 := w;
     dw := tW MOD cols;
