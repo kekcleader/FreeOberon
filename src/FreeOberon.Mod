@@ -1,5 +1,5 @@
 MODULE FreeOberon;
-(* Copyright 2017-2021 Arthur Yefimov
+(* Copyright 2017-2022 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -855,7 +855,7 @@ BEGIN w := OV.NewWindow(); w.modal := TRUE; w.caption := 'About';
   L := OV.NewLabel(s); L.align := OV.center;
   L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
 
-  L := OV.NewLabel('Copyright (c) 2017-2021 by'); L.align := OV.center;
+  L := OV.NewLabel('Copyright (c) 2017-2022 by'); L.align := OV.center;
   L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
 
   L := OV.NewLabel('Arthur Yefimov, free.oberon.org'); L.align := OV.center;
