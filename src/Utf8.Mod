@@ -55,7 +55,7 @@ VAR n: INTEGER;
 BEGIN EncodeEx(in, -1, out, n)
 END Encode;
 
-PROCEDURE DecodeChar*(IN s: ARRAY OF CHAR): CHAR;
+PROCEDURE DecodeChar*(IN s: ARRAY OF (*!FIXME SHORT?*)CHAR): CHAR;
 VAR i, x, c: INTEGER;
 BEGIN c := ORD(s[0]);
   IF c > 80H THEN x := ORD(s[1]) MOD 64; (* Not 1 byte *)

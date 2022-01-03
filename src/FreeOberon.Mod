@@ -90,6 +90,9 @@ RETURN lines END CountLines;
 PROCEDURE ShowErrors(s: ARRAY OF CHAR);
 VAR lines, width, x0, x, y, i: INTEGER;
 BEGIN
+  ;;;;;;Out.String('ERRORS:'); Out.Ln;;;;;;
+  ;;;;;;Out.String(s); Out.Ln;;;;;;
+  ;;;;;;Out.String('END ERRORS.'); Out.Ln;;;;;;
 (*
   width := T.charsX - 2;
   lines := CountLines(s, width);
@@ -281,7 +284,7 @@ BEGIN
 END Backspace;
 
 PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; fname: ARRAY OF CHAR;
-    VAR line, col: INTEGER);
+    VAR line, col, error: INTEGER);
 VAR i, j, st, len, skip: INTEGER; found: BOOLEAN;
 BEGIN fname[0] := 0X; line := 1; col := 1;
   StringsFindNext(' translating ', s, 0, found, i);
@@ -300,7 +303,14 @@ BEGIN fname[0] := 0X; line := 1; col := 1;
       IF s[i] = ':' THEN INC(i) END;
       IF ('0' <= s[i]) & (s[i] <= '9') THEN
         ReadInt(s, i, col)
-      END
+      END;
+      WHILE (s[i] # 0X) & (s[i] # 'e') DO INC(i) END;
+      IF (s[i + 1] = 'r') & (s[i + 2] = 'r') & (s[i + 3] = ' ') THEN
+        INC(i, 4); ReadInt(s, i, error)
+      ELSE error := 0
+      END;
+      s := 'Пропущена точка с запятой';;;;;;;
+      ;;;;;Out.String('error = ');Out.Int(error, 0);Out.Ln;;;;;;
     END
   END
 END ParseErrors;
@@ -311,22 +321,13 @@ VAR len, i: INTEGER;
     s, sN: ARRAY 120 OF CHAR;
 
   PROCEDURE WriteProgBuf;
-  VAR ch: CHAR; i: INTEGER;
+  VAR ch: SHORTCHAR; i: INTEGER;
+    z: ARRAY 16300 OF CHAR;
   BEGIN
-    i := 0;
-    WHILE i < len DO
-      ch := progBuf[i];
-      IF ch = 0D0X THEN
-        INC(i); ch := progBuf[i];
-        IF ch = 081X THEN ch := CHR(240) (* Big Yo *)
-        ELSE ch := CHR(ORD(ch) - 16)
-        END
-      ELSIF ch = 0D1X THEN
-        INC(i); ch := CHR(ORD(progBuf[i]) + 96)
-      ELSIF ch >= 080X THEN ch := '?'
-      END;
-      Write(ch); INC(i)
-    END
+    IF len < LEN(progBuf) THEN ch := progBuf[len]; progBuf[len] := 0X END;
+    Utf8.Decode(progBuf, z);
+    i := 0; WHILE z[i] # 0X DO Write(z[i]); INC(i) END;
+    IF len < LEN(progBuf) THEN progBuf[len] := ch END
   END WriteProgBuf;
 
   PROCEDURE Read(tillEnd: BOOLEAN);
@@ -350,7 +351,7 @@ BEGIN
     IF Term.ProcessFinished(err) THEN
       Read(TRUE); (* Read everything until pipe is empty *)
       programFinished := TRUE;
-      IF tempWindowed THEN (*T.SwitchToFullscreen !FIXME *) END;
+      IF tempWindowed THEN T.SwitchToFS END;
       IF err = 0 THEN
         WriteString(' Press any key to return to IDE')
       ELSE s := ' Runtime error '; Int.Append(err, s);
@@ -491,7 +492,7 @@ CONST bufLen = 20480;
 VAR buf: ARRAY bufLen OF SHORTCHAR;
   e: Editor.Editor;
   p: StrList;
-  len, err, line, col: INTEGER;
+  len, err, line, col, error: INTEGER;
   command: ARRAY 32 OF CHAR;
   q: ARRAY 1024 OF SHORTCHAR;
   z: ARRAY 1024 OF CHAR;
@@ -548,7 +549,7 @@ BEGIN
       ELSE buf[len] := 0X
       END;
       Utf8.Decode(buf, z);
-      ParseErrors(z, fname, line, col);
+      ParseErrors(z, fname, line, col, error);
       FocusOrOpenFile(fname);
       e := app.windows(Editor.Editor);
       e.text.MoveToLineCol(line, col, e.h - 2);
