@@ -11,10 +11,10 @@
 Name "FreeOberon"
 
 ;!include "MUI.nsh"
-;!define MUI_ICON "FreeOberon\data\images\icon.ico"
+;!define MUI_ICON "FreeOberon\Data\Images\Icon.ico"
 
 ; The file to write
-OutFile "FreeOberon_Setup_v1.0.3.exe"
+OutFile "FreeOberon_Setup_v1.1.0_alpha.exe"
 
 ; The default installation directory
 InstallDir C:\FreeOberon
@@ -110,7 +110,7 @@ Section "Uninstall"
 
   ; Remove Free Oberon subdirectories
   RMDir /r /REBOOTOK $INSTDIR\bin
-  RMDir /r /REBOOTOK $INSTDIR\data
+  RMDir /r /REBOOTOK $INSTDIR\Data
   RMDir /r /REBOOTOK $INSTDIR\src
   RMDir /r /REBOOTOK $INSTDIR\Programs
 

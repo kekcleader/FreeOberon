@@ -1,6 +1,6 @@
 #/bin/bash
 PROG="FreeOberon"
-OFRDIR="../data/bin/OfrontPlus/Target/Linux_amd64"
+OFRDIR="../Data/bin/OfrontPlus/Target/Linux_amd64"
 
 PATH="$OFRDIR:$PATH"
 export OBERON=.:$OFRDIR/Lib/Sym
@@ -46,7 +46,7 @@ $CCFULL -c Dir.c
 $CCFULL -c Graph2.c
 $CCFULL -c TermBox.c
 
-$AR -crs ../data/bin/libFreeOberon.a \
+$AR -crs ../Data/bin/libFreeOberon.a \
   Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o Texts.o Random.o \
   StrList.o Dir.o Graph2.o TermBox.o
 
@@ -55,7 +55,7 @@ $CCFULL -o ../$PROG \
   Config.c term/term_linux.c \
   Term.c OV.c EditorText.c Editor.c \
   $PROG.c \
-  ../data/bin/libFreeOberon.a \
+  ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a \
   $(pkg-config \
     allegro_primitives-5 allegro_image-5 allegro_audio-5 \

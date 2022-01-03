@@ -93,7 +93,7 @@ VAR i: INTEGER;
   ok: BOOLEAN;
 BEGIN
   ok := TRUE;
-  font := G.LoadFont("data/images/font.bmp");
+  font := G.LoadFont("../Data/Fonts/Main");
   IF font = NIL THEN
     Out.String("Could not load font."); Out.Ln;
     ok := FALSE
@@ -160,8 +160,8 @@ BEGIN
   G.VLine(s, x1, y0, y1, c2);
   (* Внутри *)
   NumToStr(v, b10, str);
-  G.DrawString(s, font, x0 + (cw - font.charW * 2) DIV 2,
-    y0 + (ch - font.charH) DIV 2, str, black);
+  G.DrawString(str, x0 + (cw - font.charW * 2) DIV 2,
+    y0 + (ch - font.charH) DIV 2, font, black);
   (* Курсор *)
   IF shine THEN
     G.Rect(s, x0 - 1, y0 - 1, x1 + 1, y1 + 1, yellow);

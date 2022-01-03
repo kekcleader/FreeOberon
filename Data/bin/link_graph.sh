@@ -7,7 +7,7 @@ cd bin
 
 THENAME="${1%.*}"
 ONAME="${THENAME##*/}"
-OFRDIR="../data/bin/OfrontPlus/Target/Linux_amd64"
+OFRDIR="../Data/bin/OfrontPlus/Target/Linux_amd64"
 PATH="$OFRDIR:$PATH"
 CC="gcc"
 
@@ -32,7 +32,7 @@ $CC -g3 -O0 -fno-exceptions \
   -I $OFRDIR/Lib/Obj \
   $ONAME.c -o $ONAME \
   $@ \
-  ../data/bin/libFreeOberon.a \
+  ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a \
   $SDL2Opts -lSDL2_image
 retcode=$?

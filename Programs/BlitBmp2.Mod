@@ -7,7 +7,7 @@ VAR s, b: G.Bitmap;
 BEGIN
   s := G.Init();
   IF s = NIL THEN HALT(3) END;
-  b := G.LoadBitmap('../data/examples/rocket.png');
+  b := G.LoadBitmap('../Data/Examples/rocket.png');
   IF b = NIL THEN HALT(4) END;
   FOR i := 0 TO N - 1 DO
     x[i] := s.w * G.Uniform();

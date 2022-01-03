@@ -19,7 +19,7 @@ along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 IMPORT T := TermBox, Files, Args, Utf8,
        OV, Editor, Term, Config, Strings, Int, Out, Kernel;
 CONST
-  version* = '1.0.4';
+  version* = '1.1.0 alpha';
 
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -68,6 +68,8 @@ VAR
 
   curX, curY: INTEGER; (* Cursor position *)
   curFg, curBg: INTEGER; (* Current foreground and background of proc. Write *)
+  terminalNeedRedraw: BOOLEAN; (* Used when a compiled program is running *)
+  terminalMouseShown: BOOLEAN; (* Same *)
 
 PROCEDURE CountLines(s: ARRAY OF CHAR; width: INTEGER): INTEGER;
 VAR i, x, lines: INTEGER;
@@ -231,13 +233,16 @@ BEGIN
   END;
   FOR x := 0 TO tW - 1 DO
     T.SetCell(x, tH - 1, ' ', curFg, curBg)
-  END
+  END;
+  terminalNeedRedraw := TRUE
 END ScrollScreen;
 
 PROCEDURE Ln;
 VAR tW, tH: INTEGER;
 BEGIN T.Size(tW, tH); curX := 0;
-  IF curY >= tH - 1 THEN ScrollScreen; curY := tH - 1 ELSE INC(curY) END
+  IF curY >= tH - 1 THEN ScrollScreen; curY := tH - 1
+  ELSE INC(curY); terminalNeedRedraw := TRUE
+  END;
 END Ln;
 
 PROCEDURE Write(ch: CHAR);
@@ -251,8 +256,10 @@ BEGIN
       curX := 0;
       IF curY >= tH - 1 THEN ScrollScreen; curY := tH - 1 ELSE INC(curY) END
     ELSE INC(curX)
-    END
-  END
+    END;
+    terminalNeedRedraw := TRUE
+  END;
+  T.SetCursor(curX, curY)
 END Write;
 
 PROCEDURE WriteString(s: ARRAY OF CHAR);
@@ -264,13 +271,13 @@ END WriteString;
 PROCEDURE Backspace;
 VAR tW, tH: INTEGER;
 BEGIN
-  IF curX = 0 THEN
-    T.Size(tW, tH);
+  IF curX = 0 THEN T.Size(tW, tH);
     IF curY # 0 THEN curX := tW - 1; DEC(curY) END
-  ELSE
-    DEC(curX);
+  ELSE DEC(curX);
   END;
-  T.SetCell(curX, curY, ' ', curBg, curFg)
+  T.SetCell(curX, curY, ' ', curFg, curBg);
+  T.SetCursor(curX, curY);
+  terminalNeedRedraw := TRUE
 END Backspace;
 
 PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; fname: ARRAY OF CHAR;
@@ -325,7 +332,7 @@ VAR len, i: INTEGER;
   PROCEDURE Read(tillEnd: BOOLEAN);
   VAR loopLimit: INTEGER;
   BEGIN
-    loopLimit := 5;
+    loopLimit := 20;
     REPEAT
       Term.ReadFromProcess(progBuf, len, LEN(progBuf));
       IF len > 0 THEN
@@ -375,31 +382,32 @@ BEGIN
   END
 END HandleTerminalTextInput;
 
+PROCEDURE KillProgram;
+BEGIN
+  programFinished := TRUE;
+  (*!TODO Kill program *)
+END KillProgram;
+
 PROCEDURE HandleTerminalKeyDown(VAR E: T.Event; VAR quit: BOOLEAN);
 VAR code: INTEGER; ch: CHAR; buf: ARRAY 2 OF SHORTCHAR;
 BEGIN
   IF programFinished THEN
-    IF (E.key = T.kEnter) & (E.mod * T.mAlt # {}) THEN
-      (*T.ToggleFullscreen !FIXME *)
-    ELSIF (E.key # T.kAlt) & (E.key # T.kAltGr) THEN quit := TRUE
-    END
+    quit := TRUE
   ELSE
     CASE E.key OF
       T.kEnter, T.kEnterPad:
-      IF E.mod * T.mAlt # {} THEN (*T.ToggleFullscreen !FIXME*)
-      ELSE Ln;
-        WriteToProcess(inputBuf, inputBufLen);
-        inputBufLen := 0; buf[0] := SHORT(CHR(0AH));
-        Term.WriteToProcess(buf, 1)
-      END
+      Ln;
+      WriteToProcess(inputBuf, inputBufLen);
+      inputBufLen := 0; buf[0] := 0AX;
+      Term.WriteToProcess(buf, 1)
     | T.kBackspace:
       IF inputBufLen > 0 THEN
         DEC(inputBufLen); Backspace
       END
     | T.kPause:
       IF E.mod * T.mCtrl # {} THEN
-        programFinished := TRUE;
-        quit := TRUE (* !FIXME Kill the process *)
+        KillProgram;
+        quit := TRUE
       END
     ELSE
       HandleTerminalTextInput(E.ch)
@@ -410,15 +418,22 @@ END HandleTerminalKeyDown;
 PROCEDURE RunTerminal;
 VAR E: T.Event; quit: BOOLEAN;
 BEGIN quit := FALSE;
-  T.Clear; curX := 0; curY := 0; T.SetCursor(0, 0);
+  T.Clear;
+  terminalNeedRedraw := TRUE;
+  terminalMouseShown := FALSE; T.HideMouse;
   REPEAT
-    T.WaitEvent(E);
-    IF E.type = T.key THEN
-      HandleTerminalKeyDown(E, quit)
-    END;
     PollProgram;
-    T.Flush
-  UNTIL quit
+    IF terminalNeedRedraw THEN T.Flush; terminalNeedRedraw := FALSE END;
+    T.WaitEvent(E);
+    IF E.type = T.timer THEN
+    ELSIF E.type = T.key THEN HandleTerminalKeyDown(E, quit)
+    ELSIF E.type = T.quit THEN KillProgram
+    ELSIF E.type = T.mouse THEN
+      IF E.button # 0 THEN T.ShowMouse END
+    END;
+    IF terminalNeedRedraw THEN T.Flush; terminalNeedRedraw := FALSE END
+  UNTIL quit;
+  IF ~terminalMouseShown THEN T.ShowMouse END
 END RunTerminal;
 
 PROCEDURE IsSysModule(IN name: ARRAY OF CHAR): BOOLEAN;
@@ -494,13 +509,13 @@ BEGIN
     IF Term.SearchPath('cmd.exe', q) # 0 THEN
       Utf8.Decode(q, cmd);
       Strings.Insert('"', 0, cmd);
-      Strings.Append('" /C data\bin\', cmd);
+      Strings.Append('" /C Data\bin\', cmd);
       Strings.Append(command, cmd);
       Strings.Append('.bat ', cmd)
     ELSE T.Print(0, tH - 1, 'Could not find cmd.exe', 15, 4)
     END
   ELSE (* Linux *)
-    cmd := 'data/bin/'; Strings.Append(command, cmd);
+    cmd := 'Data/bin/'; Strings.Append(command, cmd);
     Strings.Append('.sh ', cmd)
   END;
 
@@ -612,13 +627,15 @@ VAR dir: ARRAY 256 OF CHAR;
   i: INTEGER;
   tW, tH: INTEGER;
 BEGIN dir := prg$;
-  T.Size(tW, tH);
+  curX := 0; curY := 0; curFg := 7; curBg := 0;
+  T.SetCursor(0, 0); T.Size(tW, tH);
   i := 0; WHILE dir[i] # 0X DO INC(i) END;
   WHILE (i # -1) & (dir[i] # '/') & (dir[i] # '\') DO DEC(i) END; INC(i);
   dir[i] := 0X;
   Utf8.Encode(prg, s);
   Utf8.Encode(dir, d);
   IF ~Term.StartProcessIn(s, d) THEN
+    ;;;;;;;;;;Out.String('EXECUTION FAILED');Out.Ln;;;;;;;;;
     T.Print(0, tH - 1, ' Program execution failed ', 15, 4);
     T.Flush
     (* ; T.Pause !FIXME*)
@@ -829,8 +846,8 @@ BEGIN w := c.app.windows;
       graph := ImportsGraph(modules);
       needWindowed := graph;
       IF CompileAll(modules, graph, exename) THEN
-        tempWindowed := needWindowed (*& T.isFullscreen !FIXME*);
-        IF tempWindowed THEN (*G.SwitchToWindowed !FIXME *) END;
+        tempWindowed := needWindowed & T.IsFS();
+        IF tempWindowed THEN T.SwitchToWindow END;
         RunProgram(exename)
       END
     END
@@ -1149,7 +1166,6 @@ VAR success, fs, sw: BOOLEAN;
   w, h: INTEGER;
   fnames: Fnames;
 BEGIN
-  curX := 0; curY := 0;
   success := FALSE;
   ParseArgs(fs, sw, w, h, fnames);
   T.Settings(106, 25, {T.resizable, T.window(*, T.center*)});

@@ -806,7 +806,8 @@ BEGIN isCurTarget := target = W;
   Utf8.Encode(W.title, q); Al.set_new_window_title(q);
   IF software IN W.options THEN n := 0 ELSE n := 1 END;
   Al.set_new_display_option(Al.renderMethod, n, Al.suggest);
-  Al.set_new_display_option(Al.vsync, 2, Al.suggest);
+  Al.set_new_display_option(Al.vsync, 2(*off*), Al.suggest);
+  Al.set_new_display_option(Al.singleBuffer, 1, Al.suggest);
 
   IF smooth IN W.options THEN n := 1;
     Al.set_new_display_option(Al.samples, 8, Al.suggest)
@@ -962,7 +963,7 @@ BEGIN
   IF Al.emit_user_event(userEventSource, SYSTEM.VAL(Al.Event, E), 0) THEN END
 END EmitResizeEvent;
 
-PROCEDURE ToggleFullscreen*(win: Window);
+PROCEDURE ToggleFS*(win: Window);
 VAR fs: BOOLEAN;
   w, h: REAL;
 BEGIN
@@ -984,7 +985,15 @@ BEGIN
     RecreateDisplay(win, FALSE);
     EmitResizeEvent(win)
   END
-END ToggleFullscreen;
+END ToggleFS;
+
+PROCEDURE SwitchToWindow*(win: Window);
+BEGIN IF ~(window IN GetWindowOptions(screen)) THEN ToggleFS(win) END
+END SwitchToWindow;
+
+PROCEDURE SwitchToFS*(win: Window);
+BEGIN IF window IN GetWindowOptions(screen) THEN ToggleFS(win) END
+END SwitchToFS;
 
 PROCEDURE ParseEvent(E: Al.Event; VAR event: Event);
 VAR DE: Al.PDisplayEvent;

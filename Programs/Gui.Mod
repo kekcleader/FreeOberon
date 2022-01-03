@@ -513,7 +513,7 @@ BEGIN
   (*G.Settings(640, 480, {G.fullscreen, G.spread, G.sharpPixels, G.initMouse});*)
   screen := G.Init();
   IF screen # NIL THEN
-    font := G.LoadFont('../data/images/font.bmp', charW, charH);
+    font := G.LoadFont('../Data/Fonts/Main', charW, charH);
     IF font # NIL THEN
       Init;
       Run

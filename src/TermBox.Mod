@@ -286,6 +286,7 @@ VAR
   processingEvent: BOOLEAN;
   skipEnter: BOOLEAN; (* If TRUE, skip the G.char event with key = enter *)
   mouseDown: BOOLEAN;
+  mouseShown: BOOLEAN;
   mouseX, mouseY, mouseButton: INTEGER;
   curX, curY: INTEGER; (* Text cursor position *)
   cursorShown: BOOLEAN; (* TRUE if text cursor is show while it is blinking *)
@@ -381,7 +382,8 @@ RETURN color END InvertColor;
 PROCEDURE DrawCell(x, y: INTEGER; cell: Cell);
 VAR X, Y, w, h, fg, bg: INTEGER;
 BEGIN
-  IF (x # mouseX) OR (y # mouseY) THEN fg := cell.fg; bg := cell.bg
+  IF ~mouseShown OR (x # mouseX) OR (y # mouseY) THEN
+    fg := cell.fg; bg := cell.bg
   ELSE fg := InvertColor(cell.fg); bg := InvertColor(cell.bg)
   END;
   G.GetMonoFontSize(font, w, h); X := x * w; Y := y * h;
@@ -448,10 +450,9 @@ END Sync;
 
 PROCEDURE MoveMouse(x, y: INTEGER);
 BEGIN
-  UpdateCell(mouseX, mouseY);
+  IF mouseShown THEN UpdateCell(mouseX, mouseY) END;
   mouseX := x; mouseY := y;
-  UpdateCell(x, y);
-  Flush
+  IF mouseShown THEN UpdateCell(x, y); Flush END
 END MoveMouse;
 
 PROCEDURE ToggleFS;
@@ -464,9 +465,21 @@ BEGIN
   ELSE G.SetNewWindowScale(5/6, 1.0);
     G.SetWindowOption(screen, G.topleft, FALSE)
   END;
-  G.ToggleFullscreen(screen);
+  G.ToggleFS(screen);
   Sync
 END ToggleFS;
+
+PROCEDURE IsFS*(): BOOLEAN;
+RETURN ~(G.window IN G.GetWindowOptions(screen))
+END IsFS;
+
+PROCEDURE SwitchToWindow*;
+BEGIN IF IsFS() THEN ToggleFS END
+END SwitchToWindow;
+
+PROCEDURE SwitchToFS*;
+BEGIN IF ~IsFS() THEN ToggleFS END
+END SwitchToFS;
 
 PROCEDURE ResetCell(VAR cell: Cell);
 BEGIN
@@ -542,7 +555,7 @@ BEGIN
       IF needFlip # 0 THEN G.Flip; needFlip := 0 END
     ELSIF e.timer = cursorTimer THEN
       event.type := noEvent;
-      IF curX > 0 THEN
+      IF curX >= 0 THEN
         cursorShown := ~cursorShown;
         UpdateCell(curX, curY);
         Flush
@@ -640,6 +653,14 @@ END SetCursor;
 PROCEDURE HideCursor*;
 BEGIN SetCursor(-1, -1)
 END HideCursor;
+
+PROCEDURE ShowMouse*;
+BEGIN IF ~mouseShown THEN mouseShown := TRUE; UpdateCell(mouseX, mouseY) END
+END ShowMouse;
+
+PROCEDURE HideMouse*;
+BEGIN IF mouseShown THEN mouseShown := FALSE; UpdateCell(mouseX, mouseY) END
+END HideMouse;
 
 PROCEDURE SetBg*(x, y, bg: INTEGER);
 VAR p: Part;
@@ -839,6 +860,7 @@ BEGIN Done := FALSE;
     InitBuffer;
     InitTimers;
     mouseDown := FALSE;
+    mouseShown := ~(noMouse IN settings);
     skipEnter := FALSE;
     needFlip := 0;
     processingEvent := FALSE;

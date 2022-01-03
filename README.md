@@ -67,11 +67,13 @@ Free Oberon представляет собой кроссплатформенн
 # Использование
 
 Запустите Free Oberon и наберите текст программного модуля на языке Оберон (или же откройте файл с примером программы, например `Book.Mod`) и нажмите `F9`, чтобы скомпилировать и запустить программу.
-Файлы с исходными кодами модулей сохраняются в подкаталоге `Programs`, а скомпилированные исполняемые файлы сохраняются в `bin`. `data/bin/compile.sh` и `data\bin\compile.bat` используются соответственно на Линуксе и Windows'е для компиляции и могут при необходимости быть отредактированы.
+Файлы с исходными кодами модулей сохраняются в подкаталоге `Programs`, а скомпилированные исполняемые файлы сохраняются в `bin`. Сценарии `Data/bin/compile.sh` и `Data\bin\compile.bat` используются соответственно на Линуксе и Windows'е для компиляции и могут при необходимости быть отредактированы.
 
 Начиная с версии 1.0.3 есть возможность компилировать и запускать программы, состоящие из нескольких модулей. Поместите все модули в каталог `Programs`, откройте главный модуль и нажмите `F9`.
 Если в одном из модулей программы будет найдена ошибка, соответствующий файл откроется и будет указано на место ошибки. Чтобы перекомпилировать, снова перейдите к окну главного модуля и нажмите `F9`.
-Если в программе используется модуль Graph, к программе будет автоматически прикомпонована библиотека SDL2 (будет использован сценарий `data/bin/link_graph.sh (или .bat)`.
+Если в программе используется модуль Graph, к программе будет автоматически прикомпонована библиотека SDL2 (будет использован сценарий `Data/bin/link_graph.sh` (или `.bat`).
+
+Начиная с версии 1.1.0 можно компилировать проекты, находящиеся в других каталогах.
 
 ___________________________________
 
@@ -127,6 +129,10 @@ Note. If you want to recompile Free Oberon under Windows from the source code yo
 # Usage
 
 Run Free Oberon and type in an Oberon program (or open an example program like `Book.Mod`) and press `F9` to compile and run the program.
-The module source code files are saved in subdirectory `Programs` and the compiled executable files are saved in `bin`. `data/bin/compile.sh` and `data\bin\compile.bat` are used to compile a program on GNU/Linux and Windows accordingly and can be edited if required.
+
+The module source code files are saved in subdirectory `Programs` and the compiled executable files are saved in `bin`. Scripts `Data/bin/compile.sh` and `Data\bin\compile.bat` are used to compile a program on GNU/Linux and Windows accordingly and can be edited if required.
+
 Since version 1.0.3, it is also possible to compile and run programs that consist of several modules. Put all modules into `Programs` directory, open the main module and press `F9`. If there is an error in one of the modules of your program, the corresponding file will open up and the error will be highlighted. To recompile, focus the main module window again and press `F9`.
-If module Graph is used, SDL2 library will be automatically linked to your program (`data/bin/link_graph.sh (or .bat)` script will be used).
+If module Graph is used, SDL2 library will be automatically linked to your program (script `Data/bin/link_graph.sh` (or `.bat`) will be used).
+
+Since version 1.1.0 you can compile projects that are located in other directories.

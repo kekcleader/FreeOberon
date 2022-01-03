@@ -1,7 +1,7 @@
 @ECHO OFF
 SET PROG=FreeOberon
-SET OFRDIR=..\data\bin\OfrontPlus\Target\Win64
-SET GCCDIR=..\data\bin\mingw64\bin
+SET OFRDIR=..\Data\bin\OfrontPlus\Target\Win64
+SET GCCDIR=..\Data\bin\mingw64\bin
 SET PATH=%GCCDIR%;%OFRDIR%;%PATH%
 SET OBERON=.;%OFRDIR%\Lib\Sym
 REM SET SDL2Opts=-w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2
@@ -61,7 +61,7 @@ windres resources.rc resources.o
 %CCFULL% -c Dir.c
 %CCFULL% -c SDL2.c
 %CCFULL% -c Graph.c
-%AR% -crs ..\data\bin\FreeOberon.a ^
+%AR% -crs ..\Data\bin\FreeOberon.a ^
   Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o ^
   StrList.o Dir.o SDL2.o Graph.o
 
