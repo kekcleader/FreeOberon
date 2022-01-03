@@ -550,9 +550,13 @@ BEGIN
       END;
       Utf8.Decode(buf, z);
       ParseErrors(z, fname, line, col, error);
+      Out.Int(line, 10);Out.Int(col, 10);Out.Ln;;;;;;;
       FocusOrOpenFile(fname);
       e := app.windows(Editor.Editor);
       e.text.MoveToLineCol(line, col, e.h - 2);
+      IF (col = 1) & (line # 1) & (TRUE) THEN
+        e.text.MoveToLineCol(line - 1, 256, e.h - 2)
+      END;
       Editor.PrintText(app.windows(Editor.Editor))
     ELSIF link THEN z := 'Linking failed.'
     ELSE z := 'Compilation failed.'

@@ -11,14 +11,14 @@ CC="gcc"
 AR="ar"
 CCFULL="$CC -g3 -O0 -fno-exceptions -I $OFRDIR/../../Mod/Lib -I $OFRDIR/Lib/Obj"
 
-$OFR -C Config_linux.Mod
-$OFR -C Utf8.Mod
-$OFR -C Strings.Mod
-$OFR -C Reals.Mod
-$OFR -C Int.Mod
-$OFR -C In.Mod
-$OFR -C Out.Mod
-$OFR -C Files.Mod
+$OFR -Cw Config_linux.Mod
+$OFR -Cw Utf8.Mod
+$OFR -Cw Strings.Mod
+$OFR -Cw Reals.Mod
+$OFR -Cw Int.Mod
+$OFR -Cw In.Mod
+$OFR -Cw Out.Mod
+$OFR -Cw Files.Mod
 $OFR -7w Texts.Mod
 $OFR -7w Random.Mod
 $OFR -7w StrList.Mod
@@ -26,11 +26,11 @@ $OFR -7w Dir.Mod
 $OFR -7w Allegro5.Mod
 $OFR -7w Graph2.Mod
 $OFR -7w TermBox.Mod
-$OFR -C Term.Mod
+$OFR -Cw Term.Mod
 $OFR -7w OV.Mod
-$OFR -C EditorText.Mod
-$OFR -C Editor.Mod
-$OFR -Cm FreeOberon.Mod
+$OFR -Cw EditorText.Mod
+$OFR -Cw Editor.Mod
+$OFR -Cwm FreeOberon.Mod
 
 $CCFULL -c Utf8.c
 $CCFULL -c Strings.c
