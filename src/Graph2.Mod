@@ -678,11 +678,16 @@ BEGIN
 END LineF;
 
 PROCEDURE Line*(x1, y1, x2, y2: INTEGER; color: Color);
-BEGIN
-  LineF(FLT(x1), FLT(y1), FLT(x2), FLT(y2), color)
-  (*Al.draw_line(FLT(x1) + 0.5, FLT(y1) + 0.5,
-    FLT(x2) + 0.5, FLT(y2) + 0.5, SYSTEM.VAL(Al.Color, color), 1.0)*)
+BEGIN LineF(FLT(x1), FLT(y1), FLT(x2), FLT(y2), color)
 END Line;
+
+PROCEDURE HLine*(x, y1, y2: INTEGER; color: Color);
+BEGIN LineF(FLT(x), FLT(y1), FLT(x), FLT(y2), color)
+END HLine;
+
+PROCEDURE VLine*(x1, y, x2: INTEGER; color: Color);
+BEGIN LineF(FLT(x1), FLT(y), FLT(x2), FLT(y), color)
+END VLine;
 
 PROCEDURE FillRectF*(x1, y1, x2, y2: REAL; color: Color);
 BEGIN Al.draw_filled_rectangle(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color))
