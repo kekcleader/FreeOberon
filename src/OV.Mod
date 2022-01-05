@@ -2530,6 +2530,7 @@ BEGIN
     ELSIF E.type = T.quit THEN app.quit := TRUE
     END;
     IF app.needRedraw THEN DrawApp(app); T.Flush END
+    ;T.Diagnose;;;;;;
   UNTIL app.quit
 END RunApp;
 

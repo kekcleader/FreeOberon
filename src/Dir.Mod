@@ -94,6 +94,11 @@ BEGIN
   END
 END Rewind;
 
+PROCEDURE FileExists*(name: ARRAY OF CHAR): BOOLEAN;
+VAR s: ARRAY 2048 OF SYSTEM.CHAR8;
+BEGIN Utf8.Encode(name, s)
+RETURN Platform.FileExists(s) END FileExists;
+
 PROCEDURE IsDir*(name: ARRAY OF CHAR): BOOLEAN;
 VAR s: ARRAY 2048 OF SYSTEM.CHAR8;
 BEGIN Utf8.Encode(name, s)

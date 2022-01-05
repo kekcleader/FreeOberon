@@ -1174,6 +1174,7 @@ BEGIN
   success := FALSE;
   ParseArgs(fs, sw, w, h, fnames);
   T.Settings(106, 25, {T.resizable, T.window(*, T.center*)});
+  T.Settings(240, 65, {T.resizable, T.window(*, T.center*)});
   T.SetTitle('Free Oberon');
   T.Init;
   IF T.Done THEN
