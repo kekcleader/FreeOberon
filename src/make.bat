@@ -1,12 +1,12 @@
 @ECHO OFF
 SET PROG=FreeOberon
-SET OFRDIR=..\Data\bin\OfrontPlus\Target\Win64
-SET GCCDIR=..\Data\bin\mingw64\bin
+SET OFRDIR=..\Data\bin\OfrontPlus\Target\Win32
+SET GCCDIR=C:\mingw-w64\i686\mingw32\bin
 SET PATH=%GCCDIR%;%OFRDIR%;%PATH%
 SET OBERON=.;%OFRDIR%\Lib\Sym
-REM SET SDL2Opts=-w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2
-SET SDL2Opts=-lmingw32 -lSDL2main -lSDL2
-SET OFR=ofront+ -s -88
+
+
+SET OFR=ofront+ -s -48
 SET CC=gcc
 SET AR=ar
 SET CCFULL=%CC% -g3 -O0 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Lib\Obj
@@ -14,39 +14,43 @@ SET CCFULL=%CC% -g3 -O0 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Li
 ECHO ON
 %OFR% -C Config_win32.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C Utf8.Mod
+%OFR% -Cw Utf8.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C Strings.Mod
+%OFR% -Cw Strings.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C Reals.Mod
+%OFR% -Cw Reals.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C Int.Mod
+%OFR% -Cw Int.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C In.Mod
+%OFR% -Cw In.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C Out.Mod
+%OFR% -Cw Out.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C Files.Mod
+%OFR% -Cw Files.Mod
+@IF ERRORLEVEL 1 GOTO ERR
+%OFR% -7w Texts.Mod
+@IF ERRORLEVEL 1 GOTO ERR
+%OFR% -7w Random.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w StrList.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w Dir.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -Ci SDL2.Mod
+%OFR% -7w Allegro5.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C Graph.Mod
+%OFR% -7w Graph2.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C Terminal.Mod
+%OFR% -7w TermBox.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C Term.Mod
+%OFR% -Cw Term.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C OV.Mod
+%OFR% -7w OV.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C EditorText.Mod
+%OFR% -Cw EditorText.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -C Editor.Mod
+%OFR% -Cw Editor.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -Cm FreeOberon.Mod
+%OFR% -Cwm FreeOberon.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 windres resources.rc resources.o
 @REM                        -O0 change to -Os (?)   add -s (?)
@@ -57,21 +61,25 @@ windres resources.rc resources.o
 %CCFULL% -c In.c
 %CCFULL% -c Out.c
 %CCFULL% -c Files.c
+%CCFULL% -c Texts.c
+%CCFULL% -c Random.c
 %CCFULL% -c StrList.c
 %CCFULL% -c Dir.c
-%CCFULL% -c SDL2.c
-%CCFULL% -c Graph.c
-%AR% -crs ..\Data\bin\FreeOberon.a ^
-  Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o ^
-  StrList.o Dir.o SDL2.o Graph.o
+%CCFULL% -c Graph2.c
+%CCFULL% -c TermBox.c
 
-%CCFULL% Config.c term\term_win32.c ^
-  Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o ^
-  StrList.o Dir.o SDL2.o Graph.o ^
-  Term.c Terminal.c OV.c EditorText.c Editor.c ^
-  %PROG%.c -o ..\%PROG%.exe resources.o ^
+%AR% -crs ..\Data\bin\FreeOberon.a ^
+  Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o Texts.o Random.o ^
+  StrList.o Dir.o Graph2.o TermBox.o
+
+%CCFULL% -o ..\%PROG%.exe resources.o ^
+  Graph2.c TermBox.c ^
+  Config.c term\term_win32.c ^
+  Term.c OV.c EditorText.c Editor.c ^
+  %PROG%.c ^
+  ..\Data\bin\FreeOberon.a ^
   %OFRDIR%\Lib\Ofront.a ^
-  %SDL2Opts% -lSDL2_image
+  -lallegro -lallegro_primitives -lallegro_image
 
 @GOTO QUIT
 :ERR

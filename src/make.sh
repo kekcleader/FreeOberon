@@ -5,32 +5,54 @@ OFRDIR="../Data/bin/OfrontPlus/Target/Linux_amd64"
 PATH="$OFRDIR:$PATH"
 export OBERON=.:$OFRDIR/Lib/Sym
 
-SDL2Opts="-lSDL2"
+
 OFR="ofront+ -s -88"
 CC="gcc"
 AR="ar"
 CCFULL="$CC -g3 -O0 -fno-exceptions -I $OFRDIR/../../Mod/Lib -I $OFRDIR/Lib/Obj"
 
+
 $OFR -Cw Config_linux.Mod
+
 $OFR -Cw Utf8.Mod
+
 $OFR -Cw Strings.Mod
+
 $OFR -Cw Reals.Mod
+
 $OFR -Cw Int.Mod
+
 $OFR -Cw In.Mod
+
 $OFR -Cw Out.Mod
+
 $OFR -Cw Files.Mod
+
 $OFR -7w Texts.Mod
+
 $OFR -7w Random.Mod
+
 $OFR -7w StrList.Mod
+
 $OFR -7w Dir.Mod
+
 $OFR -7w Allegro5.Mod
+
 $OFR -7w Graph2.Mod
+
 $OFR -7w TermBox.Mod
+
 $OFR -Cw Term.Mod
+
 $OFR -7w OV.Mod
+
 $OFR -Cw EditorText.Mod
+
 $OFR -Cw Editor.Mod
+
 $OFR -Cwm FreeOberon.Mod
+
+
 
 $CCFULL -c Utf8.c
 $CCFULL -c Strings.c

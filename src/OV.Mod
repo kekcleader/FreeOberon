@@ -684,6 +684,7 @@ TYPE
     lastMouseDownTime*: INTEGER;
     quit*: BOOLEAN;
     needRedraw*: BOOLEAN;
+    sync*: BOOLEAN;
     mouseBtn*: INTEGER
   END;
 
@@ -2072,7 +2073,7 @@ BEGIN cancel := FALSE;
 END CloseAllWindows;
 
 PROCEDURE RefreshDisplay*(c: Control);
-BEGIN T.ClearTo(0, 7); NeedRedraw(c.app)
+BEGIN T.ClearTo(0, 7); NeedRedraw(c.app); c.app.sync := TRUE
 END RefreshDisplay;
 
 (* Window *)
@@ -2137,8 +2138,8 @@ VAR tW, tH: INTEGER;
 BEGIN T.Size(tW, tH);
   IF c(Window).zoomBtn # NIL THEN
     IF (c.x = 0) & (c.w = tW) & (c.y = 1) & (c.h = tH - 2) THEN
-      c(Window).zoomBtn.caption[0] := 012X
-    ELSE c(Window).zoomBtn.caption[0] := 018X
+      c(Window).zoomBtn.caption[0] := 12X
+    ELSE c(Window).zoomBtn.caption[0] := 18X
     END
   END
 END WindowRefresh;
@@ -2289,6 +2290,7 @@ BEGIN app.windows := NIL;
   app.lastMouseDownTime := 0;
   app.quit := FALSE;
   app.needRedraw := TRUE;
+  app.sync := TRUE;
   app.mouseBtn := 0
 END InitApp;
 
@@ -2516,20 +2518,27 @@ END OnResize;
 
 PROCEDURE RunApp*(app: App);
 VAR E: T.Event;
+  break: BOOLEAN;
 BEGIN
   ticks := 0;
   T.StartTimer(1/4);
   app.quit := FALSE;
   DrawApp(app); T.Flush;
   REPEAT
-    T.WaitEvent(E);
-    IF E.type = T.mouse THEN OnMouse(app, E)
-    ELSIF E.type = T.timer THEN INC(ticks)
-    ELSIF E.type = T.key THEN OnKey(app, E)
-    ELSIF E.type = T.resize THEN OnResize(app, E)
-    ELSIF E.type = T.quit THEN app.quit := TRUE
-    END;
-    IF app.needRedraw THEN DrawApp(app); T.Flush END
+    break := FALSE;
+    REPEAT
+      T.WaitEvent(E);
+      IF E.type = T.mouse THEN OnMouse(app, E)
+      ELSIF E.type = T.timer THEN INC(ticks); break := TRUE
+      ELSIF E.type = T.key THEN OnKey(app, E)
+      ELSIF E.type = T.resize THEN OnResize(app, E)
+      ELSIF E.type = T.quit THEN app.quit := TRUE
+      END
+    UNTIL break OR ~T.HasEvents();
+    IF app.needRedraw THEN
+      DrawApp(app);
+      IF app.sync THEN T.Sync; app.sync := FALSE ELSE T.Flush END
+    END
   UNTIL app.quit
 END RunApp;
 

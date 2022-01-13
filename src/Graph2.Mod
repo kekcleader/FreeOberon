@@ -790,6 +790,10 @@ BEGIN
 
 END Pause;
 
+PROCEDURE ConvertMemoryBitmaps*;
+BEGIN Al.convert_memory_bitmaps
+END ConvertMemoryBitmaps;
+
 PROCEDURE RecreateDisplay(W: Window; alterSize: BOOLEAN);
 VAR d: Al.Display;
   q: ARRAY 256 OF SHORTCHAR;
@@ -813,13 +817,11 @@ BEGIN isCurTarget := target = W;
   Al.set_new_display_option(Al.renderMethod, n, Al.suggest);
   Al.set_new_display_option(Al.vsync, 2(*off*), Al.suggest);
   Al.set_new_display_option(Al.singleBuffer, 1, Al.suggest);
-
   IF smooth IN W.options THEN n := 1;
     Al.set_new_display_option(Al.samples, 8, Al.suggest)
   ELSE n := 0
   END;
-  Al.set_new_display_option(Al.sampleBuffers, n, Al.suggest);
-
+  (* Al.set_new_display_option(Al.sampleBuffers, n, Al.suggest); *)
   GetDesktopResolution(dw, dh);
   dw := FLOOR(FLT(dw) / wantScaleX + 0.1);
   dh := FLOOR(FLT(dh) / wantScaleY + 0.1);
@@ -890,6 +892,9 @@ BEGIN isCurTarget := target = W;
   IF W.bmp # NIL THEN Al.destroy_bitmap(W.bmp); W.bmp := NIL END;
   W.display := Al.create_display(sw, sh);
   IF W.display # NIL THEN
+    IF (windowList = NIL) OR (windowList.next = NIL) THEN
+      ConvertMemoryBitmaps
+    END;
     W.winW := Al.get_display_width(W.display);
     W.winH := Al.get_display_height(W.display);
     W.w := w; W.h := h;
@@ -1329,12 +1334,14 @@ END SetWindowIcon;
 PROCEDURE InitScreen(): BOOLEAN;
 VAR opt: SET;
 BEGIN
-  IF ~(fullscreen IN settings) & ((wantW <= 0) OR (wantH <= 0)) THEN
-    wantW := 640; wantH := 400
-  END;
   opt := settings;
   IF {fullscreen, window} * opt = {} THEN INCL(opt, fullscreen)
   ELSIF fullscreen IN opt THEN EXCL(opt, window)
+  END;
+  IF (wantW <= 0) OR (wantH <= 0) THEN
+    IF fullscreen IN opt THEN wantW := -1; wantH := -1
+    ELSE wantW := 640; wantH := 400
+    END
   END
 RETURN NewWindow(-1, -1, wantW, wantH, wantTitle, opt) # NIL END InitScreen;
 
