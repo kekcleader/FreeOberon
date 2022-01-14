@@ -462,9 +462,9 @@ BEGIN scaled := FALSE;
     IF (W.zoom = noZoom) & (nobuffer IN W.options) THEN
       W.bmp := NIL;
       IF wasTarget THEN Target(NIL) END
-    ELSE
-      IF smooth IN W.options THEN opt := {Al.minLinear, Al.magLinear}
-      ELSE opt := {}
+    ELSE opt := {Al.convertBitmap};
+      IF smooth IN W.options THEN
+      	opt := opt + {Al.minLinear, Al.magLinear}
       END;
       Al.set_new_bitmap_flags(opt);
       W.bmp := Al.create_bitmap(w, h);
@@ -580,7 +580,8 @@ PROCEDURE ClearScreenToColor*(color: INTEGER);*)
 PROCEDURE LoadBitmap*(fname: ARRAY OF CHAR): Bitmap;
 VAR B: Bitmap;
   q: ARRAY 2048 OF SHORTCHAR;
-BEGIN NEW(B); Utf8.Encode(fname, q); B.bmp := Al.load_bitmap(q);
+BEGIN Al.set_new_bitmap_flags({Al.convertBitmap});
+  NEW(B); Utf8.Encode(fname, q); B.bmp := Al.load_bitmap(q);
   IF B.bmp = NIL THEN B := NIL
   ELSE B.w := Al.get_bitmap_width(B.bmp); B.h := Al.get_bitmap_height(B.bmp)
   END
@@ -725,7 +726,7 @@ END Rect;
 PROCEDURE NewBitmap*(w, h: INTEGER): Bitmap;
 VAR b: Bitmap;
 BEGIN NEW(b);
-  Al.set_new_bitmap_flags({}); (*!FIXME*)
+  Al.set_new_bitmap_flags({Al.convertBitmap});
   b.bmp := Al.create_bitmap(w, h);
   IF b.bmp = NIL THEN b := NIL ELSE b.w := w; b.h := h END
 RETURN b END NewBitmap;
@@ -895,10 +896,10 @@ BEGIN isCurTarget := target = W;
   IF W.bmp # NIL THEN Al.destroy_bitmap(W.bmp); W.bmp := NIL END;
   W.display := Al.create_display(sw, sh);
   IF W.display # NIL THEN
-    IF isCurTarget OR (windowList = NIL) OR (windowList.next = NIL) THEN
+    (*IF isCurTarget OR (windowList = NIL) OR (windowList.next = NIL) THEN
       Al.set_target_backbuffer(W.display);
       ConvertMemoryBitmaps;
-    END;
+    END;*)
     W.winW := Al.get_display_width(W.display);
     W.winH := Al.get_display_height(W.display);
     W.w := w; W.h := h;
