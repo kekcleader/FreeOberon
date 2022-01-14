@@ -746,6 +746,7 @@ END DrawPart;
 PROCEDURE DrawTintedPart*(bmp: Bitmap; color: Color;
     sx, sy, sw, sh, dx, dy: INTEGER);
 BEGIN
+  IF ~Al.is_compatible_bitmap(bmp.bmp) THEN Out.String('NON-COMPAT'); Out.Ln END;
   Al.draw_tinted_bitmap_region(bmp.bmp, SYSTEM.VAL(Al.Color, color),
     FLT(sx), FLT(sy), FLT(sw), FLT(sh), FLT(dx), FLT(dy), {})
 END DrawTintedPart;
@@ -894,15 +895,16 @@ BEGIN isCurTarget := target = W;
   IF W.bmp # NIL THEN Al.destroy_bitmap(W.bmp); W.bmp := NIL END;
   W.display := Al.create_display(sw, sh);
   IF W.display # NIL THEN
+    IF isCurTarget OR (windowList = NIL) OR (windowList.next = NIL) THEN
+      Al.set_target_backbuffer(W.display);
+      ConvertMemoryBitmaps;
+    END;
     W.winW := Al.get_display_width(W.display);
     W.winH := Al.get_display_height(W.display);
     W.w := w; W.h := h;
     ResetWindowBitmap(W);
     Al.register_event_source(queue, Al.get_display_event_source(W.display));
     IF isCurTarget THEN Target(W) END;
-    IF isCurTarget OR (windowList = NIL) OR (windowList.next = NIL) THEN
-      ConvertMemoryBitmaps
-    END;
     IF ~W.showMouse THEN ShowWindowMouse(W, FALSE) END;
     IF W.noficons > 0 THEN
       Al.set_display_icons(W.display, W.noficons, W.icons)
