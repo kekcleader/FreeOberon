@@ -386,7 +386,7 @@ BEGIN
     fg := cell.fg; bg := cell.bg
   ELSE fg := InvertColor(cell.fg); bg := InvertColor(cell.bg)
   END;
-  G.GetMonoFontSize(font, w, h); X := x * w; Y := y * h;
+  w := font.charW; h := font.charH; X := x * w; Y := y * h;
   G.FillRect(X, Y, X + w - 1, Y + h - 1, colors[bg MOD nofcolors]);
   G.DrawChar(cell.ch, X, Y, font, colors[fg MOD nofcolors]);
   IF cursorShown & (x = curX) & (y = curY) THEN
@@ -395,9 +395,8 @@ BEGIN
 END DrawCell;
 
 PROCEDURE GetMousePos(e: G.Event; VAR x, y: INTEGER);
-VAR fw, fh: INTEGER;
-BEGIN G.GetMonoFontSize(font, fw, fh);
-  x := e.x DIV fw; y := e.y DIV fh;
+BEGIN
+  x := e.x DIV font.charW; y := e.y DIV font.charH;
   IF x < 0 THEN x := 0 ELSIF x >= buffer.w THEN x := buffer.w - 1 END;
   IF y < 0 THEN y := 0 ELSIF y >= buffer.h THEN y := buffer.h - 1 END
 END GetMousePos;
@@ -516,9 +515,9 @@ BEGIN p.redraw := TRUE;
 END ResizePart;
 
 PROCEDURE InitBuffer;
-VAR W, H, fw, fh: INTEGER;
-BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
-  buffer.w := W DIV fw; buffer.h := H DIV fh;
+VAR W, H: INTEGER;
+BEGIN G.GetScreenSize(W, H);
+  buffer.w := W DIV font.charW; buffer.h := H DIV font.charH;
   IF buffer.w > partW THEN buffer.w := partW END; (*!FIXME*)
   IF buffer.h > partH THEN buffer.h := partH END;
   buffer.first := NewPart(buffer.w, buffer.h);
@@ -526,9 +525,9 @@ BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
 END InitBuffer;
 
 PROCEDURE ResizeBuffer;
-VAR W, H, fw, fh, nw, nh: INTEGER;
-BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
-  nw := W DIV fw; nh := H DIV fh;
+VAR W, H, nw, nh: INTEGER;
+BEGIN G.GetScreenSize(W, H);
+  nw := W DIV font.charW; nh := H DIV font.charH;
   IF nw > partW THEN nw := partW END; (*!FIXME*)
   IF nh > partH THEN nh := partH END;
   IF (nw # buffer.w) OR (nh # buffer.h) THEN
@@ -585,8 +584,8 @@ BEGIN
       event.mod := e.mod
     END
   ELSIF e.type = G.resize THEN
-    event.type := resize; G.GetMonoFontSize(font, fw, fh);
-    event.w := e.w DIV fw; event.h := e.h DIV fh;
+    event.type := resize;
+    event.w := e.w DIV font.charW; event.h := e.h DIV font.charH;
     ResizeBuffer;
     Sync
   ELSIF e.type = G.quit THEN event.type := quit
@@ -728,10 +727,10 @@ BEGIN
   G.Close
 END Close;
 
-PROCEDURE LoadFont(): BOOLEAN;
+PROCEDURE PreloadFont(): BOOLEAN;
 VAR f: G.Font;
 BEGIN
-  f := G.LoadFont(fontFile);
+  f := G.LoadFontInfo(fontFile);
   IF f # NIL THEN 
     IF f IS G.MonoFont THEN font := f(G.MonoFont)
     ELSE Out.String('The font is not monospaced.'); Out.Ln
@@ -739,7 +738,7 @@ BEGIN
   ELSE Out.String('Could not load font "');
     Out.String(fontFile); Out.String('".'); Out.Ln
   END
-RETURN font # NIL END LoadFont;
+RETURN font # NIL END PreloadFont;
 
 PROCEDURE ExpandColor(color: INTEGER; VAR r, g, b: INTEGER);
 BEGIN
@@ -814,9 +813,9 @@ BEGIN
 END InitIcon;
 
 PROCEDURE InitScreen;
-VAR W, H, dw, dh, fw, fh: INTEGER;
-BEGIN G.GetMonoFontSize(font, fw, fh); G.GetDesktopResolution(dw, dh);
-  W := wantW * fw; H := wantH * fh;
+VAR W, H, dw, dh: INTEGER;
+BEGIN G.GetDesktopResolution(dw, dh);
+  W := wantW * font.charW; H := wantH * font.charH;
 
   IF (wantScaleX # 0.0) & (wantScaleY # 0.0) THEN
     G.SetScale(wantScaleX, wantScaleY)
@@ -825,7 +824,7 @@ BEGIN G.GetMonoFontSize(font, fw, fh); G.GetDesktopResolution(dw, dh);
     G.SetScale(5/6, 1.0)
   END;
 
-  G.SetSizeStep(fw, fh);
+  G.SetSizeStep(font.charW, font.charH);
   screen := G.NewWindow(-1, -1, W, H, wantTitle, MakeGraphSettings());
   G.ShowMouse(noMouse IN settings);
   G.SetWindowFullscreenSize(screen, W, H);
@@ -854,17 +853,21 @@ BEGIN Done := FALSE;
   IF noMouse IN settings THEN opt := {G.noMouse} ELSE opt := {} END;
   G.Settings(-1, -1, opt + {G.manual});
   G.Init;
-  IF G.Done & LoadFont() THEN
+  IF G.Done & PreloadFont() THEN
     InitScreen;
-    InitColors;
-    InitBuffer;
-    InitTimers;
-    mouseDown := FALSE;
-    mouseShown := ~(noMouse IN settings);
-    skipEnter := FALSE;
-    needFlip := 0;
-    processingEvent := FALSE;
-    Done := TRUE
+    G.LoadFontBitmap(font);
+    IF font.loaded THEN
+      InitColors;
+      InitBuffer;
+      InitTimers;
+      mouseDown := FALSE;
+      mouseShown := ~(noMouse IN settings);
+      skipEnter := FALSE;
+      needFlip := 0;
+      processingEvent := FALSE;
+      Done := TRUE
+    ELSE G.CloseWindow(screen)
+    END
   END
 END Init;
 

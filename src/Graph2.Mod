@@ -1,5 +1,5 @@
 MODULE Graph2;
-IMPORT Out, Al := Allegro5, Utf8, Files, Strings, SYSTEM;
+IMPORT Out, Al := Allegro5, Utf8, Files, Dir, Strings, SYSTEM;
 
 CONST
   fontPlanes = 4; (*!TODO*)
@@ -268,14 +268,16 @@ TYPE
 
   Font* = POINTER TO FontDesc;
   FontDesc* = RECORD
+    fname: ARRAY 256 OF CHAR;
     handle: PROCEDURE (font: Font; VAR msg: FontMessage);
-    draw: PROCEDURE (font: Font; VAR msg: FontDrawMsg)
+    draw: PROCEDURE (font: Font; VAR msg: FontDrawMsg);
+    loaded*: BOOLEAN
   END;
 
   MonoFont* = POINTER TO MonoFontDesc;
   MonoFontDesc* = RECORD(FontDesc)
     bmp: Bitmap;
-    charW, charH: INTEGER;
+    charW*, charH*: INTEGER;
     rows, cols: INTEGER
   END;
 
@@ -892,15 +894,15 @@ BEGIN isCurTarget := target = W;
   IF W.bmp # NIL THEN Al.destroy_bitmap(W.bmp); W.bmp := NIL END;
   W.display := Al.create_display(sw, sh);
   IF W.display # NIL THEN
-    IF (windowList = NIL) OR (windowList.next = NIL) THEN
-      ConvertMemoryBitmaps
-    END;
     W.winW := Al.get_display_width(W.display);
     W.winH := Al.get_display_height(W.display);
     W.w := w; W.h := h;
     ResetWindowBitmap(W);
     Al.register_event_source(queue, Al.get_display_event_source(W.display));
     IF isCurTarget THEN Target(W) END;
+    IF isCurTarget OR (windowList = NIL) OR (windowList.next = NIL) THEN
+      ConvertMemoryBitmaps
+    END;
     IF ~W.showMouse THEN ShowWindowMouse(W, FALSE) END;
     IF W.noficons > 0 THEN
       Al.set_display_icons(W.display, W.noficons, W.icons)
@@ -1259,9 +1261,54 @@ BEGIN m := f(MonoFont)
   (*!TODO*)
 END MonoFontHandle;
 
-PROCEDURE LoadFont*(fname: ARRAY OF CHAR): Font;
-VAR f: MonoFont;
-  bmp: Bitmap;
+PROCEDURE ReadWord(VAR r: Files.Rider; VAR s: ARRAY OF CHAR);
+VAR ch: CHAR;
+  i: INTEGER;
+BEGIN
+  Files.ReadChar(r, ch);
+  WHILE ~r.eof & (ch <= ' ') DO Files.ReadChar(r, ch) END;
+
+  i := 0;
+  WHILE ~r.eof & (ch > ' ') DO
+    IF (i # LEN(s) - 1) THEN s[i] := ch; INC(i) END;
+    Files.ReadChar(r, ch)
+  END;
+  s[i] := 0X
+END ReadWord;
+
+PROCEDURE ReadInt(VAR r: Files.Rider; VAR n: INTEGER);
+VAR ch: CHAR;
+  i: INTEGER;
+BEGIN
+  Files.ReadChar(r, ch);
+  WHILE ~r.eof & (ch <= ' ') DO Files.ReadChar(r, ch) END;
+
+  n := 0;
+  WHILE ~r.eof & ('0' <= ch) & (ch <= '9') DO
+    n := n * 10 + ORD(ch) - ORD('0');
+    Files.ReadChar(r, ch)
+  END
+END ReadInt;
+
+PROCEDURE ReadFontInfo(VAR r: Files.Rider): Font;
+VAR f: Font;
+  mf: MonoFont;
+  s: ARRAY 4096 OF CHAR;
+BEGIN f := NIL;
+  ReadWord(r, s);
+  IF s = 'mono' THEN
+    NEW(mf); mf.bmp := NIL;
+    ReadInt(r, mf.charW); ReadInt(r, mf.charH);
+    IF (mf.charW > 0) & (mf.charH > 0) THEN
+      mf.cols := 16; mf.rows := 16 * fontPlanes
+    ELSE mf := NIL
+    END;
+    f := mf
+  END
+RETURN f END ReadFontInfo;
+
+PROCEDURE LoadFontInfo*(fname: ARRAY OF CHAR): Font;
+VAR f: Font;
   F: Files.File;
   r: Files.Rider;
   s: ARRAY 4096 OF CHAR;
@@ -1269,17 +1316,32 @@ BEGIN f := NIL;
   s := fname; Strings.Append('.ofi', s);
   F := Files.Old(s);
   IF F # NIL THEN
-    Files.Close(F); (*!TODO*)
     s := fname; Strings.Append('.png', s);
-    bmp := LoadBitmap(s);
-    IF bmp # NIL THEN
-      NEW(f); f.bmp := bmp;
-      f.cols := 16; f.rows := 16 * fontPlanes;
-      f.charW := bmp.w DIV f.cols; f.charH := bmp.h DIV f.rows;
-      f.draw := MonoFontDraw;
-      f.handle := MonoFontHandle
+    IF Dir.FileExists(s) THEN
+      Files.Set(r, F, 0);
+      f := ReadFontInfo(r);
+      IF f # NIL THEN
+        f.loaded := FALSE;
+        f.fname := fname;
+        f.draw := MonoFontDraw;
+        f.handle := MonoFontHandle
+      END
     END
   END
+RETURN f END LoadFontInfo;
+
+PROCEDURE LoadFontBitmap*(f: Font);
+VAR s: ARRAY 4096 OF CHAR;
+BEGIN
+  s := ''; Strings.Append(f.fname, s); Strings.Append('.png', s);
+  f(MonoFont).bmp := LoadBitmap(s);
+  IF f(MonoFont).bmp # NIL THEN f.loaded := TRUE END
+END LoadFontBitmap;
+
+PROCEDURE LoadFont*(fname: ARRAY OF CHAR): Font;
+VAR f: Font;
+BEGIN f := LoadFontInfo(fname);
+  IF f # NIL THEN LoadFontBitmap(f) END
 RETURN f END LoadFont;
 
 (* Clipboard *)

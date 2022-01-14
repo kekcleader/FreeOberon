@@ -1173,7 +1173,8 @@ VAR success, fs, sw: BOOLEAN;
 BEGIN
   success := FALSE;
   ParseArgs(fs, sw, w, h, fnames);
-  T.Settings(106, 25, {T.resizable, T.window(*, T.center*)});
+  T.Settings(106, 25, {T.resizable, T.window});
+  (*T.Settings(240, 61, {T.resizable, T.window});*)
   T.SetTitle('Free Oberon');
   T.Init;
   IF T.Done THEN
