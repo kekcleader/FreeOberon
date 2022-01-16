@@ -21,11 +21,11 @@ BEGIN
 END OnResize;
 
 PROCEDURE DrawStar(star: Star);
-VAR fg: INTEGER;
-  cell: T.Cell;
+VAR ch: CHAR;
+  fg, bg: INTEGER;
 BEGIN
-  T.GetCell(star.x, star.y, cell);
-  IF cell.bg = 0 THEN (* Do not draw on non-black background *)
+  T.GetCell(star.x, star.y, ch, fg, bg);
+  IF bg = 0 THEN (* Do not draw on non-black background *)
     IF star.n # 0 THEN
       IF star.n = 1 THEN fg := 3 ELSE fg := 15 END;
       T.SetCell(star.x, star.y, starChars[star.n], fg, 0)
@@ -74,12 +74,13 @@ VAR x1, y1, x2, y2, x, y: INTEGER;
   END Swap;
 
   PROCEDURE Put(x, y, color: INTEGER);
-  VAR cell: T.Cell;
+  VAR ch: CHAR;
+    fg, bg: INTEGER;
   BEGIN
-    T.GetCell(x, y, cell);
+    T.GetCell(x, y, ch, fg, bg);
     IF color # 4 THEN
-      IF cell.bg = 4 THEN color := 2
-      ELSIF cell.bg = 2 THEN color := 4
+      IF bg = 4 THEN color := 2
+      ELSIF bg = 2 THEN color := 4
       END
     END;
     T.SetCell(x, y, ' ', 7, color)

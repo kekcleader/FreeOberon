@@ -151,10 +151,10 @@ BEGIN
   G.MakeCol(c2, 0, 255, 0);
   G.MakeCol(c3, 255, 255, 255);
   G.MakeCol(c4, 50, 30, 255);
-  B := G.LoadBitmap('Data/Images/Icon.png');
-  IF B = NIL THEN Out.String('COULD NOT LOAD Data/Images/img.png'); Out.Ln END;
-  font := G.LoadFont('Data/Fonts/Main');
-  IF font = NIL THEN Out.String('COULD NOT LOAD Data/Fonts/Main'); Out.Ln END;
+  B := G.LoadBitmap('../Data/Images/Icon.png');
+  IF B = NIL THEN Out.String('COULD NOT LOAD ../Data/Images/Icon.png'); Out.Ln END;
+  font := G.LoadFont('../Data/Fonts/Main');
+  IF font = NIL THEN Out.String('COULD NOT LOAD ../Data/Fonts/Main'); Out.Ln END;
 
   main := G.GetScreen();
   t := G.NewTimer(0.5);
@@ -201,9 +201,9 @@ BEGIN
 END RunSimple;
 
 BEGIN
-  RunSimple;
+  (*RunSimple;*)
   (*RunSingle;*)
-(*
+
   nofdialogs := 0;
   Z := 0;
 
@@ -211,10 +211,16 @@ BEGIN
   G.Init;
   main := G.NewWindow(-1, -1, 800, 600, 'Oberon Allegro 5 Test',
     {G.resizable, G.maximized});
+
+  B := G.LoadBitmap('../Data/Images/Icon.png');
+  IF B = NIL THEN Out.String('COULD NOT LOAD ../Data/Images/Icon.png'); Out.Ln END;
+  font := G.LoadFont('../Data/Fonts/Main');
+  IF font = NIL THEN Out.String('COULD NOT LOAD ../Data/Fonts/Main'); Out.Ln END;
+
   t := G.NewTimer(1.0);
   G.MakeCol(c1, 180, 80, 20);
   G.MakeCol(c2, 240, 180, 80);
 
   Run;
-  G.Close*)
+  G.Close
 END GTest.
