@@ -7,8 +7,8 @@ CD bin >nul 2>&1
 @DEL /s %~n1.exe >nul 2>&1
 SET CURDIR=%~dp0
 SET ONAME=%~n1
-SET OFRDIR=%CURDIR%OfrontPlus\Target\Win64
-SET PATH=%OFRDIR%;%CURDIR%mingw64\bin;%PATH%
+SET OFRDIR=%CURDIR%OfrontPlus\Target\Win32
+SET PATH=%OFRDIR%;%CURDIR%mingw32\bin;%PATH%
 SET CC=gcc
 REM SET SDL2Opts=-w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2
 SET SDL2Opts=-lmingw32 -lSDL2main -lSDL2

@@ -7,8 +7,9 @@ CD bin >nul 2>&1
 @DEL /s %~n1.exe >nul 2>&1
 SET CURDIR=%~dp0
 SET ONAME=%~n1
-SET OFRDIR=%CURDIR%OfrontPlus\Target\Win64
-SET PATH=%OFRDIR%;%CURDIR%mingw64\bin;%PATH%
+SET OFRDIR=%CURDIR%OfrontPlus\Target\Win32
+SET PATH=%OFRDIR%;%CURDIR%mingw32\bin;%PATH%
+ECHO %OFRDIR%;%CURDIR%mingw32\bin;%%PATH
 SET CC=gcc
 
 REM Put all arguments starting from 2nd to ARGS.

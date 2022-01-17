@@ -6,8 +6,8 @@ REM You are free to edit this file to adjust the process.
 
 CD bin >nul 2>&1
 SET CURDIR=%~dp0
-SET OFRDIR=%CURDIR%OfrontPlus\Target\Win64
-SET PATH=%OFRDIR%;%CURDIR%mingw32\bin;%PATH%
+SET OFRDIR=%CURDIR%OfrontPlus\Target\Win32
+SET PATH=%OFRDIR%;%PATH%
 SET OBERON=.;%CURDIR%..\..\src;%OFRDIR%\Lib\Sym
 SET OFR=ofront+ -s -88 -7w
 

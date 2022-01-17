@@ -91,6 +91,9 @@ PROCEDURE ShowErrors(s: ARRAY OF CHAR);
 VAR lines, width, x0, x, y, i: INTEGER;
 BEGIN
   ;;;;;;Out.String('ERRORS:'); Out.Ln;;;;;;
+  OV.SetStatusText(app, s);
+  (*T.Print(0, 1, s, 14, 12);
+  T.Flush;*)
   ;;;;;;Out.String(s); Out.Ln;;;;;;
   ;;;;;;Out.String('END ERRORS.'); Out.Ln;;;;;;
 (*
@@ -252,7 +255,7 @@ PROCEDURE Write(ch: CHAR);
 VAR tW, tH: INTEGER;
 BEGIN
   IF ch = 0AX THEN Ln
-  ELSE
+  ELSIF ~Config.isWindows OR (ch # 0DX) THEN
     T.SetCell(curX, curY, ch, curFg, curBg);
     T.Size(tW, tH);
     IF curX >= tW - 1 THEN
@@ -309,7 +312,7 @@ BEGIN fname[0] := 0X; line := 1; col := 1;
         INC(i, 4); ReadInt(s, i, error)
       ELSE error := 0
       END;
-      s := 'Пропущена точка с запятой';;;;;;;
+      (*s := 'Пропущена точка с запятой';;;;;;;*)
       ;;;;;Out.String('error = ');Out.Int(error, 0);Out.Ln;;;;;;
     END
   END
