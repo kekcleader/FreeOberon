@@ -2340,7 +2340,7 @@ BEGIN SetApp(m, app); Add(app.menu, m); RefreshAppMenu(app.menu)
 END AddMenu;
 
 PROCEDURE SetStatusText*(app: App; text: ARRAY OF CHAR);
-BEGIN app.statusText := text
+BEGIN Strings.Extract(text, 0, LEN(app.statusText), app.statusText)
 END SetStatusText;
 
 PROCEDURE CheckMenuOpenKey(app: App; VAR E: T.Event): BOOLEAN;

@@ -46,6 +46,8 @@ $OFR -Cw Term.Mod
 
 $OFR -7w OV.Mod
 
+$OFR -7w FoStrings.Mod
+
 $OFR -Cw EditorText.Mod
 
 $OFR -Cw Editor.Mod
@@ -75,7 +77,7 @@ $AR -crs ../Data/bin/libFreeOberon.a \
 $CCFULL -o ../$PROG \
   Graph2.c TermBox.c \
   Config.c term/term_linux.c \
-  Term.c OV.c EditorText.c Editor.c \
+  Term.c OV.c FoStrings.c EditorText.c Editor.c \
   $PROG.c \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a \

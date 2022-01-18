@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT T := TermBox, Files, Args, Utf8,
-       OV, Editor, Term, Config, Strings, Int, Out, Kernel;
+       OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
 CONST
   version* = '1.1.0 alpha';
 
@@ -312,7 +312,7 @@ BEGIN fname[0] := 0X; line := 1; col := 1;
         INC(i, 4); ReadInt(s, i, error)
       ELSE error := 0
       END;
-      (*s := 'Пропущена точка с запятой';;;;;;;*)
+      FoStrings.GetErrorStr(error, s);
       ;;;;;Out.String('error = ');Out.Int(error, 0);Out.Ln;;;;;;
     END
   END
@@ -1176,7 +1176,7 @@ VAR success, fs, sw: BOOLEAN;
 BEGIN
   success := FALSE;
   ParseArgs(fs, sw, w, h, fnames);
-  T.Settings(106, 25, {T.resizable, T.window});
+  T.Settings(106, 25, {T.resizable(*, T.window*)});
   (*T.Settings(240, 61, {T.resizable, T.window});*)
   T.SetTitle('Free Oberon');
   T.Init;
