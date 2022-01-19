@@ -565,7 +565,6 @@ BEGIN
     MoveMouse(event.x, event.y);
     event.button := 0; (* 0 means release *)
   ELSIF e.type = G.char THEN
-    Out.String('MOD '); Out.Int(ORD(e.mod), 0); Out.Ln;
     IF (e.key = G.kEnter) & (e.mod * {G.mMenu, G.mAlt, G.mAltGr} # {}) THEN
       ToggleFS; skipEnter := TRUE
     ELSE event.type := key;
