@@ -1,5 +1,5 @@
 MODULE Life2;
-IMPORT G := Graph, Random;
+IMPORT G := Graph2, Random;
 CONST maxW = 60*8; maxH = 33*8;
   cellSize = 2;
   initial = 0.2;
@@ -10,7 +10,7 @@ VAR
   W, H: INTEGER; (* Real width and height of field in cells *)
   m, m2: Field; (* m2 is a temporary copy of m *)
   x0, y0: INTEGER; (* Field offset on screen in pixels *)
-  colors: ARRAY 9 OF INTEGER; (* Color constants: black, red etc. *)
+  colors: ARRAY 9 OF G.Color; (* Color constants: black, red etc. *)
 
   saved: ARRAY 3 OF INTEGER; (* Saved neighbour colors *)
   nofcolors: INTEGER; (* Number of saved neighbour colors *)
@@ -71,12 +71,12 @@ BEGIN
 END Live;
 
 PROCEDURE DrawCell(x, y: INTEGER);
-VAR xx, yy, c: INTEGER;
+VAR xx, yy: INTEGER; c: G.Color;
 BEGIN
   xx := x0 + x * cellSize;
   yy := y0 + y * cellSize;
   c := colors[m[y, x]];
-  G.RectFill(S, xx, yy, xx + cellSize - 1, yy + cellSize - 1, c)
+  G.FillRect(xx, yy, xx + cellSize - 1, yy + cellSize - 1, c)
 END DrawCell;
 
 PROCEDURE Draw;

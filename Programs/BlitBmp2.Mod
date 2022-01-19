@@ -1,5 +1,5 @@
 MODULE BlitBmp2;
-IMPORT G := Graph, S := SYSTEM;
+IMPORT G := Graph2, S := SYSTEM;
 CONST N = 100;
 VAR s, b: G.Bitmap;
   x, y, vx, vy: ARRAY N OF REAL;
