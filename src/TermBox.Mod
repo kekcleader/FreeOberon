@@ -689,10 +689,10 @@ BEGIN
   END
 END Fill;
 
-PROCEDURE Print*(x, y: INTEGER; s: ARRAY OF CHAR; fg, bg: INTEGER);
+PROCEDURE Print*(x, y, limit: INTEGER; s: ARRAY OF CHAR; fg, bg: INTEGER);
 VAR i, w, h: INTEGER;
 BEGIN i := 0;
-  WHILE (s[i] # 0X) & (x < buffer.w) DO
+  WHILE (s[i] # 0X) & (i # limit) & (x < buffer.w) DO
     SetCell(x, y, s[i], fg, bg); INC(i); INC(x)
   END
 END Print;

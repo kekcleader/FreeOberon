@@ -89,40 +89,12 @@ RETURN lines END CountLines;
 
 PROCEDURE ShowErrors(s: ARRAY OF CHAR);
 VAR lines, width, x0, x, y, i: INTEGER;
+  e: Editor.Editor;
 BEGIN
-  ;;;;;;Out.String('ERRORS:'); Out.Ln;;;;;;
+  (*;;;;;;Out.String('ERROR STRING: ['); Out.String(s); Out.String('] END.'); Out.Ln;;;;;;*)
+  e := app.windows(Editor.Editor);
+  Editor.SetMsg(e, s);
   OV.SetStatusText(app, s);
-  (*T.Print(0, 1, s, 14, 12);
-  T.Flush;*)
-  ;;;;;;Out.String(s); Out.Ln;;;;;;
-  ;;;;;;Out.String('END ERRORS.'); Out.Ln;;;;;;
-(*
-  width := T.charsX - 2;
-  lines := CountLines(s, width);
-  IF lines > 10 THEN lines := 10 END;
-  i := 0; x0 := 1; x := x0;
-  y := T.charsY - 2 - lines;
-  WHILE (s[i] # 0X) & (y < T.charsY - 2) DO
-    IF s[i] = 0AX THEN
-      WHILE x < x0 + width DO (* Till end of line *)
-        T.PutChar(x, y, ' ', 0, 3); INC(x)
-      END;
-      x := x0; INC(y)
-    ELSIF s[i] # 0DX THEN
-      T.PutChar(x, y, s[i], 0, 3);
-      IF x = x0 + width - 1 THEN INC(y); x := x0
-      ELSE INC(x)
-      END
-    END;
-    INC(i)
-  END;
-  IF x > x0 THEN
-    WHILE x < x0 + width DO
-      T.PutChar(x, y, ' ', 0, 3); INC(x)
-    END
-  END;
-  IF T.Draw() THEN G.Flip; G.Pause END (*!FIXME*)
-  *)
 END ShowErrors;
 
 (* !TODO move out, rewrite *)
@@ -312,7 +284,7 @@ BEGIN fname[0] := 0X; line := 1; col := 1;
         INC(i, 4); ReadInt(s, i, error)
       ELSE error := 0
       END;
-      FoStrings.GetErrorStr(error, s);
+      FoStrings.MakeErrorStr(error, s);
       ;;;;;Out.String('error = ');Out.Int(error, 0);Out.Ln;;;;;;
     END
   END
@@ -516,7 +488,7 @@ BEGIN
       Strings.Append('" /C Data\bin\', cmd);
       Strings.Append(command, cmd);
       Strings.Append('.bat ', cmd)
-    ELSE T.Print(0, tH - 1, 'Could not find cmd.exe', 15, 4)
+    ELSE T.Print(0, tH - 1, -1, 'Could not find cmd.exe', 15, 4)
     END
   ELSE (* Linux *)
     cmd := 'Data/bin/'; Strings.Append(command, cmd);
@@ -553,12 +525,12 @@ BEGIN
       END;
       Utf8.Decode(buf, z);
       ParseErrors(z, fname, line, col, error);
-      Out.Int(line, 10);Out.Int(col, 10);Out.Ln;;;;;;;
+      ;;;;;;;;Out.String('Место ошибки: '); Out.Int(line, 0);Out.Char(':');Out.Int(col, 0);Out.Ln;;;;;;;
       FocusOrOpenFile(fname);
       e := app.windows(Editor.Editor);
-      e.text.MoveToLineCol(line, col, e.h - 2);
-      IF (col = 1) & (line # 1) & (TRUE) THEN
+      IF (col = 1) & (line # 1) THEN
         e.text.MoveToLineCol(line - 1, 256, e.h - 2)
+      ELSE e.text.MoveToLineCol(line, col, e.h - 2)
       END;
       Editor.PrintText(app.windows(Editor.Editor))
     ELSIF link THEN z := 'Linking failed.'
@@ -644,7 +616,7 @@ BEGIN dir := prg$;
   Utf8.Encode(dir, d);
   IF ~Term.StartProcessIn(s, d) THEN
     ;;;;;;;;;;Out.String('EXECUTION FAILED');Out.Ln;;;;;;;;;
-    T.Print(0, tH - 1, ' Program execution failed ', 15, 4);
+    T.Print(0, tH - 1, -1, ' Program execution failed ', 15, 4);
     T.Flush
     (* ; T.Pause !FIXME*)
   ELSE

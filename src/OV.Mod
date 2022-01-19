@@ -726,7 +726,7 @@ BEGIN T.Size(tW, tH); x := 0;
   END;
   IF app.statusText[0] # 0X THEN
     T.SetCell(x, tH - 1, T.lineVert, 0, 7);
-    T.Print(x + 2, tH - 1, app.statusText, 0, 7)
+    T.Print(x + 2, tH - 1, -1, app.statusText, 0, 7)
   END
 END DrawAppStatusbar;
 
@@ -833,16 +833,6 @@ PROCEDURE SetCharColor(x, y, fg, bg: INTEGER);
 BEGIN T.SetFg(x, y, fg); T.SetBg(x, y, bg)
 END SetCharColor;
 
-PROCEDURE PrintLimited(x, y: INTEGER; s: ARRAY OF CHAR;
-  fg, bg, limit: INTEGER);
-VAR i: INTEGER;
-BEGIN
-  i := 0;
-  WHILE (s[i] # 0X) & (x <= limit) DO
-    T.SetCell(x, y, s[i], fg, bg);
-    INC(i); INC(x)
-  END;
-END PrintLimited;
 
 PROCEDURE DrawWindowBorder*(x, y, w, h, fg, bg: INTEGER;
   title: ARRAY OF CHAR; resizable, moving, inactive: BOOLEAN);
@@ -912,7 +902,7 @@ BEGIN single := moving OR inactive;
     IF i + len > x2 - 4 THEN len := x2 - i - 4 END;
     IF i # x + 5 THEN T.SetCell(i - 1, y, ' ', fg, bg) END;
     IF i + len # x2 - 4 THEN T.SetCell(i + len, y, ' ', fg, bg) END;
-    PrintLimited(i, y, title, fg, bg, i + len - 1)
+    T.Print(i, y, i + len - 1, title, fg, bg)
   END
 END DrawWindowBorder;
 
@@ -1123,7 +1113,7 @@ BEGIN
     END;
     IF m.status = disabled THEN fg := 8 ELSE fg := 0 END;
     IF m(Menu).hint[0] # 0X THEN
-      T.Print(x - m(Menu).hintW - 1, y, m(Menu).hint, fg, bg)
+      T.Print(x - m(Menu).hintW - 1, y, -1, m(Menu).hint, fg, bg)
     ELSIF (m.children # NIL) & (m.y # 0) THEN
       T.SetCell(x - 2, y, T.triangleRight, fg, bg)
     END
@@ -1435,7 +1425,7 @@ BEGIN L := c(Label); INC(x, c.x); INC(y, c.y); X := x;
   IF L.align = right THEN INC(X, c.w - L.len)
   ELSIF L.align = center THEN INC(X, (c.w - L.len) DIV 2)
   END;
-  PrintLimited(X, y, c.caption, 0, 7, x + c.w - 1)
+  T.Print(X, y, x + c.w - 1, c.caption, 0, 7)
 END LabelDraw;
 
 (* LabelMethod *)
@@ -1863,7 +1853,7 @@ BEGIN C := c(ColumnList); INC(x, C.x); INC(y, C.y);
       ELSE fg := 14
       END
     END;
-    PrintLimited(x2, y2, s, fg, bg, x2 + colw - 1);
+    T.Print(x2, y2, x2 + colw - 1, s, fg, bg);
     IF y2 < y + C.h - 2 THEN INC(y2) ELSE y2 := y; INC(x2, colw + 1) END;
     StrList.Next(C.items, s); INC(i)
   END;

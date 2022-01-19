@@ -21,6 +21,8 @@ Strings.Extract(src, pos, n, dst)
   If n > Length(src) - pos, dst is only the part of src from pos to Length(src) - 1. If the size of
   dst is not large enough to hold the result of the operation, the result is truncated so that
   dst is always terminated with a 0X.
+Strings.Copy(src, dst)
+  has the same effect as Extract(src, 0, LEN(dst), dst)
 Strings.Pos(pat, s, pos)
   returns the position of the first occurrence of pat in s after position pos (inclusive).
   If pat is not found, -1 is returned.
@@ -103,6 +105,15 @@ BEGIN len := Length(source);
     dest[i] := 0X
   END
 END Extract;
+
+PROCEDURE Copy*(IN source: ARRAY OF CHAR; VAR dest: ARRAY OF CHAR);
+VAR i, len: INTEGER;
+BEGIN len := LEN(dest) - 1;
+  IF LEN(source) < LEN(dest) THEN len := LEN(source) - 1 END;
+  i := 0;
+  WHILE (i # len) & (source[i] # 0X) DO dest[i] := source[i]; INC(i) END;
+  dest[i] := 0X
+END Copy;
 
 PROCEDURE Pos*(IN pattern, s: ARRAY OF CHAR; pos: INTEGER): INTEGER;
 VAR n1, n2, i, j: INTEGER;

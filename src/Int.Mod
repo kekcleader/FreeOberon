@@ -36,10 +36,14 @@ BEGIN n := 0; c := s[0];
   IF neg THEN n := -n END ;
 RETURN n END Val;
 
+PROCEDURE Insert*(n: INTEGER; pos: INTEGER; VAR s: ARRAY OF CHAR);
+VAR sn: ARRAY 30 OF CHAR;
+BEGIN Str(n, sn); Strings.Insert(sn, pos, s)
+END Insert;
+
 PROCEDURE Append*(n: INTEGER; VAR s: ARRAY OF CHAR);
 VAR sn: ARRAY 30 OF CHAR;
-BEGIN
-  Str(n, sn); Strings.Append(sn, s)
+BEGIN Str(n, sn); Strings.Append(sn, s)
 END Append;
 
 END Int.

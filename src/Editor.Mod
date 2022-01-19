@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT OV, T := TermBox, Text := EditorText,
-  Strings, StrList, Dir, Out;
+  Int, Strings, StrList, Dir, Out;
 CONST
   stdPath* = 'Programs/';
   dotChar = 0B7X; (* To higlight spaces *)
@@ -62,7 +62,9 @@ TYPE
   Editor* = POINTER TO EditorDesc;
   EditorDesc* = RECORD(OV.WindowDesc)
     text*: Text.Text;
-    fname*: ARRAY 1000 OF CHAR
+    fname*: ARRAY 1000 OF CHAR;
+    msgShown*: INTEGER; (* 0 - hidden, 1 - top, 2 - bottom *)
+    msg*: ARRAY 256 OF CHAR
   END;
 
 VAR
@@ -872,13 +874,25 @@ END HandleEnter;
 PROCEDURE InitEditor*(c: Editor);
 BEGIN OV.InitWindow(c); c.closeOnEsc := FALSE;
   c.fname[0] := 0X; c.bg := 1; c.resizable := TRUE; c.caption := 'NONAME';
-  c.text := Text.NewText(); c.do := editorMethod
+  c.text := Text.NewText(); c.msgShown := 0; c.msg[0] := 0X;
+  c.do := editorMethod
 END InitEditor;
 
 PROCEDURE NewEditor*(): Editor;
 VAR w: Editor;
 BEGIN NEW(w); InitEditor(w) ;
 RETURN w END NewEditor;
+
+PROCEDURE SetMsg*(c: OV.Control; IN s: ARRAY OF CHAR);
+VAR e: Editor; n: INTEGER;
+BEGIN e := c(Editor);
+  IF e.text.scrFirst = e.text.cur THEN n := 2 ELSE n := 1 END;
+  e.msgShown := n; Strings.Copy(s, e.msg)
+END SetMsg;
+
+PROCEDURE HideMsg*(c: OV.Control);
+BEGIN c(Editor).msgShown := 0
+END HideMsg;
 
 (* Standard Menu Hanlders *)
 
@@ -939,14 +953,34 @@ END EditUnselect;
 
 (* EditorMethod *)
 
+PROCEDURE PrintMsg(c: Editor);
+VAR y: INTEGER;
+BEGIN
+  IF c.msgShown = 1 THEN y := c.y + 1 ELSE y := c.y + c.h - 2 END;
+  T.Fill(c.x + 1, y, c.w - 2, 1, ' ', 14, 4);
+  T.Print(c.x + 2, y, c.w - 3, c.msg, 14, 4)
+END PrintMsg;
+
+PROCEDURE DrawEditorMarks(c: Editor);
+VAR x, y: INTEGER;
+  s: ARRAY 30 OF CHAR;
+BEGIN y := c.y + c.h - 1;
+  IF c.text.changed THEN T.SetChar(c.x + 2, y, 0FX) END;
+  Int.Str(c.text.y + 1, s); x := 5 + Strings.Length(s);
+  Strings.Append(':', s); Int.Append(c.text.x + 1, s);
+  Strings.Insert(' ', 0, s); Strings.Append(' ', s);
+  T.Print(c.x + x, y, c.w - x, s, 15, 1)
+END DrawEditorMarks;
+
 PROCEDURE EditorDraw*(c: OV.Control; x, y: INTEGER);
-BEGIN OV.WindowDraw(c, x, y);
-  PrintText(c(Editor))
+BEGIN OV.WindowDraw(c, x, y); DrawEditorMarks(c(Editor));
+  PrintText(c(Editor));
+  IF c(Editor).msgShown # 0 THEN PrintMsg(c(Editor)) END
 END EditorDraw;
 
 PROCEDURE EditorMouseDown*(c: OV.Control; x, y, button: INTEGER);
 VAR t: Text.Text; L: Text.Line; i: INTEGER;
-BEGIN OV.WindowMouseDown(c, x, y, button);
+BEGIN OV.WindowMouseDown(c, x, y, button); HideMsg(c);
   IF (x > 0) & (x < c.w - 1) & (y > 0) & (y < c.h - 1) THEN
     DEC(x); DEC(y); t := c(Editor).text;
     t.selected := FALSE; L := t.scrFirst; i := y;
@@ -985,7 +1019,7 @@ END EditorClose;
 
 PROCEDURE EditorKeyDown*(c: OV.Control; VAR E: T.Event);
 VAR shiftPressed: BOOLEAN;
-BEGIN OV.WindowKeyDown(c, E);
+BEGIN OV.WindowKeyDown(c, E); HideMsg(c);
   shiftPressed := E.mod * T.mShift # {};
   CASE E.key OF
     T.kLeft:
