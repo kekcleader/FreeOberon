@@ -154,23 +154,17 @@ CONST
   kMax*        = 226;
 
   (* Modifiers Set *)
-  mLShift*   = 0;
-  mRShift*   = 1;
-  mLCtrl*    = 6;
-  mRCtrl*    = 7;
-  mLAlt*     = 8;
-  mRAlt*     = 9;
-  mLMeta*    = 10;
-  mRMeta*    = 11;
-  mNumLock*  = 12;
-  mCapsLock* = 13;
-  mMenu*     = 14;
-  mCommand*  = 29;
-  mScrLock*  = 30;
-  mCtrl*  = {mLCtrl, mRCtrl};
-  mShift* = {mLShift, mRShift};
-  mAlt*   = {mLAlt, mRAlt};
-  mMeta*  = {mLMeta, mRMeta};
+  mShift*      = 0;
+  mCtrl*       = 1;
+  mAlt*        = 2;
+  mLwin*       = 3;
+  mRwin*       = 4;
+  mMenu*       = 5;
+  mAltGr*      = 6;
+  mCommand*    = 7;
+  mScrolllock* = 8;
+  mNumlock*    = 9;
+  mCapslock*   = 10;
 
   (* Characters *)
   lineHor*         = 2500X;
@@ -570,14 +564,10 @@ BEGIN
     mouseDown := FALSE; GetMousePos(e, event.x, event.y);
     MoveMouse(event.x, event.y);
     event.button := 0; (* 0 means release *)
-  ELSIF e.type = G.keyDown THEN
-    IF (e.key = G.kEnter) & (e.mod * G.mAlt # {}) THEN
-      ToggleFS; skipEnter := TRUE
-    END;
-    event.type := noEvent
   ELSIF e.type = G.char THEN
-    IF skipEnter & (e.key = G.kEnter) THEN
-      event.type := noEvent; skipEnter := FALSE
+    Out.String('MOD '); Out.Int(ORD(e.mod), 0); Out.Ln;
+    IF (e.key = G.kEnter) & (e.mod * {G.mMenu, G.mAlt, G.mAltGr} # {}) THEN
+      ToggleFS; skipEnter := TRUE
     ELSE event.type := key;
       event.key := e.key;
       event.ch := e.ch;

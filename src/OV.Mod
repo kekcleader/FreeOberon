@@ -2365,9 +2365,9 @@ VAR m: Menu;
   handled: BOOLEAN;
 BEGIN handled := FALSE; hotkey := E.key;
   IF (hotkey # 0) & ~HasModalWindow(app) THEN
-    IF E.mod * T.mCtrl  # {} THEN INC(hotkey, 100H) END;
-    IF E.mod * T.mAlt   # {} THEN INC(hotkey, 200H) END;
-    IF E.mod * T.mShift # {} THEN INC(hotkey, 400H) END;
+    IF T.mCtrl IN E.mod THEN INC(hotkey, 100H) END;
+    IF E.mod * {T.mMenu, T.mAlt, T.mAltGr} # {} THEN INC(hotkey, 200H) END;
+    IF T.mShift IN E.mod THEN INC(hotkey, 400H) END;
     m := FindMenuWithHotkey(app.menu, hotkey);
     IF m # NIL THEN handled := TRUE;
       IF m.do.click # NIL THEN m.do.click(m) END
@@ -2421,15 +2421,15 @@ RETURN worked END OnTabPress;
 PROCEDURE OnKey(app: App; VAR E: T.Event);
 VAR handled: BOOLEAN; p: Control;
 BEGIN handled := FALSE; p := app.cur;
-  IF (E.mod * (T.mCtrl + T.mAlt + T.mShift) # {}) OR
+  IF (E.mod * {T.mCtrl, T.mShift, T.mAlt, T.mAltGr, T.mMenu} # {}) OR
      (T.kF1 <= E.key) & (E.key <= T.kF12) OR (E.key = T.kPause)
   THEN handled := CheckHotkey(app, E);
-    IF ~handled & (E.mod * T.mAlt # {}) THEN
+    IF ~handled & (E.mod * {T.mAlt, T.mAltGr, T.mMenu} # {}) THEN
       handled := CheckMenuOpenKey(app, E)
     END
   END;
   IF ~handled & (p # NIL) &
-     ((E.key # T.kTab) OR ~OnTabPress(app, E.mod * T.mShift # {}))
+     ((E.key # T.kTab) OR ~OnTabPress(app, T.mShift IN E.mod))
   THEN
     IF p.do.keyDown # NIL THEN p.do.keyDown(p, E) END;
     IF (p.parent # NIL) & (p.parent IS Window) &

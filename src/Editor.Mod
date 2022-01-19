@@ -1020,15 +1020,15 @@ END EditorClose;
 PROCEDURE EditorKeyDown*(c: OV.Control; VAR E: T.Event);
 VAR shiftPressed: BOOLEAN;
 BEGIN OV.WindowKeyDown(c, E); HideMsg(c);
-  shiftPressed := E.mod * T.mShift # {};
+  shiftPressed := T.mShift IN E.mod;
   CASE E.key OF
     T.kLeft:
-    IF E.mod * T.mCtrl # {} THEN MoveByWord(c(Editor), FALSE, shiftPressed)
+    IF T.mCtrl IN E.mod THEN MoveByWord(c(Editor), FALSE, shiftPressed)
     ELSE MoveByChar(c(Editor), FALSE, shiftPressed)
     END;
     PrintText(c(Editor))
   | T.kRight:
-    IF E.mod * T.mCtrl # {} THEN MoveByWord(c(Editor), TRUE, shiftPressed)
+    IF T.mCtrl IN E.mod THEN MoveByWord(c(Editor), TRUE, shiftPressed)
     ELSE MoveByChar(c(Editor), TRUE, shiftPressed)
     END;
     PrintText(c(Editor))

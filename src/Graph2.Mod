@@ -166,23 +166,17 @@ CONST
   kMax*        = 226;
 
   (* Modifiers Set *)
-  mLShift*   = 0;
-  mRShift*   = 1;
-  mLCtrl*    = 6;
-  mRCtrl*    = 7;
-  mLAlt*     = 8;
-  mRAlt*     = 9;
-  mLMeta*    = 10;
-  mRMeta*    = 11;
-  mNumLock*  = 12;
-  mCapsLock* = 13;
-  mMenu*     = 14;
-  mCommand*  = 29;
-  mScrLock*  = 30;
-  mCtrl*  = {mLCtrl, mRCtrl};
-  mShift* = {mLShift, mRShift};
-  mAlt*   = {mLAlt, mRAlt};
-  mMeta*   = {mLMeta, mRMeta};
+  mShift*      = 0;
+  mCtrl*       = 1;
+  mAlt*        = 2;
+  mLwin*       = 3;
+  mRwin*       = 4;
+  mMenu*       = 5;
+  mAltGr*      = 6;
+  mCommand*    = 7;
+  mScrolllock* = 8;
+  mNumlock*    = 9;
+  mCapslock*   = 10;
 
 TYPE
   ADRINT = SYSTEM.ADRINT;
@@ -297,33 +291,6 @@ VAR
   screen: Window;
   target: Bitmap;
   black: Color;
-
-  (* Keyboard modifier keys *)
-  keyModMap: ARRAY 256 OF INTEGER;
-  keyMods: SET;
-
-PROCEDURE InitKeyMod;
-VAR i: INTEGER;
-BEGIN keyMods := {};
-  FOR i := 0 TO LEN(keyModMap) - 1 DO keyModMap[i] := -1 END;
-  keyModMap[kLShift] := mLShift; keyModMap[kRShift] := mRShift;
-  keyModMap[kLCtrl] := mLCtrl; keyModMap[kRCtrl] := mRCtrl;
-  keyModMap[kAlt] := mLAlt; keyModMap[kAltGr] := mRAlt;
-  keyModMap[kLMeta] := mLMeta; keyModMap[kRMeta] := mRMeta;
-  keyModMap[kNumLock] := mNumLock; keyModMap[kCapsLock] := mCapsLock;
-  keyModMap[kScrLock] := mScrLock; keyModMap[kCommand] := mCommand;
-  keyModMap[kMenu] := mMenu
-END InitKeyMod;
-
-PROCEDURE SetKeyMod(key: INTEGER; on: BOOLEAN);
-BEGIN
-  IF key < LEN(keyModMap) THEN
-    key := keyModMap[key];
-    IF key >= 0 THEN
-      IF on THEN INCL(keyMods, key) ELSE EXCL(keyMods, key) END
-    END
-  END
-END SetKeyMod;
 
 PROCEDURE Error(s: ARRAY OF CHAR);
 BEGIN Out.String(s); Out.Ln
@@ -807,7 +774,6 @@ VAR d: Al.Display;
   isCurTarget: BOOLEAN;
 BEGIN isCurTarget := target = W;
   IF W.display # NIL THEN Al.destroy_display(W.display) END;
-  keyMods := {};
 
   W.rzoom := W.wantZoom;
   IF W.wantZoom = 1.0 THEN W.zoom := noZoom
@@ -1048,7 +1014,7 @@ BEGIN
         W.lastX := event.x; W.lastY := event.y
       END;
       event.button := ME.button;
-      event.mod := keyMods;
+      event.mod := {};
       event.display := ME.display; event.window := W
     ELSE event.type := noEvent
     END
@@ -1068,7 +1034,7 @@ BEGIN
     event.x := x; event.y := y;
     event.z := ME.z; event.w := ME.w;
     event.button := ME.button;
-    event.mod := keyMods;
+    event.mod := {};
     event.display := ME.display
   ELSIF E.type = Al.eventMouseButtonUp THEN
     event.type := mouseUp;
@@ -1086,7 +1052,7 @@ BEGIN
     event.x := x; event.y := y;
     event.z := ME.z; event.w := ME.w;
     event.button := ME.button;
-    event.mod := keyMods;
+    event.mod := {};
     event.display := ME.display
   ELSIF E.type = Al.eventTimer THEN
     event.type := timer;
@@ -1097,16 +1063,14 @@ BEGIN
     event.type := keyDown;
     KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
     event.key := KE.keycode;
-    SetKeyMod(event.key, TRUE);
-    event.mod := keyMods;
+    event.mod := {};
     event.display := KE.display;
     event.window := GetWindow(event.display)
   ELSIF E.type = Al.eventKeyUp THEN
     event.type := keyUp;
     KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
     event.key := KE.keycode;
-    event.mod := keyMods;
-    SetKeyMod(event.key, FALSE);
+    event.mod := {};
     event.display := KE.display;
     event.window := GetWindow(event.display)
   ELSIF E.type = Al.eventKeyChar THEN
@@ -1114,7 +1078,7 @@ BEGIN
     event.type := char;
     event.key := KE.keycode;
     event.ch := CHR(KE.unichar);
-    event.mod := keyMods;
+    event.mod := KE.modifiers;
     event.repeat := KE.repeat;
     event.display := KE.display;
     event.window := GetWindow(event.display)
@@ -1442,8 +1406,7 @@ BEGIN ok := TRUE;
       Al.register_event_source(queue, Al.get_keyboard_event_source());
       IF ~(noMouse IN settings) THEN
         Al.register_event_source(queue, Al.get_mouse_event_source())
-      END;
-      InitKeyMod
+      END
     END;
 
     IF ~(manual IN settings) THEN

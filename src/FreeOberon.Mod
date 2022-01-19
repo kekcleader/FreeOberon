@@ -381,7 +381,7 @@ BEGIN
         DEC(inputBufLen); Backspace
       END
     | T.kPause:
-      IF E.mod * T.mCtrl # {} THEN
+      IF T.mCtrl IN E.mod THEN
         KillProgram;
         quit := TRUE
       END
