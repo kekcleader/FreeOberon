@@ -10,7 +10,7 @@ SET OBERON=.;%OFRDIR%\Lib\Sym
 SET OFR=ofront+ -s -48
 SET CC=gcc
 SET AR=ar
-SET CCFULL=%CC% -g0 -O0 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Lib\Obj
+SET CCFULL=%CC% -O3 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Lib\Obj
 
 ECHO ON
 %OFR% -C Config_win32.Mod
