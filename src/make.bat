@@ -10,7 +10,7 @@ SET OBERON=.;%OFRDIR%\Lib\Sym
 SET OFR=ofront+ -s -48
 SET CC=gcc
 SET AR=ar
-SET CCFULL=%CC% -g3 -O0 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Lib\Obj
+SET CCFULL=%CC% -g0 -O0 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Lib\Obj
 
 ECHO ON
 %OFR% -C Config_win32.Mod
@@ -56,24 +56,39 @@ ECHO ON
 %OFR% -Cwm FreeOberon.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 windres resources.rc resources.o
+@IF ERRORLEVEL 1 GOTO ERR
 @REM                        -O0 change to -Os (?)   add -s (?)
 %CCFULL% -c Utf8.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Strings.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Reals.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Int.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c In.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Out.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Files.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Texts.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Random.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c StrList.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Dir.c -I..\Data\bin\mingw32\include
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Graph2.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c TermBox.c
+@IF ERRORLEVEL 1 GOTO ERR
 
 %AR% -crs ..\Data\bin\FreeOberon.a ^
   Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o Texts.o Random.o ^
   StrList.o Dir.o Graph2.o TermBox.o
+@IF ERRORLEVEL 1 GOTO ERR
 
 %CCFULL% -o ..\%PROG%.exe resources.o ^
   Graph2.c TermBox.c ^
