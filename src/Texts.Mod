@@ -22,13 +22,13 @@ TYPE
 
   Scanner* = RECORD(Reader)
     nextCh*: CHAR;
+    c*: CHAR;
     line*, class*: INTEGER;
     i*: INTEGER;
     x*: REAL;
     (*y*: LONGREAL;*)
-    c*: CHAR;
     len*: LONGINT;
-    s*: ARRAY 512 OF CHAR
+    s*: ARRAY 1900 OF CHAR
   END;
 
 PROCEDURE Open*(T: Text; fname: ARRAY OF CHAR);
@@ -39,9 +39,9 @@ BEGIN T.F := Files.Old(fname);
   END
 END Open;
 
-PROCEDURE Next*(VAR S: Scanner);
+PROCEDURE Read*(VAR R: Reader; VAR ch: CHAR);
 BEGIN
-  Files.ReadChar(S.rider, S.nextCh)
+  Files.ReadChar(R.rider, S.nextCh)
 END Next;
 
 PROCEDURE OpenScanner*(VAR S: Scanner; T: Text; pos: LONGINT);

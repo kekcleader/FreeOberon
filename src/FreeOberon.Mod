@@ -694,15 +694,21 @@ BEGIN last := ch; Files.ReadChar(R, ch);
   WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, ch) END
 END SkipComment;
 
-PROCEDURE GetSym(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
+PROCEDURE ReadCh(VAR R: Files.Rider; VAR ch: CHAR; VAR line, col: INTEGER);
+BEGIN Files.ReadChar(R, ch);
+  IF ch = 0AX THEN INC(line); col := 1 ELSE INC(col) END
+END ReadCh;
+
+PROCEDURE GetSym(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR;
+    VAR line, col: INTEGER);
 VAR i: INTEGER;
 BEGIN
-  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, ch) END;
+  WHILE ~R.eof & (ch <= ' ') DO ReadCh(R, ch, line, col) END;
   i := 0;
   IF ~R.eof THEN
     IF ch = '(' THEN
-      Files.ReadChar(R, ch);
-      IF ch = '*' THEN Files.ReadChar(R, ch); SkipComment(R, ch, s)
+      ReadCh(R, ch, line, col);
+      IF ch = '*' THEN ReadCh(R, ch, line, col); SkipComment(R, ch, s)
       ELSE s[i] := ch; INC(i)
       END
     END;
@@ -711,49 +717,63 @@ BEGIN
             (('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
              ('0' <= ch) & (ch <= '9')) DO
         IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
-        Files.ReadChar(R, ch)
+        ReadCh(R, ch, line, col)
       END
     ELSE
       WHILE ~R.eof & (ch > ' ') &
             ~(('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
               ('0' <= ch) & (ch <= '9')) DO
         IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
-        Files.ReadChar(R, ch)
+        ReadCh(R, ch, line, col)
       END
     END
   END;
   s[i] := 0X
 END GetSym;
 
-PROCEDURE GetImportedModules(IN fname: ARRAY OF CHAR;
-    VAR ok: BOOLEAN): StrList;
+(** Returns true if the two module names are equal.
+  modname is the identifier that comes after the keyword MODULE.
+  filebase is the file name without the extension; on Windows it
+  is allowed to be written in different case. *)
+PROCEDURE EqualModuleNames(modname, filebase: ARRAY OF CHAR): BOOLEAN;
+BEGIN IF Config.isWindows THEN Strings.Cap(modname); Strings.Cap(filebase) END;
+RETURN modname = filebase END EqualModuleNames;
+
+PROCEDURE GetImportedModules(IN fname, modname: ARRAY OF CHAR;
+    VAR ok: BOOLEAN; VAR line, col: INTEGER): StrList;
 VAR F: Files.File;
   R: Files.Rider;
   top, p: StrList;
   ch: CHAR;
   mod, s, fname2: ARRAY 256 OF CHAR;
   exit: BOOLEAN;
-BEGIN NEW(top); top.next := NIL; p := top;
+BEGIN ok := FALSE; NEW(top); top.next := NIL; p := top;
   F := Files.Old(fname);
   IF F # NIL THEN
-    Files.Set(R, F, 0); Files.ReadChar(R, ch); GetSym(R, ch, s);
-    ok := s = 'MODULE'; GetSym(R, ch, s); GetSym(R, ch, s); (*!FIXME check module name*)
-    IF ok THEN
-      ok := s = ';'; GetSym(R, ch, s);
-      IF ok THEN
-        ok := s = 'IMPORT'; GetSym(R, ch, s); exit := FALSE;
-        WHILE ~exit & ('A' <= CAP(s[0])) & (CAP(s[0]) <= 'Z') DO
-          mod := s; GetSym(R, ch, s); fname2[0] := 0X;
-          IF s = ':=' THEN GetSym(R, ch, s); mod := s; GetSym(R, ch, s) END;
-          IF IsSysModule(mod) OR FindModule(mod, fname2) THEN
-            NEW(p.next); p := p.next; p.next := NIL;
-            p.s := mod$; p.fname := fname2$
-          END;
-          IF s = ',' THEN GetSym(R, ch, s) ELSE exit := FALSE END
+    Files.Set(R, F, 0); Files.ReadChar(R, ch);
+    line := 1; col := 1; GetSym(R, ch, s, line, col);
+    IF s = 'MODULE' THEN GetSym(R, ch, s, line, col);
+      IF EqualModuleNames(modname, s) THEN
+        GetSym(R, ch, s, line, col);
+        IF s = ';' THEN GetSym(R, ch, s, line, col); ok := TRUE;
+          IF s = 'IMPORT' THEN GetSym(R, ch, s, line, col); exit := FALSE;
+            WHILE ~exit & ('A' <= CAP(s[0])) & (CAP(s[0]) <= 'Z') DO
+              mod := s; GetSym(R, ch, s, line, col); fname2[0] := 0X;
+              IF s = ':=' THEN GetSym(R, ch, s, line, col);
+                mod := s; GetSym(R, ch, s, line, col)
+              END;
+              IF IsSysModule(mod) OR FindModule(mod, fname2) THEN
+                NEW(p.next); p := p.next; p.next := NIL;
+                p.s := mod$; p.fname := fname2$
+              END;
+              IF s = ',' THEN GetSym(R, ch, s, line, col)
+              ELSE exit := FALSE
+              END
+            END
+          END
         END
       END
     END
-  ELSE ok := FALSE
   END ;
 RETURN top.next END GetImportedModules;
 
@@ -775,18 +795,22 @@ BEGIN
   END
 END AddUniqueToList;
 
-PROCEDURE UsedModuleList(IN modname, fname: ARRAY OF CHAR): StrList;
+PROCEDURE UsedModuleList(IN modname, fname: ARRAY OF CHAR;
+    VAR ok: BOOLEAN; VAR errFname: ARRAY OF CHAR;
+    VAR errLine, errCol: INTEGER): StrList;
 VAR res, list, list2, p: StrList;
-  ok: BOOLEAN;
 BEGIN res := NIL; ok := TRUE;
   IF ~IsSysModule(modname) THEN
-    list := GetImportedModules(fname, ok); p := list;
+    list := GetImportedModules(fname, modname, ok, errLine, errCol); p := list;
     IF ok THEN
-      WHILE p # NIL DO
-        list2 := UsedModuleList(p.s, p.fname);
+      WHILE ok & (p # NIL) DO
+        list2 := UsedModuleList(p.s, p.fname, ok, errFname, errLine, errCol);
         AddUniqueToList(list2, res);
         p := p.next
       END
+    ELSE
+      Strings.Copy(fname, errFname);
+      Out.String('Не могу разобраться с '); Out.String(modname); Out.Ln
     END
   END;
   IF ok THEN
@@ -812,9 +836,12 @@ BEGIN i := 0; j := 0;
 END GetModuleName;
 
 PROCEDURE OnBuild(c: OV.Control);
-VAR w: OV.Window; graph: BOOLEAN;
-  mainFname, modname, exename: ARRAY 256 OF CHAR;
+VAR w: OV.Window;
+  graph, ok: BOOLEAN;
+  mainFname, modname, exename, errFname, s: ARRAY 256 OF CHAR;
+  errLine, errCol: INTEGER;
   modules: StrList;
+  e: Editor.Editor;
 BEGIN w := c.app.windows;
   IF (w # NIL) & (w IS Editor.Editor) THEN
     IF Editor.TextChanged(w(Editor.Editor)) THEN FileSave(c) END;
@@ -822,13 +849,22 @@ BEGIN w := c.app.windows;
       mainFname := w(Editor.Editor).fname$;
       SetWorkDir(mainFname);
       GetModuleName(mainFname, modname);
-      modules := UsedModuleList(modname, mainFname);
-      graph := ImportsGraph(modules);
-      needWindowed := graph;
-      IF CompileAll(modules, graph, exename) THEN
-        tempWindowed := needWindowed & T.IsFS();
-        IF tempWindowed THEN T.SwitchToWindow END;
-        RunProgram(exename)
+      modules := UsedModuleList(modname, mainFname, ok,
+        errFname, errLine, errCol);
+      IF ok THEN
+        graph := ImportsGraph(modules);
+        needWindowed := graph;
+        IF CompileAll(modules, graph, exename) THEN
+          tempWindowed := needWindowed & T.IsFS();
+          IF tempWindowed THEN T.SwitchToWindow END;
+          RunProgram(exename)
+        END
+      ELSE
+        FocusOrOpenFile(errFname);
+        e := app.windows(Editor.Editor);
+        e.text.MoveToLineCol(errLine, errCol, e.h - 2);
+        FoStrings.MakeErrorStr(401(*file contains wrong module name*), s);
+        ShowErrors(s)
       END
     END
   END
@@ -1150,6 +1186,7 @@ BEGIN
   ParseArgs(fs, sw, w, h, fnames);
   T.Settings(106, 25, {T.resizable(*, T.window*)});
   (*T.Settings(240, 61, {T.resizable, T.window});*)
+  FoStrings.SetLang('en');
   T.SetTitle('Free Oberon');
   T.Init;
   IF T.Done THEN
