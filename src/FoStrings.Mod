@@ -53,12 +53,14 @@ BEGIN
     IF S.class = Texts.Int THEN i := S.i; Texts.Scan(S);
       IF (S.class = Texts.String) & (0 <= i) & (i < LEN(errorStr)) &
          (S.len < LEN(errorStr[0]) - 1)
-      THEN Strings.Copy(S.s, errorStr[i]); ok := TRUE;
-        Out.String('READ STRING  "'); Out.String(errorStr[i]);
-        Out.String('", i='); Out.Int(i, 0); Out.Ln
+      THEN Strings.Copy(S.s, errorStr[i]); ok := TRUE
       END
     END;
     Texts.Scan(S)
+  END;
+  IF ~ok THEN
+    Out.String('Bad format of "'); Out.String(fname);
+    Out.String('". Line '); Out.Int(S.line, 0); Out.Ln
   END
 END LoadStrings;
 
