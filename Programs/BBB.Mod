@@ -1,0 +1,14 @@
+MODULE BBB;
+IMPORT Out;
+
+PROCEDURE Int*(n: INTEGER);
+BEGIN
+  Out.Int(n, 0); Out.Ln
+END Int;
+
+PROCEDURE F*(n: INTEGER): INTEGER;
+BEGIN
+  RETURN n * n - 1
+END F;
+
+END BBB.

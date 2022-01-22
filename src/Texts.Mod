@@ -39,35 +39,64 @@ BEGIN T.F := Files.Old(fname);
   END
 END Open;
 
+PROCEDURE OpenReader*(VAR R: Reader; T: Text; pos: LONGINT);
+BEGIN Files.Set(R.rider, T.F, pos); R.eot := FALSE
+END OpenReader;
+
 PROCEDURE Read*(VAR R: Reader; VAR ch: CHAR);
-BEGIN
-  Files.ReadChar(R.rider, S.nextCh)
+BEGIN Files.ReadChar(R.rider, ch);
+  IF R.rider.eof THEN R.eot := TRUE END
+END Read;
+
+PROCEDURE Next(VAR S: Scanner);
+BEGIN Files.ReadChar(S.rider, S.nextCh);
+  IF ~S.rider.eof & (S.nextCh = 0AX) THEN INC(S.line) END
 END Next;
 
 PROCEDURE OpenScanner*(VAR S: Scanner; T: Text; pos: LONGINT);
-BEGIN
-  Files.Set(S.rider, T.F, pos);
-  Next(S)
+BEGIN OpenReader(S, T, pos); S.line := 1; Next(S)
 END OpenScanner;
 
 PROCEDURE Scan*(VAR S: Scanner);
-VAR n: INTEGER;
+VAR i, n: INTEGER;
+  quot: CHAR;
 BEGIN
   WHILE ~S.rider.eof & (S.nextCh <= ' ') DO Next(S) END;
-  IF ('0' <= S.nextCh) & (S.nextCh <= '9') THEN
+  IF S.rider.eof THEN S.class := Inval; S.eot := TRUE
+  ELSIF ('0' <= S.nextCh) & (S.nextCh <= '9') THEN
     n := 0;
-    REPEAT
+    REPEAT (*!FIXME Add HEX *)
       n := n * 10 + ORD(S.nextCh) - ORD('0');
       Next(S)
     UNTIL S.rider.eof OR ~(('0' <= S.nextCh) & (S.nextCh <= '9'));
     S.class := Int;
     S.i := n
+  ELSIF (S.nextCh = '"') OR (S.nextCh = "'") THEN
+    quot := S.nextCh; Next(S); i := 0;
+    WHILE ~S.rider.eof & (S.nextCh # quot) DO
+      IF i < LEN(S.s) - 1 THEN S.s[i] := S.nextCh; INC(i) END;
+      Next(S)
+    END;
+    S.s[i] := 0X; S.len := i;
+    IF ~S.rider.eof THEN Next(S); S.class := String
+    ELSE S.class := Inval
+    END
+  ELSIF ('a' <= S.nextCh) & (S.nextCh <= 'z') OR
+        ('A' <= S.nextCh) & (S.nextCh <= 'Z') THEN
+    S.class := Name; i := 0;
+    REPEAT
+      IF i < LEN(S.s) - 1 THEN S.s[i] := S.nextCh; INC(i) END;
+      Next(S)
+    UNTIL S.rider.eof OR
+          ~(('a' <= S.nextCh) & (S.nextCh <= 'z') OR
+            ('A' <= S.nextCh) & (S.nextCh <= 'Z') OR
+            ('0' <= S.nextCh) & (S.nextCh <= '9'));
+    S.s[i] := 0X; S.len := i
   ELSE
     S.class := Char;
     S.c := S.nextCh;
     Next(S)
-  END;
-  S.eot := S.rider.eof
+  END
 END Scan;
 
 END Texts.
