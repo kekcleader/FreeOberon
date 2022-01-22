@@ -46,6 +46,11 @@ CONST
   tokenString  = 3;
   tokenComment = 4;
 
+  (* Defaults *)
+  defW = 106;
+  defH = 25;
+  defLang = 'en';
+
 TYPE
   StrList = POINTER TO StrListDesc;
   StrListDesc = RECORD
@@ -1153,11 +1158,12 @@ BEGIN i := 0; w := 0; h := 0;
 END ParseSize;
 
 PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR w, h: INTEGER;
-    VAR fnames: Fnames);
+    VAR lang: ARRAY OF CHAR; VAR fnames: Fnames);
 VAR i, nofnames: INTEGER;
   s: ARRAY 2048 OF CHAR;
   q: ARRAY 2048 OF SHORTCHAR;
-BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := -1; h := -1;
+BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := defW; h := defH;
+  lang := defLang;
   WHILE i # Args.argc DO
     Args.Get(i, q); Utf8.Decode(q, s);
     IF s = '--window' THEN fs := FALSE
@@ -1165,6 +1171,10 @@ BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := -1; h := -1;
     ELSIF s = '--size' THEN
       IF i + 1 # Args.argc THEN
         INC(i); Args.Get(i, q); Utf8.Decode(q, s); ParseSize(s, w, h)
+      END
+    ELSIF s = '--lang' THEN
+      IF i + 1 # Args.argc THEN
+        INC(i); Args.Get(i, q); Utf8.Decode(q, lang)
       END
     ELSIF nofnames < LEN(fnames) THEN
       ParseFileNameArg(s);
@@ -1180,13 +1190,16 @@ END ParseArgs;
 PROCEDURE Init(): BOOLEAN;
 VAR success, fs, sw: BOOLEAN;
   w, h: INTEGER;
+  lang: ARRAY 6 OF CHAR;
   fnames: Fnames;
+  opt: SET;
 BEGIN
   success := FALSE;
-  ParseArgs(fs, sw, w, h, fnames);
-  T.Settings(106, 25, {T.resizable(*, T.window*)});
-  (*T.Settings(240, 61, {T.resizable, T.window});*)
-  FoStrings.SetLang('en');
+  ParseArgs(fs, sw, w, h, lang, fnames);
+  opt := {T.resizable};
+  IF fs THEN INCL(opt, T.fullscreen) ELSE INCL(opt, T.window) END;
+  T.Settings(w, h, opt);
+  FoStrings.SetLang(lang);
   T.SetTitle('Free Oberon');
   T.Init;
   IF T.Done THEN

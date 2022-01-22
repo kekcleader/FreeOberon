@@ -26,9 +26,7 @@ VAR i, n: INTEGER;
   c: CHAR;
   neg: BOOLEAN;
 BEGIN n := 0; c := s[0];
-  IF c = '-' THEN neg := TRUE; i := 1; c := s[1]
-  ELSE neg := FALSE
-  END;
+  IF c = '-' THEN neg := TRUE; i := 1; c := s[1] ELSE neg := FALSE; i := 0 END;
   WHILE ('0' <= c) & (c <= '9') DO
     n := n * 10 + ORD(c) - ORD('0');
     INC(i); c := s[i]
