@@ -50,7 +50,7 @@ CONST
   (* Defaults *)
   defW = 106;
   defH = 25;
-  defLang = 'en';
+  defLang = 'ru';
 
 TYPE
   StrList = POINTER TO StrListDesc;
@@ -99,8 +99,7 @@ VAR lines, width, x0, x, y, i: INTEGER;
 BEGIN
   (*;;;;;;Out.String('ERROR STRING: ['); Out.String(s); Out.String('] END.'); Out.Ln;;;;;;*)
   e := app.windows(Editor.Editor);
-  Editor.SetMsg(e, s);
-  OV.SetStatusText(app, s);
+  Editor.SetMsg(e, s)
 END ShowErrors;
 
 (* !TODO move out, rewrite *)
@@ -299,7 +298,7 @@ END ParseErrors;
 PROCEDURE PollProgram;
 VAR len, i: INTEGER;
     err: INTEGER;
-    s, sN: ARRAY 120 OF CHAR;
+    s, sN: FoStrings.String;
 
   PROCEDURE WriteProgBuf;
   VAR ch: SHORTCHAR; i: INTEGER;
@@ -333,11 +332,11 @@ BEGIN
       Read(TRUE); (* Read everything until pipe is empty *)
       programFinished := TRUE;
       IF tempWindowed THEN T.SwitchToFS END;
-      IF err = 0 THEN
-        WriteString(' Press any key to return to IDE')
-      ELSE s := ' Runtime error '; Int.Append(err, s);
-        WriteString(s)
-      END
+      IF err = 0 THEN s := ' '; FoStrings.Append('pressAnyKeyToReturnToIde', s)
+      ELSE s := ' '; FoStrings.Append('runtimeError', s);
+        Strings.Append(' ', s); Int.Append(err, s)
+      END;
+      WriteString(s)
     ELSE
       Read(FALSE) (* Attempt several reads *)
     END
@@ -494,7 +493,7 @@ BEGIN
       Strings.Append('" /C Data\bin\', cmd);
       Strings.Append(command, cmd);
       Strings.Append('.bat ', cmd)
-    ELSE T.Print(0, tH - 1, -1, 'Could not find cmd.exe', 15, 4)
+    ELSE T.Print(0, tH - 1, -1, 'Could not find cmd.exe', 15, 4) (*!FIXME*)
     END
   ELSE (* Linux *)
     cmd := 'Data/bin/'; Strings.Append(command, cmd);
@@ -539,8 +538,8 @@ BEGIN
       ELSE e.text.MoveToLineCol(line, col, e.h - 2)
       END;
       Editor.PrintText(app.windows(Editor.Editor))
-    ELSIF link THEN z := 'Linking failed.'
-    ELSE z := 'Compilation failed.'
+    ELSIF link THEN FoStrings.GetErrorStr(421, z)
+    ELSE FoStrings.GetErrorStr(422, z)
     END;
     IF z[0] = 0X THEN ShowErrors(s) ELSE ShowErrors(z) END
   END ;
@@ -987,14 +986,15 @@ END CascadeWindows;
 PROCEDURE InitIDE;
 VAR w: OV.Window;
   m, m2: OV.Menu;
-  s, q: ARRAY 256 OF CHAR;
+  s, q: FoStrings.String;
 BEGIN
   app := OV.NewApp();
   FileNew(app.menu);
 
   FoStrings.Get('menuFile', s);
   m := OV.NewMenu(s, '', 0, NIL);
-  OV.Add(m, OV.NewMenu('&New', 'Shift+F3', OV.hShiftF3, FileNew));
+  FoStrings.Get('menuNew', s);
+  OV.Add(m, OV.NewMenu(s, 'Shift+F3', OV.hShiftF3, FileNew));
   FoStrings.Get('menuOpen', s);
   OV.Add(m, OV.NewMenu(s, 'F3', OV.hF3, FileOpen));
   FoStrings.Get('menuReload', s);
@@ -1002,7 +1002,7 @@ BEGIN
   FoStrings.Get('menuSave', s);
   OV.Add(m, OV.NewMenu(s, 'F2', OV.hF2, FileSave));
   FoStrings.Get('menuSaveAs', s);
-  OV.Add(m, OV.NewMenu('Save &as...', 'Shift+F2', OV.hShiftF2, FileSaveAs));
+  OV.Add(m, OV.NewMenu(s, 'Shift+F2', OV.hShiftF2, FileSaveAs));
   (*FoStrings.Get('menuSaveAll', s);*)
   (*OV.Add(m, OV.NewMenu(s, '', 0, NIL));*)
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
@@ -1010,203 +1010,204 @@ BEGIN
   OV.Add(m, OV.NewMenu(s, 'Alt+X', OV.hAltX, OV.QuitApp));
   OV.AddMenu(app, m);
   FoStrings.Get('menuEdit', s);
-  m := OV.NewMenu('&Edit', '', 0, NIL);
+  m := OV.NewMenu(s, '', 0, NIL);
   FoStrings.Get('menuUndo', s);
-  m2 := OV.NewMenu('&Undo', 'DelText', OV.hAltBackspace, NIL); m2.status := OV.disabled;
+  FoStrings.Get('actionDelText', q);
+  m2 := OV.NewMenu(s, q, OV.hAltBackspace, NIL); m2.status := OV.disabled;
   OV.Add(m, m2);
   FoStrings.Get('menuRedo', s);
-  m2 := OV.NewMenu('&Redo', '', 0, NIL); m2.status := OV.disabled;
+  m2 := OV.NewMenu(s, '', 0, NIL); m2.status := OV.disabled;
   OV.Add(m, m2);
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuCut', s);
-  OV.Add(m, OV.NewMenu('Cu&t', 'Ctrl+X', OV.hCtrlX, Editor.EditCut));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+X', OV.hCtrlX, Editor.EditCut));
   FoStrings.Get('menuCopy', s);
-  OV.Add(m, OV.NewMenu('&Copy', 'Ctrl+C', OV.hCtrlC, Editor.EditCopy));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+C', OV.hCtrlC, Editor.EditCopy));
   FoStrings.Get('menuPaste', s);
-  OV.Add(m, OV.NewMenu('&Paste', 'Ctrl+V', OV.hCtrlV, Editor.EditPaste));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+V', OV.hCtrlV, Editor.EditPaste));
   FoStrings.Get('menuClear', s);
-  OV.Add(m, OV.NewMenu('C&lear', 'Ctrl+Del', OV.hCtrlDel, Editor.EditClear));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+Del', OV.hCtrlDel, Editor.EditClear));
   FoStrings.Get('menuSelectAll', s);
-  OV.Add(m, OV.NewMenu('Select &All', 'Ctrl+A', OV.hCtrlA, Editor.EditSelectAll));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+A', OV.hCtrlA, Editor.EditSelectAll));
   FoStrings.Get('menuUnselect', s);
-  OV.Add(m, OV.NewMenu('U&nselect', '', 0, Editor.EditUnselect));
+  OV.Add(m, OV.NewMenu(s, '', 0, Editor.EditUnselect));
   OV.AddMenu(app, m);
   FoStrings.Get('menuSearch', s);
-  m := OV.NewMenu('&Search', '', 0, NIL);
+  m := OV.NewMenu(s, '', 0, NIL);
   FoStrings.Get('menuFind', s);
-  OV.Add(m, OV.NewMenu('&Find...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuReplace', s);
-  OV.Add(m, OV.NewMenu('&Replace...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuSearchAgain', s);
-  OV.Add(m, OV.NewMenu('&Search again', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuGoToLineNumber', s);
-  OV.Add(m, OV.NewMenu('&Go to line number...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuFindProcedure', s);
-  OV.Add(m, OV.NewMenu('&Find procedure...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   FoStrings.Get('menuRun', s);
-  m := OV.NewMenu('&Run', '', 0, NIL);
-  OV.Add(m, OV.NewMenu('&Run', 'Ctrl+F9', OV.hCtrlF9, OnBuild));
+  m := OV.NewMenu(s, '', 0, NIL);
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+F9', OV.hCtrlF9, OnBuild));
   FoStrings.Get('menuRunDirectory', s);
-  OV.Add(m, OV.NewMenu('Run &Directory...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuParameters', s);
-  OV.Add(m, OV.NewMenu('P&arameters...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   FoStrings.Get('menuCompile', s);
-  m := OV.NewMenu('&Compile', '', 0, NIL);
-  OV.Add(m, OV.NewMenu('&Compile', 'Alt+F9', OV.hAltF9, OnBuild));
+  m := OV.NewMenu(s, '', 0, NIL);
+  OV.Add(m, OV.NewMenu(s, 'Alt+F9', OV.hAltF9, OnBuild));
   FoStrings.Get('menuMake', s);
-  OV.Add(m, OV.NewMenu('&Make', 'Shift+F9', OV.hShiftF9, OnBuild));
+  OV.Add(m, OV.NewMenu(s, 'Shift+F9', OV.hShiftF9, OnBuild));
   FoStrings.Get('menuMakeAndRun', s);
-  OV.Add(m, OV.NewMenu('Make && &Run', 'F9', OV.hF9, OnBuild));
+  OV.Add(m, OV.NewMenu(s, 'F9', OV.hF9, OnBuild));
   FoStrings.Get('menuBuild', s);
-  OV.Add(m, OV.NewMenu('&Build', '', 0, OnBuild));
+  OV.Add(m, OV.NewMenu(s, '', 0, OnBuild));
   OV.AddMenu(app, m);
   FoStrings.Get('menuDebug', s);
-  m := OV.NewMenu('&Debug', '', 0, NIL);
+  m := OV.NewMenu(s, '', 0, NIL);
   FoStrings.Get('menuOutput', s);
-  OV.Add(m, OV.NewMenu('&Output', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   FoStrings.Get('menuTools', s);
-  m := OV.NewMenu('&Tools', '', 0, NIL);
+  m := OV.NewMenu(s, '', 0, NIL);
   FoStrings.Get('menuMessages', s);
-  OV.Add(m, OV.NewMenu('&Messages', 'F11', OV.hF11, NIL));
+  OV.Add(m, OV.NewMenu(s, 'F11', OV.hF11, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuCalculator', s);
-  OV.Add(m, OV.NewMenu('&Calculator', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuAsciiTable', s);
-  OV.Add(m, OV.NewMenu('Ascii &table', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   FoStrings.Get('menuOptions', s);
-  m := OV.NewMenu('&Options', '', 0, NIL);
+  m := OV.NewMenu(s, '', 0, NIL);
   FoStrings.Get('menuMode', s);
   FoStrings.Get('menuNormalMode', q);
-  OV.Add(m, OV.NewMenu('Mode&...', q, 0, NIL));
+  OV.Add(m, OV.NewMenu(s, q, 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuCompiler', s);
-  OV.Add(m, OV.NewMenu('&Compiler...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuMemorySizes', s);
-  OV.Add(m, OV.NewMenu('&Memory sizes...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuLinker', s);
-  OV.Add(m, OV.NewMenu('&Linker...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuDirectories', s);
-  OV.Add(m, OV.NewMenu('&Directories...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuTools', s);
-  OV.Add(m, OV.NewMenu('&Tools...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuEnvironment', s);
-  m2 := OV.NewMenu('&Environment', '', 0, NIL);
+  m2 := OV.NewMenu(s, '', 0, NIL);
   FoStrings.Get('menuPreferences', s);
-  OV.Add(m2, OV.NewMenu('&Preferences...', '', 0, NIL));
+  OV.Add(m2, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m2.children.prev.status := OV.disabled;
   FoStrings.Get('menuEditor', s);
-  OV.Add(m2, OV.NewMenu('&Editor...', '', 0, NIL));
+  OV.Add(m2, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m2.children.prev.status := OV.disabled;
   FoStrings.Get('menuCodeComplete', s);
-  OV.Add(m2, OV.NewMenu('Code&Complete...', '', 0, NIL));
+  OV.Add(m2, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m2.children.prev.status := OV.disabled;
   FoStrings.Get('menuCodeTemplates', s);
-  OV.Add(m2, OV.NewMenu('Code&Templates...', '', 0, NIL));
+  OV.Add(m2, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m2.children.prev.status := OV.disabled;
   FoStrings.Get('menuDesktop', s);
-  OV.Add(m2, OV.NewMenu('&Desktop...', '', 0, NIL));
+  OV.Add(m2, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m2.children.prev.status := OV.disabled;
   FoStrings.Get('menuKeyboardAndMouse', s);
-  OV.Add(m2, OV.NewMenu('Keyboard && &mouse...', '', 0, NIL));
+  OV.Add(m2, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m2.children.prev.status := OV.disabled;
   FoStrings.Get('menuLearnKeys', s);
-  OV.Add(m2, OV.NewMenu('Learn &Keys', '', 0, NIL));
+  OV.Add(m2, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m2.children.prev.status := OV.disabled;
   OV.Add(m, m2);
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuOpenOptions', s);
-  OV.Add(m, OV.NewMenu('&Open...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuSaveOptions', s);
-  OV.Add(m, OV.NewMenu('&Save', 'fo.ini', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, 'fo.ini', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuSaveOptionsAs', s);
-  OV.Add(m, OV.NewMenu('Save &as...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.AddMenu(app, m);
   FoStrings.Get('menuWindow', s);
-  m := OV.NewMenu('&Window', '', 0, NIL);
+  m := OV.NewMenu(s, '', 0, NIL);
   FoStrings.Get('menuTile', s);
-  OV.Add(m, OV.NewMenu('&Tile', '', 0, TileWindows));
+  OV.Add(m, OV.NewMenu(s, '', 0, TileWindows));
   FoStrings.Get('menuCascade', s);
-  OV.Add(m, OV.NewMenu('C&ascade', '', 0, CascadeWindows));
+  OV.Add(m, OV.NewMenu(s, '', 0, CascadeWindows));
   FoStrings.Get('menuCloseAll', s);
-  OV.Add(m, OV.NewMenu('Cl&ose all', '', 0, OV.CloseAllWindows));
+  OV.Add(m, OV.NewMenu(s, '', 0, OV.CloseAllWindows));
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuSizeMove', s);
-  OV.Add(m, OV.NewMenu('&Size/Move', 'Ctrl+F5', OV.hCtrlF5, NIL));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+F5', OV.hCtrlF5, NIL));
   FoStrings.Get('menuZoom', s);
-  OV.Add(m, OV.NewMenu('&Zoom', 'F5', OV.hF5, OV.ZoomCurWindow));
+  OV.Add(m, OV.NewMenu(s, 'F5', OV.hF5, OV.ZoomCurWindow));
   FoStrings.Get('menuNextWindow', s);
-  OV.Add(m, OV.NewMenu('&Next', 'F6', OV.hF6, OV.NextWindow));
+  OV.Add(m, OV.NewMenu(s, 'F6', OV.hF6, OV.NextWindow));
   FoStrings.Get('menuPreviousWindow', s);
-  OV.Add(m, OV.NewMenu('&Previous', 'Shift+F6', OV.hShiftF6, OV.PrevWindow));
+  OV.Add(m, OV.NewMenu(s, 'Shift+F6', OV.hShiftF6, OV.PrevWindow));
   FoStrings.Get('menuCloseWindow', s);
-  OV.Add(m, OV.NewMenu('&Close', 'Alt+F3', OV.hAltF3, OV.CloseCurWindow));
+  OV.Add(m, OV.NewMenu(s, 'Alt+F3', OV.hAltF3, OV.CloseCurWindow));
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuListWindows', s);
-  OV.Add(m, OV.NewMenu('&List...', 'Alt+0', OV.hAlt0, NIL));
+  OV.Add(m, OV.NewMenu(s, 'Alt+0', OV.hAlt0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuRefreshDisplay', s);
-  OV.Add(m, OV.NewMenu('&Refresh display', '', 0, OV.RefreshDisplay));
+  OV.Add(m, OV.NewMenu(s, '', 0, OV.RefreshDisplay));
   OV.AddMenu(app, m);
   FoStrings.Get('menuHelp', s);
-  m := OV.NewMenu('&Help', '', 0, NIL);
+  m := OV.NewMenu(s, '', 0, NIL);
   FoStrings.Get('menuContents', s);
-  OV.Add(m, OV.NewMenu('&Contents', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuIndex', s);
-  OV.Add(m, OV.NewMenu('&Index', 'Shift+F1', OV.hShiftF1, NIL));
+  OV.Add(m, OV.NewMenu(s, 'Shift+F1', OV.hShiftF1, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuTopicSearch', s);
-  OV.Add(m, OV.NewMenu('&Topic search', 'Ctrl+F1', OV.hCtrlF1, NIL));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+F1', OV.hCtrlF1, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuPreviousTopic', s);
-  OV.Add(m, OV.NewMenu('&Previous topic', 'Alt+F1', OV.hAltF1, NIL));
+  OV.Add(m, OV.NewMenu(s, 'Alt+F1', OV.hAltF1, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuUsingHelp', s);
-  OV.Add(m, OV.NewMenu('&Using help', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuHelpFiles', s);
-  OV.Add(m, OV.NewMenu('&Files...', '', 0, NIL));
+  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuAbout', s);
-  OV.Add(m, OV.NewMenu('&About...', '', OV.hF1, HelpAbout));
+  OV.Add(m, OV.NewMenu(s, '', OV.hF1, HelpAbout));
   OV.AddMenu(app, m);
 
-  FoStrings.Get('menuHelp', s);
-  OV.AddStatusbar(app, OV.NewQuickBtn('Help', 'F1', 0, HelpAbout));
-  FoStrings.Get('menuSave', s);
-  OV.AddStatusbar(app, OV.NewQuickBtn('Save', 'F2', 0, FileSave));
-  FoStrings.Get('menuOpen', s);
-  OV.AddStatusbar(app, OV.NewQuickBtn('Open', 'F3', 0, FileOpen));
-  FoStrings.Get('menuCompileAndRun', s);
-  OV.AddStatusbar(app, OV.NewQuickBtn('Compile & Run', 'F9', 0, OnBuild));
-  FoStrings.Get('menuLocalMenu', s);
-  OV.AddStatusbar(app, OV.NewQuickBtn('Local menu', 'Alt+F10', 0, NIL))
+  FoStrings.Get('btnHelp', s);
+  OV.AddStatusbar(app, OV.NewQuickBtn(s, 'F1', 0, HelpAbout));
+  FoStrings.Get('btnSave', s);
+  OV.AddStatusbar(app, OV.NewQuickBtn(s, 'F2', 0, FileSave));
+  FoStrings.Get('btnOpen', s);
+  OV.AddStatusbar(app, OV.NewQuickBtn(s, 'F3', 0, FileOpen));
+  FoStrings.Get('btnCompileAndRun', s);
+  OV.AddStatusbar(app, OV.NewQuickBtn(s, 'F9', 0, OnBuild));
+  FoStrings.Get('btnLocalMenu', s);
+  OV.AddStatusbar(app, OV.NewQuickBtn(s, 'Alt+F10', 0, NIL))
 END InitIDE;
 
 PROCEDURE OpenFiles(VAR fnames: Fnames);

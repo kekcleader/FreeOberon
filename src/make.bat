@@ -98,7 +98,7 @@ windres resources.rc resources.o
   ..\Data\bin\FreeOberon.a ^
   %OFRDIR%\Lib\Ofront.a ^
   -lallegro -lallegro_primitives -lallegro_image ^
-  -I..\Data\bin\mingw32\include
+  -I..\Data\bin\mingw32\include -Wl,-subsystem,windows
 
 @GOTO QUIT
 :ERR

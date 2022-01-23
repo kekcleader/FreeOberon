@@ -801,10 +801,13 @@ END SetApp;
 
 (* Common *)
 
-PROCEDURE Cap*(ch: CHAR): CHAR;
+PROCEDURE Cap(c: CHAR): CHAR;
 BEGIN
-  IF ('a' <= ch) & (ch <= 'z') THEN ch := CAP(ch) END
-RETURN ch END Cap;
+  IF ('a' <= c) & (c <= 'z') THEN c := CHR(ORD('Q') - ORD('q') + ORD(c))
+  ELSIF ('а' <= c) & (c <= 'я') THEN  c := CHR(ORD('Б') - ORD('б') + ORD(c))
+  ELSIF c = 'ё' THEN c := 'Ё'
+  END ;
+RETURN c END Cap;
 
 PROCEDURE Refresh*(c: Control);
 BEGIN
@@ -1202,7 +1205,7 @@ BEGIN i := 0; x := c.caption[0];
     IF (x = '&') & (c.caption[i + 1] = '&') THEN INC(i, 2) ELSE INC(i) END;
     x := c.caption[i]
   END
-RETURN (c.caption[i] # 0X) & (CAP(c.caption[i + 1]) = CAP(ch)) END MenuHotkey;
+RETURN (c.caption[i] # 0X) & (Cap(c.caption[i + 1]) = Cap(ch)) END MenuHotkey;
 
 PROCEDURE MenuKeyDown*(c: Control; VAR E: T.Event);
 VAR p, p2, br: Control; found: BOOLEAN;
@@ -1974,7 +1977,7 @@ PROCEDURE ColumnListTextInput*(c: Control; ch: CHAR);
 VAR C: ColumnList; n: INTEGER;
 BEGIN C := c(ColumnList);
   IF ch # 0X THEN
-    n := FindFirstLetterInList(C.items, CAP(ch));
+    n := FindFirstLetterInList(C.items, Cap(ch));
     IF n # -1 THEN ColumnListSetCur(C, n) END
   END
 END ColumnListTextInput;

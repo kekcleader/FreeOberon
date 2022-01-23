@@ -37,7 +37,6 @@ BEGIN
   IF (0 <= err) & (err < LEN(errorStr)) THEN Strings.Copy(errorStr[err], s)
   ELSE s := 'Text of error #'; Int.Append(err, s); Strings.Append('.', s)
   END
-  (*'Пропущена точка с запятой.' 'Файл содержит неверное имя модуля.'*)
 END GetErrorStr;
 
 PROCEDURE MakeErrorStr*(err: INTEGER; VAR s: ARRAY OF CHAR);
