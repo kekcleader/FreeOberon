@@ -2,13 +2,15 @@ MODULE FoStrings;
 IMPORT Strings, Texts, Int, Dir, Out;
 
 CONST
-  maxErrors = 500;
-  maxStrings = 2000;
+  maxErrors* = 500;
+  maxStrings* = 2000;
+  keyLen* = 128;
+  strLen* = 128;
 
-TYPE String = ARRAY 128 OF CHAR;
+TYPE String* = ARRAY strLen OF CHAR;
   Pair = RECORD
-    key: ARRAY 64 OF CHAR;
-    value: ARRAY 128 OF CHAR
+    key: ARRAY keyLen OF CHAR;
+    value: ARRAY strLen OF CHAR
   END;
 
 VAR lang: ARRAY 6 OF CHAR;
@@ -24,6 +26,11 @@ BEGIN i := 0;
   ELSE Strings.Copy(key, value); Strings.Insert('#', 0, value)
   END
 END Get;
+
+PROCEDURE Append*(key: ARRAY OF CHAR; VAR dest: ARRAY OF CHAR);
+VAR s: ARRAY strLen OF CHAR;
+BEGIN Get(key, s); Strings.Append(s, dest)
+END Append;
 
 PROCEDURE GetErrorStr*(err: INTEGER; VAR s: ARRAY OF CHAR);
 BEGIN

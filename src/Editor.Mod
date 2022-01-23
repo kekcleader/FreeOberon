@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT OV, T := TermBox, Text := EditorText,
-  Int, Strings, StrList, Dir, Out;
+  Int, Strings, FoStrings, StrList, Dir, Out;
 CONST
   stdPath* = 'Programs/';
   dotChar = 0B7X; (* To higlight spaces *)
@@ -120,7 +120,7 @@ PROCEDURE FileDialogApplyDir*(c: FileDialog; s: ARRAY OF CHAR);
 VAR i: INTEGER;
   path: ARRAY 1024 OF CHAR;
 BEGIN
-  IF (s[0] = '/') OR (* Asbolute path *)
+  IF (s[0] = '/') OR (* Absolute path *)
      ('A' <= CAP(s[0])) & (CAP(s[0]) <= 'Z') & (s[1] = ':')
   THEN path := s$
   ELSE path := c.path$;
@@ -211,9 +211,10 @@ END FileDialogListChange;
 
 PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER);
 VAR L: INTEGER;
+  s: FoStrings.String;
 BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
-  IF type = open THEN c.caption := 'Open a File'
-  ELSE c.caption := 'Save File As'
+  IF type = open THEN FoStrings.Get('titleOpenAFile', c.caption)
+  ELSE FoStrings.Get('titleSaveFileAs', c.caption)
   END;
   c.modal := TRUE; c.w := 70; c.h := 20; OV.CenterWindow(c);
 
@@ -223,9 +224,10 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   OV.Add(c, c.edtFilename);
 
   (* Open/Save (Ok) button *)
-  IF type = open THEN c.btnOk := OV.NewButton('&Open')
-  ELSE c.btnOk := OV.NewButton('O&K')
+  IF type = open THEN FoStrings.Get('btnOpen', s)
+  ELSE FoStrings.Get('btnOk', s)
   END;
+  c.btnOk := OV.NewButton(s);
   c.btnOk.default := TRUE;
   c.btnOk.tabIndex := 2;
   c.btnOk.onClick := FileDialogOkClick;
@@ -233,7 +235,8 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   OV.Add(c, c.btnOk);
 
   (* Cancel button *)
-  c.btnCancel := OV.NewButton('Cancel');
+  FoStrings.Get('btnCancel', s);
+  c.btnCancel := OV.NewButton(s);
   c.btnCancel.tabIndex := 3;
   c.btnCancel.onClick := OV.CloseCurWindow;
   c.btnCancel.do.resize(c.btnCancel, c.w - 13, 11, 9, 1);
@@ -267,12 +270,15 @@ RETURN c END NewFileDialog;
 
 PROCEDURE FileDialogDraw*(c: OV.Control; x, y: INTEGER);
 VAR f: FileDialog;
+  s: FoStrings.String;
 BEGIN f := c(FileDialog);
   OV.WindowDraw(c, x, y); INC(x, c.x); INC(y, c.y);
-  IF f.type = open THEN OV.PutMarkedString(x + 3, y + 2, '&Name', 15, 14, 7, 0)
-  ELSE OV.PutMarkedString(x + 3, y + 2, '&Save file as', 15, 14, 7, 0)
+  IF f.type = open THEN FoStrings.Get('labelName', s)
+  ELSE FoStrings.Get('labelSaveFileAs', s)
   END;
-  OV.PutMarkedString(x + 3, y + 5, '&Files', 0, 14, 7, 0)
+  OV.PutMarkedString(x + 3, y + 2, s, 15, 14, 7, 0);
+  FoStrings.Get('labelFiles', s);
+  OV.PutMarkedString(x + 3, y + 5, s, 0, 14, 7, 0)
 END FileDialogDraw;
 
 PROCEDURE FileDialogGetFocus(c: OV.Control);

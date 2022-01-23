@@ -267,3 +267,24 @@ menuSave "Save"
 menuOpen "Open"
 menuCompileAndRun "Compile & Run"
 menuLocalMenu "Local menu"
+
+titleAbout "About"
+titleFreeOberon "Free Oberon"
+version "version"
+copyright "Copyright (c)"
+copyrightBy "by"
+authorName "Arthur Yefimov"
+
+btnOk "O&K"
+btnOpen "&Open"
+btnCancel "Cancel"
+
+titleSaveFileAs "Save File As"
+titleOpenAFile "Open a File"
+
+labelSaveFileAs "&Save file as"
+labelName "&Name"
+labelFiles "&Files"
+
+
+

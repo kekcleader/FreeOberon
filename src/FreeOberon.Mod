@@ -20,6 +20,7 @@ IMPORT T := TermBox, Files, Args, Utf8,
        OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
 CONST
   version* = '1.1.0-alpha.1';
+  year = 2022;
 
   (* Direction of Selection *)
   dirLeft  = 0;
@@ -530,7 +531,7 @@ BEGIN
       END;
       Utf8.Decode(buf, z);
       ParseErrors(z, fname, line, col, error);
-      ;;;;;;;;Out.String('Место ошибки: '); Out.Int(line, 0);Out.Char(':');Out.Int(col, 0);Out.Ln;;;;;;;
+      (*;;;;;;;;Out.String('Место ошибки: '); Out.Int(line, 0);Out.Char(':');Out.Int(col, 0);Out.Ln;;;;;;;*)
       FocusOrOpenFile(fname);
       e := app.windows(Editor.Editor);
       IF (col = 1) & (line # 1) THEN
@@ -579,7 +580,8 @@ BEGIN sysModules := NIL;
   Add('In');      Add('Out');      Add('Math');   Add('MathL');
   Add('Modules'); Add('Platform'); Add('Oberon'); Add('Reals');
   Add('VT100');   Add('Graph');    Add('SDL2');   Add('Term');
-  Add('Dir');     Add('Int')
+  Add('Graph2');  Add('Allegro5'); Add('TermBox');
+  Add('Dir');     Add('Int');      Add('Random')
 END ResetSysModules;
 
 PROCEDURE CompileAll(modules: StrList; graph: BOOLEAN;
@@ -621,9 +623,8 @@ BEGIN dir := prg$;
   Utf8.Encode(dir, d);
   IF ~Term.StartProcessIn(s, d) THEN
     ;;;;;;;;;;Out.String('EXECUTION FAILED');Out.Ln;;;;;;;;;
-    T.Print(0, tH - 1, -1, ' Program execution failed ', 15, 4);
-    T.Flush
-    (* ; T.Pause !FIXME*)
+    (*T.Print(0, tH - 1, -1, ' Program execution failed ', 15, 4);
+    T.Flush; T.Pause !FIXME*)
   ELSE
     programFinished := FALSE;
     RunTerminal
@@ -815,7 +816,7 @@ BEGIN res := NIL; ok := TRUE;
       END
     ELSE
       Strings.Copy(fname, errFname);
-      Out.String('Не могу разобраться с '); Out.String(modname); Out.Ln
+      ;;;;;Out.String('Не могу разобраться с '); Out.String(modname); Out.Ln;;;;;
     END
   END;
   IF ok THEN
@@ -825,7 +826,7 @@ BEGIN res := NIL; ok := TRUE;
 RETURN res END UsedModuleList;
 
 PROCEDURE ImportsGraph(p: StrList): BOOLEAN;
-BEGIN WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END ;
+BEGIN WHILE (p # NIL) & (p.s # 'Graph') & (p.s # 'Graph2') (*!FIXME*) DO p := p.next END ;
 RETURN p # NIL END ImportsGraph;
 
 (* "Module.Mod" -> "Module" *)
@@ -878,28 +879,37 @@ END OnBuild;
 PROCEDURE HelpAbout(c: OV.Control);
 CONST W = 37; H = 13;
 VAR w: OV.Window; L: OV.Label; b: OV.Button;
-  s: ARRAY 40 OF CHAR;
+  s: FoStrings.String;
   Y: INTEGER;
   tW, tH: INTEGER;
-BEGIN w := OV.NewWindow(); w.modal := TRUE; w.caption := 'About';
+BEGIN w := OV.NewWindow(); w.modal := TRUE;
+  FoStrings.Get('titleAbout', w.caption);
   T.Size(tW, tH);
   w.do.resize(w, (tW - W) DIV 2, (tH - H) DIV 2, W, H);
   Y := 2;
 
-  L := OV.NewLabel('Free Oberon'); L.align := OV.center;
-  L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
-
-  s := 'Version '; Strings.Append(version, s);
+  FoStrings.Get('titleFreeOberon', s);
   L := OV.NewLabel(s); L.align := OV.center;
   L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
 
-  L := OV.NewLabel('Copyright (c) 2017-2022 by'); L.align := OV.center;
+  FoStrings.Get('version', s); Strings.Append(' ', s);
+  Strings.Append(version, s);
+  L := OV.NewLabel(s); L.align := OV.center;
   L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
 
-  L := OV.NewLabel('Arthur Yefimov, free.oberon.org'); L.align := OV.center;
+  FoStrings.Get('copyright', s); Strings.Append(' 2017-', s);
+  Int.Append(year, s); Strings.Append(' ', s);
+  FoStrings.Append('copyrightBy', s);
+  
+  L := OV.NewLabel(s); L.align := OV.center;
   L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
 
-  b := OV.NewButton('O&K'); b.default := TRUE;
+  FoStrings.Get('authorName', s); Strings.Append(', free.oberon.org', s);
+  L := OV.NewLabel(s); L.align := OV.center;
+  L.do.resize(L, 1, Y, W - 2, 1); OV.Add(w, L); INC(Y, 2);
+
+  FoStrings.Get('btnOk', s);
+  b := OV.NewButton(s); b.default := TRUE;
   b.do.resize(b, (W - 8) DIV 2, Y, 8, 1); OV.Add(w, b); INC(Y, 2);
   b.onClick := OV.CloseCurWindow;
 
@@ -1274,6 +1284,7 @@ PROCEDURE Init(): BOOLEAN;
 VAR success, fs, sw: BOOLEAN;
   w, h: INTEGER;
   lang: ARRAY 6 OF CHAR;
+  s: FoStrings.String;
   fnames: Fnames;
   opt: SET;
 BEGIN
@@ -1283,7 +1294,8 @@ BEGIN
   IF fs THEN INCL(opt, T.fullscreen) ELSE INCL(opt, T.window) END;
   T.Settings(w, h, opt);
   FoStrings.SetLang(lang);
-  T.SetTitle('Free Oberon');
+  FoStrings.Get('titleFreeOberon', s);
+  T.SetTitle(s);
   T.Init;
   IF T.Done THEN
     InitIDE;
