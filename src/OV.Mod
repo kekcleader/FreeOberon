@@ -2339,7 +2339,7 @@ END SetStatusText;
 PROCEDURE CheckMenuOpenKey(app: App; VAR E: T.Event): BOOLEAN;
 VAR p, q, br: Control; found: BOOLEAN;
 BEGIN found := FALSE;
-  IF ('a' <= E.ch) & (E.ch <= 'z') & ~HasModalWindow(app) THEN
+  IF ~HasModalWindow(app) THEN
     p := app.menu.children.prev; br := p;
     REPEAT p := p.next; found := MenuHotkey(p(Menu), E.ch)
     UNTIL found OR (p = br);
@@ -2440,7 +2440,7 @@ BEGIN handled := FALSE; p := app.cur;
       p.parent.do.keyDown(p.parent, E)
     END
   END;
-  IF ~handled & (E.ch >= 20X) & (E.ch # 07FX) THEN
+  IF ~handled & (p # NIL) & (E.ch >= 20X) & (E.ch # 07FX) THEN
     IF p.do.textInput # NIL THEN p.do.textInput(p, E.ch) END
   END
 END OnKey;
