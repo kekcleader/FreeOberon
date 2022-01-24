@@ -19,7 +19,7 @@ along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 IMPORT T := TermBox, Files, Args, Utf8,
        OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
 CONST
-  version* = '1.1.0-alpha.1';
+  version* = '1.1.0-alpha.2';
   year = 2022;
 
   (* Direction of Selection *)
@@ -1254,17 +1254,16 @@ VAR i, nofnames: INTEGER;
   q: ARRAY 2048 OF SHORTCHAR;
 BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := defW; h := defH;
   lang := defLang;
-  WHILE i # Args.argc DO
-    Args.Get(i, q); Utf8.Decode(q, s);
+  WHILE i <= Args.Count DO Args.Get(i, s);
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--software' THEN sw := TRUE
     ELSIF s = '--size' THEN
-      IF i + 1 # Args.argc THEN
-        INC(i); Args.Get(i, q); Utf8.Decode(q, s); ParseSize(s, w, h)
+      IF i # Args.Count THEN
+        INC(i); Args.Get(i, s); ParseSize(s, w, h)
       END
     ELSIF s = '--lang' THEN
-      IF i + 1 # Args.argc THEN
-        INC(i); Args.Get(i, q); Utf8.Decode(q, lang);
+      IF i # Args.Count THEN
+        INC(i); Args.Get(i, lang);
         IF ~FoStrings.LangExists(lang) THEN Out.String('Language "');
           Out.String(lang); Out.String('" does not exist.'); Out.Ln;
           lang := defLang
@@ -1291,7 +1290,7 @@ VAR success, fs, sw: BOOLEAN;
 BEGIN
   success := FALSE;
   ParseArgs(fs, sw, w, h, lang, fnames);
-  opt := {T.resizable};
+  opt := {T.resizable, T.center};
   IF fs THEN INCL(opt, T.fullscreen) ELSE INCL(opt, T.window) END;
   T.Settings(w, h, opt);
   FoStrings.SetLang(lang);

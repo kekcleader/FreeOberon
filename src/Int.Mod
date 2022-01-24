@@ -21,18 +21,23 @@ BEGIN
   END
 END Str;
 
-PROCEDURE Val*(IN s: ARRAY OF CHAR): INTEGER;
+PROCEDURE ValEx*(IN s: ARRAY OF CHAR; VAR ok: BOOLEAN): INTEGER;
 VAR i, n: INTEGER;
   c: CHAR;
   neg: BOOLEAN;
-BEGIN n := 0; c := s[0];
+BEGIN n := 0; c := s[0]; ok := FALSE;
   IF c = '-' THEN neg := TRUE; i := 1; c := s[1] ELSE neg := FALSE; i := 0 END;
-  WHILE ('0' <= c) & (c <= '9') DO
+  WHILE ('0' <= c) & (c <= '9') DO ok := TRUE;
     n := n * 10 + ORD(c) - ORD('0');
     INC(i); c := s[i]
   END;
+  IF s[i] # 0X THEN ok := FALSE END;
   IF neg THEN n := -n END ;
-RETURN n END Val;
+RETURN n END ValEx;
+
+PROCEDURE Val*(IN s: ARRAY OF CHAR): INTEGER;
+VAR ok: BOOLEAN;
+BEGIN RETURN ValEx(s, ok) END Val;
 
 PROCEDURE Insert*(n: INTEGER; pos: INTEGER; VAR s: ARRAY OF CHAR);
 VAR sn: ARRAY 30 OF CHAR;

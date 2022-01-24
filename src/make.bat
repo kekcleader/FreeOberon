@@ -27,6 +27,8 @@ ECHO ON
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cw Out.Mod
 @IF ERRORLEVEL 1 GOTO ERR
+%OFR% -7w Args.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cw Files.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w Texts.Mod
@@ -70,6 +72,8 @@ windres resources.rc resources.o
 @IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Out.c
 @IF ERRORLEVEL 1 GOTO ERR
+%CCFULL% -c Args.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Files.c
 @IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Texts.c
@@ -86,7 +90,7 @@ windres resources.rc resources.o
 @IF ERRORLEVEL 1 GOTO ERR
 
 %AR% -crs ..\Data\bin\FreeOberon.a ^
-  Utf8.o Strings.o Reals.o Int.o In.o Out.o Files.o Texts.o Random.o ^
+  Utf8.o Strings.o Reals.o Int.o In.o Out.o Args.o Files.o Texts.o Random.o ^
   StrList.o Dir.o Graph2.o TermBox.o
 @IF ERRORLEVEL 1 GOTO ERR
 

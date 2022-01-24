@@ -1,5 +1,9 @@
 MODULE Utf8;
 
+TYPE
+  CHAR8 = SHORTCHAR;
+  SHORTCHAR* = CHAR8;
+
 VAR
   Done-: BOOLEAN;
 
