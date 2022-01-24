@@ -1,7 +1,9 @@
 #!/bin/bash
-#   This script is run by Free Oberon on Linux. Current directory of the
-#   script will be in the bin directory. This
-#   particular script is for console programs.
+#   This script is run by Free Oberon on Linux.
+#   When it is being run, the current directory
+#   must be the root directory of Free Oberon.
+#   script will be in the bin directory. It
+#   links a console program.
 
 THENAME="${1%.*}"
 ONAME="${THENAME##*/}"

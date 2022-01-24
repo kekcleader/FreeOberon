@@ -1,9 +1,9 @@
 #!/bin/bash
-#   This script is run by Free Oberon on Linux. Current directory of the
-#   script will be in the bin directory. This
-#   particular script is for graphical programs.
-
-cd bin
+#   This script is run by Free Oberon on Linux.
+#   When it is being run, the current directory
+#   must be the root directory of Free Oberon.
+#   script will be in the bin directory. It
+#   links a graphical program with Allegro 5.
 
 THENAME="${1%.*}"
 ONAME="${THENAME##*/}"
@@ -11,7 +11,8 @@ OFRDIR="../Data/bin/OfrontPlus/Target/Linux_amd64"
 PATH="$OFRDIR:$PATH"
 CC="gcc"
 
-SDL2Opts=`sdl2-config --cflags --libs`
+cd bin
+
 
 
 shift
@@ -34,7 +35,10 @@ $CC -g3 -O0 -fno-exceptions \
   $@ \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a \
-  $SDL2Opts -lSDL2_image
+  $(pkg-config \
+    allegro_primitives-5 allegro_image-5 allegro_audio-5 \
+    allegro_acodec-5 allegro_font-5 allegro_dialog-5 \
+    allegro-5 --libs --cflags)
 retcode=$?
 cd ..
 exit $retcode
