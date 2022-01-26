@@ -9,7 +9,6 @@ SET CURDIR=%~dp0
 SET ONAME=%~n1
 SET OFRDIR=%CURDIR%OfrontPlus\Target\Win32
 SET PATH=%OFRDIR%;%CURDIR%mingw32\bin;%PATH%
-ECHO %OFRDIR%;%CURDIR%mingw32\bin;%%PATH
 SET CC=gcc
 
 REM Put all arguments starting from 2nd to ARGS.
@@ -25,14 +24,17 @@ GOTO START
 REM END Put all ARGS.
 ECHO ON
 
-%CC% -g3 -O0 -fno-exceptions ^
+@%CC% -g3 -O0 -fno-exceptions ^
   -I %CURDIR%..\..\src ^
   -I %OFRDIR%\..\..\Mod\Lib ^
   -I %OFRDIR%\Lib\Obj ^
   %ONAME%.c -o %ONAME%.exe ^
-  %ARGS%^
+  %ARGS% ^
   %CURDIR%FreeOberon.a ^
-  %OFRDIR%\Lib\Ofront.a
+  %OFRDIR%\Lib\Ofront.a ^
+  -Wl,-e_WinMain@16 ^
+  -nostartfiles %OFRDIR%\..\..\Mod\Lib\crt1.c
+
 @SET RETCODE=%ERRORLEVEL%
 
 @EXIT /b %RETCODE%

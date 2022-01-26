@@ -34,7 +34,11 @@ ECHO ON
   %ARGS%^
   %CURDIR%FreeOberon.a ^
   %OFRDIR%\Lib\Ofront.a ^
-  %SDL2Opts% -lSDL2_image
+  %SDL2Opts% -lSDL2_image ^
+  -Wl,-subsystem,windows ^
+  -Wl,-e_WinMain@16 ^
+  -nostartfiles %OFRDIR%\..\..\Mod\Lib\crt1.c
+
 @SET RETCODE=%ERRORLEVEL%
 
 @EXIT /b %RETCODE%

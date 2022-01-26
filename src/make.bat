@@ -102,7 +102,9 @@ windres resources.rc resources.o
   ..\Data\bin\FreeOberon.a ^
   %OFRDIR%\Lib\Ofront.a ^
   -lallegro -lallegro_primitives -lallegro_image ^
-  -I..\Data\bin\mingw32\include -Wl,-subsystem,windows
+  -I..\Data\bin\mingw32\include ^
+  -Wl,-e_WinMain@16 ^
+  -nostartfiles %OFRDIR%\..\..\Mod\Lib\crt1.c
 
 @GOTO QUIT
 :ERR

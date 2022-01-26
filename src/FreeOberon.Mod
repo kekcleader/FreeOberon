@@ -289,9 +289,12 @@ BEGIN fname[0] := 0X; line := 1; col := 1;
         INC(i, 4); ReadInt(s, i, error)
       ELSE error := 0
       END;
-      FoStrings.MakeErrorStr(error, s);
-      ;;;;;Out.String('error = ');Out.Int(error, 0);Out.Ln;;;;;;
+      FoStrings.MakeErrorStr(error, s)
     END
+  ELSE StringsFindNext('): ', s, 0, found, i); (* In case of gcc error *)
+    IF found THEN Strings.Delete(s, 0, i + 3) END;
+    i := 0; WHILE (s[i] # 0X) & (s[i] # 0AX) & (s[i] # 0DX) DO INC(i) END;
+    s[i] := 0X
   END
 END ParseErrors;
 
@@ -486,6 +489,7 @@ BEGIN
   ELSIF graph THEN command := 'link_graph'
   ELSE command := 'link_console'
   END;
+      ;;;;;;;;Out.String('--- RUN --- ');Out.String(command);;;;Out.Ln;;;;
   IF Config.isWindows THEN
     IF Term.SearchPath('cmd.exe', q) # 0 THEN
       Utf8.Decode(q, cmd);
@@ -543,6 +547,7 @@ BEGIN
     END;
     IF z[0] = 0X THEN ShowErrors(s) ELSE ShowErrors(z) END
   END ;
+      ;;;;;;;;Out.String('--- END --- ');Out.String(command);;;;Out.Ln;;;;
 RETURN success END RunCommand;
 
 PROCEDURE Compile(IN fname, mod: ARRAY OF CHAR; main: BOOLEAN): BOOLEAN;
@@ -620,13 +625,15 @@ BEGIN dir := prg$;
   dir[i] := 0X;
   Utf8.Encode(prg, s);
   Utf8.Encode(dir, d);
-  IF ~Term.StartProcessIn(s, d) THEN
+  ;;;;;;;;;;Out.String('STARTING EXECUTION');Out.Ln;;;;;;;;;
+  IF Term.StartProcessIn(s, d) THEN
+    ;;;;;;;;;;Out.String('EXECUTION SUCCESSFUL');Out.Ln;;;;;;;;;
+    programFinished := FALSE;
+    RunTerminal
+  ELSE
     ;;;;;;;;;;Out.String('EXECUTION FAILED');Out.Ln;;;;;;;;;
     (*T.Print(0, tH - 1, -1, ' Program execution failed ', 15, 4);
     T.Flush; T.Pause !FIXME*)
-  ELSE
-    programFinished := FALSE;
-    RunTerminal
   END
 END RunProgram;
 
