@@ -362,13 +362,16 @@ END StringsFindPrev;
 PROCEDURE GetCharClass(ch: CHAR): INTEGER;
 VAR class: INTEGER;
 BEGIN
-  CASE ch OF
-    'a'..'z', 'A'..'Z', '_': class := charAlpha
-  | '0'..'9': class := charDigit
-  | '-', '+': class := charMinusPlus
-  | '"', "'": class := charQuote
-  | '(': class := charOpenBracket
-  ELSE class := charOther END ;
+  IF ('a' <= ch) & (ch <= 'z') OR ('A' <= ch) & (ch <= 'Z') OR
+     ('а' <= ch) & (ch <= 'я') OR ('А' <= ch) & (ch <= 'Я') OR
+     (ch = 'ё') OR (ch = 'Ё')
+  THEN class := charAlpha
+  ELSIF ('0' <= ch) & (ch <= '9') THEN class := charDigit
+  ELSIF (ch = '-') & (ch = '+') THEN class := charMinusPlus
+  ELSIF (ch = '"') OR (ch = "'") THEN class := charQuote
+  ELSIF ch = '(' THEN class := charOpenBracket
+  ELSE class := charOther
+  END ;
 RETURN class END GetCharClass;
 
 PROCEDURE IsHexDigit(ch: CHAR): BOOLEAN;
@@ -385,7 +388,7 @@ VAR part: ARRAY 32 OF CHAR; result: BOOLEAN;
   BEGIN RETURN keyword = part
   END KW;
 BEGIN
-  IF (s[x] >= 'A') & (s[x] <= 'Z') THEN
+  IF (s[x] >= 'A') & (s[x] <= 'Z') OR (s[x] >= 'А') & (s[x] <= 'Я') THEN
     Strings.Extract(s, x, len, part);
     result := KW('ABS') OR KW('ASH') OR KW('BOOLEAN') OR KW('CAP') OR
       KW('CHAR') OR KW('CHR') OR KW('COPY') OR KW('DEC') OR KW('ENTIER') OR
@@ -404,6 +407,9 @@ BEGIN
       KW('UNTIL') OR KW('CONST') OR KW('MOD') OR KW('FLOOR') OR KW('LSL') OR
       KW('ASR') OR KW('ROR') OR KW('ASSERT') OR KW('BYTE') OR
       KW('SHORTCHAR') OR KW('SYSTEM')
+      OR KW('МОДУЛЬ') OR KW('ИМПОРТ') OR KW('ПЕРЕМЕННЫЕ') OR KW('МАССИВ') OR
+      KW('ИЗ') OR KW('ЛИТЕРА') OR KW('ЦЕЛОЕ') OR KW('НАЧАЛО') OR KW('НОВЫЙ') OR
+      KW('ЕСЛИ') OR KW('ТОГДА') OR KW('ИНАЧЕ') OR KW('АЕСЛИ') OR KW('КОНЕЦ')
   ELSE result := FALSE
   END ;
 RETURN result END IsKeywordInString;
