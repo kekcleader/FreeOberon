@@ -188,8 +188,9 @@
 244 "cyclic type definition not allowed"
 265 "unsupported string operation"
 401 "file contains wrong module name"
-421 "linking failed"
-422 "compilation failed"
+421 "compilation failed"
+422 "linking failed"
+423 "execution failed"
 
 menuFile "&File"
 menuNew "&New"

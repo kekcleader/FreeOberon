@@ -26,7 +26,7 @@ GOTO START
 REM END Put all ARGS.
 ECHO ON
 
-%CC% -g3 -O0 -fno-exceptions ^
+%CC% -O0 -fno-exceptions ^
   -I %CURDIR%..\..\src ^
   -I %OFRDIR%\..\..\Mod\Lib ^
   -I %OFRDIR%\Lib\Obj ^

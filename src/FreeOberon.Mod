@@ -93,14 +93,9 @@ BEGIN
   END ;
 RETURN lines END CountLines;
 
-PROCEDURE ShowErrors(s: ARRAY OF CHAR);
-VAR lines, width, x0, x, y, i: INTEGER;
-  e: Editor.Editor;
-BEGIN
-  (*;;;;;;Out.String('ERROR STRING: ['); Out.String(s); Out.String('] END.'); Out.Ln;;;;;;*)
-  e := app.windows(Editor.Editor);
-  Editor.SetMsg(e, s)
-END ShowErrors;
+PROCEDURE ShowError(s: ARRAY OF CHAR);
+BEGIN Editor.SetMsg(app.windows(Editor.Editor), s)
+END ShowError;
 
 (* !TODO move out, rewrite *)
 PROCEDURE StringsFindNext*(what, where: ARRAY OF CHAR;
@@ -489,7 +484,6 @@ BEGIN
   ELSIF graph THEN command := 'link_graph'
   ELSE command := 'link_console'
   END;
-      ;;;;;;;;Out.String('--- RUN --- ');Out.String(command);;;;Out.Ln;;;;
   IF Config.isWindows THEN
     IF Term.SearchPath('cmd.exe', q) # 0 THEN
       Utf8.Decode(q, cmd);
@@ -521,7 +515,6 @@ BEGIN
       p := p.next
     END
   END;
-  (*Out.String('Running:'); Out.Ln; Out.String(cmd); Out.Ln;*)
   Utf8.Encode(cmd, q);
   success := (Term.RunProcess(q, buf, bufLen, len, err) # 0) &
              (err = 0);
@@ -534,7 +527,6 @@ BEGIN
       END;
       Utf8.Decode(buf, z);
       ParseErrors(z, fname, line, col, error);
-      (*;;;;;;;;Out.String('Место ошибки: '); Out.Int(line, 0);Out.Char(':');Out.Int(col, 0);Out.Ln;;;;;;;*)
       FocusOrOpenFile(fname);
       e := app.windows(Editor.Editor);
       IF (col = 1) & (line # 1) THEN
@@ -542,12 +534,11 @@ BEGIN
       ELSE e.text.MoveToLineCol(line, col, e.h - 2)
       END;
       Editor.PrintText(app.windows(Editor.Editor))
-    ELSIF link THEN FoStrings.GetErrorStr(421, z)
-    ELSE FoStrings.GetErrorStr(422, z)
+    ELSIF link THEN FoStrings.GetErrorStr(422, z)
+    ELSE FoStrings.GetErrorStr(421, z)
     END;
-    IF z[0] = 0X THEN ShowErrors(s) ELSE ShowErrors(z) END
+    IF z[0] = 0X THEN ShowError(s) ELSE ShowError(z) END
   END ;
-      ;;;;;;;;Out.String('--- END --- ');Out.String(command);;;;Out.Ln;;;;
 RETURN success END RunCommand;
 
 PROCEDURE Compile(IN fname, mod: ARRAY OF CHAR; main: BOOLEAN): BOOLEAN;
@@ -613,27 +604,17 @@ BEGIN exename[0] := 0X;
 RETURN ok END CompileAll;
 
 PROCEDURE RunProgram(IN prg: ARRAY OF CHAR);
-VAR dir: ARRAY 256 OF CHAR;
+VAR dir, err: ARRAY 256 OF CHAR;
   s, d: ARRAY 2048 OF SHORTCHAR;
   i: INTEGER;
   tW, tH: INTEGER;
-BEGIN dir := prg$;
-  curX := 0; curY := 0; curFg := 7; curBg := 0;
+BEGIN dir := prg$; curX := 0; curY := 0; curFg := 7; curBg := 0;
   T.SetCursor(0, 0); T.Size(tW, tH);
   i := 0; WHILE dir[i] # 0X DO INC(i) END;
-  WHILE (i # -1) & (dir[i] # '/') & (dir[i] # '\') DO DEC(i) END; INC(i);
-  dir[i] := 0X;
-  Utf8.Encode(prg, s);
-  Utf8.Encode(dir, d);
-  ;;;;;;;;;;Out.String('STARTING EXECUTION');Out.Ln;;;;;;;;;
-  IF Term.StartProcessIn(s, d) THEN
-    ;;;;;;;;;;Out.String('EXECUTION SUCCESSFUL');Out.Ln;;;;;;;;;
-    programFinished := FALSE;
-    RunTerminal
-  ELSE
-    ;;;;;;;;;;Out.String('EXECUTION FAILED');Out.Ln;;;;;;;;;
-    (*T.Print(0, tH - 1, -1, ' Program execution failed ', 15, 4);
-    T.Flush; T.Pause !FIXME*)
+  WHILE (i # -1) & (dir[i] # '/') & (dir[i] # '\') DO DEC(i) END;
+  INC(i); dir[i] := 0X; Utf8.Encode(prg, s); Utf8.Encode(dir, d);
+  IF Term.StartProcessIn(s, d) THEN programFinished := FALSE; RunTerminal
+  ELSE FoStrings.GetErrorStr(423, err); ShowError(err)
   END
 END RunProgram;
 
@@ -724,17 +705,17 @@ BEGIN
       ELSE s[i] := ch; INC(i)
       END
     END;
-    IF ('A' <= CAP(ch)) & (CAP(ch) <= 'Z') THEN
+    IF ('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR (ch = '_') THEN
       WHILE ~R.eof &
             (('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
-             ('0' <= ch) & (ch <= '9')) DO
+             ('0' <= ch) & (ch <= '9') OR (ch = '_')) DO
         IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
         ReadCh(R, ch, line, col)
       END
     ELSE
       WHILE ~R.eof & (ch > ' ') &
             ~(('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR
-              ('0' <= ch) & (ch <= '9')) DO
+              ('0' <= ch) & (ch <= '9') OR (ch = '_')) DO
         IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
         ReadCh(R, ch, line, col)
       END
@@ -876,7 +857,7 @@ BEGIN w := c.app.windows;
         e := app.windows(Editor.Editor);
         e.text.MoveToLineCol(errLine, errCol, e.h - 2);
         FoStrings.MakeErrorStr(401(*file contains wrong module name*), s);
-        ShowErrors(s)
+        ShowError(s)
       END
     END
   END

@@ -33,11 +33,13 @@ TYPE
 
 PROCEDURE Open*(T: Text; fname: ARRAY OF CHAR);
 BEGIN T.F := Files.Old(fname);
-  IF T.F # NIL THEN
-    T.len := Files.Length(T.F)
-  ELSE T.len := 0
-  END
+  IF T.F = NIL THEN T.F := Files.New(fname) END;
+  T.len := Files.Length(T.F)
 END Open;
+
+PROCEDURE Close*(T: Text);
+BEGIN IF T.F # NIL THEN Files.Register(T.F) END
+END Close;
 
 PROCEDURE OpenReader*(VAR R: Reader; T: Text; pos: LONGINT);
 BEGIN Files.Set(R.rider, T.F, pos); R.eot := FALSE

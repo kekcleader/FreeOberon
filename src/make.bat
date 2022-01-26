@@ -105,6 +105,7 @@ windres resources.rc resources.o
   -I..\Data\bin\mingw32\include ^
   -Wl,-e_WinMain@16 ^
   -nostartfiles %OFRDIR%\..\..\Mod\Lib\crt1.c
+REM  -Wl,-subsystem,windows
 
 @GOTO QUIT
 :ERR

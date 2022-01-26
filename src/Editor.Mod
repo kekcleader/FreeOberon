@@ -363,7 +363,7 @@ PROCEDURE GetCharClass(ch: CHAR): INTEGER;
 VAR class: INTEGER;
 BEGIN
   CASE ch OF
-    'a'..'z', 'A'..'Z': class := charAlpha
+    'a'..'z', 'A'..'Z', '_': class := charAlpha
   | '0'..'9': class := charDigit
   | '-', '+': class := charMinusPlus
   | '"', "'": class := charQuote
