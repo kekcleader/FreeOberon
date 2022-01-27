@@ -35,7 +35,7 @@ $CC -g3 -O0 -fno-exceptions \
   $ONAME.c -o $ONAME \
   $@ \
   $FOBDIR/Data/bin/libFreeOberon.a \
-  $OFRDIR/Lib/libOfront.a
+  $OFRTAR/Lib/libOfront.a
 
 
 
