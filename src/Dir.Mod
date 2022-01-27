@@ -1,10 +1,13 @@
 MODULE Dir; (*This is Oberon-07 style file*)
-IMPORT C := arC, arCString, SYSTEM, Platform, Out, Utf8;
+IMPORT SYSTEM, Platform, Out, Utf8;
 
 TYPE
   DIR = SYSTEM.ADRINT;
   DIRENT = SYSTEM.ADRINT;
   SHORTCHAR = SYSTEM.CHAR8;
+
+  PString = POINTER [notag] TO ARRAY [notag] OF SHORTCHAR;
+  INT32 = SYSTEM.INT32;
 
   Rec* = RECORD
     eod*: BOOLEAN; (* End of directory *)
@@ -22,8 +25,8 @@ PROCEDURE -opendir(name: ARRAY OF SHORTCHAR): DIR "(SYSTEM_ADRINT) opendir((cons
 PROCEDURE -closedir(dir: DIR) "closedir((DIR*) dir)";
 PROCEDURE -readdir(dir: DIR): DIRENT "(SYSTEM_ADRINT) readdir((DIR*) dir)";
 PROCEDURE -rewinddir(dir: DIR) "rewinddir((DIR*) dir)";
-PROCEDURE -getdirname(ent: DIRENT): C.string "(CHAR *)(((struct dirent *) ent) -> d_name)";
-PROCEDURE -getdirtype(ent: DIRENT): C.int "(int)((struct dirent *) ent) -> d_type)";
+PROCEDURE -getdirname(ent: DIRENT): PString "(CHAR *)(((struct dirent *) ent) -> d_name)";
+PROCEDURE -getdirtype(ent: DIRENT): INT32 "(int)((struct dirent *) ent) -> d_type)";
 PROCEDURE -typeDir "DT_DIR";
 PROCEDURE -typeReg "DT_REG";
 PROCEDURE -typeLink "DT_LNK";
@@ -35,6 +38,13 @@ BEGIN
   (*!TODO add this to finalization *)
 END Close;
 
+PROCEDURE CopyToArray*(src: PString; VAR dst: ARRAY OF SHORTCHAR);
+VAR i: INTEGER;
+BEGIN i := 0;
+  WHILE (i # LEN(dst) - 1) & (src[i] # 0X) DO dst[i] := src[i]; INC(i) END;
+  dst[i] := 0X
+END CopyToArray;
+
 PROCEDURE Next*(VAR r: Rec);
 VAR ent: DIRENT;
   i, j: INTEGER;
@@ -44,7 +54,7 @@ BEGIN
     r.res := 0;
     ent := readdir(r.dir);
     IF ent # 0 THEN
-      arCString.CopyToArray(getdirname(ent), s);
+      CopyToArray(getdirname(ent), s);
       Utf8.Decode(s, r.name);
 
       (* To set the value of r.isDir, we (maybe) append '/' and name to path,
@@ -93,6 +103,11 @@ BEGIN
   ELSE First(r, r.path)
   END
 END Rewind;
+
+PROCEDURE FileExists*(name: ARRAY OF CHAR): BOOLEAN;
+VAR s: ARRAY 2048 OF SYSTEM.CHAR8;
+BEGIN Utf8.Encode(name, s)
+RETURN Platform.FileExists(s) END FileExists;
 
 PROCEDURE IsDir*(name: ARRAY OF CHAR): BOOLEAN;
 VAR s: ARRAY 2048 OF SYSTEM.CHAR8;

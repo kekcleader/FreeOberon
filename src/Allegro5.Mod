@@ -301,6 +301,7 @@ TYPE
   ADRINT* = SYSTEM.ADRINT;
   SHORTCHAR* = SYSTEM.CHAR8;
   SHORTINT* = SYSTEM.INT16;
+  REAL* = SYSTEM.REAL32;
   LONGREAL* = SYSTEM.REAL64;
   LONGINT* = SYSTEM.INT64;
 
@@ -415,6 +416,8 @@ PROCEDURE get_mouse_event_source* ["al_get_mouse_event_source"] (): PEventSource
 PROCEDURE get_display_event_source* ["al_get_display_event_source"] (display: Display): PEventSource;
 PROCEDURE get_timer_event_source* ["al_get_timer_event_source"] (timer: Timer): PEventSource;
 PROCEDURE start_timer* ["al_start_timer"] (timer: Timer);
+PROCEDURE stop_timer* ["al_stop_timer"] (timer: Timer);
+PROCEDURE resume_timer* ["al_resume_timer"] (timer: Timer);
 PROCEDURE register_event_source* ["al_register_event_source"] (queue: EventQueue; source: PEventSource);
 PROCEDURE init_user_event_source* ["al_init_user_event_source"] (VAR src: EventSource);
 PROCEDURE emit_user_event* ["al_emit_user_event"] (VAR src: EventSource; VAR event: Event; dtor: ADRINT): BOOLEAN;
@@ -544,5 +547,6 @@ PROCEDURE set_clipboard_text* ["al_set_clipboard_text"] (display: Display; text:
 PROCEDURE clipboard_has_text* ["al_clipboard_has_text"] (display: Display): BOOLEAN;
 
 PROCEDURE free_with_context* ["al_free_with_context"] (ptr: ADRINT; line: INTEGER; file, func: ARRAY OF SHORTCHAR);
+PROCEDURE get_time* ["al_get_time"] (): LONGREAL;
 
 END Allegro5.

@@ -1,4 +1,3 @@
-(use "git add <file>..." to include in what will be committed)
 /FreeOberon
 /FreeOberon.exe
 /bin/*
@@ -9,21 +8,14 @@
 /src/*.c
 /src/*.sym
 /src/term/*.o
-/data/bin/libFreeOberon.a
-/data/bin/FreeOberon.a
-/data/bin/voc/C
-/data/bin/voc/bin
-/data/bin/voc/lib
-/data/bin/voc/src/Configuration.Make
-/data/bin/voc/src/Configuration.Mod
-/data/bin/voc/src/voc.exe
-/data/bin/voc/src/voc
+/Data/bin/libFreeOberon.a
+/Data/bin/FreeOberon.a
+!/Data/bin/mingw32/bin/*.dll
+!/Data/bin/mingw32/libexec/gcc/i686-w64-mingw32/6.2.0/*.dll
 .*.swp
 *.dll
-!/data/bin/mingw32/bin/*.dll
-!/data/bin/mingw32/libexec/gcc/i686-w64-mingw32/6.2.0/*.dll
+
 /src/GTest
 /src/TTest
 /src/TestModule
 /src/TermSnow
-/src/Tetragon

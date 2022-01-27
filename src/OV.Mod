@@ -1,5 +1,5 @@
 MODULE OV;
-(* Copyright 2017-2021 Arthur Yefimov
+(* Copyright 2017-2022 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -16,8 +16,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT G := Graph, T := Terminal, Strings, StrList, Out, SYSTEM;
+IMPORT T := TermBox, Strings, StrList, Out, SYSTEM, Kernel;
 CONST
+  minInt = -70000000H-1;
+  maxInt = 7FFFFFFFH;
+
   dblClickDelay* = 500;
 
   (* ControlDesc.status possible values *)
@@ -34,537 +37,537 @@ CONST
   right*  = 2;
 
   (* Simple Hotkeys *)
-  hF1*    = 58;
-  hF2*    = 59;
-  hF3*    = 60;
-  hF4*    = 61;
-  hF5*    = 62;
-  hF6*    = 63;
-  hF7*    = 64;
-  hF8*    = 65;
-  hF9*    = 66;
-  hF10*   = 67;
-  hF11*   = 68;
-  hF12*   = 69;
-  hPause* = 72;
+  hF1*    = 47;
+  hF2*    = 48;
+  hF3*    = 49;
+  hF4*    = 50;
+  hF5*    = 51;
+  hF6*    = 52;
+  hF7*    = 53;
+  hF8*    = 54;
+  hF9*    = 55;
+  hF10*   = 56;
+  hF11*   = 57;
+  hF12*   = 58;
+  hPause* = 93;
 
   (* Ctrl Hotkeys *)
-  hCtrlA*         = 100H + 4;
-  hCtrlB*         = 100H + 5;
-  hCtrlC*         = 100H + 6;
-  hCtrlD*         = 100H + 7;
-  hCtrlE*         = 100H + 8;
-  hCtrlF*         = 100H + 9;
-  hCtrlG*         = 100H + 10;
-  hCtrlH*         = 100H + 11;
-  hCtrlI*         = 100H + 12;
-  hCtrlJ*         = 100H + 13;
-  hCtrlK*         = 100H + 14;
-  hCtrlL*         = 100H + 15;
-  hCtrlM*         = 100H + 16;
-  hCtrlN*         = 100H + 17;
-  hCtrlO*         = 100H + 18;
-  hCtrlP*         = 100H + 19;
-  hCtrlQ*         = 100H + 20;
-  hCtrlR*         = 100H + 21;
-  hCtrlS*         = 100H + 22;
-  hCtrlT*         = 100H + 23;
-  hCtrlU*         = 100H + 24;
-  hCtrlV*         = 100H + 25;
-  hCtrlW*         = 100H + 26;
-  hCtrlX*         = 100H + 27;
-  hCtrlY*         = 100H + 28;
-  hCtrlZ*         = 100H + 29;
-  hCtrl1*         = 100H + 30;
-  hCtrl2*         = 100H + 31;
-  hCtrl3*         = 100H + 32;
-  hCtrl4*         = 100H + 33;
-  hCtrl5*         = 100H + 34;
-  hCtrl6*         = 100H + 35;
-  hCtrl7*         = 100H + 36;
-  hCtrl8*         = 100H + 37;
-  hCtrl9*         = 100H + 38;
-  hCtrl0*         = 100H + 39;
-  hCtrlF1*        = 100H + 58;
-  hCtrlF2*        = 100H + 59;
-  hCtrlF3*        = 100H + 60;
-  hCtrlF4*        = 100H + 61;
-  hCtrlF5*        = 100H + 62;
-  hCtrlF6*        = 100H + 63;
-  hCtrlF7*        = 100H + 64;
-  hCtrlF8*        = 100H + 65;
-  hCtrlF9*        = 100H + 66;
-  hCtrlF10*       = 100H + 67;
-  hCtrlF11*       = 100H + 68;
-  hCtrlF12*       = 100H + 69;
-  hCtrlEsc*       = 100H + 41;
-  hCtrlTilde*     = 100H + 53;
-  hCtrlMinus*     = 100H + 45;
-  hCtrlEquals*    = 100H + 46;
-  hCtrlBackspace* = 100H + 42;
-  hCtrlTab*       = 100H + 43;
-  hCtrlEnter*     = 100H + 40;
-  hCtrlColon*     = 100H + 51;
-  hCtrlQuote*     = 100H + 52;
-  hCtrlBackslash* = 100H + 49;
-  hCtrlComma*     = 100H + 54;
-  hCtrlStop*      = 100H + 55;
-  hCtrlSlash*     = 100H + 56;
-  hCtrlInsert*    = 100H + 73;
-  hCtrlDel*       = 100H + 76;
-  hCtrlHome*      = 100H + 74;
-  hCtrlEnd*       = 100H + 77;
-  hCtrlPgUp*      = 100H + 75;
-  hCtrlPgDn*      = 100H + 78;
-  hCtrlLeft*      = 100H + 80;
-  hCtrlRight*     = 100H + 79;
-  hCtrlUp*        = 100H + 82;
-  hCtrlDown*      = 100H + 81;
-  hCtrlPause*     = 100H + 72;
+  hCtrlA*         = 100H + T.kA;
+  hCtrlB*         = 100H + T.kB;
+  hCtrlC*         = 100H + T.kC;
+  hCtrlD*         = 100H + T.kD;
+  hCtrlE*         = 100H + T.kE;
+  hCtrlF*         = 100H + T.kF;
+  hCtrlG*         = 100H + T.kG;
+  hCtrlH*         = 100H + T.kH;
+  hCtrlI*         = 100H + T.kI;
+  hCtrlJ*         = 100H + T.kJ;
+  hCtrlK*         = 100H + T.kK;
+  hCtrlL*         = 100H + T.kL;
+  hCtrlM*         = 100H + T.kM;
+  hCtrlN*         = 100H + T.kN;
+  hCtrlO*         = 100H + T.kO;
+  hCtrlP*         = 100H + T.kP;
+  hCtrlQ*         = 100H + T.kQ;
+  hCtrlR*         = 100H + T.kR;
+  hCtrlS*         = 100H + T.kS;
+  hCtrlT*         = 100H + T.kT;
+  hCtrlU*         = 100H + T.kU;
+  hCtrlV*         = 100H + T.kV;
+  hCtrlW*         = 100H + T.kW;
+  hCtrlX*         = 100H + T.kX;
+  hCtrlY*         = 100H + T.kY;
+  hCtrlZ*         = 100H + T.kZ;
+  hCtrl0*         = 100H + T.k0;
+  hCtrl1*         = 100H + T.k1;
+  hCtrl2*         = 100H + T.k2;
+  hCtrl3*         = 100H + T.k3;
+  hCtrl4*         = 100H + T.k4;
+  hCtrl5*         = 100H + T.k5;
+  hCtrl6*         = 100H + T.k6;
+  hCtrl7*         = 100H + T.k7;
+  hCtrl8*         = 100H + T.k8;
+  hCtrl9*         = 100H + T.k9;
+  hCtrlF1*        = 100H + T.kF1;
+  hCtrlF2*        = 100H + T.kF2;
+  hCtrlF3*        = 100H + T.kF3;
+  hCtrlF4*        = 100H + T.kF4;
+  hCtrlF5*        = 100H + T.kF5;
+  hCtrlF6*        = 100H + T.kF6;
+  hCtrlF7*        = 100H + T.kF7;
+  hCtrlF8*        = 100H + T.kF8;
+  hCtrlF9*        = 100H + T.kF9;
+  hCtrlF10*       = 100H + T.kF10;
+  hCtrlF11*       = 100H + T.kF11;
+  hCtrlF12*       = 100H + T.kF12;
+  hCtrlEsc*       = 100H + T.kEsc;
+  hCtrlTilde*     = 100H + T.kTilde;
+  hCtrlMinus*     = 100H + T.kMinus;
+  hCtrlEquals*    = 100H + T.kEquals;
+  hCtrlBackspace* = 100H + T.kBackspace;
+  hCtrlTab*       = 100H + T.kTab;
+  hCtrlEnter*     = 100H + T.kEnter;
+  hCtrlColon*     = 100H + T.kColon;
+  hCtrlQuote*     = 100H + T.kQuote;
+  hCtrlBackslash* = 100H + T.kBackslash;
+  hCtrlComma*     = 100H + T.kComma;
+  hCtrlStop*      = 100H + T.kStop;
+  hCtrlSlash*     = 100H + T.kSlash;
+  hCtrlInsert*    = 100H + T.kInsert;
+  hCtrlDel*       = 100H + T.kDel;
+  hCtrlHome*      = 100H + T.kHome;
+  hCtrlEnd*       = 100H + T.kEnd;
+  hCtrlPgUp*      = 100H + T.kPgUp;
+  hCtrlPgDn*      = 100H + T.kPgDn;
+  hCtrlLeft*      = 100H + T.kLeft;
+  hCtrlRight*     = 100H + T.kRight;
+  hCtrlUp*        = 100H + T.kUp;
+  hCtrlDown*      = 100H + T.kDown;
+  hCtrlPause*     = 100H + T.kPause;
 
-  (* Alt Hotkeys *)
-  hAltA*         = 200H + 4;
-  hAltB*         = 200H + 5;
-  hAltC*         = 200H + 6;
-  hAltD*         = 200H + 7;
-  hAltE*         = 200H + 8;
-  hAltF*         = 200H + 9;
-  hAltG*         = 200H + 10;
-  hAltH*         = 200H + 11;
-  hAltI*         = 200H + 12;
-  hAltJ*         = 200H + 13;
-  hAltK*         = 200H + 14;
-  hAltL*         = 200H + 15;
-  hAltM*         = 200H + 16;
-  hAltN*         = 200H + 17;
-  hAltO*         = 200H + 18;
-  hAltP*         = 200H + 19;
-  hAltQ*         = 200H + 20;
-  hAltR*         = 200H + 21;
-  hAltS*         = 200H + 22;
-  hAltT*         = 200H + 23;
-  hAltU*         = 200H + 24;
-  hAltV*         = 200H + 25;
-  hAltW*         = 200H + 26;
-  hAltX*         = 200H + 27;
-  hAltY*         = 200H + 28;
-  hAltZ*         = 200H + 29;
-  hAlt1*         = 200H + 30;
-  hAlt2*         = 200H + 31;
-  hAlt3*         = 200H + 32;
-  hAlt4*         = 200H + 33;
-  hAlt5*         = 200H + 34;
-  hAlt6*         = 200H + 35;
-  hAlt7*         = 200H + 36;
-  hAlt8*         = 200H + 37;
-  hAlt9*         = 200H + 38;
-  hAlt0*         = 200H + 39;
-  hAltF1*        = 200H + 58;
-  hAltF2*        = 200H + 59;
-  hAltF3*        = 200H + 60;
-  hAltF4*        = 200H + 61;
-  hAltF5*        = 200H + 62;
-  hAltF6*        = 200H + 63;
-  hAltF7*        = 200H + 64;
-  hAltF8*        = 200H + 65;
-  hAltF9*        = 200H + 66;
-  hAltF10*       = 200H + 67;
-  hAltF11*       = 200H + 68;
-  hAltF12*       = 200H + 69;
-  hAltEsc*       = 200H + 41;
-  hAltTilde*     = 200H + 53;
-  hAltMinus*     = 200H + 45;
-  hAltEquals*    = 200H + 46;
-  hAltBackspace* = 200H + 42;
-  hAltTab*       = 200H + 43;
-  hAltEnter*     = 200H + 40;
-  hAltColon*     = 200H + 51;
-  hAltQuote*     = 200H + 52;
-  hAltBackslash* = 200H + 49;
-  hAltComma*     = 200H + 54;
-  hAltStop*      = 200H + 55;
-  hAltSlash*     = 200H + 56;
-  hAltInsert*    = 200H + 73;
-  hAltDel*       = 200H + 76;
-  hAltHome*      = 200H + 74;
-  hAltEnd*       = 200H + 77;
-  hAltPgUp*      = 200H + 75;
-  hAltPgDn*      = 200H + 78;
-  hAltLeft*      = 200H + 80;
-  hAltRight*     = 200H + 79;
-  hAltUp*        = 200H + 82;
-  hAltDown*      = 200H + 81;
-  hAltPause*     = 200H + 72;
+  (* Alt Hotkeys 200H *)
+  hAltA*         = 200H + T.kA;
+  hAltB*         = 200H + T.kB;
+  hAltC*         = 200H + T.kC;
+  hAltD*         = 200H + T.kD;
+  hAltE*         = 200H + T.kE;
+  hAltF*         = 200H + T.kF;
+  hAltG*         = 200H + T.kG;
+  hAltH*         = 200H + T.kH;
+  hAltI*         = 200H + T.kI;
+  hAltJ*         = 200H + T.kJ;
+  hAltK*         = 200H + T.kK;
+  hAltL*         = 200H + T.kL;
+  hAltM*         = 200H + T.kM;
+  hAltN*         = 200H + T.kN;
+  hAltO*         = 200H + T.kO;
+  hAltP*         = 200H + T.kP;
+  hAltQ*         = 200H + T.kQ;
+  hAltR*         = 200H + T.kR;
+  hAltS*         = 200H + T.kS;
+  hAltT*         = 200H + T.kT;
+  hAltU*         = 200H + T.kU;
+  hAltV*         = 200H + T.kV;
+  hAltW*         = 200H + T.kW;
+  hAltX*         = 200H + T.kX;
+  hAltY*         = 200H + T.kY;
+  hAltZ*         = 200H + T.kZ;
+  hAlt0*         = 200H + T.k0;
+  hAlt1*         = 200H + T.k1;
+  hAlt2*         = 200H + T.k2;
+  hAlt3*         = 200H + T.k3;
+  hAlt4*         = 200H + T.k4;
+  hAlt5*         = 200H + T.k5;
+  hAlt6*         = 200H + T.k6;
+  hAlt7*         = 200H + T.k7;
+  hAlt8*         = 200H + T.k8;
+  hAlt9*         = 200H + T.k9;
+  hAltF1*        = 200H + T.kF1;
+  hAltF2*        = 200H + T.kF2;
+  hAltF3*        = 200H + T.kF3;
+  hAltF4*        = 200H + T.kF4;
+  hAltF5*        = 200H + T.kF5;
+  hAltF6*        = 200H + T.kF6;
+  hAltF7*        = 200H + T.kF7;
+  hAltF8*        = 200H + T.kF8;
+  hAltF9*        = 200H + T.kF9;
+  hAltF10*       = 200H + T.kF10;
+  hAltF11*       = 200H + T.kF11;
+  hAltF12*       = 200H + T.kF12;
+  hAltEsc*       = 200H + T.kEsc;
+  hAltTilde*     = 200H + T.kTilde;
+  hAltMinus*     = 200H + T.kMinus;
+  hAltEquals*    = 200H + T.kEquals;
+  hAltBackspace* = 200H + T.kBackspace;
+  hAltTab*       = 200H + T.kTab;
+  hAltEnter*     = 200H + T.kEnter;
+  hAltColon*     = 200H + T.kColon;
+  hAltQuote*     = 200H + T.kQuote;
+  hAltBackslash* = 200H + T.kBackslash;
+  hAltComma*     = 200H + T.kComma;
+  hAltStop*      = 200H + T.kStop;
+  hAltSlash*     = 200H + T.kSlash;
+  hAltInsert*    = 200H + T.kInsert;
+  hAltDel*       = 200H + T.kDel;
+  hAltHome*      = 200H + T.kHome;
+  hAltEnd*       = 200H + T.kEnd;
+  hAltPgUp*      = 200H + T.kPgUp;
+  hAltPgDn*      = 200H + T.kPgDn;
+  hAltLeft*      = 200H + T.kLeft;
+  hAltRight*     = 200H + T.kRight;
+  hAltUp*        = 200H + T.kUp;
+  hAltDown*      = 200H + T.kDown;
+  hAltPause*     = 200H + T.kPause;
 
-  (* Shift Hotkeys *)
-  hShiftA*         = 400H + 4;
-  hShiftB*         = 400H + 5;
-  hShiftC*         = 400H + 6;
-  hShiftD*         = 400H + 7;
-  hShiftE*         = 400H + 8;
-  hShiftF*         = 400H + 9;
-  hShiftG*         = 400H + 10;
-  hShiftH*         = 400H + 11;
-  hShiftI*         = 400H + 12;
-  hShiftJ*         = 400H + 13;
-  hShiftK*         = 400H + 14;
-  hShiftL*         = 400H + 15;
-  hShiftM*         = 400H + 16;
-  hShiftN*         = 400H + 17;
-  hShiftO*         = 400H + 18;
-  hShiftP*         = 400H + 19;
-  hShiftQ*         = 400H + 20;
-  hShiftR*         = 400H + 21;
-  hShiftS*         = 400H + 22;
-  hShiftT*         = 400H + 23;
-  hShiftU*         = 400H + 24;
-  hShiftV*         = 400H + 25;
-  hShiftW*         = 400H + 26;
-  hShiftX*         = 400H + 27;
-  hShiftY*         = 400H + 28;
-  hShiftZ*         = 400H + 29;
-  hShift1*         = 400H + 30;
-  hShift2*         = 400H + 31;
-  hShift3*         = 400H + 32;
-  hShift4*         = 400H + 33;
-  hShift5*         = 400H + 34;
-  hShift6*         = 400H + 35;
-  hShift7*         = 400H + 36;
-  hShift8*         = 400H + 37;
-  hShift9*         = 400H + 38;
-  hShift0*         = 400H + 39;
-  hShiftF1*        = 400H + 58;
-  hShiftF2*        = 400H + 59;
-  hShiftF3*        = 400H + 60;
-  hShiftF4*        = 400H + 61;
-  hShiftF5*        = 400H + 62;
-  hShiftF6*        = 400H + 63;
-  hShiftF7*        = 400H + 64;
-  hShiftF8*        = 400H + 65;
-  hShiftF9*        = 400H + 66;
-  hShiftF10*       = 400H + 67;
-  hShiftF11*       = 400H + 68;
-  hShiftF12*       = 400H + 69;
-  hShiftEsc*       = 400H + 41;
-  hShiftTilde*     = 400H + 53;
-  hShiftMinus*     = 400H + 45;
-  hShiftEquals*    = 400H + 46;
-  hShiftBackspace* = 400H + 42;
-  hShiftTab*       = 400H + 43;
-  hShiftEnter*     = 400H + 40;
-  hShiftColon*     = 400H + 51;
-  hShiftQuote*     = 400H + 52;
-  hShiftBackslash* = 400H + 49;
-  hShiftComma*     = 400H + 54;
-  hShiftStop*      = 400H + 55;
-  hShiftSlash*     = 400H + 56;
-  hShiftInsert*    = 400H + 73;
-  hShiftDel*       = 400H + 76;
-  hShiftHome*      = 400H + 74;
-  hShiftEnd*       = 400H + 77;
-  hShiftPgUp*      = 400H + 75;
-  hShiftPgDn*      = 400H + 78;
-  hShiftLeft*      = 400H + 80;
-  hShiftRight*     = 400H + 79;
-  hShiftUp*        = 400H + 82;
-  hShiftDown*      = 400H + 81;
-  hShiftPause*     = 400H + 72;
+  (* Shift Hotkeys 400H *)
+  hShiftA*         = 400H + T.kA;
+  hShiftB*         = 400H + T.kB;
+  hShiftC*         = 400H + T.kC;
+  hShiftD*         = 400H + T.kD;
+  hShiftE*         = 400H + T.kE;
+  hShiftF*         = 400H + T.kF;
+  hShiftG*         = 400H + T.kG;
+  hShiftH*         = 400H + T.kH;
+  hShiftI*         = 400H + T.kI;
+  hShiftJ*         = 400H + T.kJ;
+  hShiftK*         = 400H + T.kK;
+  hShiftL*         = 400H + T.kL;
+  hShiftM*         = 400H + T.kM;
+  hShiftN*         = 400H + T.kN;
+  hShiftO*         = 400H + T.kO;
+  hShiftP*         = 400H + T.kP;
+  hShiftQ*         = 400H + T.kQ;
+  hShiftR*         = 400H + T.kR;
+  hShiftS*         = 400H + T.kS;
+  hShiftT*         = 400H + T.kT;
+  hShiftU*         = 400H + T.kU;
+  hShiftV*         = 400H + T.kV;
+  hShiftW*         = 400H + T.kW;
+  hShiftX*         = 400H + T.kX;
+  hShiftY*         = 400H + T.kY;
+  hShiftZ*         = 400H + T.kZ;
+  hShift0*         = 400H + T.k0;
+  hShift1*         = 400H + T.k1;
+  hShift2*         = 400H + T.k2;
+  hShift3*         = 400H + T.k3;
+  hShift4*         = 400H + T.k4;
+  hShift5*         = 400H + T.k5;
+  hShift6*         = 400H + T.k6;
+  hShift7*         = 400H + T.k7;
+  hShift8*         = 400H + T.k8;
+  hShift9*         = 400H + T.k9;
+  hShiftF1*        = 400H + T.kF1;
+  hShiftF2*        = 400H + T.kF2;
+  hShiftF3*        = 400H + T.kF3;
+  hShiftF4*        = 400H + T.kF4;
+  hShiftF5*        = 400H + T.kF5;
+  hShiftF6*        = 400H + T.kF6;
+  hShiftF7*        = 400H + T.kF7;
+  hShiftF8*        = 400H + T.kF8;
+  hShiftF9*        = 400H + T.kF9;
+  hShiftF10*       = 400H + T.kF10;
+  hShiftF11*       = 400H + T.kF11;
+  hShiftF12*       = 400H + T.kF12;
+  hShiftEsc*       = 400H + T.kEsc;
+  hShiftTilde*     = 400H + T.kTilde;
+  hShiftMinus*     = 400H + T.kMinus;
+  hShiftEquals*    = 400H + T.kEquals;
+  hShiftBackspace* = 400H + T.kBackspace;
+  hShiftTab*       = 400H + T.kTab;
+  hShiftEnter*     = 400H + T.kEnter;
+  hShiftColon*     = 400H + T.kColon;
+  hShiftQuote*     = 400H + T.kQuote;
+  hShiftBackslash* = 400H + T.kBackslash;
+  hShiftComma*     = 400H + T.kComma;
+  hShiftStop*      = 400H + T.kStop;
+  hShiftSlash*     = 400H + T.kSlash;
+  hShiftInsert*    = 400H + T.kInsert;
+  hShiftDel*       = 400H + T.kDel;
+  hShiftHome*      = 400H + T.kHome;
+  hShiftEnd*       = 400H + T.kEnd;
+  hShiftPgUp*      = 400H + T.kPgUp;
+  hShiftPgDn*      = 400H + T.kPgDn;
+  hShiftLeft*      = 400H + T.kLeft;
+  hShiftRight*     = 400H + T.kRight;
+  hShiftUp*        = 400H + T.kUp;
+  hShiftDown*      = 400H + T.kDown;
+  hShiftPause*     = 400H + T.kPause;
 
-  (* Ctrl+Shift Hotkeys *)
-  hCtrlShiftA*         = 500H + 4;
-  hCtrlShiftB*         = 500H + 5;
-  hCtrlShiftC*         = 500H + 6;
-  hCtrlShiftD*         = 500H + 7;
-  hCtrlShiftE*         = 500H + 8;
-  hCtrlShiftF*         = 500H + 9;
-  hCtrlShiftG*         = 500H + 10;
-  hCtrlShiftH*         = 500H + 11;
-  hCtrlShiftI*         = 500H + 12;
-  hCtrlShiftJ*         = 500H + 13;
-  hCtrlShiftK*         = 500H + 14;
-  hCtrlShiftL*         = 500H + 15;
-  hCtrlShiftM*         = 500H + 16;
-  hCtrlShiftN*         = 500H + 17;
-  hCtrlShiftO*         = 500H + 18;
-  hCtrlShiftP*         = 500H + 19;
-  hCtrlShiftQ*         = 500H + 20;
-  hCtrlShiftR*         = 500H + 21;
-  hCtrlShiftS*         = 500H + 22;
-  hCtrlShiftT*         = 500H + 23;
-  hCtrlShiftU*         = 500H + 24;
-  hCtrlShiftV*         = 500H + 25;
-  hCtrlShiftW*         = 500H + 26;
-  hCtrlShiftX*         = 500H + 27;
-  hCtrlShiftY*         = 500H + 28;
-  hCtrlShiftZ*         = 500H + 29;
-  hCtrlShift1*         = 500H + 30;
-  hCtrlShift2*         = 500H + 31;
-  hCtrlShift3*         = 500H + 32;
-  hCtrlShift4*         = 500H + 33;
-  hCtrlShift5*         = 500H + 34;
-  hCtrlShift6*         = 500H + 35;
-  hCtrlShift7*         = 500H + 36;
-  hCtrlShift8*         = 500H + 37;
-  hCtrlShift9*         = 500H + 38;
-  hCtrlShift0*         = 500H + 39;
-  hCtrlShiftF1*        = 500H + 58;
-  hCtrlShiftF2*        = 500H + 59;
-  hCtrlShiftF3*        = 500H + 60;
-  hCtrlShiftF4*        = 500H + 61;
-  hCtrlShiftF5*        = 500H + 62;
-  hCtrlShiftF6*        = 500H + 63;
-  hCtrlShiftF7*        = 500H + 64;
-  hCtrlShiftF8*        = 500H + 65;
-  hCtrlShiftF9*        = 500H + 66;
-  hCtrlShiftF10*       = 500H + 67;
-  hCtrlShiftF11*       = 500H + 68;
-  hCtrlShiftF12*       = 500H + 69;
-  hCtrlShiftEsc*       = 500H + 41;
-  hCtrlShiftTilde*     = 500H + 53;
-  hCtrlShiftMinus*     = 500H + 45;
-  hCtrlShiftEquals*    = 500H + 46;
-  hCtrlShiftBackspace* = 500H + 42;
-  hCtrlShiftTab*       = 500H + 43;
-  hCtrlShiftEnter*     = 500H + 40;
-  hCtrlShiftColon*     = 500H + 51;
-  hCtrlShiftQuote*     = 500H + 52;
-  hCtrlShiftBackslash* = 500H + 49;
-  hCtrlShiftComma*     = 500H + 54;
-  hCtrlShiftStop*      = 500H + 55;
-  hCtrlShiftSlash*     = 500H + 56;
-  hCtrlShiftInsert*    = 500H + 73;
-  hCtrlShiftDel*       = 500H + 76;
-  hCtrlShiftHome*      = 500H + 74;
-  hCtrlShiftEnd*       = 500H + 77;
-  hCtrlShiftPgUp*      = 500H + 75;
-  hCtrlShiftPgDn*      = 500H + 78;
-  hCtrlShiftLeft*      = 500H + 80;
-  hCtrlShiftRight*     = 500H + 79;
-  hCtrlShiftUp*        = 500H + 82;
-  hCtrlShiftDown*      = 500H + 81;
-  hCtrlShiftPause*     = 500H + 72;
+  (* Ctrl+Shift Hotkeys 500H *)
+  hCtrlShiftA*         = 500H + T.kA;
+  hCtrlShiftB*         = 500H + T.kB;
+  hCtrlShiftC*         = 500H + T.kC;
+  hCtrlShiftD*         = 500H + T.kD;
+  hCtrlShiftE*         = 500H + T.kE;
+  hCtrlShiftF*         = 500H + T.kF;
+  hCtrlShiftG*         = 500H + T.kG;
+  hCtrlShiftH*         = 500H + T.kH;
+  hCtrlShiftI*         = 500H + T.kI;
+  hCtrlShiftJ*         = 500H + T.kJ;
+  hCtrlShiftK*         = 500H + T.kK;
+  hCtrlShiftL*         = 500H + T.kL;
+  hCtrlShiftM*         = 500H + T.kM;
+  hCtrlShiftN*         = 500H + T.kN;
+  hCtrlShiftO*         = 500H + T.kO;
+  hCtrlShiftP*         = 500H + T.kP;
+  hCtrlShiftQ*         = 500H + T.kQ;
+  hCtrlShiftR*         = 500H + T.kR;
+  hCtrlShiftS*         = 500H + T.kS;
+  hCtrlShiftT*         = 500H + T.kT;
+  hCtrlShiftU*         = 500H + T.kU;
+  hCtrlShiftV*         = 500H + T.kV;
+  hCtrlShiftW*         = 500H + T.kW;
+  hCtrlShiftX*         = 500H + T.kX;
+  hCtrlShiftY*         = 500H + T.kY;
+  hCtrlShiftZ*         = 500H + T.kZ;
+  hCtrlShift0*         = 500H + T.k0;
+  hCtrlShift1*         = 500H + T.k1;
+  hCtrlShift2*         = 500H + T.k2;
+  hCtrlShift3*         = 500H + T.k3;
+  hCtrlShift4*         = 500H + T.k4;
+  hCtrlShift5*         = 500H + T.k5;
+  hCtrlShift6*         = 500H + T.k6;
+  hCtrlShift7*         = 500H + T.k7;
+  hCtrlShift8*         = 500H + T.k8;
+  hCtrlShift9*         = 500H + T.k9;
+  hCtrlShiftF1*        = 500H + T.kF1;
+  hCtrlShiftF2*        = 500H + T.kF2;
+  hCtrlShiftF3*        = 500H + T.kF3;
+  hCtrlShiftF4*        = 500H + T.kF4;
+  hCtrlShiftF5*        = 500H + T.kF5;
+  hCtrlShiftF6*        = 500H + T.kF6;
+  hCtrlShiftF7*        = 500H + T.kF7;
+  hCtrlShiftF8*        = 500H + T.kF8;
+  hCtrlShiftF9*        = 500H + T.kF9;
+  hCtrlShiftF10*       = 500H + T.kF10;
+  hCtrlShiftF11*       = 500H + T.kF11;
+  hCtrlShiftF12*       = 500H + T.kF12;
+  hCtrlShiftEsc*       = 500H + T.kEsc;
+  hCtrlShiftTilde*     = 500H + T.kTilde;
+  hCtrlShiftMinus*     = 500H + T.kMinus;
+  hCtrlShiftEquals*    = 500H + T.kEquals;
+  hCtrlShiftBackspace* = 500H + T.kBackspace;
+  hCtrlShiftTab*       = 500H + T.kTab;
+  hCtrlShiftEnter*     = 500H + T.kEnter;
+  hCtrlShiftColon*     = 500H + T.kColon;
+  hCtrlShiftQuote*     = 500H + T.kQuote;
+  hCtrlShiftBackslash* = 500H + T.kBackslash;
+  hCtrlShiftComma*     = 500H + T.kComma;
+  hCtrlShiftStop*      = 500H + T.kStop;
+  hCtrlShiftSlash*     = 500H + T.kSlash;
+  hCtrlShiftInsert*    = 500H + T.kInsert;
+  hCtrlShiftDel*       = 500H + T.kDel;
+  hCtrlShiftHome*      = 500H + T.kHome;
+  hCtrlShiftEnd*       = 500H + T.kEnd;
+  hCtrlShiftPgUp*      = 500H + T.kPgUp;
+  hCtrlShiftPgDn*      = 500H + T.kPgDn;
+  hCtrlShiftLeft*      = 500H + T.kLeft;
+  hCtrlShiftRight*     = 500H + T.kRight;
+  hCtrlShiftUp*        = 500H + T.kUp;
+  hCtrlShiftDown*      = 500H + T.kDown;
+  hCtrlShiftPause*     = 500H + T.kPause;
 
-  (* Ctrl+Alt Hotkeys *)
-  hCtrlAltA*         = 300H + 4;
-  hCtrlAltB*         = 300H + 5;
-  hCtrlAltC*         = 300H + 6;
-  hCtrlAltD*         = 300H + 7;
-  hCtrlAltE*         = 300H + 8;
-  hCtrlAltF*         = 300H + 9;
-  hCtrlAltG*         = 300H + 10;
-  hCtrlAltH*         = 300H + 11;
-  hCtrlAltI*         = 300H + 12;
-  hCtrlAltJ*         = 300H + 13;
-  hCtrlAltK*         = 300H + 14;
-  hCtrlAltL*         = 300H + 15;
-  hCtrlAltM*         = 300H + 16;
-  hCtrlAltN*         = 300H + 17;
-  hCtrlAltO*         = 300H + 18;
-  hCtrlAltP*         = 300H + 19;
-  hCtrlAltQ*         = 300H + 20;
-  hCtrlAltR*         = 300H + 21;
-  hCtrlAltS*         = 300H + 22;
-  hCtrlAltT*         = 300H + 23;
-  hCtrlAltU*         = 300H + 24;
-  hCtrlAltV*         = 300H + 25;
-  hCtrlAltW*         = 300H + 26;
-  hCtrlAltX*         = 300H + 27;
-  hCtrlAltY*         = 300H + 28;
-  hCtrlAltZ*         = 300H + 29;
-  hCtrlAlt1*         = 300H + 30;
-  hCtrlAlt2*         = 300H + 31;
-  hCtrlAlt3*         = 300H + 32;
-  hCtrlAlt4*         = 300H + 33;
-  hCtrlAlt5*         = 300H + 34;
-  hCtrlAlt6*         = 300H + 35;
-  hCtrlAlt7*         = 300H + 36;
-  hCtrlAlt8*         = 300H + 37;
-  hCtrlAlt9*         = 300H + 38;
-  hCtrlAlt0*         = 300H + 39;
-  hCtrlAltF1*        = 300H + 58;
-  hCtrlAltF2*        = 300H + 59;
-  hCtrlAltF3*        = 300H + 60;
-  hCtrlAltF4*        = 300H + 61;
-  hCtrlAltF5*        = 300H + 62;
-  hCtrlAltF6*        = 300H + 63;
-  hCtrlAltF7*        = 300H + 64;
-  hCtrlAltF8*        = 300H + 65;
-  hCtrlAltF9*        = 300H + 66;
-  hCtrlAltF10*       = 300H + 67;
-  hCtrlAltF11*       = 300H + 68;
-  hCtrlAltF12*       = 300H + 69;
-  hCtrlAltEsc*       = 300H + 41;
-  hCtrlAltTilde*     = 300H + 53;
-  hCtrlAltMinus*     = 300H + 45;
-  hCtrlAltEquals*    = 300H + 46;
-  hCtrlAltBackspace* = 300H + 42;
-  hCtrlAltTab*       = 300H + 43;
-  hCtrlAltEnter*     = 300H + 40;
-  hCtrlAltColon*     = 300H + 51;
-  hCtrlAltQuote*     = 300H + 52;
-  hCtrlAltBackslash* = 300H + 49;
-  hCtrlAltComma*     = 300H + 54;
-  hCtrlAltStop*      = 300H + 55;
-  hCtrlAltSlash*     = 300H + 56;
-  hCtrlAltInsert*    = 300H + 73;
-  hCtrlAltDel*       = 300H + 76;
-  hCtrlAltHome*      = 300H + 74;
-  hCtrlAltEnd*       = 300H + 77;
-  hCtrlAltPgUp*      = 300H + 75;
-  hCtrlAltPgDn*      = 300H + 78;
-  hCtrlAltLeft*      = 300H + 80;
-  hCtrlAltRight*     = 300H + 79;
-  hCtrlAltUp*        = 300H + 82;
-  hCtrlAltDown*      = 300H + 81;
-  hCtrlAltPause*     = 300H + 72;
+  (* Ctrl+Alt Hotkeys 300H *)
+  hCtrlAltA*         = 300H + T.kA;
+  hCtrlAltB*         = 300H + T.kB;
+  hCtrlAltC*         = 300H + T.kC;
+  hCtrlAltD*         = 300H + T.kD;
+  hCtrlAltE*         = 300H + T.kE;
+  hCtrlAltF*         = 300H + T.kF;
+  hCtrlAltG*         = 300H + T.kG;
+  hCtrlAltH*         = 300H + T.kH;
+  hCtrlAltI*         = 300H + T.kI;
+  hCtrlAltJ*         = 300H + T.kJ;
+  hCtrlAltK*         = 300H + T.kK;
+  hCtrlAltL*         = 300H + T.kL;
+  hCtrlAltM*         = 300H + T.kM;
+  hCtrlAltN*         = 300H + T.kN;
+  hCtrlAltO*         = 300H + T.kO;
+  hCtrlAltP*         = 300H + T.kP;
+  hCtrlAltQ*         = 300H + T.kQ;
+  hCtrlAltR*         = 300H + T.kR;
+  hCtrlAltS*         = 300H + T.kS;
+  hCtrlAltT*         = 300H + T.kT;
+  hCtrlAltU*         = 300H + T.kU;
+  hCtrlAltV*         = 300H + T.kV;
+  hCtrlAltW*         = 300H + T.kW;
+  hCtrlAltX*         = 300H + T.kX;
+  hCtrlAltY*         = 300H + T.kY;
+  hCtrlAltZ*         = 300H + T.kZ;
+  hCtrlAlt0*         = 300H + T.k0;
+  hCtrlAlt1*         = 300H + T.k1;
+  hCtrlAlt2*         = 300H + T.k2;
+  hCtrlAlt3*         = 300H + T.k3;
+  hCtrlAlt4*         = 300H + T.k4;
+  hCtrlAlt5*         = 300H + T.k5;
+  hCtrlAlt6*         = 300H + T.k6;
+  hCtrlAlt7*         = 300H + T.k7;
+  hCtrlAlt8*         = 300H + T.k8;
+  hCtrlAlt9*         = 300H + T.k9;
+  hCtrlAltF1*        = 300H + T.kF1;
+  hCtrlAltF2*        = 300H + T.kF2;
+  hCtrlAltF3*        = 300H + T.kF3;
+  hCtrlAltF4*        = 300H + T.kF4;
+  hCtrlAltF5*        = 300H + T.kF5;
+  hCtrlAltF6*        = 300H + T.kF6;
+  hCtrlAltF7*        = 300H + T.kF7;
+  hCtrlAltF8*        = 300H + T.kF8;
+  hCtrlAltF9*        = 300H + T.kF9;
+  hCtrlAltF10*       = 300H + T.kF10;
+  hCtrlAltF11*       = 300H + T.kF11;
+  hCtrlAltF12*       = 300H + T.kF12;
+  hCtrlAltEsc*       = 300H + T.kEsc;
+  hCtrlAltTilde*     = 300H + T.kTilde;
+  hCtrlAltMinus*     = 300H + T.kMinus;
+  hCtrlAltEquals*    = 300H + T.kEquals;
+  hCtrlAltBackspace* = 300H + T.kBackspace;
+  hCtrlAltTab*       = 300H + T.kTab;
+  hCtrlAltEnter*     = 300H + T.kEnter;
+  hCtrlAltColon*     = 300H + T.kColon;
+  hCtrlAltQuote*     = 300H + T.kQuote;
+  hCtrlAltBackslash* = 300H + T.kBackslash;
+  hCtrlAltComma*     = 300H + T.kComma;
+  hCtrlAltStop*      = 300H + T.kStop;
+  hCtrlAltSlash*     = 300H + T.kSlash;
+  hCtrlAltInsert*    = 300H + T.kInsert;
+  hCtrlAltDel*       = 300H + T.kDel;
+  hCtrlAltHome*      = 300H + T.kHome;
+  hCtrlAltEnd*       = 300H + T.kEnd;
+  hCtrlAltPgUp*      = 300H + T.kPgUp;
+  hCtrlAltPgDn*      = 300H + T.kPgDn;
+  hCtrlAltLeft*      = 300H + T.kLeft;
+  hCtrlAltRight*     = 300H + T.kRight;
+  hCtrlAltUp*        = 300H + T.kUp;
+  hCtrlAltDown*      = 300H + T.kDown;
+  hCtrlAltPause*     = 300H + T.kPause;
 
-  (* Alt+Shift Hotkeys *)
-  hAltShiftA*         = 600H + 4;
-  hAltShiftB*         = 600H + 5;
-  hAltShiftC*         = 600H + 6;
-  hAltShiftD*         = 600H + 7;
-  hAltShiftE*         = 600H + 8;
-  hAltShiftF*         = 600H + 9;
-  hAltShiftG*         = 600H + 10;
-  hAltShiftH*         = 600H + 11;
-  hAltShiftI*         = 600H + 12;
-  hAltShiftJ*         = 600H + 13;
-  hAltShiftK*         = 600H + 14;
-  hAltShiftL*         = 600H + 15;
-  hAltShiftM*         = 600H + 16;
-  hAltShiftN*         = 600H + 17;
-  hAltShiftO*         = 600H + 18;
-  hAltShiftP*         = 600H + 19;
-  hAltShiftQ*         = 600H + 20;
-  hAltShiftR*         = 600H + 21;
-  hAltShiftS*         = 600H + 22;
-  hAltShiftT*         = 600H + 23;
-  hAltShiftU*         = 600H + 24;
-  hAltShiftV*         = 600H + 25;
-  hAltShiftW*         = 600H + 26;
-  hAltShiftX*         = 600H + 27;
-  hAltShiftY*         = 600H + 28;
-  hAltShiftZ*         = 600H + 29;
-  hAltShift1*         = 600H + 30;
-  hAltShift2*         = 600H + 31;
-  hAltShift3*         = 600H + 32;
-  hAltShift4*         = 600H + 33;
-  hAltShift5*         = 600H + 34;
-  hAltShift6*         = 600H + 35;
-  hAltShift7*         = 600H + 36;
-  hAltShift8*         = 600H + 37;
-  hAltShift9*         = 600H + 38;
-  hAltShift0*         = 600H + 39;
-  hAltShiftF1*        = 600H + 58;
-  hAltShiftF2*        = 600H + 59;
-  hAltShiftF3*        = 600H + 60;
-  hAltShiftF4*        = 600H + 61;
-  hAltShiftF5*        = 600H + 62;
-  hAltShiftF6*        = 600H + 63;
-  hAltShiftF7*        = 600H + 64;
-  hAltShiftF8*        = 600H + 65;
-  hAltShiftF9*        = 600H + 66;
-  hAltShiftF10*       = 600H + 67;
-  hAltShiftF11*       = 600H + 68;
-  hAltShiftF12*       = 600H + 69;
-  hAltShiftEsc*       = 600H + 41;
-  hAltShiftTilde*     = 600H + 53;
-  hAltShiftMinus*     = 600H + 45;
-  hAltShiftEquals*    = 600H + 46;
-  hAltShiftBackspace* = 600H + 42;
-  hAltShiftTab*       = 600H + 43;
-  hAltShiftEnter*     = 600H + 40;
-  hAltShiftColon*     = 600H + 51;
-  hAltShiftQuote*     = 600H + 52;
-  hAltShiftBackslash* = 600H + 49;
-  hAltShiftComma*     = 600H + 54;
-  hAltShiftStop*      = 600H + 55;
-  hAltShiftSlash*     = 600H + 56;
-  hAltShiftInsert*    = 600H + 73;
-  hAltShiftDel*       = 600H + 76;
-  hAltShiftHome*      = 600H + 74;
-  hAltShiftEnd*       = 600H + 77;
-  hAltShiftPgUp*      = 600H + 75;
-  hAltShiftPgDn*      = 600H + 78;
-  hAltShiftLeft*      = 600H + 80;
-  hAltShiftRight*     = 600H + 79;
-  hAltShiftUp*        = 600H + 82;
-  hAltShiftDown*      = 600H + 81;
-  hAltShiftPause*     = 600H + 72;
+  (* Alt+Shift Hotkeys 600H *)
+  hAltShiftA*         = 600H + T.kA;
+  hAltShiftB*         = 600H + T.kB;
+  hAltShiftC*         = 600H + T.kC;
+  hAltShiftD*         = 600H + T.kD;
+  hAltShiftE*         = 600H + T.kE;
+  hAltShiftF*         = 600H + T.kF;
+  hAltShiftG*         = 600H + T.kG;
+  hAltShiftH*         = 600H + T.kH;
+  hAltShiftI*         = 600H + T.kI;
+  hAltShiftJ*         = 600H + T.kJ;
+  hAltShiftK*         = 600H + T.kK;
+  hAltShiftL*         = 600H + T.kL;
+  hAltShiftM*         = 600H + T.kM;
+  hAltShiftN*         = 600H + T.kN;
+  hAltShiftO*         = 600H + T.kO;
+  hAltShiftP*         = 600H + T.kP;
+  hAltShiftQ*         = 600H + T.kQ;
+  hAltShiftR*         = 600H + T.kR;
+  hAltShiftS*         = 600H + T.kS;
+  hAltShiftT*         = 600H + T.kT;
+  hAltShiftU*         = 600H + T.kU;
+  hAltShiftV*         = 600H + T.kV;
+  hAltShiftW*         = 600H + T.kW;
+  hAltShiftX*         = 600H + T.kX;
+  hAltShiftY*         = 600H + T.kY;
+  hAltShiftZ*         = 600H + T.kZ;
+  hAltShift0*         = 600H + T.k0;
+  hAltShift1*         = 600H + T.k1;
+  hAltShift2*         = 600H + T.k2;
+  hAltShift3*         = 600H + T.k3;
+  hAltShift4*         = 600H + T.k4;
+  hAltShift5*         = 600H + T.k5;
+  hAltShift6*         = 600H + T.k6;
+  hAltShift7*         = 600H + T.k7;
+  hAltShift8*         = 600H + T.k8;
+  hAltShift9*         = 600H + T.k9;
+  hAltShiftF1*        = 600H + T.kF1;
+  hAltShiftF2*        = 600H + T.kF2;
+  hAltShiftF3*        = 600H + T.kF3;
+  hAltShiftF4*        = 600H + T.kF4;
+  hAltShiftF5*        = 600H + T.kF5;
+  hAltShiftF6*        = 600H + T.kF6;
+  hAltShiftF7*        = 600H + T.kF7;
+  hAltShiftF8*        = 600H + T.kF8;
+  hAltShiftF9*        = 600H + T.kF9;
+  hAltShiftF10*       = 600H + T.kF10;
+  hAltShiftF11*       = 600H + T.kF11;
+  hAltShiftF12*       = 600H + T.kF12;
+  hAltShiftEsc*       = 600H + T.kEsc;
+  hAltShiftTilde*     = 600H + T.kTilde;
+  hAltShiftMinus*     = 600H + T.kMinus;
+  hAltShiftEquals*    = 600H + T.kEquals;
+  hAltShiftBackspace* = 600H + T.kBackspace;
+  hAltShiftTab*       = 600H + T.kTab;
+  hAltShiftEnter*     = 600H + T.kEnter;
+  hAltShiftColon*     = 600H + T.kColon;
+  hAltShiftQuote*     = 600H + T.kQuote;
+  hAltShiftBackslash* = 600H + T.kBackslash;
+  hAltShiftComma*     = 600H + T.kComma;
+  hAltShiftStop*      = 600H + T.kStop;
+  hAltShiftSlash*     = 600H + T.kSlash;
+  hAltShiftInsert*    = 600H + T.kInsert;
+  hAltShiftDel*       = 600H + T.kDel;
+  hAltShiftHome*      = 600H + T.kHome;
+  hAltShiftEnd*       = 600H + T.kEnd;
+  hAltShiftPgUp*      = 600H + T.kPgUp;
+  hAltShiftPgDn*      = 600H + T.kPgDn;
+  hAltShiftLeft*      = 600H + T.kLeft;
+  hAltShiftRight*     = 600H + T.kRight;
+  hAltShiftUp*        = 600H + T.kUp;
+  hAltShiftDown*      = 600H + T.kDown;
+  hAltShiftPause*     = 600H + T.kPause;
 
-  (* Ctrl+Alt+Shift Hotkeys *)
-  hCtrlAltShiftA*         = 700H + 4;
-  hCtrlAltShiftB*         = 700H + 5;
-  hCtrlAltShiftC*         = 700H + 6;
-  hCtrlAltShiftD*         = 700H + 7;
-  hCtrlAltShiftE*         = 700H + 8;
-  hCtrlAltShiftF*         = 700H + 9;
-  hCtrlAltShiftG*         = 700H + 10;
-  hCtrlAltShiftH*         = 700H + 11;
-  hCtrlAltShiftI*         = 700H + 12;
-  hCtrlAltShiftJ*         = 700H + 13;
-  hCtrlAltShiftK*         = 700H + 14;
-  hCtrlAltShiftL*         = 700H + 15;
-  hCtrlAltShiftM*         = 700H + 16;
-  hCtrlAltShiftN*         = 700H + 17;
-  hCtrlAltShiftO*         = 700H + 18;
-  hCtrlAltShiftP*         = 700H + 19;
-  hCtrlAltShiftQ*         = 700H + 20;
-  hCtrlAltShiftR*         = 700H + 21;
-  hCtrlAltShiftS*         = 700H + 22;
-  hCtrlAltShiftT*         = 700H + 23;
-  hCtrlAltShiftU*         = 700H + 24;
-  hCtrlAltShiftV*         = 700H + 25;
-  hCtrlAltShiftW*         = 700H + 26;
-  hCtrlAltShiftX*         = 700H + 27;
-  hCtrlAltShiftY*         = 700H + 28;
-  hCtrlAltShiftZ*         = 700H + 29;
-  hCtrlAltShift1*         = 700H + 30;
-  hCtrlAltShift2*         = 700H + 31;
-  hCtrlAltShift3*         = 700H + 32;
-  hCtrlAltShift4*         = 700H + 33;
-  hCtrlAltShift5*         = 700H + 34;
-  hCtrlAltShift6*         = 700H + 35;
-  hCtrlAltShift7*         = 700H + 36;
-  hCtrlAltShift8*         = 700H + 37;
-  hCtrlAltShift9*         = 700H + 38;
-  hCtrlAltShift0*         = 700H + 39;
-  hCtrlAltShiftF1*        = 700H + 58;
-  hCtrlAltShiftF2*        = 700H + 59;
-  hCtrlAltShiftF3*        = 700H + 60;
-  hCtrlAltShiftF4*        = 700H + 61;
-  hCtrlAltShiftF5*        = 700H + 62;
-  hCtrlAltShiftF6*        = 700H + 63;
-  hCtrlAltShiftF7*        = 700H + 64;
-  hCtrlAltShiftF8*        = 700H + 65;
-  hCtrlAltShiftF9*        = 700H + 66;
-  hCtrlAltShiftF10*       = 700H + 67;
-  hCtrlAltShiftF11*       = 700H + 68;
-  hCtrlAltShiftF12*       = 700H + 69;
-  hCtrlAltShiftEsc*       = 700H + 41;
-  hCtrlAltShiftTilde*     = 700H + 53;
-  hCtrlAltShiftMinus*     = 700H + 45;
-  hCtrlAltShiftEquals*    = 700H + 46;
-  hCtrlAltShiftBackspace* = 700H + 42;
-  hCtrlAltShiftTab*       = 700H + 43;
-  hCtrlAltShiftEnter*     = 700H + 40;
-  hCtrlAltShiftColon*     = 700H + 51;
-  hCtrlAltShiftQuote*     = 700H + 52;
-  hCtrlAltShiftBackslash* = 700H + 49;
-  hCtrlAltShiftComma*     = 700H + 54;
-  hCtrlAltShiftStop*      = 700H + 55;
-  hCtrlAltShiftSlash*     = 700H + 56;
-  hCtrlAltShiftInsert*    = 700H + 73;
-  hCtrlAltShiftDel*       = 700H + 76;
-  hCtrlAltShiftHome*      = 700H + 74;
-  hCtrlAltShiftEnd*       = 700H + 77;
-  hCtrlAltShiftPgUp*      = 700H + 75;
-  hCtrlAltShiftPgDn*      = 700H + 78;
-  hCtrlAltShiftLeft*      = 700H + 80;
-  hCtrlAltShiftRight*     = 700H + 79;
-  hCtrlAltShiftUp*        = 700H + 82;
-  hCtrlAltShiftDown*      = 700H + 81;
-  hCtrlAltShiftPause*     = 700H + 72;
+  (* Ctrl+Alt+Shift Hotkeys 700H *)
+  hCtrlAltShiftA*         = 700H + T.kA;
+  hCtrlAltShiftB*         = 700H + T.kB;
+  hCtrlAltShiftC*         = 700H + T.kC;
+  hCtrlAltShiftD*         = 700H + T.kD;
+  hCtrlAltShiftE*         = 700H + T.kE;
+  hCtrlAltShiftF*         = 700H + T.kF;
+  hCtrlAltShiftG*         = 700H + T.kG;
+  hCtrlAltShiftH*         = 700H + T.kH;
+  hCtrlAltShiftI*         = 700H + T.kI;
+  hCtrlAltShiftJ*         = 700H + T.kJ;
+  hCtrlAltShiftK*         = 700H + T.kK;
+  hCtrlAltShiftL*         = 700H + T.kL;
+  hCtrlAltShiftM*         = 700H + T.kM;
+  hCtrlAltShiftN*         = 700H + T.kN;
+  hCtrlAltShiftO*         = 700H + T.kO;
+  hCtrlAltShiftP*         = 700H + T.kP;
+  hCtrlAltShiftQ*         = 700H + T.kQ;
+  hCtrlAltShiftR*         = 700H + T.kR;
+  hCtrlAltShiftS*         = 700H + T.kS;
+  hCtrlAltShiftT*         = 700H + T.kT;
+  hCtrlAltShiftU*         = 700H + T.kU;
+  hCtrlAltShiftV*         = 700H + T.kV;
+  hCtrlAltShiftW*         = 700H + T.kW;
+  hCtrlAltShiftX*         = 700H + T.kX;
+  hCtrlAltShiftY*         = 700H + T.kY;
+  hCtrlAltShiftZ*         = 700H + T.kZ;
+  hCtrlAltShift0*         = 700H + T.k0;
+  hCtrlAltShift1*         = 700H + T.k1;
+  hCtrlAltShift2*         = 700H + T.k2;
+  hCtrlAltShift3*         = 700H + T.k3;
+  hCtrlAltShift4*         = 700H + T.k4;
+  hCtrlAltShift5*         = 700H + T.k5;
+  hCtrlAltShift6*         = 700H + T.k6;
+  hCtrlAltShift7*         = 700H + T.k7;
+  hCtrlAltShift8*         = 700H + T.k8;
+  hCtrlAltShift9*         = 700H + T.k9;
+  hCtrlAltShiftF1*        = 700H + T.kF1;
+  hCtrlAltShiftF2*        = 700H + T.kF2;
+  hCtrlAltShiftF3*        = 700H + T.kF3;
+  hCtrlAltShiftF4*        = 700H + T.kF4;
+  hCtrlAltShiftF5*        = 700H + T.kF5;
+  hCtrlAltShiftF6*        = 700H + T.kF6;
+  hCtrlAltShiftF7*        = 700H + T.kF7;
+  hCtrlAltShiftF8*        = 700H + T.kF8;
+  hCtrlAltShiftF9*        = 700H + T.kF9;
+  hCtrlAltShiftF10*       = 700H + T.kF10;
+  hCtrlAltShiftF11*       = 700H + T.kF11;
+  hCtrlAltShiftF12*       = 700H + T.kF12;
+  hCtrlAltShiftEsc*       = 700H + T.kEsc;
+  hCtrlAltShiftTilde*     = 700H + T.kTilde;
+  hCtrlAltShiftMinus*     = 700H + T.kMinus;
+  hCtrlAltShiftEquals*    = 700H + T.kEquals;
+  hCtrlAltShiftBackspace* = 700H + T.kBackspace;
+  hCtrlAltShiftTab*       = 700H + T.kTab;
+  hCtrlAltShiftEnter*     = 700H + T.kEnter;
+  hCtrlAltShiftColon*     = 700H + T.kColon;
+  hCtrlAltShiftQuote*     = 700H + T.kQuote;
+  hCtrlAltShiftBackslash* = 700H + T.kBackslash;
+  hCtrlAltShiftComma*     = 700H + T.kComma;
+  hCtrlAltShiftStop*      = 700H + T.kStop;
+  hCtrlAltShiftSlash*     = 700H + T.kSlash;
+  hCtrlAltShiftInsert*    = 700H + T.kInsert;
+  hCtrlAltShiftDel*       = 700H + T.kDel;
+  hCtrlAltShiftHome*      = 700H + T.kHome;
+  hCtrlAltShiftEnd*       = 700H + T.kEnd;
+  hCtrlAltShiftPgUp*      = 700H + T.kPgUp;
+  hCtrlAltShiftPgDn*      = 700H + T.kPgDn;
+  hCtrlAltShiftLeft*      = 700H + T.kLeft;
+  hCtrlAltShiftRight*     = 700H + T.kRight;
+  hCtrlAltShiftUp*        = 700H + T.kUp;
+  hCtrlAltShiftDown*      = 700H + T.kDown;
+  hCtrlAltShiftPause*     = 700H + T.kPause;
 
 TYPE
   App* = POINTER TO AppDesc;
@@ -574,7 +577,7 @@ TYPE
   ClickHandler* = PROCEDURE (c: Control);
   ChangeHandler* = ClickHandler;
 
-  ControlDesc* = EXTENSIBLE RECORD
+  ControlDesc* = RECORD
     app*: App;
     parent*, children*: Control;
     prev*, next*: Control;
@@ -592,25 +595,25 @@ TYPE
     do*: ControlMethod
   END;
 
-  ControlMethodDesc* = EXTENSIBLE RECORD
+  ControlMethodDesc* = RECORD
     added*: PROCEDURE (c, child: Control);
     draw*: PROCEDURE (c: Control; x, y: INTEGER);
     resize*: PROCEDURE (c: Control; x, y, w, h: INTEGER);
     refresh*: PROCEDURE (c: Control);
     click*: PROCEDURE (c: Control);
     dblClick*: PROCEDURE (c: Control);
-    keyDown*: PROCEDURE (c: Control; key: G.Key);
+    keyDown*: PROCEDURE (c: Control; VAR E: T.Event);
     textInput*: PROCEDURE (c: Control; ch: CHAR);
     getFocus*: PROCEDURE (c: Control);
     lostFocus*: PROCEDURE (c: Control);
-    mouseMove*: PROCEDURE (c: Control; x, y: INTEGER; buttons: SET);
+    mouseMove*: PROCEDURE (c: Control; x, y: INTEGER; button: INTEGER);
     mouseDown*: PROCEDURE (c: Control; x, y, button: INTEGER);
     mouseUp*: PROCEDURE (c: Control; x, y, button: INTEGER);
     close*: PROCEDURE (c: Control; VAR cancel: BOOLEAN)
   END;
 
   Menu* = POINTER TO MenuDesc;
-  MenuDesc* = EXTENSIBLE RECORD(ControlDesc)
+  MenuDesc* = RECORD(ControlDesc)
     innerW*, innerH*: INTEGER;
     hint*: ARRAY 40 OF CHAR;
     hintW*: INTEGER;
@@ -619,22 +622,22 @@ TYPE
   END;
 
   Label* = POINTER TO LabelDesc;
-  LabelDesc* = EXTENSIBLE RECORD(ControlDesc)
+  LabelDesc* = RECORD(ControlDesc)
     len*: INTEGER;
     align*: INTEGER (* See constants above *)
   END;
 
   QuickBtn* = POINTER TO QuickBtnDesc;
-  QuickBtnDesc* = EXTENSIBLE RECORD(MenuDesc) END;
+  QuickBtnDesc* = RECORD(MenuDesc) END;
 
   Button* = POINTER TO ButtonDesc;
-  ButtonDesc* = EXTENSIBLE RECORD(ControlDesc) END;
+  ButtonDesc* = RECORD(ControlDesc) END;
 
   WinBtn* = POINTER TO WinBtnDesc;
-  WinBtnDesc* = EXTENSIBLE RECORD(ButtonDesc) END;
+  WinBtnDesc* = RECORD(ButtonDesc) END;
 
   Scrollbar* = POINTER TO ScrollbarDesc;
-  ScrollbarDesc* = EXTENSIBLE RECORD(ControlDesc)
+  ScrollbarDesc* = RECORD(ControlDesc)
     max*, cur*: INTEGER; (* cur is runner position in range 0..max *)
     runnerOffset*: INTEGER; (* Current visual position of runner *)
     runnerW*: INTEGER; (* Visual width of runner *)
@@ -642,13 +645,13 @@ TYPE
   END;
 
   Edit* = POINTER TO EditDesc;
-  EditDesc* = EXTENSIBLE RECORD(ControlDesc)
+  EditDesc* = RECORD(ControlDesc)
     len*: INTEGER; (* Actual amount of characters before 0X *)
     pos*: INTEGER
   END;
 
   ColumnList* = POINTER TO ColumnListDesc;
-  ColumnListDesc* = EXTENSIBLE RECORD(ControlDesc)
+  ColumnListDesc* = RECORD(ControlDesc)
     cols*: INTEGER; (* Column count *)
     items*: StrList.List;
     begin*: INTEGER; (* What index list begins with visually *)
@@ -658,7 +661,7 @@ TYPE
   END;
 
   Window* = POINTER TO WindowDesc;
-  WindowDesc* = EXTENSIBLE RECORD(ControlDesc)
+  WindowDesc* = RECORD(ControlDesc)
     cur*: Control;
     modal*: BOOLEAN;
     resizable*: BOOLEAN;
@@ -670,7 +673,7 @@ TYPE
     mx*, my*, mw*, mh*: INTEGER (* To store x, y, w, h when maximized *)
   END;
 
-  AppDesc* = EXTENSIBLE RECORD
+  AppDesc* = RECORD
     windows*: Window;
     menu*: Menu;
     statusbar*: Menu;
@@ -680,25 +683,30 @@ TYPE
     dragX*, dragY*: INTEGER;
     lastMouseDownTime*: INTEGER;
     quit*: BOOLEAN;
-    needRedraw*: BOOLEAN
+    needRedraw*: BOOLEAN;
+    sync*: BOOLEAN;
+    mouseBtn*: INTEGER
   END;
 
 VAR
-  controlMethod-: ControlMethod;
-  labelMethod-: ControlMethod;
-  quickBtnMethod-: ControlMethod;
-  buttonMethod-: ControlMethod;
-  winBtnMethod-: ControlMethod;
-  scrollbarMethod-: ControlMethod;
-  editMethod-: ControlMethod;
-  columnListMethod-: ControlMethod;
-  windowMethod-: ControlMethod;
-  menuMethod-: ControlMethod;
+  controlMethod*: ControlMethod;
+  labelMethod*: ControlMethod;
+  quickBtnMethod*: ControlMethod;
+  buttonMethod*: ControlMethod;
+  winBtnMethod*: ControlMethod;
+  scrollbarMethod*: ControlMethod;
+  editMethod*: ControlMethod;
+  columnListMethod*: ControlMethod;
+  windowMethod*: ControlMethod;
+  menuMethod*: ControlMethod;
+
+  ticks: INTEGER;
 
 PROCEDURE DrawAppWindows*(app: App);
 VAR w, br: Control;
-BEGIN
-  T.CharFill(0, 1, T.charsX, T.charsY - 2, CHR(176), 1, 7);
+  tW, tH: INTEGER;
+BEGIN T.Size(tW, tH);
+  T.Fill(0, 1, tW, tH - 2, T.lightShade, 1, 7);
   IF app.windows # NIL THEN
     w := app.windows.next; br := w;
     REPEAT w.do.draw(w, 0, 0); w := w.next UNTIL w = br
@@ -708,23 +716,25 @@ END DrawAppWindows;
 PROCEDURE DrawAppStatusbar(app: App);
 VAR m, br: Control;
   x: INTEGER;
-BEGIN x := 0;
-  T.CharFill(0, T.charsY - 1, T.charsX, 1, ' ', 0, 7);
+  tW, tH: INTEGER;
+BEGIN T.Size(tW, tH); x := 0;
+  T.Fill(0, tH - 1, tW, 1, ' ', 0, 7);
   IF app.statusbar.children # NIL THEN
     m := app.statusbar.children; br := m;
-    REPEAT m.do.draw(m, 0, T.charsY - 1); INC(x, m.w); m := m.next
+    REPEAT m.do.draw(m, 0, tH - 1); INC(x, m.w); m := m.next
     UNTIL m = br
   END;
   IF app.statusText[0] # 0X THEN
-    T.PutChar(x, T.charsY - 1, 0B3X, 0, 7);
-    T.PutString(x + 2, T.charsY - 1, app.statusText, 0, 7, 0)
+    T.SetCell(x, tH - 1, T.lineVert, 0, 7);
+    T.Print(x + 2, tH - 1, -1, app.statusText, 0, 7)
   END
 END DrawAppStatusbar;
 
 PROCEDURE DrawAppMenu(app: App);
 VAR m, br: Control;
-BEGIN
-  T.CharFill(0, 0, T.charsX, 1, ' ', 0, 7);
+  tW, tH: INTEGER;
+BEGIN T.Size(tW, tH);
+  T.Fill(0, 0, tW, 1, ' ', 0, 7);
   IF app.menu.children # NIL THEN
     m := app.menu.children; br := m;
     REPEAT m.do.draw(m, 0, 0); m := m.next UNTIL m = br
@@ -766,7 +776,7 @@ BEGIN
       UNTIL (p = NIL) OR (p = common)
     END;
     app.cur := c;
-    IF c = NIL THEN T.ShowCursor(FALSE)
+    IF c = NIL THEN T.HideCursor
     ELSIF c.do.getFocus # NIL THEN c.do.getFocus(c)
     END
   END
@@ -791,10 +801,13 @@ END SetApp;
 
 (* Common *)
 
-PROCEDURE Cap*(ch: CHAR): CHAR;
+PROCEDURE Cap(c: CHAR): CHAR;
 BEGIN
-  IF ('a' <= ch) & (ch <= 'z') THEN ch := CAP(ch) END ;
-RETURN ch END Cap;
+  IF ('a' <= c) & (c <= 'z') THEN c := CHR(ORD('Q') - ORD('q') + ORD(c))
+  ELSIF ('а' <= c) & (c <= 'я') THEN  c := CHR(ORD('Б') - ORD('б') + ORD(c))
+  ELSIF c = 'ё' THEN c := 'Ё'
+  END ;
+RETURN c END Cap;
 
 PROCEDURE Refresh*(c: Control);
 BEGIN
@@ -803,84 +816,96 @@ END Refresh;
 
 (** fg2 is a color of marked letters, that are escaped with '&'. *)
 PROCEDURE PutMarkedString*(x, y: INTEGER; s: ARRAY OF CHAR; fg, fg2, bg, limit: INTEGER);
-VAR i, c: INTEGER;
+VAR i, c, tW, tH: INTEGER;
   mark: BOOLEAN;
-BEGIN
-  IF limit = 0 THEN limit := T.charsX END;
+BEGIN T.Size(tW, tH);
+  IF limit = 0 THEN limit := tW END;
   i := 0; mark := FALSE;
   WHILE (i < LEN(s)) & (s[i] # 0X) & (x <= limit) DO
     IF s[i] = '&' THEN mark := TRUE
     ELSE
       IF mark THEN c := fg2; mark := FALSE ELSE c := fg END;
-      T.PutChar(x, y, s[i], c, bg);
+      T.SetCell(x, y, s[i], c, bg);
       INC(x)
     END;
     INC(i)
   END
 END PutMarkedString;
 
+PROCEDURE SetCharColor(x, y, fg, bg: INTEGER);
+BEGIN T.SetFg(x, y, fg); T.SetBg(x, y, bg)
+END SetCharColor;
+
+
 PROCEDURE DrawWindowBorder*(x, y, w, h, fg, bg: INTEGER;
   title: ARRAY OF CHAR; resizable, moving, inactive: BOOLEAN);
-VAR i, x2, y2, len: INTEGER; ch: CHAR;
+VAR i, x2, y2, len, tW, tH: INTEGER; ch: CHAR;
     single: BOOLEAN; (* Sigle border *)
 BEGIN single := moving OR inactive;
+  T.Size(tW, tH);
   IF moving THEN fg := 10
   ELSIF inactive THEN
     IF bg = 7 THEN fg := 8 ELSE fg := 7 END
   END;
   x2 := x + w - 1; y2 := y + h - 1;
-  IF single THEN ch := 0C4X(*-*) ELSE ch := 0CDX(*=*) END;
+  IF single THEN ch := T.lineHor ELSE ch := T.doubleHor END;
   FOR i := x + 1 TO x2 - 1 DO
-    T.PutChar(i, y, ch, fg, bg);
-    T.PutChar(i, y2, ch, fg, bg)
+    T.SetCell(i, y, ch, fg, bg);
+    T.SetCell(i, y2, ch, fg, bg)
   END;
-  IF single THEN ch := 0B3X(*|*) ELSE ch := 0BAX(*||*) END;
-  FOR i := y + 1 TO y2 - 1 DO T.PutChar(x, i, ch, fg, bg) END;
+  IF single THEN ch := T.lineVert ELSE ch := T.doubleVert END;
+  FOR i := y + 1 TO y2 - 1 DO T.SetCell(x, i, ch, fg, bg) END;
   IF resizable & ~inactive THEN (* Vertical Scrollbarbar: *)
-    FOR i := y + 2 TO y2 - 2 DO T.PutChar(x2, i, 0B1X, bg, 3) END;
-    T.PutChar(x2, y + 1, 01EX, bg, 3);
-    T.PutChar(x2, y2 - 1, 01FX, bg, 3)
+    FOR i := y + 2 TO y2 - 2 DO T.SetCell(x2, i, T.mediumShade, bg, 3) END;
+    T.SetCell(x2, y + 1, T.triangleUp, bg, 3);
+    T.SetCell(x2, y2 - 1, T.triangleDown, bg, 3)
   ELSE
-    IF single THEN ch := 0B3X(*|*) ELSE ch := 0BAX(*||*) END;
-    FOR i := y + 1 TO y2 - 1 DO T.PutChar(x2, i, ch, fg, bg) END
+    IF single THEN ch := T.lineVert ELSE ch := T.doubleVert END;
+    FOR i := y + 1 TO y2 - 1 DO T.SetCell(x2, i, ch, fg, bg) END
   END; (* Corners: *)
-  IF single THEN T.PutChar(x, y, 0DAX, fg, bg);
-    T.PutChar(x2, y, 0BFX, fg, bg); T.PutChar(x, y2, 0C0X, fg, bg)
-  ELSE T.PutChar(x, y, 0C9X, fg, bg);
-    T.PutChar(x2, y, 0BBX, fg, bg); T.PutChar(x, y2, 0C8X, fg, bg)
+  IF single THEN
+    T.SetCell(x, y, T.lineDownRight, fg, bg);
+    T.SetCell(x2, y, T.lineDownLeft, fg, bg);
+    T.SetCell(x, y2, T.lineUpRight, fg, bg)
+  ELSE
+    T.SetCell(x, y, T.doubleDownRight, fg, bg);
+    T.SetCell(x2, y, T.doubleDownLeft, fg, bg);
+    T.SetCell(x, y2, T.doubleUpRight, fg, bg)
   END;
   IF resizable & ~inactive THEN (* Corner: *)
-    T.PutChar(x2 - 1, y2, 0C4X, 10, bg);
-    T.PutChar(x2, y2, 0D9X, 10, bg); (* Maximize button: *)
-    T.PutChar(x2 - 4, y, '[', fg, bg);
-    IF (w = T.charsX) & (h = T.charsY - 2) THEN i := 18 ELSE i := 24 END;
-    T.PutChar(x2 - 3, y, CHR(i), 10, bg);
-    T.PutChar(x2 - 2, y, ']', fg, bg);
-  ELSIF single THEN T.PutChar(x2, y2, 0D9X, fg, bg)
-  ELSE T.PutChar(x2, y2, 0BCX, fg, bg)
+    T.SetCell(x2 - 1, y2, T.lineHor, 10, bg);
+    T.SetCell(x2, y2, T.lineUpLeft, 10, bg);
+    T.SetCell(x2 - 4, y, '[', fg, bg); (* Maximize button *)
+    IF (w = tW) & (h = tH - 2) THEN ch := T.arrowUpDown
+    ELSE ch := T.arrowUp
+    END;
+    T.SetCell(x2 - 3, y, ch, 10, bg);
+    T.SetCell(x2 - 2, y, ']', fg, bg);
+  ELSIF single THEN T.SetCell(x2, y2, T.lineUpLeft, fg, bg)
+  ELSE T.SetCell(x2, y2, T.doubleUpLeft, fg, bg)
   END; (* Close button: *)
   IF ~inactive THEN
-    T.PutChar(x + 2, y, '[', fg, bg);
-    T.PutChar(x + 3, y, 0FEX, 10, bg);
-    T.PutChar(x + 4, y, ']', fg, bg)
+    T.SetCell(x + 2, y, '[', fg, bg);
+    T.SetCell(x + 3, y, T.blackSquare, 10, bg);
+    T.SetCell(x + 4, y, ']', fg, bg)
   END;
-  IF x2 < T.charsX - 1 THEN (* Right shadow: *)
-    FOR i := y + 1 TO y2 DO T.SetCharColor(x2 + 1, i, 8, 0) END;
-    IF x2 < T.charsX - 2 THEN (* Most right column: *)
-      FOR i := y + 1 TO y2 DO T.SetCharColor(x2 + 2, i, 8, 0) END
+  IF x2 < tW - 1 THEN (* Right shadow: *)
+    FOR i := y + 1 TO y2 DO SetCharColor(x2 + 1, i, 8, 0) END;
+    IF x2 < tW - 2 THEN (* Most right column: *)
+      FOR i := y + 1 TO y2 DO SetCharColor(x2 + 2, i, 8, 0) END
     END
   END;
-  IF y2 < T.charsY - 2 THEN (* Bottom shadow: *)
-    FOR i := x + 2 TO x2 + 2 DO T.SetCharColor(i, y2 + 1, 8, 0) END
+  IF y2 < tH - 2 THEN (* Bottom shadow: *)
+    FOR i := x + 2 TO x2 + 2 DO SetCharColor(i, y2 + 1, 8, 0) END
   END; (* Title: *)
   IF title[0] # 0X THEN
     len := Strings.Length(title);
     i := x + (w - len) DIV 2;
     IF i < x + 5 THEN i := x + 5 END;
     IF i + len > x2 - 4 THEN len := x2 - i - 4 END;
-    IF i # x + 5 THEN T.PutChar(i - 1, y, ' ', fg, bg) END;
-    IF i + len # x2 - 4 THEN T.PutChar(i + len, y, ' ', fg, bg) END;
-    T.PutString(i, y, title, fg, bg, i + len - 1)
+    IF i # x + 5 THEN T.SetCell(i - 1, y, ' ', fg, bg) END;
+    IF i + len # x2 - 4 THEN T.SetCell(i + len, y, ' ', fg, bg) END;
+    T.Print(i, y, i + len - 1, title, fg, bg)
   END
 END DrawWindowBorder;
 
@@ -893,7 +918,7 @@ BEGIN
       (p.x <= x) & (x < p.x + p.w) &
       (p.y <= y) & (y < p.y + p.h)) DO
     IF p.next = br THEN p := NIL ELSE p := p.next END
-  END ;
+  END
 RETURN p END FindChildAt;
 
 PROCEDURE PassMouseDown*(c: Control; x, y, button: INTEGER): BOOLEAN;
@@ -901,15 +926,15 @@ VAR p: Control;
 BEGIN p := FindChildAt(c, x, y);
   IF (p # NIL) & (p.do.mouseDown # NIL) THEN
     p.do.mouseDown(p, x - p.x, y - p.y, button)
-  END ;
+  END
 RETURN p # NIL END PassMouseDown;
 
-PROCEDURE PassMouseMove*(c: Control; x, y: INTEGER; buttons: SET): BOOLEAN;
+PROCEDURE PassMouseMove*(c: Control; x, y: INTEGER; button: INTEGER): BOOLEAN;
 VAR p: Control;
 BEGIN p := FindChildAt(c, x, y);
   IF (p # NIL) & (p.do.mouseMove # NIL) THEN
-    p.do.mouseMove(p, x - p.x, y - p.y, buttons)
-  END ;
+    p.do.mouseMove(p, x - p.x, y - p.y, button)
+  END
 RETURN p # NIL END PassMouseMove;
 
 PROCEDURE SetEnabled*(c: Control; enabled: BOOLEAN);
@@ -990,8 +1015,8 @@ BEGIN c.focused := TRUE
 END ControlGetFocus;
 
 PROCEDURE ControlLostFocus*(c: Control);
-BEGIN c.focused := FALSE; G.StopTextInput;
-  T.ShowCursor(FALSE); NeedRedraw(c.app)
+BEGIN c.focused := FALSE;
+  T.HideCursor; NeedRedraw(c.app)
 END ControlLostFocus;
 
 PROCEDURE ControlClick*(c: Control);
@@ -1002,13 +1027,13 @@ PROCEDURE ControlDblClick*(c: Control);
 BEGIN IF c.onDblClick # NIL THEN c.onDblClick(c) END
 END ControlDblClick;
 
-PROCEDURE ControlMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
+PROCEDURE ControlMouseMove*(c: Control; x, y: INTEGER; button: INTEGER);
 BEGIN
 END ControlMouseMove;
 
 PROCEDURE ControlMouseDown*(c: Control; x, y, button: INTEGER);
 VAR n: INTEGER;
-BEGIN n := G.GetTicks();
+BEGIN n := ticks;
   IF n - c.app.lastMouseDownTime <= dblClickDelay THEN
     IF c.do.dblClick # NIL THEN c.do.dblClick(c) END;
     c.app.lastMouseDownTime := 0
@@ -1042,9 +1067,9 @@ END InitControlMethod;
 PROCEDURE InitMenu*(m: Menu; caption, hint: ARRAY OF CHAR;
     hotkey: INTEGER; onClick: ClickHandler);
 BEGIN InitControl(m);
-  m.caption := caption$;
+  m.caption := caption;
   m.innerW := 0; m.innerH := 0;
-  m.hint := hint$; m.hintW := 0;
+  m.hint := hint; m.hintW := 0;
   m.hotkey := hotkey;
   m.lastSelected := NIL;
   m.onClick := onClick;
@@ -1063,14 +1088,14 @@ VAR i, w, bg, fg: INTEGER;
 BEGIN
   INC(x, m.x); INC(y, m.y); w := m.w - 2;
   IF m.caption = '-' THEN
-    T.CharFill(x, y, m.w, 1, 0C4X, 0, 7); (* - *)
-    T.PutChar(x - 1, y, 0C3X, 0, 7);
-    T.PutChar(x + w + 2, y, 0B4X, 0, 7)
+    T.Fill(x, y, m.w, 1, T.lineHor, 0, 7); (* - *)
+    T.SetCell(x - 1, y, T.lineVertRight, 0, 7);
+    T.SetCell(x + w + 2, y, T.lineVertLeft, 0, 7)
   ELSE
     IF (m.status = selected) OR (m.status = open) THEN bg := 2
     ELSE bg := 7
     END;
-    T.PutChar(x, y, ' ', 0, bg); INC(x);
+    T.SetCell(x, y, ' ', 0, bg); INC(x);
     i := 0; hl := FALSE;
     WHILE m.caption[i] # 0X DO
       IF (m.caption[i] = '&') & ~hl THEN hl := TRUE
@@ -1079,21 +1104,21 @@ BEGIN
         ELSIF hl & (m.caption[i] # '&') THEN fg := 4
         ELSE fg := 0
         END;
-        T.PutChar(x, y, m.caption[i], fg, bg);
+        T.SetCell(x, y, m.caption[i], fg, bg);
         DEC(w); INC(x); hl := FALSE
       END;
       INC(i)
     END;
-    T.PutChar(x, y, ' ', 0, bg); INC(x);
+    T.SetCell(x, y, ' ', 0, bg); INC(x);
     WHILE w > 0 DO
-      T.PutChar(x, y, ' ', 0, bg);
+      T.SetCell(x, y, ' ', 0, bg);
       DEC(w); INC(x)
     END;
     IF m.status = disabled THEN fg := 8 ELSE fg := 0 END;
     IF m(Menu).hint[0] # 0X THEN
-      T.PutString(x - m(Menu).hintW - 1, y, m(Menu).hint, fg, bg, 0)
+      T.Print(x - m(Menu).hintW - 1, y, -1, m(Menu).hint, fg, bg)
     ELSIF (m.children # NIL) & (m.y # 0) THEN
-      T.PutChar(x - 2, y, 10X, fg, bg)
+      T.SetCell(x - 2, y, T.triangleRight, fg, bg)
     END
   END
 END DrawMenuCaption;
@@ -1101,34 +1126,34 @@ END DrawMenuCaption;
 PROCEDURE DrawSubmenuFrame(x, y, w, h: INTEGER);
 VAR i: INTEGER;
 BEGIN
-  T.CharFill(x, y, 1, h, ' ', 0, 7);
-  T.CharFill(x + 1, y + 1, 1, h - 2, 0B3X, 0, 7); (* | *)
-  T.CharFill(x + w - 2, y + 1, 1, h - 2, 0B3X, 0, 7);
-  T.CharFill(x + w - 1, y, 1, h, ' ', 0, 7);
-  T.CharFill(x + 2, y, w - 4, h, ' ', 0, 7);
-  T.CharFill(x + 2, y, w - 4, 1, 0C4X, 0, 7); (* - *)
-  T.CharFill(x + 2, y + h - 1, w - 4, 1, 0C4X, 0, 7);
-  T.PutChar(x + 1, y, 0DAX, 0, 7); (* Corners *)
-  T.PutChar(x + w - 2, y, 0BFX, 0, 7); (* Corners *)
-  T.PutChar(x + w - 2, y + h - 1, 0D9X, 0, 7); (* Corners *)
-  T.PutChar(x + 1, y + h - 1, 0C0X, 0, 7); (* Corners *)
+  T.Fill(x, y, 1, h, ' ', 0, 7);
+  T.Fill(x + 1, y + 1, 1, h - 2, T.lineVert, 0, 7); (* | *)
+  T.Fill(x + w - 2, y + 1, 1, h - 2, T.lineVert, 0, 7);
+  T.Fill(x + w - 1, y, 1, h, ' ', 0, 7);
+  T.Fill(x + 2, y, w - 4, h, ' ', 0, 7);
+  T.Fill(x + 2, y, w - 4, 1, T.lineHor, 0, 7); (* - *)
+  T.Fill(x + 2, y + h - 1, w - 4, 1, T.lineHor, 0, 7);
+  T.SetCell(x + 1, y, T.lineDownRight, 0, 7); (* Corners *)
+  T.SetCell(x + w - 2, y, T.lineDownLeft, 0, 7); (* Corners *)
+  T.SetCell(x + w - 2, y + h - 1, T.lineUpLeft, 0, 7); (* Corners *)
+  T.SetCell(x + 1, y + h - 1, T.lineUpRight, 0, 7); (* Corners *)
   FOR i := y + 1 TO y + h DO
-    T.SetCharColor(x + w, i, 8, 0);
-    T.SetCharColor(x + w + 1, i, 8, 0)
+    SetCharColor(x + w, i, 8, 0);
+    SetCharColor(x + w + 1, i, 8, 0)
   END;
-  FOR i := x + 2 TO x + w - 1 DO T.SetCharColor(i, y + h, 8, 0) END;
+  FOR i := x + 2 TO x + w - 1 DO SetCharColor(i, y + h, 8, 0) END;
 END DrawSubmenuFrame;
 
 PROCEDURE MenuDraw(c: Control; x, y: INTEGER);
 VAR p, openMenu: Control;
-  w, h: INTEGER;
-BEGIN DrawMenuCaption(c, x, y);
+  w, h, tW, tH: INTEGER;
+BEGIN T.Size(tW, tH); DrawMenuCaption(c, x, y);
   IF c.status = open THEN
     INC(x, c.x); INC(y, c.y);
     IF c.parent # c.app.menu THEN INC(x) END; (* 2nd+-level menus *)
     IF c.children # NIL THEN
       w := c(Menu).innerW; h := c(Menu).innerH;
-      IF x + w + 3 > T.charsX THEN x := T.charsX - w - 3 END;
+      IF x + w + 3 > tW THEN x := tW - w - 3 END;
       DrawSubmenuFrame(x - 1, y + 1, w + 4, h + 2);
       p := c.children; openMenu := NIL;
       REPEAT (* Don't draw the submenu until all items are drawn *)
@@ -1170,50 +1195,46 @@ BEGIN p := c.children;
       IF p.next = c.children THEN p := NIL ELSE p := p.next END
     END
   END;
-  IF p # NIL THEN p.status := selected END ;
+  IF p # NIL THEN p.status := selected END
 RETURN p END FindSelectedChild;
 
 PROCEDURE MenuHotkey*(c: Control; ch: CHAR): BOOLEAN;
 VAR i: INTEGER; x: CHAR;
 BEGIN i := 0; x := c.caption[0];
-  WHILE (x # 0X) &
-        ~((x = '&') & (c.caption[i + 1] # '&')) DO
+  WHILE (x # 0X) & ~((x = '&') & (c.caption[i + 1] # '&')) DO
     IF (x = '&') & (c.caption[i + 1] = '&') THEN INC(i, 2) ELSE INC(i) END;
     x := c.caption[i]
-  END ;
-RETURN (c.caption[i] # 0X) & (CAP(c.caption[i + 1]) = CAP(ch)) END MenuHotkey;
+  END
+RETURN (c.caption[i] # 0X) & (Cap(c.caption[i + 1]) = Cap(ch)) END MenuHotkey;
 
-PROCEDURE MenuKeyDown*(c: Control; key: G.Key);
+PROCEDURE MenuKeyDown*(c: Control; VAR E: T.Event);
 VAR p, p2, br: Control; found: BOOLEAN;
 BEGIN
-  CASE key.code OF
-    G.kUp, G.kDown:
-    IF c.parent # c.app.menu THEN
-      p := c;
+  IF (E.key = T.kUp) OR (E.key = T.kDown) THEN
+    IF c.parent # c.app.menu THEN p := c;
       REPEAT
-        IF key.code = G.kUp THEN p := p.prev ELSE p := p.next END
+        IF E.key = T.kUp THEN p := p.prev ELSE p := p.next END
       UNTIL (p = c) OR (p.caption # '-') & (p.status # disabled);
       c.status := normal; p.status := selected; SetFocus(p);
       NeedRedraw(c.app)
     END
-  | G.kLeft, G.kRight: p := c;
+  ELSIF (E.key = T.kLeft) OR (E.key = T.kRight) THEN p := c;
     WHILE p.parent # p.app.menu DO p := p.parent END;
-    IF key.code = G.kLeft THEN p := p.prev ELSE p := p.next END;
+    IF E.key = T.kLeft THEN p := p.prev ELSE p := p.next END;
     p.status := open;
     p2 := FindSelectedChild(p);
     IF p2 = NIL THEN p2 := p END;
     SetFocus(p2);
     NeedRedraw(c.app)
-  | G.kEnter: c.do.click(c)
-  | G.kEsc:
-    IF c.parent.parent = c.app.menu THEN
+  ELSIF E.key = T.kEnter THEN c.do.click(c)
+  ELSIF E.key = T.kEsc THEN
+    IF (c.parent.parent = NIL) OR (c.parent.parent.parent = NIL) THEN
       c.parent.status := normal; UnsetFocus(c.app)
-    ELSE
-      c.parent.status := selected; SetFocus(c.parent)
+    ELSE c.parent.status := selected; SetFocus(c.parent)
     END;
     NeedRedraw(c.app)
   ELSE p := c;
-    WHILE (p # NIL) & ~MenuHotkey(p, CHR(key.sym)) DO
+    WHILE (p # NIL) & ~MenuHotkey(p, E.ch) DO
       IF p.next = c THEN p := NIL ELSE p := p.next END
     END;
     IF p # NIL THEN
@@ -1227,7 +1248,7 @@ PROCEDURE MenuGetFocus*(c: Control);
 BEGIN ControlGetFocus(c);
   IF c.status = normal THEN c.status := selected; NeedRedraw(c.app) END;
   IF c.parent # NIL THEN c.parent(Menu).lastSelected := c END;
-  T.ShowCursor(FALSE)
+  T.HideCursor
 END MenuGetFocus;
 
 PROCEDURE MenuLostFocus*(c: Control);
@@ -1282,31 +1303,32 @@ BEGIN p := NIL;
         IF p # NIL THEN DEC(x, p.x); DEC(y, p.y) END
       END
     END
-  END ;
+  END
 RETURN p END GetMenuAt;
 
 PROCEDURE GetStatusbarAt(app: App; x, y: INTEGER): Control;
 VAR p, br: Control;
-BEGIN
-  IF y = T.charsY - 1 THEN
+  tW, tH: INTEGER;
+BEGIN T.Size(tW, tH);
+  IF y = tH - 1 THEN
     p := app.statusbar.children; br := p;
     WHILE (p # NIL) & ~((p.x <= x) & (x < p.x + p.w)) DO
       IF p.next = br THEN p := NIL ELSE p := p.next END
     END
   ELSE p := NIL
-  END ;
+  END
 RETURN p END GetStatusbarAt;
 
-PROCEDURE MenuMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
+PROCEDURE MenuMouseMove*(c: Control; x, y: INTEGER; button: INTEGER);
 VAR p: Control;
 BEGIN p := c;
   IF c = c.app.menu THEN c := GetMenuAt(c.app, x, y)
   ELSIF c = c.app.statusbar THEN c := GetStatusbarAt(c.app, x, y)
   END;
   IF (c = NIL) & (p = p.app.statusbar) THEN UnsetFocus(p.app)
-  ELSIF (c # NIL) & (buttons = {G.btnLeft}) & (c.status = normal) THEN
+  ELSIF (c # NIL) & (button = 1(*!FIXME LEFT BTN*)) & (c.status = normal) THEN
     IF c.parent.parent = NIL THEN (* Top level menu *)
-      IF c.do.mouseDown # NIL THEN c.do.mouseDown(c, x, y, G.btnLeft) END
+      IF c.do.mouseDown # NIL THEN c.do.mouseDown(c, x, y, 1(*!FIXME LEFT*)) END
     ELSE
       IF (c.app.cur # NIL) & (c.app.cur.status # selected) THEN
         c.app.cur.status := selected;
@@ -1320,7 +1342,7 @@ END MenuMouseMove;
 PROCEDURE MenuMouseDown*(c: Control; x, y, button: INTEGER);
 VAR p: Control;
 BEGIN
-  IF (button = G.btnLeft) & (c.status # disabled) THEN
+  IF (button = 1(*!FIXME LEFT BTN*)) & (c.status # disabled) THEN
     SetFocus(c);
     p := c; WHILE p.parent # NIL DO p := p.parent END;
     c.app.dragged := p; c.app.dragX := p.x; c.app.dragY := p.y;
@@ -1340,7 +1362,7 @@ END MenuMouseDown;
 PROCEDURE MenuMouseUp*(c: Control; x, y, button: INTEGER);
 VAR p: Control;
 BEGIN
-  IF button = G.btnLeft THEN
+  IF button = 1 THEN
     IF c = c.app.menu THEN p := GetMenuAt(c.app, x, y)
     ELSIF c = c.app.statusbar THEN p := GetStatusbarAt(c.app, x, y)
     ELSE p := c
@@ -1391,7 +1413,7 @@ END InitMenuMethod;
 
 PROCEDURE InitLabel*(c: Label; caption: ARRAY OF CHAR);
 BEGIN InitControl(c); c.do := labelMethod;
-  c.caption := caption$; c.len := Strings.Length(caption);
+  c.caption := caption; c.len := Strings.Length(caption);
   c.align := left
 END InitLabel;
 
@@ -1406,7 +1428,7 @@ BEGIN L := c(Label); INC(x, c.x); INC(y, c.y); X := x;
   IF L.align = right THEN INC(X, c.w - L.len)
   ELSIF L.align = center THEN INC(X, (c.w - L.len) DIV 2)
   END;
-  T.PutString(X, y, c.caption, 0, 7, x + c.w - 1)
+  T.Print(X, y, x + c.w - 1, c.caption, 0, 7)
 END LabelDraw;
 
 (* LabelMethod *)
@@ -1434,17 +1456,17 @@ VAR i, w, bg, fg: INTEGER;
   hl: BOOLEAN; (* Highlighted letter *)
 BEGIN INC(x, c.x); INC(y, c.y);
   IF c.status = normal THEN bg := 7 ELSE bg := 2 END;
-  T.PutChar(x, y, ' ', 0, bg); INC(x); i := 0;
+  T.SetCell(x, y, ' ', 0, bg); INC(x); i := 0;
   WHILE c(Menu).hint[i] # 0X DO
-    T.PutChar(x, y, c(Menu).hint[i], 4, bg);
+    T.SetCell(x, y, c(Menu).hint[i], 4, bg);
     INC(x); INC(i)
   END;
-  T.PutChar(x, y, ' ', 0, bg); INC(x); i := 0;
+  T.SetCell(x, y, ' ', 0, bg); INC(x); i := 0;
   WHILE c.caption[i] # 0X DO
-    T.PutChar(x, y, c.caption[i], 0, bg);
+    T.SetCell(x, y, c.caption[i], 0, bg);
     INC(x); INC(i)
   END;
-  T.PutChar(x, y, ' ', 0, bg)
+  T.SetCell(x, y, ' ', 0, bg)
 END QuickBtnDraw;
 
 PROCEDURE QuickBtnRefresh(m: Control);
@@ -1468,7 +1490,7 @@ END InitQuickBtnMethod;
 PROCEDURE InitButton*(c: Button; caption: ARRAY OF CHAR);
 BEGIN InitControl(c);
   c.w := 10; c.h := 1;
-  c.caption := caption$;
+  c.caption := caption;
   c.do := buttonMethod
 END InitButton;
 
@@ -1486,7 +1508,7 @@ BEGIN INC(x, c.x); INC(y, c.y);
   IF (c.parent # NIL) & (c.parent IS Window) THEN bg := c.parent(Window).bg
   ELSE bg := 7
   END;
-  T.CharFill(x, y, c.w, c.h, ' ', 0, 2);
+  T.Fill(x, y, c.w, c.h, ' ', 0, 2);
   i := 0; n := 0;
   WHILE c.caption[i] # 0X DO IF c.caption[i] # '&' THEN INC(n) END; INC(i) END;
   IF n > c.w THEN n := c.w END;
@@ -1494,9 +1516,9 @@ BEGIN INC(x, c.x); INC(y, c.y);
   PutMarkedString(x + (c.w - n) DIV 2, y + c.h DIV 2,
     c.caption, fg, 14, 2, x + c.w - 1);
   IF c.status # selected THEN
-    T.PutChar(x + c.w, y, 0DCX, 0, bg);
-    T.CharFill(x + c.w, y + 1, 1, c.h - 1, 0DBX, 0, bg);
-    T.CharFill(x + 1, y + c.h, c.w, 1, 0DFX, 0, bg)
+    T.SetCell(x + c.w, y, T.lowerHalfBlock, 0, bg);
+    T.Fill(x + c.w, y + 1, 1, c.h - 1, T.fullBlock, 0, bg);
+    T.Fill(x + 1, y + c.h, c.w, 1, T.upperHalfBlock, 0, bg)
   END
 END ButtonDraw;
 
@@ -1516,7 +1538,7 @@ BEGIN
   NeedRedraw(c.app)
 END ButtonMouseUp;
 
-PROCEDURE ButtonMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
+PROCEDURE ButtonMouseMove*(c: Control; x, y: INTEGER; button: INTEGER);
 VAR status: INTEGER;
 BEGIN
   IF (0 <= x) & (x <= c.w) & (0 <= y) & (y < c.h) THEN status := selected
@@ -1557,19 +1579,19 @@ RETURN c END NewWinBtn;
 PROCEDURE WinBtnMouseUp*(c: Control; x, y, button: INTEGER);
 BEGIN
   IF c.status = selected THEN
-    T.PutChar(c.app.dragX + 1, c.app.dragY,
+    T.SetCell(c.app.dragX + 1, c.app.dragY,
       c.caption[0], 10, c.parent(Window).bg);
     IF c.do.click # NIL THEN c.do.click(c) END
   END
 END WinBtnMouseUp;
 
-PROCEDURE WinBtnMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
+PROCEDURE WinBtnMouseMove*(c: Control; x, y: INTEGER; button: INTEGER);
 VAR status: INTEGER; ch: CHAR;
 BEGIN status := c.status;
-  ButtonMouseMove(c, x, y, buttons);
+  ButtonMouseMove(c, x, y, button);
   IF status # c.status THEN
     IF c.status = normal THEN ch := c.caption[0] ELSE ch := 0FX(*star*) END;
-    T.PutChar(c.app.dragX + 1, c.app.dragY, ch, 10, c.parent(Window).bg)
+    T.SetCell(c.app.dragX + 1, c.app.dragY, ch, 10, c.parent(Window).bg)
   END
 END WinBtnMouseMove;
 
@@ -1625,12 +1647,12 @@ VAR S: Scrollbar;
   w, fg, bg: INTEGER;
   ch: CHAR;
 BEGIN S := c(Scrollbar); INC(x, S.x); INC(y, S.y); fg := 3; bg := 1;
-  IF S.enabled THEN ch := 0B0X ELSE ch := 0B1X END;
-  T.CharFill(x + 1, y, S.w - 1, 1, ch, fg, bg);
-  T.PutChar(x, y, 11X, fg, bg);
-  T.PutChar(x + S.w - 1, y, 10X, fg, bg);
+  IF S.enabled THEN ch := T.lightShade ELSE ch := T.mediumShade END;
+  T.Fill(x + 1, y, S.w - 1, 1, ch, fg, bg);
+  T.SetCell(x, y, T.triangleLeft, fg, bg);
+  T.SetCell(x + S.w - 1, y, T.triangleRight, fg, bg);
   IF S.enabled THEN
-    T.CharFill(x + S.runnerOffset, y, S.runnerW, 1, 0B1X, fg, bg)
+    T.Fill(x + S.runnerOffset, y, S.runnerW, 1, T.mediumShade, fg, bg)
   END
 END ScrollbarDraw;
 
@@ -1638,7 +1660,7 @@ PROCEDURE ScrollbarMouseDown*(c: Control; x, y, button: INTEGER);
 VAR S: Scrollbar;
   col, colw: INTEGER;
 BEGIN S := c(Scrollbar);
-  IF S.enabled & (button = G.btnLeft) THEN
+  IF S.enabled & (button = 1(*!FIXME BTN LEFT*)) THEN
     SetDragged(S.app, S);
     ScrollbarUpdateCur(S, x, y, FALSE)
   END
@@ -1648,17 +1670,17 @@ PROCEDURE ScrollbarMouseUp*(c: Control; x, y, button: INTEGER);
 VAR S: Scrollbar;
   col, colw: INTEGER;
 BEGIN S := c(Scrollbar);
-  IF S.enabled & (button = G.btnLeft) THEN
+  IF S.enabled & (button = 1(*!FIXME BTN LEFT*)) THEN
     ScrollbarUpdateCur(S, x, y, TRUE);
     SetFocus(S.parent)
   END
 END ScrollbarMouseUp;
 
-PROCEDURE ScrollbarMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
+PROCEDURE ScrollbarMouseMove*(c: Control; x, y: INTEGER; button: INTEGER);
 VAR S: Scrollbar;
   oldCur, col, colw: INTEGER;
 BEGIN S := c(Scrollbar);
-  IF buttons = {G.btnLeft} THEN ScrollbarUpdateCur(S, x, y, FALSE) END
+  IF button = 1 (*!FIXME BTN LEFT*) THEN ScrollbarUpdateCur(S, x, y, FALSE) END
 END ScrollbarMouseMove;
 
 PROCEDURE InitScrollbarMethod*(m: ControlMethod);
@@ -1715,37 +1737,39 @@ END DeleteChar;
 PROCEDURE EditDraw*(c: Control; x, y: INTEGER);
 VAR i, j: INTEGER; e: Edit;
 BEGIN e := c(Edit); INC(x, e.x); INC(y, e.y);
-  T.PutChar(x, y, ' ', 0, 1);
+  T.SetCell(x, y, ' ', 0, 1);
   i := 0; j := x + 1;
   WHILE (e.caption[i] # 0X) & (i < e.w - 1) DO
-    T.PutChar(j, y, e.caption[i], 15, 1); INC(i); INC(j)
+    T.SetCell(j, y, e.caption[i], 15, 1); INC(i); INC(j)
   END;
   WHILE i < e.w - 1 DO
-    T.PutChar(j, y, ' ', 15, 1); INC(i); INC(j)
+    T.SetCell(j, y, ' ', 15, 1); INC(i); INC(j)
   END;
 
   i := e.pos + 1; IF i >= e.w THEN i := e.w - 1 END;
-  IF c.app.cur = c THEN T.GoToXY(x + i, y) END
+  IF c.app.cur = c THEN T.SetCursor(x + i, y) END
 END EditDraw;
 
 PROCEDURE EditMouseDown*(c: Control; x, y, edit: INTEGER);
 BEGIN (*!TODO*)
 END EditMouseDown;
 
-PROCEDURE EditKeyDown*(c: Control; key: G.Key);
+PROCEDURE EditKeyDown*(c: Control; VAR E: T.Event);
 VAR e: Edit; redraw: BOOLEAN;
 BEGIN e := c(Edit); redraw := TRUE;
-  CASE key.code OF
-    G.kLeft: IF e.pos > 0 THEN DEC(e.pos) END
-  | G.kRight: IF e.pos < e.len THEN INC(e.pos) END
-  | G.kBackspace:
+  IF E.key = T.kLeft THEN
+    IF e.pos > 0 THEN DEC(e.pos) END
+  ELSIF E.key = T.kRight THEN
+    IF e.pos < e.len THEN INC(e.pos) END
+  ELSIF E.key = T.kBackspace THEN
     IF e.pos > 0 THEN DeleteChar(e.caption, e.pos - 1, e.len); DEC(e.pos) END
-  | G.kDel: IF e.pos < e.len THEN DeleteChar(e.caption, e.pos, e.len) END
-  | G.kHome: e.pos := 0
-  | G.kEnd: e.pos := e.len
+  ELSIF E.key = T.kDel THEN
+    IF e.pos < e.len THEN DeleteChar(e.caption, e.pos, e.len) END
+  ELSIF E.key = T.kHome THEN e.pos := 0
+  ELSIF E.key = T.kEnd THEN e.pos := e.len
   ELSE redraw := FALSE
   END;
-  IF redraw THEN NeedRedraw(c.app); T.ResetCursorBlink END
+  IF redraw THEN NeedRedraw(c.app) END
 END EditKeyDown;
 
 PROCEDURE EditTextInput*(c: Control; ch: CHAR);
@@ -1754,12 +1778,12 @@ BEGIN
   IF ch # 0X THEN e := c(Edit);
     InsertChar(ch, e.pos, e.caption, e.len);
     IF e.pos < e.len THEN INC(e.pos) END;
-    NeedRedraw(c.app); T.ResetCursorBlink
+    NeedRedraw(c.app)
   END
 END EditTextInput;
 
 PROCEDURE EditGetFocus*(c: Control);
-BEGIN ControlGetFocus(c); T.ShowCursor(TRUE); G.StartTextInput
+BEGIN ControlGetFocus(c); T.SetCursor(c.x, c.y) (*!FIXME c.x, c.y correct???*)
 END EditGetFocus;
 
 PROCEDURE InitEditMethod*(m: ControlMethod);
@@ -1814,12 +1838,12 @@ VAR i, x2, y2, colw, fg, bg: INTEGER;
 BEGIN C := c(ColumnList); INC(x, C.x); INC(y, C.y);
   bg := 3; x2 := x + 1; y2 := y;
   colw := (C.w - C.cols + 1) DIV C.cols;
-  T.CharFill(x, y, C.w, C.h - 1, ' ', 0, bg);
+  T.Fill(x, y, C.w, C.h - 1, ' ', 0, bg);
 
   (* Column separators *)
   i := x + colw;
   WHILE i < x + C.w - 2 DO
-    T.CharFill(i, y, 1, C.h - 1, 0B3X, 1, bg); INC(i, colw + 1)
+    T.Fill(i, y, 1, C.h - 1, T.lineVert, 1, bg); INC(i, colw + 1)
   END;
 
   i := C.scrollbar.cur * (C.h - 1);
@@ -1828,11 +1852,11 @@ BEGIN C := c(ColumnList); INC(x, C.x); INC(y, C.y);
   WHILE ~C.items.eol & (x2 + colw <= x + C.w) DO fg := 0; bg := 3;
     IF i = C.cur THEN
       IF C.focused THEN fg := 15; bg := 2;
-        T.CharFill(x2 - 1, y2, colw, 1, ' ', fg, bg)
+        T.Fill(x2 - 1, y2, colw, 1, ' ', fg, bg)
       ELSE fg := 14
       END
     END;
-    T.PutString(x2, y2, s, fg, bg, x2 + colw - 1);
+    T.Print(x2, y2, x2 + colw - 1, s, fg, bg);
     IF y2 < y + C.h - 2 THEN INC(y2) ELSE y2 := y; INC(x2, colw + 1) END;
     StrList.Next(C.items, s); INC(i)
   END;
@@ -1841,7 +1865,7 @@ BEGIN C := c(ColumnList); INC(x, C.x); INC(y, C.y);
 END ColumnListDraw;
 
 PROCEDURE ColumnListGetFocus*(c: Control);
-BEGIN ControlGetFocus(c); G.StartTextInput
+BEGIN ControlGetFocus(c)
 END ColumnListGetFocus;
 
 PROCEDURE ColumnListUpdateCur*(C: ColumnList; x, y: INTEGER);
@@ -1876,7 +1900,7 @@ BEGIN C := c(ColumnList);
     SetDragged(C.app, C);
     ColumnListUpdateCur(C, x, y);
 
-    n := G.GetTicks();
+    n := ticks;
     IF (n - C.app.lastMouseDownTime <= dblClickDelay) &
        (C.lastMouseDownItem = C.cur)
     THEN
@@ -1895,27 +1919,26 @@ BEGIN ControlMouseUp(c, x, y, button);
   IF (c.status = selected) & (c.do.click # NIL) THEN c.do.click(c) END
 END ColumnListMouseUp;
 
-PROCEDURE ColumnListMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
+PROCEDURE ColumnListMouseMove*(c: Control; x, y: INTEGER; button: INTEGER);
 VAR C: ColumnList;
   oldCur, col, colw: INTEGER;
-BEGIN ControlMouseMove(c, x, y, buttons); C := c(ColumnList);
-  IF buttons = {G.btnLeft} THEN ColumnListUpdateCur(C, x, y) END
+BEGIN ControlMouseMove(c, x, y, button); C := c(ColumnList);
+  IF button = 1 THEN ColumnListUpdateCur(C, x, y) END
 END ColumnListMouseMove;
 
-PROCEDURE ColumnListKeyDown*(c: Control; key: G.Key);
+PROCEDURE ColumnListKeyDown*(c: Control; VAR E: T.Event);
 VAR C: ColumnList; sb: Scrollbar;
   h, cur: INTEGER;
 BEGIN C := c(ColumnList); sb := C.scrollbar; cur := C.cur; h := C.h - 1;
-  CASE key.code OF
-    G.kLeft: DEC(cur, h)
-  | G.kRight: INC(cur, h)
-  | G.kUp: DEC(cur)
-  | G.kDown: INC(cur)
-  | G.kHome: cur := sb.cur * h
-  | G.kEnd: cur := (sb.cur + C.cols) * h - 1
-  | G.kPgUp: DEC(cur, C.cols * h); DEC(sb.cur, C.cols)
-  | G.kPgDn: INC(cur, C.cols * h); INC(sb.cur, C.cols)
-  ELSE END;
+  IF E.key = T.kLeft THEN DEC(cur, h)
+  ELSIF E.key = T.kRight THEN INC(cur, h)
+  ELSIF E.key = T.kUp THEN DEC(cur)
+  ELSIF E.key = T.kDown THEN INC(cur)
+  ELSIF E.key = T.kHome THEN cur := sb.cur * h
+  ELSIF E.key = T.kEnd THEN cur := (sb.cur + C.cols) * h - 1
+  ELSIF E.key = T.kPgUp THEN DEC(cur, C.cols * h); DEC(sb.cur, C.cols)
+  ELSIF E.key = T.kPgDn THEN INC(cur, C.cols * h); INC(sb.cur, C.cols)
+  END;
   ColumnListSetCur(C, cur)
 END ColumnListKeyDown;
 
@@ -1947,14 +1970,14 @@ BEGIN StrList.First(L, s); n := 0;
   WHILE ~L.eol & ~((Cap(s[0]) = ch) OR (s[0] = '[') & (Cap(s[1]) = ch)) DO
     StrList.Next(L, s); INC(n)
   END;
-  IF L.eol THEN n := -1 END ;
+  IF L.eol THEN n := -1 END
 RETURN n END FindFirstLetterInList;
 
 PROCEDURE ColumnListTextInput*(c: Control; ch: CHAR);
 VAR C: ColumnList; n: INTEGER;
 BEGIN C := c(ColumnList);
   IF ch # 0X THEN
-    n := FindFirstLetterInList(C.items, CAP(ch));
+    n := FindFirstLetterInList(C.items, Cap(ch));
     IF n # -1 THEN ColumnListSetCur(C, n) END
   END
 END ColumnListTextInput;
@@ -1998,15 +2021,16 @@ END PrevWindow;
 
 PROCEDURE ZoomCurWindow*(c: Control);
 VAR w: Window;
-BEGIN w := c.app.windows(Window);
+  tW, tH: INTEGER;
+BEGIN T.Size(tW, tH); w := c.app.windows(Window);
   IF w # NIL THEN
-    IF (w.x = 0) & (w.w = T.charsX) &
-       (w.y = 1) & (w.h = T.charsY - 2) THEN
+    IF (w.x = 0) & (w.w = tW) &
+       (w.y = 1) & (w.h = tH - 2) THEN
       w.x := w.mx; w.y := w.my; w.w := w.mw; w.h := w.mh
     ELSE
       w.mx := w.x; w.my := w.y; w.mw := w.w; w.mh := w.h;
-      w.x := 0; w.w := T.charsX;
-      w.y := 1; w.h := T.charsY - 2
+      w.x := 0; w.w := tW;
+      w.y := 1; w.h := tH - 2
     END;
     NeedRedraw(c.app)
   END
@@ -2042,21 +2066,22 @@ BEGIN cancel := FALSE;
 END CloseAllWindows;
 
 PROCEDURE RefreshDisplay*(c: Control);
-BEGIN T.ClearScreen; NeedRedraw(c.app)
+BEGIN T.ClearTo(0, 7); NeedRedraw(c.app); c.app.sync := TRUE
 END RefreshDisplay;
 
 (* Window *)
 
 PROCEDURE InitWindow*(w: Window);
-BEGIN InitControl(w);
+VAR tW, tH: INTEGER;
+BEGIN InitControl(w); T.Size(tW, tH);
   w.cur := NIL;
   w.x := 0; w.y := 1;
-  w.w := T.charsX; w.h := T.charsY - 2;
+  w.w := tW; w.h := tH - 2;
   w.mx := 0; w.my := 1; w.mw := w.w; w.mh := w.h;
   w.modal := FALSE; w.resizable := FALSE;
   w.closeable := TRUE; w.closeOnEsc := TRUE;
   w.bg := 7; w.minW := 10; w.minH := 3;
-  w.closeBtn := NewWinBtn(0FEX); (* Square *)
+  w.closeBtn := NewWinBtn(T.blackSquare); (* Square *)
   w.closeBtn.x := 2; w.closeBtn.w := 3;
   w.closeBtn.parent := w;
   w.closeBtn.onClick := CloseCurWindow;
@@ -2077,7 +2102,9 @@ BEGIN
 END HasModalWindow;
 
 PROCEDURE CenterWindow*(c: Window);
-BEGIN c.x := (T.charsX - c.w) DIV 2; c.y := (T.charsY - c.h - 1) DIV 2;
+VAR tW, tH: INTEGER;
+BEGIN T.Size(tW, tH);
+  c.x := (tW - c.w) DIV 2; c.y := (tH - c.h - 1) DIV 2;
   IF c.x < 0 THEN c.x := 0 END;
   IF c.y < 1 THEN c.y := 1 END
 END CenterWindow;
@@ -2091,7 +2118,7 @@ END WindowAdded;
 
 PROCEDURE WindowDraw*(c: Control; x, y: INTEGER);
 BEGIN
-  T.CharFill(c.x + 1, c.y + 1,
+  T.Fill(c.x + 1, c.y + 1,
     c.w - 2, c.h - 2, ' ', 15, c(Window).bg);
   DrawWindowBorder(c.x, c.y, c.w, c.h, 15,
     c(Window).bg, c.caption, c(Window).resizable,
@@ -2100,11 +2127,12 @@ BEGIN
 END WindowDraw;
 
 PROCEDURE WindowRefresh*(c: Control);
-BEGIN
+VAR tW, tH: INTEGER;
+BEGIN T.Size(tW, tH);
   IF c(Window).zoomBtn # NIL THEN
-    IF (c.x = 0) & (c.w = T.charsX) & (c.y = 1) & (c.h = T.charsY - 2) THEN
-      c(Window).zoomBtn.caption[0] := 012X
-    ELSE c(Window).zoomBtn.caption[0] := 018X
+    IF (c.x = 0) & (c.w = tW) & (c.y = 1) & (c.h = tH - 2) THEN
+      c(Window).zoomBtn.caption[0] := 12X
+    ELSE c(Window).zoomBtn.caption[0] := 18X
     END
   END
 END WindowRefresh;
@@ -2118,7 +2146,7 @@ PROCEDURE WindowCloseMouseDown(c: Control);
 BEGIN c.app.dragged := c(Window).closeBtn;
   c(Window).closeBtn.status := selected;
   c.app.dragX := c.x + 2; c.app.dragY := c.y;
-  T.PutChar(c.x + 3, c.y, 0FX, 10, c(Window).bg) (* star *)
+  T.SetCell(c.x + 3, c.y, 0FX, 10, c(Window).bg) (* star *)
 END WindowCloseMouseDown;
 
 PROCEDURE WindowZoomMouseDown(c: Control);
@@ -2126,7 +2154,7 @@ BEGIN c.app.dragged := c(Window).zoomBtn;
   c(Window).zoomBtn.status := selected;
   c(Window).zoomBtn.x := c.w - 5;
   c.app.dragX := c.x + c.w - 5; c.app.dragY := c.y;
-  T.PutChar(c.x + c.w - 4, c.y, 0FX, 10, c(Window).bg) (* star *)
+  T.SetCell(c.x + c.w - 4, c.y, 0FX, 10, c(Window).bg) (* star *)
 END WindowZoomMouseDown;
 
 PROCEDURE WindowMoveStart(c: Control; x: INTEGER);
@@ -2155,7 +2183,7 @@ END BringToFront;
 PROCEDURE WindowMouseDown*(c: Control; x, y, button: INTEGER);
 VAR p, br: Control;
 BEGIN
-  IF button # G.btnRight THEN
+  IF button # 2 THEN
     SetFocus(c);
     IF c.app.windows # c THEN BringToFront(c)
     ELSIF y = 0 THEN
@@ -2184,8 +2212,9 @@ BEGIN
   IF c.status # normal THEN c.status := normal; NeedRedraw(c.app) END
 END WindowMouseUp;
 
-PROCEDURE WindowMouseMove*(c: Control; x, y: INTEGER; buttons: SET);
-BEGIN
+PROCEDURE WindowMouseMove*(c: Control; x, y: INTEGER; button: INTEGER);
+VAR tW, tH: INTEGER;
+BEGIN T.Size(tW, tH);
   IF c.status = moving THEN
     c.x := x + c(Window).mx; c.y := y + c.app.dragY;
     IF c.y < 1 THEN c.y := 1 END;
@@ -2194,10 +2223,10 @@ BEGIN
   ELSIF c.status = resizing THEN
     c.w := x + c(Window).mx; c.h := y + 1;
     IF c.w < c(Window).minW THEN c.w := c(Window).minW
-    ELSIF c.w > T.charsX THEN c.w := T.charsX
+    ELSIF c.w > tW THEN c.w := tW
     END;
     IF c.h < c(Window).minH THEN c.h := c(Window).minH
-    ELSIF c.h > T.charsY - 2 THEN c.h := T.charsY - 2
+    ELSIF c.h > tH - 2 THEN c.h := tH - 2
     END;
     IF c.do.refresh # NIL THEN c.do.refresh(c) END;
     NeedRedraw(c.app)
@@ -2210,17 +2239,18 @@ BEGIN p := c.children;
   IF p # NIL THEN br := p;
     REPEAT p := p.next UNTIL (p = br) OR p.default;
     IF ~p.default THEN p := NIL END
-  END ;
+  END
 RETURN p END FindDefaultControl;
 
-PROCEDURE WindowKeyDown*(c: Control; key: G.Key);
+PROCEDURE WindowKeyDown*(c: Control; VAR E: T.Event);
 VAR d: Control;
 BEGIN
-  CASE key.code OF
-    G.kEsc: IF c(Window).closeOnEsc THEN CloseCurWindow(c) END
-  | G.kEnter: d := FindDefaultControl(c);
+  IF E.key = T.kEsc THEN
+    IF c(Window).closeOnEsc THEN CloseCurWindow(c) END
+  ELSIF E.key = T.kEnter THEN
+    d := FindDefaultControl(c);
     IF (d # NIL) & (d.do.click # NIL) THEN d.do.click(d) END
-  ELSE END
+  END
 END WindowKeyDown;
 
 PROCEDURE WindowGetFocus*(c: Control);
@@ -2252,7 +2282,9 @@ BEGIN app.windows := NIL;
   app.cur := NIL;
   app.lastMouseDownTime := 0;
   app.quit := FALSE;
-  app.needRedraw := TRUE
+  app.needRedraw := TRUE;
+  app.sync := TRUE;
+  app.mouseBtn := 0
 END InitApp;
 
 PROCEDURE NewApp*(): App;
@@ -2301,16 +2333,16 @@ BEGIN SetApp(m, app); Add(app.menu, m); RefreshAppMenu(app.menu)
 END AddMenu;
 
 PROCEDURE SetStatusText*(app: App; text: ARRAY OF CHAR);
-BEGIN app.statusText := text$
+BEGIN Strings.Extract(text, 0, LEN(app.statusText), app.statusText)
 END SetStatusText;
 
-PROCEDURE CheckMenuOpenKey(app: App; key: G.Key): BOOLEAN;
+PROCEDURE CheckMenuOpenKey(app: App; VAR E: T.Event): BOOLEAN;
 VAR p, q, br: Control; found: BOOLEAN;
 BEGIN found := FALSE;
-  IF (ORD('a') <= key.sym) & (key.sym <= ORD('z')) & ~HasModalWindow(app) THEN
+  IF ~HasModalWindow(app) THEN
     p := app.menu.children.prev; br := p;
-    REPEAT p := p.next; found := MenuHotkey(p(Menu), CHR(key.sym))
-    UNTIL found OR (p = br); (* !FIXME use loop pattern *)
+    REPEAT p := p.next; found := MenuHotkey(p(Menu), E.ch)
+    UNTIL found OR (p = br);
     IF found THEN UnsetFocus(app); p.do.click(p) END
   END;
   RETURN found
@@ -2330,15 +2362,15 @@ BEGIN
   RETURN c
 END FindMenuWithHotkey;
 
-PROCEDURE CheckHotkey(app: App; key: G.Key): BOOLEAN;
+PROCEDURE CheckHotkey(app: App; VAR E: T.Event): BOOLEAN;
 VAR m: Menu;
   hotkey: INTEGER;
   handled: BOOLEAN;
-BEGIN handled := FALSE; hotkey := key.code;
+BEGIN handled := FALSE; hotkey := E.key;
   IF (hotkey # 0) & ~HasModalWindow(app) THEN
-    IF key.mod * G.mCtrl  # {} THEN INC(hotkey, 100H) END;
-    IF key.mod * G.mAlt   # {} THEN INC(hotkey, 200H) END;
-    IF key.mod * G.mShift # {} THEN INC(hotkey, 400H) END;
+    IF T.mCtrl IN E.mod THEN INC(hotkey, 100H) END;
+    IF E.mod * {T.mMenu, T.mAlt, T.mAltGr} # {} THEN INC(hotkey, 200H) END;
+    IF T.mShift IN E.mod THEN INC(hotkey, 400H) END;
     m := FindMenuWithHotkey(app.menu, hotkey);
     IF m # NIL THEN handled := TRUE;
       IF m.do.click # NIL THEN m.do.click(m) END
@@ -2351,7 +2383,7 @@ PROCEDURE FindNextTabControl(p: Control; back: BOOLEAN): Control;
 VAR br, next: Control;
   t, nextT: INTEGER;
 BEGIN t := p.tabIndex; next := NIL;
-  IF back THEN nextT := MIN(INTEGER) ELSE nextT := MAX(INTEGER) END;
+  IF back THEN nextT := minInt ELSE nextT := maxInt END;
   br := p; p := p.next;
   WHILE p # br DO
     IF ~back & (p.tabIndex >= t) & (p.tabIndex < nextT) OR
@@ -2362,19 +2394,19 @@ BEGIN t := p.tabIndex; next := NIL;
   END;
   IF next = NIL THEN
     IF back THEN
-      nextT := MIN(INTEGER);
+      nextT := minInt;
       REPEAT
         IF p.tabIndex > nextT THEN next := p; nextT := p.tabIndex END;
         p := p.next
       UNTIL p = br
     ELSE
-      nextT := MAX(INTEGER);
+      nextT := maxInt;
       REPEAT
         IF p.tabIndex < nextT THEN next := p; nextT := p.tabIndex END;
         p := p.next
       UNTIL p = br
     END
-  END ;
+  END
 RETURN next END FindNextTabControl;
 
 PROCEDURE OnTabPress(app: App; back: BOOLEAN): BOOLEAN;
@@ -2386,41 +2418,32 @@ BEGIN worked := FALSE; p := app.cur;
       SetAppFocus(app, p);
       worked := TRUE
     END
-  END ;
+  END
 RETURN worked END OnTabPress;
 
-PROCEDURE OnKeyDown(app: App; key: G.Key);
+PROCEDURE OnKey(app: App; VAR E: T.Event);
 VAR handled: BOOLEAN; p: Control;
 BEGIN handled := FALSE; p := app.cur;
-  IF (key.mod * (G.mCtrl + G.mAlt + G.mShift) # {}) OR
-     (G.kF1 <= key.code) & (key.code <= G.kF12) OR
-     (key.code = G.kPause) THEN
-    handled := CheckHotkey(app, key);
-    IF ~handled & (key.mod * G.mAlt # {}) THEN
-      handled := CheckMenuOpenKey(app, key)
+  IF (E.mod * {T.mCtrl, T.mShift, T.mAlt, T.mAltGr, T.mMenu} # {}) OR
+     (T.kF1 <= E.key) & (E.key <= T.kF12) OR (E.key = T.kPause)
+  THEN handled := CheckHotkey(app, E);
+    IF ~handled & (E.mod * {T.mAlt, T.mAltGr, T.mMenu} # {}) THEN
+      handled := CheckMenuOpenKey(app, E)
     END
   END;
-  IF ~handled THEN
-    IF (key.code = G.kEnter) & (key.mod * G.mAlt # {}) THEN
-      T.ToggleFullscreen
-    ELSIF p # NIL THEN
-      IF (key.code # G.kTab) OR ~OnTabPress(app, key.mod * G.mShift # {}) THEN
-        IF p.do.keyDown # NIL THEN p.do.keyDown(p, key) END;
-        IF (p.parent # NIL) & (p.parent IS Window) &
-           (p.parent.do.keyDown # NIL) THEN
-          p.parent.do.keyDown(p.parent, key)
-        END
-      END
+  IF ~handled & (p # NIL) &
+     ((E.key # T.kTab) OR ~OnTabPress(app, T.mShift IN E.mod))
+  THEN
+    IF p.do.keyDown # NIL THEN p.do.keyDown(p, E) END;
+    IF (p.parent # NIL) & (p.parent IS Window) &
+       (p.parent.do.keyDown # NIL) THEN
+      p.parent.do.keyDown(p.parent, E)
     END
+  END;
+  IF ~handled & (p # NIL) & (E.ch >= 20X) & (E.ch # 07FX) THEN
+    IF p.do.textInput # NIL THEN p.do.textInput(p, E.ch) END
   END
-END OnKeyDown;
-
-PROCEDURE OnTextInput(app: App; ch: CHAR);
-BEGIN
-  IF (app.cur # NIL) & (app.cur.do.textInput # NIL) THEN
-    app.cur.do.textInput(app.cur, ch)
-  END
-END OnTextInput;
+END OnKey;
 
 PROCEDURE GetWindowAt(app: App; x, y: INTEGER): Control;
 VAR p, br: Control;
@@ -2448,72 +2471,67 @@ BEGIN c := GetMenuAt(app, x, y);
   RETURN c
 END GetControlAt;
 
-PROCEDURE OnMouseMove(app: App; VAR event: G.Event);
-VAR x, y: INTEGER;
-  c: Control;
-BEGIN x := event.x DIV T.charW; y := event.y DIV T.charH;
-  IF (x # T.mouseX) OR (y # T.mouseY) THEN
-    T.MouseXY(x, y);
-    IF event.buttons # {} THEN
-      c := app.dragged;
-      IF (c # NIL) & (c.do.mouseMove # NIL) THEN
-        c.do.mouseMove(c, x - app.dragX, y - app.dragY, event.buttons)
+PROCEDURE OnMouse(app: App; VAR E: T.Event);
+VAR c: Control;
+  btn: INTEGER;
+BEGIN
+  IF E.button = 0 THEN (* Release mouse *)
+    btn := app.mouseBtn; app.mouseBtn := 0;
+    IF app.dragged # NIL THEN c := app.dragged
+    ELSE c := GetControlAt(app, E.x, E.y);
+      IF HasModalWindow(app) & (c # app.windows) THEN c := NIL END
+    END;
+    app.dragged := NIL;
+    IF (c # NIL) & (c.do.mouseUp # NIL) THEN
+      c.do.mouseUp(c, E.x - app.dragX, E.y - app.dragY, btn)
+    END
+  ELSIF app.mouseBtn = 0 THEN (* Mouse down event *)
+    app.mouseBtn := E.button;
+    IF app.dragged = NIL THEN
+      c := GetControlAt(app, E.x, E.y);
+      IF c = NIL THEN UnsetFocus(app)
+      ELSIF (c.do.mouseDown # NIL) &
+            (~HasModalWindow(app) OR (c = app.windows)) THEN
+        SetDragged(app, c);
+        c.do.mouseDown(c, E.x - c.x, E.y - c.y, E.button)
       END
     END
-  END
-END OnMouseMove;
-
-PROCEDURE OnMouseDown(app: App; VAR event: G.Event);
-VAR x, y: INTEGER;
-  c: Control;
-BEGIN
-  IF app.dragged = NIL THEN
-    x := event.x DIV T.charW; y := event.y DIV T.charH;
-    c := GetControlAt(app, x, y);
-    IF c = NIL THEN UnsetFocus(app)
-    ELSIF (c.do.mouseDown # NIL) &
-          (~HasModalWindow(app) OR (c = app.windows)) THEN
-      SetDragged(app, c);
-      c.do.mouseDown(c, x - c.x, y - c.y, event.button)
+  ELSE (* Drag *)
+    c := app.dragged;
+    IF (c # NIL) & (c.do.mouseMove # NIL) THEN
+      c.do.mouseMove(c, E.x - app.dragX, E.y - app.dragY, E.button)
     END
   END
-END OnMouseDown;
+END OnMouse;
 
-PROCEDURE OnMouseUp(app: App; VAR event: G.Event);
-VAR x, y: INTEGER;
-  c: Control;
-BEGIN x := event.x DIV T.charW; y := event.y DIV T.charH;
-  IF app.dragged # NIL THEN c := app.dragged
-  ELSE c := GetControlAt(app, x, y);
-    IF HasModalWindow(app) & (c # app.windows) THEN c := NIL END
-  END;
-  app.dragged := NIL;
-  IF (c # NIL) & (c.do.mouseUp # NIL) THEN
-    c.do.mouseUp(c, x - app.dragX, y - app.dragY, event.button)
-  END
-END OnMouseUp;
+PROCEDURE OnResize(app: App; E: T.Event);
+BEGIN
+  app.needRedraw := TRUE
+END OnResize;
 
 PROCEDURE RunApp*(app: App);
-VAR event: G.Event;
+VAR E: T.Event;
+  break: BOOLEAN;
 BEGIN
+  ticks := 0;
+  T.StartTimer(1/4);
   app.quit := FALSE;
-  DrawApp(app);
+  DrawApp(app); T.Flush;
   REPEAT
-    G.WaitEvents(50);
-    WHILE G.PollEvent(event) DO
-      CASE event.type OF
-        G.mouseMove: OnMouseMove(app, event)
-      | G.mouseDown: OnMouseDown(app, event)
-      | G.mouseUp: OnMouseUp(app, event)
-      | G.keyDown: OnKeyDown(app, event.key)
-      | G.textInput: OnTextInput(app, event.ch)
-      | G.quit: app.quit := TRUE
-      ELSE
+    break := FALSE;
+    REPEAT
+      T.WaitEvent(E);
+      IF E.type = T.mouse THEN OnMouse(app, E)
+      ELSIF E.type = T.timer THEN INC(ticks); break := TRUE
+      ELSIF E.type = T.key THEN OnKey(app, E)
+      ELSIF E.type = T.resize THEN OnResize(app, E)
+      ELSIF E.type = T.quit THEN app.quit := TRUE
       END
-    END;
-    T.Act;
-    IF app.needRedraw THEN DrawApp(app) END;
-    IF T.Draw() THEN G.Flip ELSE G.RepeatFlip END
+    UNTIL break OR ~T.HasEvents();
+    IF app.needRedraw THEN
+      DrawApp(app);
+      IF app.sync THEN T.Sync; app.sync := FALSE ELSE T.Flush END
+    END
   UNTIL app.quit
 END RunApp;
 

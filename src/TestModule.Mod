@@ -1,2 +1,20 @@
 MODULE TestModule;
+TYPE R = RECORD END;
+
+PROCEDURE Q(r: R);
+BEGIN
+
+END Q;
+
+PROCEDURE P(r: R);
+BEGIN
+  Q(r)
+END P;
+
+PROCEDURE Do;
+VAR x: R;
+BEGIN
+  P(x)
+END Do;
+
 END TestModule.

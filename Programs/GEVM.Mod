@@ -25,8 +25,8 @@ A2 - если значение по адресу, данному в первом
 6 апреля 2019 г. Рига. *)
 
 MODULE GEVM;
-IMPORT Files, G := Graph, Out;
-CONST 
+IMPORT Files, G := Graph2, Out;
+CONST
   w = 8; (* Ячеек ОЗУ в строке *)
   h = 5; (* Ячеек ОЗУ в столбце *)
   cw = 60; (* Ширина ячейки в пикселях *)
@@ -48,6 +48,7 @@ VAR F: Files.File;
   r: Files.Rider;
   s: G.Bitmap;
   font: G.Font;
+  charW, charH: INTEGER;
 
   mem: ARRAY 256 OF CHAR; (* ОЗУ *)
   base10: ARRAY 256 OF BOOLEAN; (* Основание системы счисления = 10 *)
@@ -64,12 +65,8 @@ VAR F: Files.File;
   cy: INTEGER; (* Отступ сверху в пикселях *)
 
   (* Цвета *)
-  black: INTEGER;
-  white: INTEGER;
-  grey: INTEGER;
-  green, dkgreen, ltgreen: INTEGER;
-  red, dkred, ltred: INTEGER;
-  yellow: INTEGER;
+  black, white, grey, green, dkgreen: G.Color;
+  ltgreen, red, dkred, ltred, yellow: G.Color;
 
 PROCEDURE ResetMem;
 VAR i: INTEGER;
@@ -93,26 +90,27 @@ VAR i: INTEGER;
   ok: BOOLEAN;
 BEGIN
   ok := TRUE;
-  font := G.LoadFont("data/images/font.bmp");
+  font := G.LoadFont("../Data/Fonts/Main");
   IF font = NIL THEN
     Out.String("Could not load font."); Out.Ln;
     ok := FALSE
   END;
 
   IF ok THEN
+    G.GetMonoFontSize(font, charW, charH);
     cx := (s.w - (cw + intX) * w - intX) DIV 2;
     cy := (s.h - (ch + intY) * h) DIV 2;
 
-    black   := G.MakeCol(  0,   0,   0);
-    white   := G.MakeCol(255, 255, 255);
-    grey    := G.MakeCol(120, 120, 120);
-    red     := G.MakeCol(230,   0,   0);
-    dkred   := G.MakeCol(100,   0,   0);
-    ltred   := G.MakeCol(255,  90,  90);
-    green   := G.MakeCol(  0, 230,   0);
-    dkgreen := G.MakeCol(  0, 100,   0);
-    ltgreen := G.MakeCol( 90, 255,  90);
-    yellow  := G.MakeCol(255, 255,  90);
+    G.MakeCol(black,  0,   0,   0);
+    G.MakeCol(white  , 255, 255, 255);
+    G.MakeCol(grey   , 120, 120, 120);
+    G.MakeCol(red    , 230,   0,   0);
+    G.MakeCol(dkred  , 100,   0,   0);
+    G.MakeCol(ltred  , 255,  90,  90);
+    G.MakeCol(green  ,   0, 230,   0);
+    G.MakeCol(dkgreen,   0, 100,   0);
+    G.MakeCol(ltgreen,  90, 255,  90);
+    G.MakeCol(yellow , 255, 255,  90);
 
     ResetMem;
     ResetBase
@@ -148,24 +146,24 @@ END NumToStr;
 PROCEDURE DrawReg(v: INTEGER; b10: BOOLEAN; x0, y0, x1, y1, type: INTEGER;
     shine: BOOLEAN);
 VAR str: ARRAY 16 OF CHAR;
-  c1, c2, c3: INTEGER;
+  c1, c2, c3: G.Color;
 BEGIN
   IF type = 0 THEN c1 := green; c2 := dkgreen; c3 := ltgreen
   ELSE c1 := red; c2 := dkred; c3 := ltred
   END;
-  G.RectFill(s, x0, y0, x1, y1, c3);
-  G.HLine(s, x0, y0, x1, c1);
-  G.VLine(s, x0, y0, y1, c1);
-  G.HLine(s, x0, y1, x1, c2);
-  G.VLine(s, x1, y0, y1, c2);
+  G.FillRect(x0, y0, x1, y1, c3);
+  G.HLine(x0, y0, x1, c1);
+  G.VLine(x0, y0, y1, c1);
+  G.HLine(x0, y1, x1, c2);
+  G.VLine(x1, y0, y1, c2);
   (* Внутри *)
   NumToStr(v, b10, str);
-  G.DrawString(s, font, x0 + (cw - font.charW * 2) DIV 2,
-    y0 + (ch - font.charH) DIV 2, str, black);
+  G.DrawString(str, x0 + (cw - charW * 2) DIV 2,
+    y0 + (ch - charH) DIV 2, font, black);
   (* Курсор *)
   IF shine THEN
-    G.Rect(s, x0 - 1, y0 - 1, x1 + 1, y1 + 1, yellow);
-    G.Rect(s, x0 - 3, y0 - 3, x1 + 3, y1 + 3, yellow)
+    G.Rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1, yellow);
+    G.Rect(x0 - 3, y0 - 3, x1 + 3, y1 + 3, yellow)
   END
 END DrawReg;
 
@@ -173,16 +171,17 @@ END DrawReg;
    type = 0 или 1, это тип (цвет) кнопки *)
 PROCEDURE DrawCell(n, x0, y0, x1, y1, type: INTEGER);
 VAR str: ARRAY 16 OF CHAR;
-  x, y, c: INTEGER;
+  x, y: INTEGER;
+  c: G.Color;
 BEGIN
   (* Подсветка изменений *)
   IF n = ORD(pc) THEN
-    G.RectFill(s, x0 - 3, y0 - 3, x1 + 3, y1 + font.charH + 3, grey);
-    G.Rect(s, x0 - 3, y0 - 3, x1 + 3, y1 + font.charH + 3, white);
-    G.Rect(s, x0 - 4, y0 - 4, x1 + 4, y1 + font.charH + 4, ltred);
-    G.Rect(s, x0 - 5, y0 - 5, x1 + 5, y1 + font.charH + 5, red)
+    G.FillRect(x0 - 3, y0 - 3, x1 + 3, y1 + charH + 3, grey);
+    G.Rect(x0 - 3, y0 - 3, x1 + 3, y1 + charH + 3, white);
+    G.Rect(x0 - 4, y0 - 4, x1 + 4, y1 + charH + 4, ltred);
+    G.Rect(x0 - 5, y0 - 5, x1 + 5, y1 + charH + 5, red)
   END;
-  
+
   DrawReg(ORD(mem[n]), base10[n], x0, y0, x1, y1, type, (cur = n) & ~curPC);
   (* Подпись внизу *)
   NumToStr(n, addr10, str);
@@ -190,10 +189,10 @@ BEGIN
   ELSIF addr10 THEN c := ltred
   ELSE c := ltgreen
   END;
-  x := x0 + (cw - font.charW * 2) DIV 2; y := y1 + 3;
-  G.DrawString(s, font, x, y, str, c);
+  x := x0 + (cw - charW * 2) DIV 2; y := y1 + 3;
+  G.DrawString(str, x, y, font, c);
   IF mark[n] THEN
-    G.HLine(s, x - 1, y + font.charH - 2, x + font.charW * 2 - 1, yellow)
+    G.HLine(x - 1, y + charH - 2, x + charW * 2 - 1, yellow)
   END
 END DrawCell;
 
@@ -216,16 +215,17 @@ END DrawMem;
 
 (* Рисует регистр "программный счётчик" *)
 PROCEDURE DrawPC;
-VAR x, y, type, c: INTEGER;
+VAR x, y, type: INTEGER;
   str: ARRAY 8 OF CHAR;
+  c: G.Color;
 BEGIN
   IF addr10 THEN type := 1; c := ltred ELSE type := 0; c := ltgreen END;
   x := cx + (w - 1) * (cw + intX);
   y := cy - ch - 20;
   str := "Pr. sc."; str[0] := 8FX; str[1] := 0E0X;
   str[4] := 0E1X; str[5] := 0E7X;
-  G.DrawString(s, font, x - 8 * font.charW,
-    y + (ch - font.charH) DIV 2, str, c);
+  G.DrawString(str, x - 8 * charW,
+    y + (ch - charH) DIV 2, font, c);
   DrawReg(ORD(pc), addr10, x, y, x + cw - 1, y + ch - 1, type, curPC)
 END DrawPC;
 
@@ -320,7 +320,7 @@ VAR z: ARRAY 5 OF CHAR;
 BEGIN
   IF off THEN
     z[0] := 82X; z[1] := 9BX; z[2] := 08AX; z[3] := 08BX; z[4] := 0X;
-    G.DrawString(s, font, cx, cy - font.charH - intY, z, yellow)
+    G.DrawString(z, cx, cy - charH - intY, font, yellow)
   END
 END DrawMsg;
 

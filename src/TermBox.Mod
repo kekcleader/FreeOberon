@@ -1,12 +1,13 @@
 MODULE TermBox;
-IMPORT G := Graph2, Strings, Int, Out;
+IMPORT G := Graph2, Strings, Int, Out, Platform, Kernel;
 
 CONST
   partW = 512;
   partH = 256;
   emptyCh = ' ';
   nofcolors = 16;
-  cursorTickSpeed = 1.0;
+  cursorTickSpeed = 1 / 2;
+  flipSpeed = 1 / 60;
   stdW = 80;
   stdH = 25;
 
@@ -153,23 +154,85 @@ CONST
   kMax*        = 226;
 
   (* Modifiers Set *)
-  mLShift*   = 0;
-  mRShift*   = 1;
-  mLCtrl*    = 6;
-  mRCtrl*    = 7;
-  mLAlt*     = 8;
-  mRAlt*     = 9;
-  mLMeta*    = 10;
-  mRMeta*    = 11;
-  mNumLock*  = 12;
-  mCapsLock* = 13;
-  mMenu*     = 14;
-  mCommand*  = 29;
-  mScrLock*  = 30;
-  mCtrl*  = {mLCtrl, mRCtrl};
-  mShift* = {mLShift, mRShift};
-  mAlt*   = {mLAlt, mRAlt};
-  mMeta*   = {mLMeta, mRMeta};
+  mShift*      = 0;
+  mCtrl*       = 1;
+  mAlt*        = 2;
+  mLwin*       = 3;
+  mRwin*       = 4;
+  mMenu*       = 5;
+  mAltGr*      = 6;
+  mCommand*    = 7;
+  mScrolllock* = 8;
+  mNumlock*    = 9;
+  mCapslock*   = 10;
+
+  (* Characters *)
+  lineHor*         = 2500X;
+  lineVert*        = 2502X;
+
+  lineUpRight*     = 2514X;
+  lineUpLeft*      = 2518X;
+  lineDownLeft*    = 2510X;
+  lineDownRight*   = 250CX;
+
+  lineVertRight*   = 251CX;
+  lineVertLeft*    = 2524X;
+  lineHorUp*       = 2534X;
+  lineHorDown*     = 252CX;
+  lineCross*       = 253CX;
+
+  doubleHor*       = 2550X;
+  doubleVert*      = 2551X;
+
+  doubleUpRight*   = 255AX;
+  doubleUpLeft*    = 255DX;
+  doubleDownLeft*  = 2557X;
+  doubleDownRight* = 2554X;
+
+  doubleVertRight* = 2560X;
+  doubleVertLeft*  = 2563X;
+  doubleHorUp*     = 2569X;
+  doubleHorDown*   = 2566X;
+  doubleCross*     = 256CX;
+
+  doubleUpLineRight*   = 2559X;
+  doubleUpLineLeft*    = 255CX;
+  doubleDownLineRight* = 2553X;
+  doubleDownLineLeft*  = 2556X;
+  doubleLeftLineUp*    = 255BX;
+  doubleLeftLineDown*  = 2555X;
+  doubleRightLineUp*   = 2558X;
+  doubleRightLineDown* = 2552X;
+
+  doubleVertLineLeft*  = 2562X;
+  doubleVertLineRight* = 255FX;
+  doubleVertLineHor*   = 256BX;
+  doubleHorLineUp*     = 2567X;
+  doubleHorLineDown*   = 2564X;
+  doubleHorLineVert*   = 256AX;
+
+  lightShade*      = 2591X;
+  mediumShade*     = 2592X;
+  darkShade*       = 2593X;
+
+  triangleUp*    = 1EX (*25B2X*);
+  triangleDown*  = 1FX (*25BCX*);
+  triangleRight* = 10X (*25BAX*);
+  triangleLeft*  = 11X (*25C4X*);
+
+  arrowUp*        = 18X (*2191X*);
+  arrowDown*      = 19X (*2193X*);
+  arrowRight*     = 1AX (*2192X*);
+  arrowLeft*      = 1BX (*2190X*);
+  arrowLeftRight* = 1DX (*2194X*);
+  arrowUpDown*    = 12X (*2195X*);
+
+  blackSquare*    = 25A0X;
+  upperHalfBlock* = 2580X;
+  lowerHalfBlock* = 2584X;
+  fullBlock*      = 2588X;
+  leftHalfBlock*  = 258CX;
+  rightHalfBlock* = 2590X;
 
 TYPE
   Event* = RECORD
@@ -182,15 +245,16 @@ TYPE
     mod*: SET         (* Key modifiers *)
   END;
 
-  Cell* = RECORD
-    ch*: CHAR;
-    fg*, bg*: INTEGER
+  Cell = RECORD
+    ch, oldCh: CHAR;
+    fg, oldFg: INTEGER;
+    bg, oldBg: INTEGER;
+    updated: INTEGER (* > 0 means need to redraw, 2 means redraw in any case *)
   END;
 
   Part* = POINTER TO PartDesc; (* Part of screen buffer *)
   PartDesc* = RECORD
     cells: ARRAY partH, partW OF Cell;
-    updated: ARRAY partH, partW OF BOOLEAN; (* TRUE means need to redraw *)
     w, h: INTEGER; (* Actually used sizes of array *)
     redraw: BOOLEAN; (* TRUE if any cell needs to be redrawn *)
     down, right: Part
@@ -203,68 +267,75 @@ TYPE
   END;
 
 VAR
+  t0, t1: REAL;
+
   wantTitle: ARRAY 256 OF CHAR; (* Assigned in procedure SetTitle *)
   wantZoom: REAL;
   wantW, wantH: INTEGER;
   wantScaleX, wantScaleY: REAL;
   settings: SET;
   buffer: Buffer;
+  iconFile, fontFile: ARRAY 256 OF CHAR;
 
   processingEvent: BOOLEAN;
+  skipEnter: BOOLEAN; (* If TRUE, skip the G.char event with key = enter *)
   mouseDown: BOOLEAN;
+  mouseShown: BOOLEAN;
   mouseX, mouseY, mouseButton: INTEGER;
   curX, curY: INTEGER; (* Text cursor position *)
   cursorShown: BOOLEAN; (* TRUE if text cursor is show while it is blinking *)
   cursorTimer: G.Timer; (* Text cursor tick timer *)
+  flipTimer: G.Timer; (* Frame change timer *)
   userTimer: G.Timer; (* User timer set by StartTimer *)
 
-  needFlip: BOOLEAN;
+  needFlip: INTEGER;
   screen: G.Window;
   font: G.MonoFont;
   colors: ARRAY nofcolors OF G.Color;
 
   Done*: BOOLEAN;
 
+PROCEDURE SetPartCellUpdated(p: Part; VAR cell: Cell);
+BEGIN
+  IF cell.updated # 2 THEN
+    IF (cell.ch # cell.oldCh) OR
+       (cell.fg # cell.oldFg) OR
+       (cell.bg # cell.oldBg)
+    THEN cell.updated := 1; p.redraw := TRUE
+    ELSE cell.updated := 0
+    END
+  END
+END SetPartCellUpdated;
+
+PROCEDURE ClearUpdated(VAR cell: Cell);
+BEGIN cell.updated := 0; cell.oldCh := cell.ch;
+  cell.oldFg := cell.fg; cell.oldBg := cell.bg
+END ClearUpdated;
+
 PROCEDURE SetPartCell(p: Part; x, y: INTEGER; ch: CHAR; fg, bg: INTEGER);
 BEGIN
-  fg := fg MOD nofcolors; bg := bg MOD nofcolors;
-  IF (p.cells[y, x].ch # ch) OR
-     (p.cells[y, x].fg # fg) OR
-     (p.cells[y, x].bg # bg)
-  THEN
-    p.cells[y, x].ch := ch;
-    p.cells[y, x].fg := fg;
-    p.cells[y, x].bg := bg;
-    p.updated[y, x] := TRUE;
-    p.redraw := TRUE
-  END
+  p.cells[y, x].ch := ch;
+  p.cells[y, x].fg := fg MOD nofcolors;
+  p.cells[y, x].bg := bg MOD nofcolors;
+  SetPartCellUpdated(p, p.cells[y, x])
 END SetPartCell;
 
 PROCEDURE SetPartChar(p: Part; x, y: INTEGER; ch: CHAR);
 BEGIN
-  IF p.cells[y, x].ch # ch THEN
-    p.cells[y, x].ch := ch;
-    p.updated[y, x] := TRUE;
-    p.redraw := TRUE
-  END
+  p.cells[y, x].ch := ch;
+  SetPartCellUpdated(p, p.cells[y, x])
 END SetPartChar;
 
 PROCEDURE SetPartFg(p: Part; x, y, fg: INTEGER);
 BEGIN
-  fg := fg MOD nofcolors;
-  IF p.cells[y, x].fg # fg THEN
-    p.cells[y, x].fg := fg;
-    p.redraw := TRUE
-  END
+  p.cells[y, x].fg := fg MOD nofcolors;
+  SetPartCellUpdated(p, p.cells[y, x])
 END SetPartFg;
 
 PROCEDURE SetPartBg(p: Part; x, y, bg: INTEGER);
 BEGIN
-  bg := bg MOD nofcolors;
-  IF p.cells[y, x].bg # bg THEN
-    p.cells[y, x].bg := bg;
-    p.redraw := TRUE
-  END
+  p.cells[y, x].bg := bg MOD nofcolors;
+  SetPartCellUpdated(p, p.cells[y, x])
 END SetPartBg;
 
 PROCEDURE GetPart(S: Buffer; VAR x, y: INTEGER): Part;
@@ -294,7 +365,7 @@ BEGIN l := buffer.first;
   END
 END ClearTo;
 
-PROCEDURE Clear;
+PROCEDURE Clear*;
 BEGIN ClearTo(7, 0)
 END Clear;
 
@@ -305,10 +376,11 @@ RETURN color END InvertColor;
 PROCEDURE DrawCell(x, y: INTEGER; cell: Cell);
 VAR X, Y, w, h, fg, bg: INTEGER;
 BEGIN
-  IF (x # mouseX) OR (y # mouseY) THEN fg := cell.fg; bg := cell.bg
+  IF ~mouseShown OR (x # mouseX) OR (y # mouseY) THEN
+    fg := cell.fg; bg := cell.bg
   ELSE fg := InvertColor(cell.fg); bg := InvertColor(cell.bg)
   END;
-  G.GetMonoFontSize(font, w, h); X := x * w; Y := y * h;
+  w := font.charW; h := font.charH; X := x * w; Y := y * h;
   G.FillRect(X, Y, X + w - 1, Y + h - 1, colors[bg MOD nofcolors]);
   G.DrawChar(cell.ch, X, Y, font, colors[fg MOD nofcolors]);
   IF cursorShown & (x = curX) & (y = curY) THEN
@@ -317,9 +389,8 @@ BEGIN
 END DrawCell;
 
 PROCEDURE GetMousePos(e: G.Event; VAR x, y: INTEGER);
-VAR fw, fh: INTEGER;
-BEGIN G.GetMonoFontSize(font, fw, fh);
-  x := e.x DIV fw; y := e.y DIV fh;
+BEGIN
+  x := e.x DIV font.charW; y := e.y DIV font.charH;
   IF x < 0 THEN x := 0 ELSIF x >= buffer.w THEN x := buffer.w - 1 END;
   IF y < 0 THEN y := 0 ELSIF y >= buffer.h THEN y := buffer.h - 1 END
 END GetMousePos;
@@ -327,12 +398,14 @@ END GetMousePos;
 PROCEDURE UpdateCell(x, y: INTEGER);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
-  IF p # NIL THEN p.updated[y, x] := TRUE; p.redraw := TRUE END
+  IF p # NIL THEN p.cells[y, x].updated := 2; p.redraw := TRUE END
 END UpdateCell;
 
-PROCEDURE Flip;
+PROCEDURE Flip(forse: BOOLEAN);
 BEGIN
-  IF ~G.HasEvents() THEN G.Flip; needFlip := FALSE ELSE needFlip := TRUE END
+  IF ~G.HasEvents() OR forse THEN G.Flip; needFlip := 0
+  ELSE INC(needFlip)
+  END
 END Flip;
 
 PROCEDURE Flush*;
@@ -345,9 +418,9 @@ BEGIN
       IF p.redraw OR buffer.redrawAll THEN
         FOR y := 0 TO p.h - 1 DO
           FOR x := 0 TO p.w - 1 DO
-            IF p.updated[y, x] OR buffer.redrawAll THEN
+            IF buffer.redrawAll OR (p.cells[y, x].updated # 0) THEN
               DrawCell(X + x, Y + y, p.cells[y, x]);
-              p.updated[y, x] := FALSE
+              ClearUpdated(p.cells[y, x])
             END
           END
         END;
@@ -357,8 +430,9 @@ BEGIN
     END;
     INC(Y, l.h); l := l.down
   END;
-  buffer.redrawAll := FALSE;
-  Flip
+  IF buffer.redrawAll THEN Flip(TRUE); buffer.redrawAll := FALSE
+  ELSE Flip(FALSE)
+  END
 END Flush;
 
 PROCEDURE Sync*;
@@ -369,10 +443,9 @@ END Sync;
 
 PROCEDURE MoveMouse(x, y: INTEGER);
 BEGIN
-  UpdateCell(mouseX, mouseY);
+  IF mouseShown THEN UpdateCell(mouseX, mouseY) END;
   mouseX := x; mouseY := y;
-  UpdateCell(x, y);
-  Flush
+  IF mouseShown THEN UpdateCell(x, y); Flush END
 END MoveMouse;
 
 PROCEDURE ToggleFS;
@@ -385,8 +458,28 @@ BEGIN
   ELSE G.SetNewWindowScale(5/6, 1.0);
     G.SetWindowOption(screen, G.topleft, FALSE)
   END;
-  G.ToggleFullscreen(screen)
+  G.ToggleFS(screen);
+  Sync
 END ToggleFS;
+
+PROCEDURE IsFS*(): BOOLEAN;
+RETURN ~(G.window IN G.GetWindowOptions(screen))
+END IsFS;
+
+PROCEDURE SwitchToWindow*;
+BEGIN IF IsFS() THEN ToggleFS END
+END SwitchToWindow;
+
+PROCEDURE SwitchToFS*;
+BEGIN IF ~IsFS() THEN ToggleFS END
+END SwitchToFS;
+
+PROCEDURE ResetCell(VAR cell: Cell);
+BEGIN
+  cell.ch := emptyCh; cell.fg := 7; cell.bg := 0;
+  cell.oldCh := cell.ch; cell.oldFg := cell.fg; cell.oldBg := cell.bg;
+  cell.updated := 2
+END ResetCell;
 
 PROCEDURE NewPart(w, h: INTEGER): Part;
 VAR p: Part;
@@ -395,10 +488,7 @@ BEGIN NEW(p); p.redraw := TRUE; p.down := NIL; p.right := NIL;
   p.w := w; p.h := h;
   FOR y := 0 TO h - 1 DO
     FOR x := 0 TO w - 1 DO
-      p.cells[y, x].ch := emptyCh;
-      p.cells[y, x].fg := 7;
-      p.cells[y, x].bg := 0;
-      p.updated[y, x] := TRUE
+      ResetCell(p.cells[y, x])
     END
   END
 RETURN p END NewPart;
@@ -412,16 +502,16 @@ BEGIN p.redraw := TRUE;
       p.cells[y, x].ch := emptyCh;
       p.cells[y, x].fg := 7;
       p.cells[y, x].bg := 0;
-      p.updated[y, x] := TRUE
+      p.cells[y, x].updated := 2
     END
   END;
   p.w := w; p.h := h
 END ResizePart;
 
 PROCEDURE InitBuffer;
-VAR W, H, fw, fh: INTEGER;
-BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
-  buffer.w := W DIV fw; buffer.h := H DIV fh;
+VAR W, H: INTEGER;
+BEGIN G.GetScreenSize(W, H);
+  buffer.w := W DIV font.charW; buffer.h := H DIV font.charH;
   IF buffer.w > partW THEN buffer.w := partW END; (*!FIXME*)
   IF buffer.h > partH THEN buffer.h := partH END;
   buffer.first := NewPart(buffer.w, buffer.h);
@@ -429,9 +519,9 @@ BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
 END InitBuffer;
 
 PROCEDURE ResizeBuffer;
-VAR W, H, fw, fh, nw, nh: INTEGER;
-BEGIN G.GetScreenSize(W, H); G.GetMonoFontSize(font, fw, fh);
-  nw := W DIV fw; nh := H DIV fh;
+VAR W, H, nw, nh: INTEGER;
+BEGIN G.GetScreenSize(W, H);
+  nw := W DIV font.charW; nh := H DIV font.charH;
   IF nw > partW THEN nw := partW END; (*!FIXME*)
   IF nh > partH THEN nh := partH END;
   IF (nw # buffer.w) OR (nh # buffer.h) THEN
@@ -453,14 +543,16 @@ BEGIN
       MoveMouse(event.x, event.y)
     END
   ELSIF e.type = G.timer THEN
-    IF e.timer = cursorTimer THEN
+    IF e.timer = flipTimer THEN
       event.type := noEvent;
-      IF curX > 0 THEN
+      IF needFlip # 0 THEN G.Flip; needFlip := 0 END
+    ELSIF e.timer = cursorTimer THEN
+      event.type := noEvent;
+      IF curX >= 0 THEN
         cursorShown := ~cursorShown;
         UpdateCell(curX, curY);
         Flush
-      END;
-      IF needFlip THEN G.Flip; needFlip := FALSE END
+      END
     ELSE
       event.type := timer
     END
@@ -472,17 +564,17 @@ BEGIN
     mouseDown := FALSE; GetMousePos(e, event.x, event.y);
     MoveMouse(event.x, event.y);
     event.button := 0; (* 0 means release *)
-  ELSIF e.type = G.keyDown THEN
-    IF (e.key = G.kEnter) & (e.mod * G.mAlt # {}) THEN ToggleFS; Sync END;
-    event.type := noEvent
   ELSIF e.type = G.char THEN
-    event.type := key;
-    event.key := e.key;
-    event.ch := e.ch;
-    event.mod := e.mod;
+    IF (e.key = G.kEnter) & (e.mod * {G.mMenu, G.mAlt, G.mAltGr} # {}) THEN
+      ToggleFS; skipEnter := TRUE
+    ELSE event.type := key;
+      event.key := e.key;
+      event.ch := e.ch;
+      event.mod := e.mod
+    END
   ELSIF e.type = G.resize THEN
-    event.type := resize; G.GetMonoFontSize(font, fw, fh);
-    event.w := e.w DIV fw; event.h := e.h DIV fh;
+    event.type := resize;
+    event.w := e.w DIV font.charW; event.h := e.h DIV font.charH;
     ResizeBuffer;
     Sync
   ELSIF e.type = G.quit THEN event.type := quit
@@ -494,6 +586,7 @@ END ParseEvent;
 PROCEDURE WaitAndParseEvent(VAR event: Event);
 VAR E: G.Event;
 BEGIN
+  IF (needFlip # 0) & ~G.PeekEvent(E) THEN G.Flip; needFlip := 0 END;
   G.WaitEvent(E);
   ParseEvent(E, event)
 END WaitAndParseEvent;
@@ -538,13 +631,24 @@ BEGIN
       curX := x; curY := y;
       UpdateCell(x, y)
     ELSE curX := -1; curY := -1
-    END
+    END;
+    cursorShown := TRUE;
+    G.StopTimer(cursorTimer);
+    G.StartTimer(cursorTimer)
   END
 END SetCursor;
 
 PROCEDURE HideCursor*;
 BEGIN SetCursor(-1, -1)
 END HideCursor;
+
+PROCEDURE ShowMouse*;
+BEGIN IF ~mouseShown THEN mouseShown := TRUE; UpdateCell(mouseX, mouseY) END
+END ShowMouse;
+
+PROCEDURE HideMouse*;
+BEGIN IF mouseShown THEN mouseShown := FALSE; UpdateCell(mouseX, mouseY) END
+END HideMouse;
 
 PROCEDURE SetBg*(x, y, bg: INTEGER);
 VAR p: Part;
@@ -564,10 +668,20 @@ BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartCell(p, x, y, ch, fg, bg) END
 END SetCell;
 
-PROCEDURE Print*(x, y: INTEGER; s: ARRAY OF CHAR; fg, bg: INTEGER);
+PROCEDURE Fill*(x, y, w, h: INTEGER; ch: CHAR; fg, bg: INTEGER);
+VAR X, Y: INTEGER;
+BEGIN
+  FOR Y := y TO y + h - 1 DO
+    FOR X := x TO x + w - 1 DO
+      SetCell(X, Y, ch, fg, bg)
+    END
+  END
+END Fill;
+
+PROCEDURE Print*(x, y, limit: INTEGER; s: ARRAY OF CHAR; fg, bg: INTEGER);
 VAR i, w, h: INTEGER;
 BEGIN i := 0;
-  WHILE (s[i] # 0X) & (x < buffer.w) DO
+  WHILE (s[i] # 0X) & (i # limit) & (x < buffer.w) DO
     SetCell(x, y, s[i], fg, bg); INC(i); INC(x)
   END
 END Print;
@@ -582,11 +696,13 @@ PROCEDURE Size*(VAR width, height: INTEGER);
 BEGIN width := buffer.w; height := buffer.h
 END Size;
 
-PROCEDURE GetCell*(x, y: INTEGER; VAR cell: Cell);
+PROCEDURE GetCell*(x, y: INTEGER; VAR ch: CHAR; VAR fg, bg: INTEGER);
 VAR p: Part;
+  cell: Cell;
 BEGIN p := GetPart(buffer, x, y);
-  IF p # NIL THEN cell := p.cells[y, x]
-  ELSE cell.ch := emptyCh; cell.fg := 7; cell.bg := 0
+  IF p # NIL THEN cell := p.cells[y, x];
+    ch := cell.ch; fg := cell.fg; bg := cell.bg
+  ELSE ch := emptyCh; fg := 0; bg := 0
   END
 END GetCell;
 
@@ -600,17 +716,18 @@ BEGIN
   G.Close
 END Close;
 
-PROCEDURE LoadFont(): BOOLEAN;
+PROCEDURE PreloadFont(): BOOLEAN;
 VAR f: G.Font;
 BEGIN
-  f := G.LoadFont('Data/Fonts/Main');
+  f := G.LoadFontInfo(fontFile);
   IF f # NIL THEN 
     IF f IS G.MonoFont THEN font := f(G.MonoFont)
     ELSE Out.String('The font is not monospaced.'); Out.Ln
     END
-  ELSE Out.String('Could not load font.'); Out.Ln
+  ELSE Out.String('Could not load font "');
+    Out.String(fontFile); Out.String('".'); Out.Ln
   END
-RETURN font # NIL END LoadFont;
+RETURN font # NIL END PreloadFont;
 
 PROCEDURE ExpandColor(color: INTEGER; VAR r, g, b: INTEGER);
 BEGIN
@@ -677,30 +794,17 @@ BEGIN s := {};
   IF frameless IN settings THEN INCL(s, G.frameless) END;
 RETURN s END MakeGraphSettings;
 
-PROCEDURE SetIcons;
-VAR icons: ARRAY 5 OF G.Bitmap;
-  b: G.Bitmap;
-  n: INTEGER;
-
-  PROCEDURE Load(n: INTEGER): G.Bitmap;
-  VAR s: ARRAY 40 OF CHAR;
-  BEGIN s := 'Data/Images/TermIcon'; Int.Append(n, s);
-    Strings.Append('.png', s)
-  RETURN G.LoadBitmap(s) END Load;
-
+PROCEDURE InitIcon;
+VAR b: G.Bitmap;
 BEGIN
-  n := 0; b := Load(0);
-  WHILE (n < LEN(icons)) & (b # NIL) DO
-    icons[n] := b;
-    INC(n); b := Load(n)
-  END;
-  IF n > 0 THEN G.SetWindowIconsEx(screen, icons, 0, n) END
-END SetIcons;
+  b := G.LoadBitmap(iconFile);
+  IF b # NIL THEN G.SetWindowIcon(screen, b) END
+END InitIcon;
 
 PROCEDURE InitScreen;
-VAR W, H, dw, dh, fw, fh: INTEGER;
-BEGIN G.GetMonoFontSize(font, fw, fh); G.GetDesktopResolution(dw, dh);
-  W := wantW * fw; H := wantH * fh;
+VAR W, H, dw, dh: INTEGER;
+BEGIN G.GetDesktopResolution(dw, dh);
+  W := wantW * font.charW; H := wantH * font.charH;
 
   IF (wantScaleX # 0.0) & (wantScaleY # 0.0) THEN
     G.SetScale(wantScaleX, wantScaleY)
@@ -709,11 +813,11 @@ BEGIN G.GetMonoFontSize(font, fw, fh); G.GetDesktopResolution(dw, dh);
     G.SetScale(5/6, 1.0)
   END;
 
-  G.SetSizeStep(fw, fh);
+  G.SetSizeStep(font.charW, font.charH);
   screen := G.NewWindow(-1, -1, W, H, wantTitle, MakeGraphSettings());
   G.ShowMouse(noMouse IN settings);
   G.SetWindowFullscreenSize(screen, W, H);
-  SetIcons
+  InitIcon
 END InitScreen;
 
 PROCEDURE StartTimer*(speed: REAL);
@@ -722,12 +826,15 @@ BEGIN
   G.StartTimer(userTimer)
 END StartTimer;
 
-PROCEDURE InitTimer;
+PROCEDURE InitTimers;
 BEGIN
   cursorShown := TRUE;
   cursorTimer := G.NewTimer(cursorTickSpeed);
-  G.StartTimer(cursorTimer)
-END InitTimer;
+  G.StartTimer(cursorTimer);
+
+  flipTimer := G.NewTimer(flipSpeed);
+  G.StartTimer(flipTimer)
+END InitTimers;
 
 PROCEDURE Init*;
 VAR opt: SET;
@@ -735,15 +842,21 @@ BEGIN Done := FALSE;
   IF noMouse IN settings THEN opt := {G.noMouse} ELSE opt := {} END;
   G.Settings(-1, -1, opt + {G.manual});
   G.Init;
-  IF G.Done & LoadFont() THEN
+  IF G.Done & PreloadFont() THEN
     InitScreen;
-    InitColors;
-    InitBuffer;
-    InitTimer;
-    mouseDown := FALSE;
-    needFlip := FALSE;
-    processingEvent := FALSE;
-    Done := TRUE
+    G.LoadFontBitmap(font);
+    IF font.loaded THEN
+      InitColors;
+      InitBuffer;
+      InitTimers;
+      mouseDown := FALSE;
+      mouseShown := ~(noMouse IN settings);
+      skipEnter := FALSE;
+      needFlip := 0;
+      processingEvent := FALSE;
+      Done := TRUE
+    ELSE G.CloseWindow(screen)
+    END
   END
 END Init;
 
@@ -761,6 +874,16 @@ PROCEDURE TESTCB*(VAR s: ARRAY OF CHAR);
 BEGIN G.GetClipboardText(screen, s)
 END TESTCB;
 
+PROCEDURE SetIcon*(s: ARRAY OF CHAR);
+BEGIN iconFile := s
+END SetIcon;
+
+PROCEDURE SetFontFile*(s: ARRAY OF CHAR);
+BEGIN fontFile := s
+END SetFontFile;
+
 BEGIN wantW := stdW; wantH := stdH; wantScaleX := 0.0; wantScaleY := 0.0;
-  settings := {fullscreen}; Done := FALSE
+  settings := {fullscreen}; Done := FALSE;
+  iconFile := 'Data/Images/Icon.png';
+  fontFile := 'Data/Fonts/Main'
 END TermBox.

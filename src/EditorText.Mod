@@ -1,5 +1,5 @@
 MODULE EditorText;
-(* Copyright 2017-2021 Arthur Yefimov
+(* Copyright 2017-2022 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -436,19 +436,13 @@ RETURN success END LoadFromFile;
 PROCEDURE (t: Text) MoveToLineCol*(line, col, winH: INTEGER), NEW;
 VAR i, centerY, tx, ty: INTEGER; L: Line;
 BEGIN L := t.first; tx := 0; ty := 0; DEC(line); DEC(col);
-  WHILE (L # NIL) & (ty # line) DO L := L.next; INC(ty) END;
-  IF L # NIL THEN
-    WHILE (L.s[tx] # 0X) & (col > 0) DO
-      IF L.s[tx] < 80X THEN DEC(col) ELSE DEC(col, 2) END;
-      INC(tx)
-    END;
-    IF L.s[tx] # 0X THEN t.x := tx; t.y := ty; t.cur := L;
-      IF (ty > t.scrY + winH - 4) OR (ty < t.scrY + 1) THEN 
-        i := 5; IF i > winH DIV 2 THEN i := winH DIV 2 END;
-        WHILE (L.prev # NIL) & (i # 0) DO L := L.prev; DEC(i); DEC(ty) END;
-        t.scrFirst := L; t.scrY := ty
-      END
-    END
+  WHILE (L.next # NIL) & (ty # line) DO L := L.next; INC(ty) END;
+  WHILE (L.s[tx] # 0X) & (col > 0) DO DEC(col); INC(tx) END;
+  t.x := tx; t.y := ty; t.cur := L;
+  IF (ty >= t.scrY + winH) OR (ty < t.scrY) THEN 
+    i := winH DIV 2;
+    WHILE (L.prev # NIL) & (i # 0) DO L := L.prev; DEC(i); DEC(ty) END;
+    t.scrFirst := L; t.scrY := ty
   END
 END MoveToLineCol;
 
@@ -457,12 +451,7 @@ CONST pad = 3;
 VAR i, centerY: INTEGER; L: Line;
 BEGIN L := t.first; t.x := 0; t.y := 0;
   REPEAT
-    WHILE (L.s[t.x] # 0X) & (pos > 0) DO
-      IF (ORD(L.s[t.x]) > 127) & (pos >= 2) THEN DEC(pos, 2)
-      ELSE DEC(pos)
-      END;
-      INC(t.x)
-    END;
+    WHILE (L.s[t.x] # 0X) & (pos > 0) DO DEC(pos); INC(t.x) END;
     IF (pos >= L.lineEndLen) & (L.next # NIL) THEN
       DEC(pos, L.lineEndLen); L := L.next; INC(t.y); t.x := 0
     END

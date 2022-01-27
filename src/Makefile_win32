@@ -1,6 +1,6 @@
 PROG=FreeOberon
 OS=win32
-VOCDIR=../data/bin/voc/install
+VOCDIR=../Data/bin/voc/install
 VOC=$(VOCDIR)/bin/voc
 CC=gcc
 SDL2Opts=-w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2
@@ -61,14 +61,14 @@ resources.o: resources.rc
 clean:
 	rm -f *.c *.h *.o *.sym term/term.o .tmp..* \
 		../Programs/.tmp..* ../bin/*
-	make -C ../data/bin/voc clean
+	make -C ../Data/bin/voc clean
 
 cleanall: clean
 	rm -f ../$(PROG) ../$(PROG).exe
-	make -C ../data/bin/voc cleanall
+	make -C ../Data/bin/voc cleanall
 
 voc:
-	make -C ../data/bin/voc full
+	make -C ../Data/bin/voc full
 
 install:
 	cp Graph.sym SDL2.sym Int.sym $(VOCDIR)/C/sym

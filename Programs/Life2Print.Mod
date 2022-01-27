@@ -1,6 +1,6 @@
 MODULE Life2Print;
 (*This program saves screenshots of the Game of Life in PNG files.*)
-IMPORT G := Graph, Int, Str := Strings;
+IMPORT G := Graph, Int, Str := Strings, Random;
 CONST maxW = 60*8; maxH = 33*8;
   cellSize = 2;
   initial = 0.2;
@@ -40,7 +40,7 @@ BEGIN
   IF saved[0] = saved[1] THEN c := saved[0]
   ELSIF saved[0] = saved[2] THEN c := saved[0]
   ELSIF saved[1] = saved[2] THEN c := saved[1]
-  ELSE c := saved[G.Random(3)]
+  ELSE c := saved[Random.Int(3)]
   END;
   RETURN c
 END GetColor;
@@ -135,8 +135,8 @@ BEGIN
 
   FOR y := 0 TO H - 1 DO
     FOR x := 0 TO W - 1 DO
-      IF G.Uniform() < initial THEN
-        m[y, x] := G.Random(8) + 1
+      IF Random.Uniform() < initial THEN
+        m[y, x] := Random.Int(8) + 1
       ELSE
         m[y, x] := 0
       END

@@ -153,10 +153,10 @@ BEGIN
   G.MakeCol(c2, 0, 255, 0);
   G.MakeCol(c3, 255, 255, 255);
   G.MakeCol(c4, 50, 30, 255);
-  B := G.LoadBitmap('Data/Images/img.png');
-  IF B = NIL THEN Out.String('COULD NOT LOAD Data/Images/img.png'); Out.Ln END;
-  font := G.LoadFont('Data/Fonts/Main');
-  IF font = NIL THEN Out.String('COULD NOT LOAD Data/Fonts/Main'); Out.Ln END;
+  B := G.LoadBitmap('../Data/Images/Icon.png');
+  IF B = NIL THEN Out.String('COULD NOT LOAD ../Data/Images/Icon.png'); Out.Ln END;
+  font := G.LoadFont('../Data/Fonts/Main');
+  IF font = NIL THEN Out.String('COULD NOT LOAD ../Data/Fonts/Main'); Out.Ln END;
 
   main := G.GetScreen();
   t := G.NewTimer(0.5);
@@ -166,9 +166,46 @@ BEGIN
   G.Close
 END RunSingle;
 
+PROCEDURE RunSimple;
+VAR c, cc: G.Color;
+  e: G.Event;
+  done: BOOLEAN;
+  X, Y, x, y: INTEGER;
+  F: G.Font;
 BEGIN
-  RunSingle;
-(*
+  G.Settings(0, 0, {});
+  G.Init;
+  F := G.LoadFont('Data/Fonts/Main');
+  G.MakeCol(c, 40, 150, 200);
+  G.MakeCol(cc, 230, 210, 150);
+  done := FALSE; X := 20; Y := 20;
+  REPEAT
+    WHILE G.HasEvents() DO
+      G.WaitEvent(e);
+      IF e.type = G.quit THEN done := TRUE
+      ELSIF e.type = G.mouseMove THEN
+        X := e.x; Y := e.y;      
+      END
+    END;
+    G.ClearToColor(c);
+    G.Line(20, 20, 620, 380, cc);
+    G.Line(20, 20, 20, 380, cc);
+    G.Line(20, 380, 620, 380, cc);
+    G.Line(20, 380, X, Y, cc);
+    FOR y := 0 TO 400 BY 16 DO
+      FOR x := 20 TO 800 BY 12*8 DO
+        G.DrawString('Hello World!', X + x, Y + y, F, cc)
+      END
+    END;
+    G.Flip
+  UNTIL done;
+  G.Close
+END RunSimple;
+
+BEGIN
+  (*RunSimple;*)
+  (*RunSingle;*)
+
   nofdialogs := 0;
   Z := 0;
 
@@ -176,10 +213,16 @@ BEGIN
   G.Init;
   main := G.NewWindow(-1, -1, 800, 600, 'Oberon Allegro 5 Test',
     {G.resizable, G.maximized});
+
+  B := G.LoadBitmap('../Data/Images/Icon.png');
+  IF B = NIL THEN Out.String('COULD NOT LOAD ../Data/Images/Icon.png'); Out.Ln END;
+  font := G.LoadFont('../Data/Fonts/Main');
+  IF font = NIL THEN Out.String('COULD NOT LOAD ../Data/Fonts/Main'); Out.Ln END;
+
   t := G.NewTimer(1.0);
   G.MakeCol(c1, 180, 80, 20);
   G.MakeCol(c2, 240, 180, 80);
 
   Run;
-  G.Close*)
+  G.Close
 END GTest.

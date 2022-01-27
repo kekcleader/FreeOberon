@@ -1,5 +1,5 @@
 MODULE Graph2;
-IMPORT Out, Al := Allegro5, Utf8, Files, Strings, SYSTEM;
+IMPORT Out, Al := Allegro5, Utf8, Files, Dir, Strings, SYSTEM;
 
 CONST
   fontPlanes = 4; (*!TODO*)
@@ -166,33 +166,27 @@ CONST
   kMax*        = 226;
 
   (* Modifiers Set *)
-  mLShift*   = 0;
-  mRShift*   = 1;
-  mLCtrl*    = 6;
-  mRCtrl*    = 7;
-  mLAlt*     = 8;
-  mRAlt*     = 9;
-  mLMeta*    = 10;
-  mRMeta*    = 11;
-  mNumLock*  = 12;
-  mCapsLock* = 13;
-  mMenu*     = 14;
-  mCommand*  = 29;
-  mScrLock*  = 30;
-  mCtrl*  = {mLCtrl, mRCtrl};
-  mShift* = {mLShift, mRShift};
-  mAlt*   = {mLAlt, mRAlt};
-  mMeta*   = {mLMeta, mRMeta};
+  mShift*      = 0;
+  mCtrl*       = 1;
+  mAlt*        = 2;
+  mLwin*       = 3;
+  mRwin*       = 4;
+  mMenu*       = 5;
+  mAltGr*      = 6;
+  mCommand*    = 7;
+  mScrolllock* = 8;
+  mNumlock*    = 9;
+  mCapslock*   = 10;
 
 TYPE
   ADRINT = SYSTEM.ADRINT;
-  REAL = SYSTEM.REAL64;
-  SHORTREAL = SYSTEM.REAL32;
+  REAL = SYSTEM.REAL32;
+  LONGREAL = SYSTEM.REAL64;
   LONGINT = SYSTEM.INT64;
   SHORTCHAR = SYSTEM.CHAR8;
 
   Color* = RECORD
-    r, g, b, a: SHORTREAL
+    r, g, b, a: REAL
   END;
 
   Transform* = RECORD
@@ -268,14 +262,16 @@ TYPE
 
   Font* = POINTER TO FontDesc;
   FontDesc* = RECORD
+    fname: ARRAY 256 OF CHAR;
     handle: PROCEDURE (font: Font; VAR msg: FontMessage);
-    draw: PROCEDURE (font: Font; VAR msg: FontDrawMsg)
+    draw: PROCEDURE (font: Font; VAR msg: FontDrawMsg);
+    loaded*: BOOLEAN
   END;
 
   MonoFont* = POINTER TO MonoFontDesc;
   MonoFontDesc* = RECORD(FontDesc)
     bmp: Bitmap;
-    charW, charH: INTEGER;
+    charW*, charH*: INTEGER;
     rows, cols: INTEGER
   END;
 
@@ -295,33 +291,6 @@ VAR
   screen: Window;
   target: Bitmap;
   black: Color;
-
-  (* Keyboard modifier keys *)
-  keyModMap: ARRAY 256 OF INTEGER;
-  keyMods: SET;
-
-PROCEDURE InitKeyMod;
-VAR i: INTEGER;
-BEGIN keyMods := {};
-  FOR i := 0 TO LEN(keyModMap) - 1 DO keyModMap[i] := -1 END;
-  keyModMap[kLShift] := mLShift; keyModMap[kRShift] := mRShift;
-  keyModMap[kLCtrl] := mLCtrl; keyModMap[kRCtrl] := mRCtrl;
-  keyModMap[kAlt] := mLAlt; keyModMap[kAltGr] := mRAlt;
-  keyModMap[kLMeta] := mLMeta; keyModMap[kRMeta] := mRMeta;
-  keyModMap[kNumLock] := mNumLock; keyModMap[kCapsLock] := mCapsLock;
-  keyModMap[kScrLock] := mScrLock; keyModMap[kCommand] := mCommand;
-  keyModMap[kMenu] := mMenu
-END InitKeyMod;
-
-PROCEDURE SetKeyMod(key: INTEGER; on: BOOLEAN);
-BEGIN
-  IF key < LEN(keyModMap) THEN
-    key := keyModMap[key];
-    IF key >= 0 THEN
-      IF on THEN INCL(keyMods, key) ELSE EXCL(keyMods, key) END
-    END
-  END
-END SetKeyMod;
 
 PROCEDURE Error(s: ARRAY OF CHAR);
 BEGIN Out.String(s); Out.Ln
@@ -460,9 +429,9 @@ BEGIN scaled := FALSE;
     IF (W.zoom = noZoom) & (nobuffer IN W.options) THEN
       W.bmp := NIL;
       IF wasTarget THEN Target(NIL) END
-    ELSE
-      IF smooth IN W.options THEN opt := {Al.minLinear, Al.magLinear}
-      ELSE opt := {}
+    ELSE opt := {Al.convertBitmap};
+      IF smooth IN W.options THEN
+      	opt := opt + {Al.minLinear, Al.magLinear}
       END;
       Al.set_new_bitmap_flags(opt);
       W.bmp := Al.create_bitmap(w, h);
@@ -578,7 +547,8 @@ PROCEDURE ClearScreenToColor*(color: INTEGER);*)
 PROCEDURE LoadBitmap*(fname: ARRAY OF CHAR): Bitmap;
 VAR B: Bitmap;
   q: ARRAY 2048 OF SHORTCHAR;
-BEGIN NEW(B); Utf8.Encode(fname, q); B.bmp := Al.load_bitmap(q);
+BEGIN Al.set_new_bitmap_flags({Al.convertBitmap});
+  NEW(B); Utf8.Encode(fname, q); B.bmp := Al.load_bitmap(q);
   IF B.bmp = NIL THEN B := NIL
   ELSE B.w := Al.get_bitmap_width(B.bmp); B.h := Al.get_bitmap_height(B.bmp)
   END
@@ -678,11 +648,16 @@ BEGIN
 END LineF;
 
 PROCEDURE Line*(x1, y1, x2, y2: INTEGER; color: Color);
-BEGIN
-  LineF(FLT(x1), FLT(y1), FLT(x2), FLT(y2), color)
-  (*Al.draw_line(FLT(x1) + 0.5, FLT(y1) + 0.5,
-    FLT(x2) + 0.5, FLT(y2) + 0.5, SYSTEM.VAL(Al.Color, color), 1.0)*)
+BEGIN LineF(FLT(x1), FLT(y1), FLT(x2), FLT(y2), color)
 END Line;
+
+PROCEDURE HLine*(x, y1, y2: INTEGER; color: Color);
+BEGIN LineF(FLT(x), FLT(y1), FLT(x), FLT(y2), color)
+END HLine;
+
+PROCEDURE VLine*(x1, y, x2: INTEGER; color: Color);
+BEGIN LineF(FLT(x1), FLT(y), FLT(x2), FLT(y), color)
+END VLine;
 
 PROCEDURE FillRectF*(x1, y1, x2, y2: REAL; color: Color);
 BEGIN Al.draw_filled_rectangle(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color))
@@ -718,7 +693,7 @@ END Rect;
 PROCEDURE NewBitmap*(w, h: INTEGER): Bitmap;
 VAR b: Bitmap;
 BEGIN NEW(b);
-  Al.set_new_bitmap_flags({}); (*!FIXME*)
+  Al.set_new_bitmap_flags({Al.convertBitmap});
   b.bmp := Al.create_bitmap(w, h);
   IF b.bmp = NIL THEN b := NIL ELSE b.w := w; b.h := h END
 RETURN b END NewBitmap;
@@ -739,6 +714,7 @@ END DrawPart;
 PROCEDURE DrawTintedPart*(bmp: Bitmap; color: Color;
     sx, sy, sw, sh, dx, dy: INTEGER);
 BEGIN
+  IF ~Al.is_compatible_bitmap(bmp.bmp) THEN Out.String('NON-COMPAT'); Out.Ln END;
   Al.draw_tinted_bitmap_region(bmp.bmp, SYSTEM.VAL(Al.Color, color),
     FLT(sx), FLT(sy), FLT(sw), FLT(sh), FLT(dx), FLT(dy), {})
 END DrawTintedPart;
@@ -785,6 +761,10 @@ BEGIN
 
 END Pause;
 
+PROCEDURE ConvertMemoryBitmaps*;
+BEGIN Al.convert_memory_bitmaps
+END ConvertMemoryBitmaps;
+
 PROCEDURE RecreateDisplay(W: Window; alterSize: BOOLEAN);
 VAR d: Al.Display;
   q: ARRAY 256 OF SHORTCHAR;
@@ -794,7 +774,6 @@ VAR d: Al.Display;
   isCurTarget: BOOLEAN;
 BEGIN isCurTarget := target = W;
   IF W.display # NIL THEN Al.destroy_display(W.display) END;
-  keyMods := {};
 
   W.rzoom := W.wantZoom;
   IF W.wantZoom = 1.0 THEN W.zoom := noZoom
@@ -806,14 +785,13 @@ BEGIN isCurTarget := target = W;
   Utf8.Encode(W.title, q); Al.set_new_window_title(q);
   IF software IN W.options THEN n := 0 ELSE n := 1 END;
   Al.set_new_display_option(Al.renderMethod, n, Al.suggest);
-  Al.set_new_display_option(Al.vsync, 2, Al.suggest);
-
+  Al.set_new_display_option(Al.vsync, 2(*off*), Al.suggest);
+  Al.set_new_display_option(Al.singleBuffer, 1, Al.suggest);
   IF smooth IN W.options THEN n := 1;
     Al.set_new_display_option(Al.samples, 8, Al.suggest)
   ELSE n := 0
   END;
-  Al.set_new_display_option(Al.sampleBuffers, n, Al.suggest);
-
+  (* Al.set_new_display_option(Al.sampleBuffers, n, Al.suggest); *)
   GetDesktopResolution(dw, dh);
   dw := FLOOR(FLT(dw) / wantScaleX + 0.1);
   dh := FLOOR(FLT(dh) / wantScaleY + 0.1);
@@ -884,6 +862,10 @@ BEGIN isCurTarget := target = W;
   IF W.bmp # NIL THEN Al.destroy_bitmap(W.bmp); W.bmp := NIL END;
   W.display := Al.create_display(sw, sh);
   IF W.display # NIL THEN
+    (*IF isCurTarget OR (windowList = NIL) OR (windowList.next = NIL) THEN
+      Al.set_target_backbuffer(W.display);
+      ConvertMemoryBitmaps;
+    END;*)
     W.winW := Al.get_display_width(W.display);
     W.winH := Al.get_display_height(W.display);
     W.w := w; W.h := h;
@@ -962,7 +944,7 @@ BEGIN
   IF Al.emit_user_event(userEventSource, SYSTEM.VAL(Al.Event, E), 0) THEN END
 END EmitResizeEvent;
 
-PROCEDURE ToggleFullscreen*(win: Window);
+PROCEDURE ToggleFS*(win: Window);
 VAR fs: BOOLEAN;
   w, h: REAL;
 BEGIN
@@ -984,7 +966,15 @@ BEGIN
     RecreateDisplay(win, FALSE);
     EmitResizeEvent(win)
   END
-END ToggleFullscreen;
+END ToggleFS;
+
+PROCEDURE SwitchToWindow*(win: Window);
+BEGIN IF ~(window IN GetWindowOptions(screen)) THEN ToggleFS(win) END
+END SwitchToWindow;
+
+PROCEDURE SwitchToFS*(win: Window);
+BEGIN IF window IN GetWindowOptions(screen) THEN ToggleFS(win) END
+END SwitchToFS;
 
 PROCEDURE ParseEvent(E: Al.Event; VAR event: Event);
 VAR DE: Al.PDisplayEvent;
@@ -1024,7 +1014,7 @@ BEGIN
         W.lastX := event.x; W.lastY := event.y
       END;
       event.button := ME.button;
-      event.mod := keyMods;
+      event.mod := {};
       event.display := ME.display; event.window := W
     ELSE event.type := noEvent
     END
@@ -1044,7 +1034,7 @@ BEGIN
     event.x := x; event.y := y;
     event.z := ME.z; event.w := ME.w;
     event.button := ME.button;
-    event.mod := keyMods;
+    event.mod := {};
     event.display := ME.display
   ELSIF E.type = Al.eventMouseButtonUp THEN
     event.type := mouseUp;
@@ -1062,7 +1052,7 @@ BEGIN
     event.x := x; event.y := y;
     event.z := ME.z; event.w := ME.w;
     event.button := ME.button;
-    event.mod := keyMods;
+    event.mod := {};
     event.display := ME.display
   ELSIF E.type = Al.eventTimer THEN
     event.type := timer;
@@ -1073,24 +1063,22 @@ BEGIN
     event.type := keyDown;
     KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
     event.key := KE.keycode;
-    SetKeyMod(event.key, TRUE);
-    event.mod := keyMods;
+    event.mod := {};
     event.display := KE.display;
     event.window := GetWindow(event.display)
   ELSIF E.type = Al.eventKeyUp THEN
     event.type := keyUp;
     KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
     event.key := KE.keycode;
-    event.mod := keyMods;
-    SetKeyMod(event.key, FALSE);
+    event.mod := {};
     event.display := KE.display;
     event.window := GetWindow(event.display)
   ELSIF E.type = Al.eventKeyChar THEN
-    event.type := char;
     KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
+    event.type := char;
     event.key := KE.keycode;
     event.ch := CHR(KE.unichar);
-    event.mod := keyMods;
+    event.mod := KE.modifiers;
     event.repeat := KE.repeat;
     event.display := KE.display;
     event.window := GetWindow(event.display)
@@ -1171,6 +1159,14 @@ PROCEDURE StartTimer*(timer: Timer);
 BEGIN Al.start_timer(timer.tmr)
 END StartTimer;
 
+PROCEDURE StopTimer*(timer: Timer);
+BEGIN Al.stop_timer(timer.tmr)
+END StopTimer;
+
+PROCEDURE ResumeTimer*(timer: Timer);
+BEGIN Al.resume_timer(timer.tmr)
+END ResumeTimer;
+
 (* Font *)
 
 PROCEDURE GetMonoFontSize*(font: Font; VAR charW, charH: INTEGER);
@@ -1232,9 +1228,54 @@ BEGIN m := f(MonoFont)
   (*!TODO*)
 END MonoFontHandle;
 
-PROCEDURE LoadFont*(fname: ARRAY OF CHAR): Font;
-VAR f: MonoFont;
-  bmp: Bitmap;
+PROCEDURE ReadWord(VAR r: Files.Rider; VAR s: ARRAY OF CHAR);
+VAR ch: CHAR;
+  i: INTEGER;
+BEGIN
+  Files.ReadChar(r, ch);
+  WHILE ~r.eof & (ch <= ' ') DO Files.ReadChar(r, ch) END;
+
+  i := 0;
+  WHILE ~r.eof & (ch > ' ') DO
+    IF (i # LEN(s) - 1) THEN s[i] := ch; INC(i) END;
+    Files.ReadChar(r, ch)
+  END;
+  s[i] := 0X
+END ReadWord;
+
+PROCEDURE ReadInt(VAR r: Files.Rider; VAR n: INTEGER);
+VAR ch: CHAR;
+  i: INTEGER;
+BEGIN
+  Files.ReadChar(r, ch);
+  WHILE ~r.eof & (ch <= ' ') DO Files.ReadChar(r, ch) END;
+
+  n := 0;
+  WHILE ~r.eof & ('0' <= ch) & (ch <= '9') DO
+    n := n * 10 + ORD(ch) - ORD('0');
+    Files.ReadChar(r, ch)
+  END
+END ReadInt;
+
+PROCEDURE ReadFontInfo(VAR r: Files.Rider): Font;
+VAR f: Font;
+  mf: MonoFont;
+  s: ARRAY 4096 OF CHAR;
+BEGIN f := NIL;
+  ReadWord(r, s);
+  IF s = 'mono' THEN
+    NEW(mf); mf.bmp := NIL;
+    ReadInt(r, mf.charW); ReadInt(r, mf.charH);
+    IF (mf.charW > 0) & (mf.charH > 0) THEN
+      mf.cols := 16; mf.rows := 16 * fontPlanes
+    ELSE mf := NIL
+    END;
+    f := mf
+  END
+RETURN f END ReadFontInfo;
+
+PROCEDURE LoadFontInfo*(fname: ARRAY OF CHAR): Font;
+VAR f: Font;
   F: Files.File;
   r: Files.Rider;
   s: ARRAY 4096 OF CHAR;
@@ -1242,17 +1283,32 @@ BEGIN f := NIL;
   s := fname; Strings.Append('.ofi', s);
   F := Files.Old(s);
   IF F # NIL THEN
-    Files.Close(F); (*!TODO*)
     s := fname; Strings.Append('.png', s);
-    bmp := LoadBitmap(s);
-    IF bmp # NIL THEN
-      NEW(f); f.bmp := bmp;
-      f.cols := 16; f.rows := 16 * fontPlanes;
-      f.charW := bmp.w DIV f.cols; f.charH := bmp.h DIV f.rows;
-      f.draw := MonoFontDraw;
-      f.handle := MonoFontHandle
+    IF Dir.FileExists(s) THEN
+      Files.Set(r, F, 0);
+      f := ReadFontInfo(r);
+      IF f # NIL THEN
+        f.loaded := FALSE;
+        f.fname := fname;
+        f.draw := MonoFontDraw;
+        f.handle := MonoFontHandle
+      END
     END
   END
+RETURN f END LoadFontInfo;
+
+PROCEDURE LoadFontBitmap*(f: Font);
+VAR s: ARRAY 4096 OF CHAR;
+BEGIN
+  s := ''; Strings.Append(f.fname, s); Strings.Append('.png', s);
+  f(MonoFont).bmp := LoadBitmap(s);
+  IF f(MonoFont).bmp # NIL THEN f.loaded := TRUE END
+END LoadFontBitmap;
+
+PROCEDURE LoadFont*(fname: ARRAY OF CHAR): Font;
+VAR f: Font;
+BEGIN f := LoadFontInfo(fname);
+  IF f # NIL THEN LoadFontBitmap(f) END
 RETURN f END LoadFont;
 
 (* Clipboard *)
@@ -1273,6 +1329,9 @@ BEGIN
   ELSE s[0] := 0X
   END
 END GetClipboardText;
+
+PROCEDURE Time*(): REAL;
+RETURN Al.get_time() END Time;
 
 (* Window Icons *)
 
@@ -1304,12 +1363,14 @@ END SetWindowIcon;
 PROCEDURE InitScreen(): BOOLEAN;
 VAR opt: SET;
 BEGIN
-  IF ~(fullscreen IN settings) & ((wantW <= 0) OR (wantH <= 0)) THEN
-    wantW := 640; wantH := 400
-  END;
   opt := settings;
   IF {fullscreen, window} * opt = {} THEN INCL(opt, fullscreen)
   ELSIF fullscreen IN opt THEN EXCL(opt, window)
+  END;
+  IF (wantW <= 0) OR (wantH <= 0) THEN
+    IF fullscreen IN opt THEN wantW := -1; wantH := -1
+    ELSE wantW := 640; wantH := 400
+    END
   END
 RETURN NewWindow(-1, -1, wantW, wantH, wantTitle, opt) # NIL END InitScreen;
 
@@ -1345,8 +1406,7 @@ BEGIN ok := TRUE;
       Al.register_event_source(queue, Al.get_keyboard_event_source());
       IF ~(noMouse IN settings) THEN
         Al.register_event_source(queue, Al.get_mouse_event_source())
-      END;
-      InitKeyMod
+      END
     END;
 
     IF ~(manual IN settings) THEN

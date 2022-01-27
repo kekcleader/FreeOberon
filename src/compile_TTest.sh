@@ -1,17 +1,20 @@
-OFRDIR="../data/bin/OfrontPlus/Target/Linux_amd64"
+PROG=TTest
+OFRDIR="../Data/bin/OfrontPlus/Target/Linux_amd64"
 PATH="$OFRDIR:$PATH"
 export OBERON=.:$OFRDIR/Lib/Sym
+OFR="ofront+ -s88"
 
-ofront+ -887ws Allegro5.Mod && \
-ofront+ -887ws Graph2.Mod && \
-ofront+ -887ws TermBox.Mod && \
-ofront+ -887wm TTest.Mod && \
-gcc -o TTest -g3 -O0 -fno-exceptions \
-  -I ../data/bin/OfrontPlus/Target/Linux_amd64/../../Mod/Lib \
-  -I ../data/bin/OfrontPlus/Target/Linux_amd64/Lib/Obj \
-  Graph2.c TermBox.c TTest.c \
-  ../data/bin/libFreeOberon.a \
-  ../data/bin/OfrontPlus/Target/Linux_amd64/Lib/libOfront.a \
+$OFR -7w Allegro5.Mod && \
+$OFR -7w Graph2.Mod && \
+$OFR -7w TermBox.Mod && \
+$OFR -7w TermSnow.Mod && \
+$OFR -7wm $PROG.Mod && \
+gcc -o $PROG -g3 -O0 -fno-exceptions \
+  -I $OFRDIR/../../Mod/Lib \
+  -I $OFRDIR/Lib/Obj \
+  Graph2.c TermBox.c $PROG.c \
+  ../Data/bin/libFreeOberon.a \
+  $OFRDIR/Lib/libOfront.a \
   $(pkg-config \
     allegro_primitives-5 allegro_image-5 allegro_audio-5 \
     allegro_acodec-5 allegro_font-5 allegro_dialog-5 \

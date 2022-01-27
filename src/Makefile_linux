@@ -1,17 +1,17 @@
 PROG=FreeOberon
 OS=linux
-VOCDIR=../data/bin/voc/install
+VOCDIR=../Data/bin/voc/install
 VOC=$(VOCDIR)/bin/voc
 CC=gcc
 SDL2Opts=`sdl2-config --cflags --libs`
-VER=1.0.4
+VER=1.1.0
 
 all: prepare voc fo install
 
 fo: ../$(PROG)
 
 ../$(PROG): $(PROG).o
-	$(CC) -fPIC -g -I ../data/bin/voc/C/include \
+	$(CC) -fPIC -g -I ../Data/bin/voc/C/include \
 		-o $(PROG) $(PROG).o Graph.o SDL2.o \
 		OV.o Editor.o Term.o Terminal.o \
 		EditorText.o Config.o term/term.o \
@@ -60,14 +60,14 @@ cleanfo:
 		../Programs/.tmp..* ../bin/*
 
 clean: cleanfo
-	make -C ../data/bin/voc clean
+	make -C ../Data/bin/voc clean
 
 cleanall: clean
 	rm -f ../$(PROG) ../$(PROG).exe
-	make -C ../data/bin/voc cleanall
+	make -C ../Data/bin/voc cleanall
 
 prepare:
-	chmod +x ../data/bin/*.sh
+	chmod +x ../Data/bin/*.sh
 
 pack: clean prepare
 	rm -rf Makefile ../$(PROG) ../*.exe ../*.dll \
@@ -76,15 +76,15 @@ pack: clean prepare
 	$(eval TMPDIR := $(shell mktemp -d /tmp/FreeOberon_XXXXXX))
 	mkdir -p $(TMPDIR)/FreeOberon
 	cp -r ../* $(TMPDIR)/FreeOberon
-	rm -rf $(TMPDIR)/FreeOberon/data/bin/mingw32 \
-		$(TMPDIR)/FreeOberon/data/bin/voc/bin \
-		$(TMPDIR)/FreeOberon/data/bin/voc/C \
-		$(TMPDIR)/FreeOberon/data/bin/voc/lib
+	rm -rf $(TMPDIR)/FreeOberon/Data/bin/mingw32 \
+		$(TMPDIR)/FreeOberon/Data/bin/voc/bin \
+		$(TMPDIR)/FreeOberon/Data/bin/voc/C \
+		$(TMPDIR)/FreeOberon/Data/bin/voc/lib
 	tar czf ../../FreeOberon_v$(VER).tar.gz -C $(TMPDIR) FreeOberon
 	rm -rf $(TMPDIR)
 
 voc:
-	make -C ../data/bin/voc full
+	make -C ../Data/bin/voc full
 
 install:
 	cp Graph.sym SDL2.sym Int.sym $(VOCDIR)/C/sym
