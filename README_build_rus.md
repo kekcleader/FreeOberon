@@ -2,9 +2,23 @@
 
 Команды приведены для ОС Дебиан / Убунту.
 
-1. Установите git, gcc и SDL2:
+## Вариант 1. Скачать архив и запустить установщик
+
+1. На сайте https://github.com/kekcleader/FreeOberon.git
+   нажмите зелёную кнопку «Code» и «Download ZIP»,
+   распакуйте архив в домашнем каталоге.
+
+2. Находясь в каталоге, запустите `install.sh` с правами администратора.
 ```
-apt-get install -y libsdl2-dev libsdl2-image-dev binutils git gcc
+su
+./install.sh
+```
+
+## Вариант 2. Собрать Free Oberon вручную
+
+1. Установите Git, Gcc и Allegro5:
+```
+apt-get install -y liballegro5-dev git gcc
 ```
 
 2. Клонируйте репозиторий Free Oberon:
@@ -12,24 +26,19 @@ apt-get install -y libsdl2-dev libsdl2-image-dev binutils git gcc
 git clone https://github.com/kekcleader/FreeOberon.git
 ```
 
-3. Создайте подкаталог bin:
-```
-cd FreeOberon
-mkdir bin
-```
-
 3. Клонируйте репозиторий OfrontPlus с помощью команды загрузки подмодулей:
 
 ```
+cd FreeOberon
 git submodule update --init
 ```
 
-Каталог `FreeOberon/data/bin/OfrontPlus` заполнится файлами.
+Каталог `FreeOberon/Data/bin/OfrontPlus` заполнится файлами.
 
 4. Соберите OfrontPlus:
 
 ```
-cd data/bin/OfrontPlus/Target/Linux_amd64/Bin
+cd Data/bin/OfrontPlus/Target/Linux_amd64/Bin
 ./build
 
 cd ../../../../../../..
@@ -49,11 +58,4 @@ cd FreeOberon/src
 ./FreeOberon
 ```
 
-Примечания:
-
-1. В будущем Free Oberon будет использовать Allegro5 вместо SDL2.
-2. Имя файла должно совпадать с названием модуля и иметь
-   расширение Mod (с заглавной буквы).
-
-
-Документ обновлён 14 декабря 2021 года
+Документ обновлён 27 января 2022 года.
