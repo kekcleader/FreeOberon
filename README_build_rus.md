@@ -7,7 +7,7 @@
 1. На сайте https://github.com/kekcleader/FreeOberon.git
    нажмите зелёную кнопку «Code» и «Download ZIP»,
    распакуйте архив в домашнем каталоге.
-   Вы можете переименовать каталог `FreeOberon-master` в `FreeOberon`.
+   Вы можете переименовать каталог `FreeOberon-main` в `FreeOberon`.
 
 2. Находясь в распакованном каталоге, запустите `install.sh` с правами администратора.
 ```

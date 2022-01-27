@@ -7,7 +7,7 @@ The commands are for Debian / Ubuntu.
 1. On the https://github.com/kekcleader/FreeOberon.git website
    click the green button labeled «Code» and then click «Download ZIP»,
    unpack the archive inside your home directory.
-   You can rename directory `FreeOberon-master` to `FreeOberon`.
+   You can rename directory `FreeOberon-main` to `FreeOberon`.
 
 2. Inside the unpacked directory, run `install.sh` with root privileges.
 
