@@ -1,2 +1,0 @@
-#!/bin/bash
-vim -p Tetragon.Mod TermBox.Mod Graph2.Mod Allegro5.Mod
