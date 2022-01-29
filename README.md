@@ -70,8 +70,8 @@ ______
 
 *ENGLISH*
 
-* Version 1.1.0-alpha.2
-* Riga, January 27, 2022
+* Version 1.1.0-alpha.3
+* Riga, January 29, 2022
 * Website: [free.oberon.org](https://free.oberon.org/en)
 
 # Install
