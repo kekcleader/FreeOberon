@@ -50,13 +50,16 @@ BEGIN Files.ReadChar(R.rider, ch);
   IF R.rider.eof THEN R.eot := TRUE END
 END Read;
 
+PROCEDURE Pos*(VAR R: Reader): INTEGER;
+RETURN Files.Pos(R.rider) END Pos;
+
 PROCEDURE Next(VAR S: Scanner);
 BEGIN Files.ReadChar(S.rider, S.nextCh);
   IF ~S.rider.eof & (S.nextCh = 0AX) THEN INC(S.line) END
 END Next;
 
 PROCEDURE OpenScanner*(VAR S: Scanner; T: Text; pos: LONGINT);
-BEGIN OpenReader(S, T, pos); S.line := 1; Next(S)
+BEGIN OpenReader(S, T, pos); S.line := 0; S.nextCh := ' '
 END OpenScanner;
 
 PROCEDURE Scan*(VAR S: Scanner);

@@ -381,8 +381,8 @@ BEGIN Create(f); error := Platform.Identify(f.fd, identity);
   Platform.MTimeAsClock(identity, t, d)
 END GetDate;
 
-PROCEDURE Pos*(VAR r: Rider): LONGINT;
-BEGIN RETURN r.org + r.offset
+PROCEDURE Pos*(VAR r: Rider): INTEGER;
+BEGIN RETURN SHORT(r.org + r.offset)
 END Pos;
 
 PROCEDURE Set*(VAR r: Rider; f: File; pos: LONGINT);
