@@ -136,6 +136,27 @@ BEGIN t.selected := TRUE;
   t.selR := L.len
 END SelectAll;
 
+PROCEDURE (t: Text) MoveToLineCol*(line, col, winH: INTEGER), NEW;
+VAR i, centerY, tx, ty: INTEGER; L: Line;
+BEGIN L := t.first; tx := 0; ty := 0; DEC(line); DEC(col);
+  WHILE (L.next # NIL) & (ty # line) DO L := L.next; INC(ty) END;
+  WHILE (L.s[tx] # 0X) & (col > 0) DO DEC(col); INC(tx) END;
+  t.x := tx; t.y := ty; t.cur := L;
+  IF (ty >= t.scrY + winH) OR (ty < t.scrY) THEN 
+    i := winH DIV 2;
+    WHILE (L.prev # NIL) & (i # 0) DO L := L.prev; DEC(i); DEC(ty) END;
+    t.scrFirst := L; t.scrY := ty
+  END
+END MoveToLineCol;
+
+PROCEDURE (t: Text) Select*(selL, selR, selT, selB, winH: INTEGER), NEW;
+VAR count: INTEGER; L: Line;
+BEGIN t.selected := TRUE;
+  t.selL := selL; t.selR := selR; t.selT := selT; t.selB := selB;
+  t.x := t.selR; t.y := t.selB;
+  t.MoveToLineCol(t.y + 1, t.x + 1, winH)
+END Select;
+
 (**Returns true if at least one whole line is selected,
    but leading spaces may still be unselected*)
 PROCEDURE (t: Text) WholeLineSelected*(): BOOLEAN, NEW;
@@ -433,19 +454,6 @@ BEGIN success := FALSE; lf := 0; crlf := 0;
   END ;
 RETURN success END LoadFromFile;
 
-PROCEDURE (t: Text) MoveToLineCol*(line, col, winH: INTEGER), NEW;
-VAR i, centerY, tx, ty: INTEGER; L: Line;
-BEGIN L := t.first; tx := 0; ty := 0; DEC(line); DEC(col);
-  WHILE (L.next # NIL) & (ty # line) DO L := L.next; INC(ty) END;
-  WHILE (L.s[tx] # 0X) & (col > 0) DO DEC(col); INC(tx) END;
-  t.x := tx; t.y := ty; t.cur := L;
-  IF (ty >= t.scrY + winH) OR (ty < t.scrY) THEN 
-    i := winH DIV 2;
-    WHILE (L.prev # NIL) & (i # 0) DO L := L.prev; DEC(i); DEC(ty) END;
-    t.scrFirst := L; t.scrY := ty
-  END
-END MoveToLineCol;
-
 PROCEDURE (t: Text) MoveToPos*(pos, winH: INTEGER), NEW;
 CONST pad = 3;
 VAR i, centerY: INTEGER; L: Line;
@@ -484,5 +492,32 @@ BEGIN
     END
   END ;
 RETURN k END CurCharKind;
+
+PROCEDURE IsSubStr(IN s, where: ARRAY OF CHAR; pos: INTEGER): BOOLEAN;
+VAR i: INTEGER;
+BEGIN i := 0;
+  WHILE (s[i] # 0X) & (s[i] = where[pos]) DO INC(i); INC(pos) END ;
+RETURN s[i] = 0X END IsSubStr;
+
+PROCEDURE FindNext*(t: Text; IN find: ARRAY OF CHAR;
+    x, y, winH: INTEGER; VAR ok: BOOLEAN);
+VAR L: Line;
+  i, findLen, barX: INTEGER;
+BEGIN findLen := Strings.Length(find); ok := FALSE;
+  IF y = t.y THEN L := t.cur
+  ELSE L := t.first; i := y;
+    WHILE (L.next # NIL) & (i # 0) DO L := L.next; DEC(i) END
+  END;
+  REPEAT
+    barX := L.len - findLen + 1;
+    WHILE (x < barX) & ~IsSubStr(find, L.s, x) DO INC(x) END;
+    IF x < barX THEN
+      t.Select(x, x + findLen, y, y, winH);
+      ok := TRUE; L := NIL
+    ELSE L := L.next; INC(y); x := 0
+    END
+  UNTIL L = NIL;
+  IF ~ok THEN t.selected := FALSE END
+END FindNext;
 
 END EditorText.

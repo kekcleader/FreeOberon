@@ -63,14 +63,23 @@ TYPE
   EditorDesc* = RECORD(OV.WindowDesc)
     text*: Text.Text;
     fname*: ARRAY 1000 OF CHAR;
+    search*: ARRAY 256 OF CHAR; (* Search string *)
     msgShown*: INTEGER; (* 0 - hidden, 1 - top, 2 - bottom *)
     msg*: ARRAY 256 OF CHAR
+  END;
+
+  SearchDialog* = POINTER TO SearchDialogDesc;
+  SearchDialogDesc = RECORD(OV.WindowDesc)
+    editor*: Editor;
+    edtText*: OV.Edit;
+    btnOk*, btnCancel*, btnHelp*: OV.Button
   END;
 
 VAR
   clipboard: ARRAY 16000 OF CHAR;
   editorMethod-: OV.ControlMethod;
   fileDialogMethod-: OV.ControlMethod;
+  searchDialogMethod-: OV.ControlMethod;
 
 (* FileDialog *)
 
@@ -886,7 +895,7 @@ END HandleEnter;
 PROCEDURE InitEditor*(c: Editor);
 BEGIN OV.InitWindow(c); c.closeOnEsc := FALSE;
   c.fname[0] := 0X; c.bg := 1; c.resizable := TRUE; c.caption := 'NONAME';
-  c.text := Text.NewText(); c.msgShown := 0; c.msg[0] := 0X;
+  c.text := Text.NewText(); c.search[0] := 0X; c.msgShown := 0; c.msg[0] := 0X;
   c.do := editorMethod
 END InitEditor;
 
@@ -962,6 +971,12 @@ BEGIN
     PrintText(c.app.cur(Editor))
   END
 END EditUnselect;
+
+PROCEDURE SearchNext*(e: Editor);
+VAR ok: BOOLEAN;
+BEGIN Text.FindNext(e.text, e.search, e.text.x, e.text.y, e.h - 2, ok);
+  IF ~ok THEN Text.FindNext(e.text, e.search, 0, 0, e.h - 2, ok) END
+END SearchNext;
 
 (* EditorMethod *)
 
@@ -1080,7 +1095,82 @@ BEGIN OV.InitWindowMethod(m);
   m.close := EditorClose
 END InitEditorMethod;
 
+(* Search Dialog *)
+
+PROCEDURE SearchDialogOkClick*(c: OV.Control);
+VAR w: SearchDialog;
+BEGIN w := c.parent(SearchDialog);
+  Strings.Copy(w.edtText.caption, w.editor.search);
+  OV.CloseCurWindow(c);
+  IF w.editor.search[0] # 0X THEN
+    (*w.editor.text.MoveToLineCol(1, 1, w.editor.h);*)
+    SearchNext(w.editor)
+  END
+END SearchDialogOkClick;
+
+PROCEDURE InitSearchDialog*(c: SearchDialog; editor: Editor);
+VAR L: INTEGER;
+  s: FoStrings.String;
+BEGIN OV.InitWindow(c); c.do := searchDialogMethod; c.editor := editor;
+  FoStrings.Get('titleFind', c.caption);
+  c.modal := TRUE; c.w := 55; c.h := 9(*16*); OV.CenterWindow(c);
+
+  (* Text To Find Edit *)
+  c.edtText := OV.NewEdit();
+  c.edtText.do.resize(c.edtText, 3, 3, c.w - 6, 1);
+  OV.EditSetCaption(c.edtText, editor.search);
+  OV.Add(c, c.edtText);
+
+  (* OK button *)
+  FoStrings.Get('btnOk', s);
+  c.btnOk := OV.NewButton(s);
+  c.btnOk.default := TRUE;
+  c.btnOk.onClick := SearchDialogOkClick;
+  c.btnOk.do.resize(c.btnOk, c.w - 37, c.h - 3, 8, 1);
+  OV.Add(c, c.btnOk);
+
+  (* Cancel button *)
+  FoStrings.Get('btnCancel', s);
+  c.btnCancel := OV.NewButton(s);
+  c.btnCancel.onClick := OV.CloseCurWindow;
+  c.btnCancel.do.resize(c.btnCancel, c.w - 26, c.h - 3, 8, 1);
+  OV.Add(c, c.btnCancel);
+
+  (* Help button *)
+  (* FoStrings.Get('btnHelp', s);
+  c.btnHelp := OV.NewButton(s);
+  c.btnHelp.do.resize(c.btnHelp, c.w - 15, c.h - 3, 11, 1);
+  OV.Add(c, c.btnHelp) *)
+END InitSearchDialog;
+
+PROCEDURE NewSearchDialog*(editor: Editor): SearchDialog;
+VAR c: SearchDialog;
+BEGIN NEW(c); InitSearchDialog(c, editor) ;
+RETURN c END NewSearchDialog;
+
+(* SearchDialog Method *)
+
+PROCEDURE SearchDialogDraw*(c: OV.Control; x, y: INTEGER);
+VAR f: SearchDialog;
+  s: FoStrings.String;
+BEGIN f := c(SearchDialog);
+  OV.WindowDraw(c, x, y); INC(x, c.x); INC(y, c.y);
+  FoStrings.Get('labelTextToFind', s);
+  OV.PutMarkedString(x + 3, y + 2, s, 15, 14, 7, 0)
+END SearchDialogDraw;
+
+PROCEDURE SearchDialogGetFocus(c: OV.Control);
+BEGIN OV.WindowGetFocus(c)
+END SearchDialogGetFocus;
+
+PROCEDURE InitSearchDialogMethod*(m: OV.ControlMethod);
+BEGIN OV.InitWindowMethod(m);
+  m.draw := SearchDialogDraw;
+  m.getFocus := SearchDialogGetFocus
+END InitSearchDialogMethod;
+
 BEGIN
   NEW(editorMethod); InitEditorMethod(editorMethod);
-  NEW(fileDialogMethod); InitFileDialogMethod(fileDialogMethod)
+  NEW(fileDialogMethod); InitFileDialogMethod(fileDialogMethod);
+  NEW(searchDialogMethod); InitSearchDialogMethod(searchDialogMethod)
 END Editor.

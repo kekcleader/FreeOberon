@@ -19,7 +19,7 @@ along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 IMPORT T := TermBox, Files, Args, Utf8,
        OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
 CONST
-  version* = '1.1.0-alpha.2';
+  version* = '1.1.0-alpha.3';
   year = 2022;
 
   (* Direction of Selection *)
@@ -676,6 +676,28 @@ BEGIN w := c.app.windows;
   END
 END FileSave;
 
+PROCEDURE SearchFind(c: OV.Control);
+VAR w, e: OV.Window;
+BEGIN e := c.app.windows;
+  IF (e # NIL) & (e IS Editor.Editor) THEN
+    w := Editor.NewSearchDialog(e(Editor.Editor));
+    OV.AddWindow(app, w)
+  END
+END SearchFind;
+
+PROCEDURE SearchAgain(c: OV.Control);
+VAR e: OV.Window;
+BEGIN e := c.app.windows;
+  IF (e # NIL) & (e IS Editor.Editor) THEN
+    Editor.SearchNext(e(Editor.Editor))
+  END
+END SearchAgain;
+
+PROCEDURE OptionsLanguage(c: OV.Control);
+VAR w: OV.Window;
+BEGIN
+END OptionsLanguage;
+
 PROCEDURE SkipComment(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
 VAR last: CHAR;
 BEGIN last := ch; Files.ReadChar(R, ch);
@@ -1023,14 +1045,12 @@ BEGIN
   FoStrings.Get('menuSearch', s);
   m := OV.NewMenu(s, '', 0, NIL);
   FoStrings.Get('menuFind', s);
-  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
-  (*!TODO*) m.children.prev.status := OV.disabled;
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+F', OV.hCtrlF, SearchFind));
   FoStrings.Get('menuReplace', s);
   OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuSearchAgain', s);
-  OV.Add(m, OV.NewMenu(s, '', 0, NIL));
-  (*!TODO*) m.children.prev.status := OV.disabled;
+  OV.Add(m, OV.NewMenu(s, 'F12', OV.hF12, SearchAgain));
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuGoToLineNumber', s);
   OV.Add(m, OV.NewMenu(s, '', 0, NIL));
@@ -1084,6 +1104,8 @@ BEGIN
   FoStrings.Get('menuNormalMode', q);
   OV.Add(m, OV.NewMenu(s, q, 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
+  FoStrings.Get('menuLanguage', s);
+  OV.Add(m, OV.NewMenu(s, '', 0, OptionsLanguage));
   FoStrings.Get('menuCompiler', s);
   OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;

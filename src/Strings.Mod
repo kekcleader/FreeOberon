@@ -108,8 +108,10 @@ END Extract;
 
 PROCEDURE Copy*(IN source: ARRAY OF CHAR; VAR dest: ARRAY OF CHAR);
 VAR i, len: INTEGER;
-BEGIN len := LEN(dest) - 1;
-  IF LEN(source) < LEN(dest) THEN len := LEN(source) - 1 END;
+BEGIN
+  IF LEN(source) < LEN(dest) THEN len := LEN(source) - 1
+  ELSE len := LEN(dest) - 1
+  END;
   i := 0;
   WHILE (i # len) & (source[i] # 0X) DO dest[i] := source[i]; INC(i) END;
   dest[i] := 0X
