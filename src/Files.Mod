@@ -59,6 +59,7 @@ TYPE
   Rider* = RECORD
     res*: INTEGER; (* Residue (byte count not read) at eof of ReadBytes *)
     eof*: BOOLEAN;
+    justSet: BOOLEAN; (* TRUE after Set(r, F, n>0) for UTF-8 error handling *)
     buf: Buffer;
     org: LONGINT; (* File offset of block containing current position *)
     offset: INTEGER (* Current position offset within block at org. *)
@@ -424,7 +425,8 @@ BEGIN
     END
   ELSE buf := NIL; org := 0; offset := 0
   END;
-  r.buf := buf; r.org := org; r.offset := offset; r.eof := FALSE; r.res := 0
+  r.buf := buf; r.org := org; r.offset := offset; r.eof := FALSE; r.res := 0;
+  r.justSet := pos > 0
 END Set;
 
 PROCEDURE Read*(VAR r: Rider; VAR x: BYTE);
@@ -481,8 +483,10 @@ BEGIN Read(r, b); y := b;
       Read(r, b); INC(y, b MOD 64) (*!FIXME UTF-16 surrogate pairs *)
     ELSE y := 0
     END
+    (*!TODO: IF (UTF-8 error occurred) & ~r.justSet THEN yield error char
+             ELSE skip to next char (but only one skip is allowed) END*)
   END;
-  x := CHR(y)
+  x := CHR(y); r.justSet := FALSE
 END ReadChar;
 
 PROCEDURE Base*(VAR r: Rider): File;
