@@ -30,6 +30,8 @@ CONST
 TYPE
   SBYTE* = BYTE;
   BYTE* = UBYTE;
+  INT64 = LONGINT;
+  LONGINT = INTEGER; (* For larger version of Files, i.e. Files64 *)
 
   FileName = ARRAY 256 OF CHAR;
   File* = POINTER TO FileDesc;
@@ -288,7 +290,7 @@ BEGIN i := 0; ch := name[0];
 RETURN ch = PathDelimiter END HasDir;
 
 PROCEDURE CacheEntry(identity: Platform.FileIdentity): File;
-VAR f: File; i: INTEGER; error: Platform.ErrorCode;
+VAR f: File; i: INTEGER; error: Platform.ErrorCode; n: INT64;
 BEGIN f := files;
   WHILE f # NIL DO
     IF Platform.SameFile(identity, f.identity) THEN
@@ -298,7 +300,7 @@ BEGIN f := files;
           INC(i)
         END;
         f.swapper := -1; f.identity := identity;
-        error := Platform.FileSize(f.fd, f.len)
+        error := Platform.FileSize(f.fd, n); f.len := SHORT(n)
       END;
       RETURN f
     END;
@@ -316,6 +318,7 @@ VAR f: File;
   error: Platform.ErrorCode;
   identity: Platform.FileIdentity;
   q: ARRAY 4096 OF SHORTCHAR;
+  n: INT64;
 BEGIN
   IF name # '' THEN
     IF HasDir(name) THEN dir := ''; path := name$
@@ -342,7 +345,7 @@ BEGIN
           RETURN f
         ELSE NEW(f); Heap.RegisterFinalizer(f, Finalize);
           f.fd := fd; f.state := open; f.pos := 0; f.swapper := -1;
-          error := Platform.FileSize(fd, f.len);
+          error := Platform.FileSize(fd, n); f.len := SHORT(n);
           f.workName := name$; f.registerName := ''; f.tempFile := FALSE;
           f.identity := identity;
           f.next := files; files := f; INC(Heap.FileCount);
@@ -522,6 +525,10 @@ BEGIN
   r.res := 0
 END WriteBytes;
 
+PROCEDURE Truncate*(F: File; pos: INTEGER);
+BEGIN F.len := pos (*!FIXME*)
+END Truncate;
+
 PROCEDURE Delete*(IN name: ARRAY OF CHAR; VAR res: INTEGER);
 VAR pos: INTEGER;
   dir, path: ARRAY 2048 OF CHAR;
@@ -650,8 +657,8 @@ BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4);
     ORD(b[3]) * 1000000H
 END ReadInt;
 
-PROCEDURE ReadLInt*(VAR R: Rider; VAR x: LONGINT);
-VAR b: ARRAY 8 OF SHORTCHAR; n: INTEGER; s: LONGINT;
+PROCEDURE ReadLInt*(VAR R: Rider; VAR x: INT64);
+VAR b: ARRAY 8 OF SHORTCHAR; n: INTEGER; s: INT64;
 BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 8), 8);
   x := ORD(b[0]); s := 100H;
   FOR n := 1 TO 7 DO INC(x, ORD(b[n]) * s); s := s * 100H END
@@ -699,7 +706,7 @@ BEGIN i := 0; b := FALSE;
   UNTIL b
 END ReadLine;
 
-PROCEDURE ReadNum*(VAR R: Rider; VAR x: LONGINT);
+PROCEDURE ReadNum*(VAR R: Rider; VAR x: INTEGER);
 VAR n: INTEGER; b: BYTE;
 BEGIN n := 0; x := 0; Read(R, b);
   WHILE b >= 128 DO
@@ -737,8 +744,8 @@ BEGIN b[0] := SHORT(CHR(x)); b[1] := SHORT(CHR(x DIV 100H));
   WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4)
 END WriteInt;
 
-PROCEDURE WriteLInt*(VAR R: Rider; x: LONGINT);
-VAR b: ARRAY 8 OF SHORTCHAR; n: INTEGER; s: LONGINT;
+PROCEDURE WriteLInt*(VAR R: Rider; x: INT64);
+VAR b: ARRAY 8 OF SHORTCHAR; n: INTEGER; s: INT64;
 BEGIN b[0] := SHORT(CHR(x)); s := 100H;
   FOR n := 0 TO 7 DO b[n] := SHORT(CHR(x DIV s)); s := s*100H END;
   WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 8), 8)
@@ -776,7 +783,7 @@ BEGIN i := -1;
   REPEAT INC(i); WriteChar(R, s[i]) UNTIL (i = LEN(s)) OR (s[i] = 0X)
 END WriteString;
 
-PROCEDURE WriteNum*(VAR R: Rider; x: LONGINT);
+PROCEDURE WriteNum*(VAR R: Rider; x: INTEGER);
 BEGIN
   WHILE (x < - 64) OR (x > 63) DO
     Write(R, SYSTEM.VAL(BYTE, x MOD 128 + 128)); x := x DIV 128

@@ -1,2 +1,2 @@
 #!/bin/bash
-vim -p FreeOberon.Mod FoStrings.Mod ../Data/Texts/ru.dat Texts.Mod OV.Mod
+vim -p Files.Mod Texts.Mod FreeOberon.Mod FoStrings.Mod ../Data/Texts/ru.dat Texts.Mod OV.Mod

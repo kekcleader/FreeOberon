@@ -9,11 +9,9 @@ CONST
   isWindows = Platform.Windows;
 
 TYPE
-  LONGINT* = SYSTEM.INT64;
-
   Text* = POINTER TO TextDesc;
   TextDesc* = RECORD
-    len*: LONGINT;
+    len*: INTEGER;
     f: Files.File;
     changed: BOOLEAN
   END;
@@ -30,13 +28,13 @@ TYPE
     i*: INTEGER;
     x*: REAL;
     (*y*: LONGREAL;*)
-    len*: LONGINT;
+    len*: INTEGER;
     s*: ARRAY 1900 OF CHAR
   END;
 
   Buffer* = POINTER TO BufDesc;
   BufDesc* = RECORD
-    len*: LONGINT;
+    len*: INTEGER;
     f: Files.File
   END;
 
@@ -48,14 +46,14 @@ TYPE
 PROCEDURE Open*(T: Text; fname: ARRAY OF CHAR);
 BEGIN T.f := Files.Old(fname);
   IF T.f = NIL THEN T.f := Files.New(fname) END;
-  T.len := Files.Length(T.f); T.changed := FALSE
+  T.len := SYSTEM.SHORT(Files.Length(T.f)); T.changed := FALSE
 END Open;
 
 PROCEDURE Close*(T: Text);
 BEGIN IF (T.f # NIL) & T.changed THEN Files.Register(T.f) END
 END Close;
 
-PROCEDURE OpenReader*(VAR R: Reader; T: Text; pos: LONGINT);
+PROCEDURE OpenReader*(VAR R: Reader; T: Text; pos: INTEGER);
 BEGIN Files.Set(R.rider, T.f, pos); R.eot := FALSE
 END OpenReader;
 
@@ -72,7 +70,7 @@ BEGIN Files.ReadChar(S.rider, S.nextCh);
   IF ~S.rider.eof & (S.nextCh = 0AX) THEN INC(S.line) END
 END Next;
 
-PROCEDURE OpenScanner*(VAR S: Scanner; T: Text; pos: LONGINT);
+PROCEDURE OpenScanner*(VAR S: Scanner; T: Text; pos: INTEGER);
 BEGIN OpenReader(S, T, pos); S.line := 0; S.nextCh := ' '
 END OpenScanner;
 
@@ -136,7 +134,10 @@ BEGIN NEW(W.buf); OpenBuf(W.buf); Files.Set(W.rider, W.buf.f, 0)
 END OpenWriter;
 
 PROCEDURE Write*(VAR W: Writer; ch: CHAR);
-BEGIN Files.WriteChar(W.rider, ch); INC(W.buf.len)
+VAR t: INTEGER;
+BEGIN t := Files.Pos(W.rider);
+  Files.WriteChar(W.rider, ch);
+  INC(W.buf.len, Files.Pos(W.rider) - t)
 END Write;
 
 PROCEDURE WriteLn*(VAR W: Writer);
@@ -159,8 +160,8 @@ BEGIN IntToStr.Str(x, s);
   WriteString(W, s)
 END WriteInt;
 
-PROCEDURE WriteHex* (VAR W: Writer; x: LONGINT);
-VAR i: INTEGER; y: LONGINT;
+PROCEDURE WriteHex* (VAR W: Writer; x: INTEGER);
+VAR i: INTEGER; y: INTEGER;
   a: ARRAY 10 OF CHAR;
 BEGIN i := 0; Write(W, ' ');
   REPEAT y := x MOD 10H;
@@ -221,41 +222,44 @@ BEGIN
   END
 END WriteRealFix;
 
-PROCEDURE Save*(T: Text; beg, end: LONGINT; B: Buffer);
+PROCEDURE Save*(T: Text; beg, end: INTEGER; B: Buffer);
 VAR R, W: Files.Rider;
   ch: CHAR;
 BEGIN
   IF end > T.len THEN end := T.len END;
   Files.Set(R, T.f, beg); Files.Set(W, B.f, B.len);
-  DEC(end, beg);
-  WHILE end > 0 DO Files.ReadChar(R, ch); Files.WriteChar(W, ch) END;
-  INC(B.len, end - beg)
+  DEC(end, beg); INC(B.len, end);
+  WHILE end > 0 DO Files.ReadChar(R, ch); Files.WriteChar(W, ch); DEC(end) END
 END Save;
 
 PROCEDURE Copy*(SB, DB: Buffer);
 VAR R, W: Files.Rider;
   ch: CHAR;
-BEGIN Files.Set(R, SB.f, 0); Files.Set(W, DB.f, DB.len);
-  Files.ReadChar(R, ch);
-  WHILE ~R.eof DO Files.WriteChar(W, ch); Files.ReadChar(R, ch) END;
+  n: INTEGER;
+BEGIN Files.Set(R, SB.f, 0); Files.Set(W, DB.f, DB.len); n := SB.len;
+  WHILE n # 0 DO Files.ReadChar(R, ch); Files.WriteChar(W, ch); DEC(n) END;
   INC(DB.len, SB.len)
 END Copy;
 
-PROCEDURE Insert*(T: Text; pos: LONGINT; B: Buffer);
+PROCEDURE Insert*(T: Text; pos: INTEGER; B: Buffer);
 VAR R, W: Files.Rider;
   ch: CHAR;
-  n, q: LONGINT;
+  n, q: INTEGER;
+  P: Buffer;
 BEGIN n := T.len - pos;
   IF n > 0 THEN q := B.len - n;
     IF q > 0 THEN Files.Set(W, T.f, T.len);
-      WHILE q # 0 DO Files.WriteChar(W, ' '); DEC(q) END
-    END;
-    Files.Set(R, T.f, pos); Files.Set(W, T.f, pos + B.len);
-    WHILE n > 0 DO Files.ReadChar(R, ch); Files.WriteChar(W, ch) END
+      WHILE q # 0 DO Files.WriteChar(W, ' '); DEC(q) END;
+      Files.Set(R, T.f, pos);
+      WHILE n # 0 DO Files.ReadChar(R, ch); Files.WriteChar(W, ch); DEC(n) END
+    ELSE NEW(P); OpenBuf(P); Save(T, pos, pos + n, P);
+      Files.Set(R, P.f, 0); Files.Set(W, T.f, pos + B.len);
+      WHILE n # 0 DO Files.ReadChar(R, ch); Files.WriteChar(W, ch); DEC(n) END
+    END
   END;
   n := B.len; Files.Set(R, B.f, 0); Files.Set(W, T.f, pos);
-  WHILE n # 0 DO Files.ReadChar(R, ch); Files.WriteChar(W, ch) END;
-  INC(T.len, B.len); T.changed := TRUE
+  WHILE n # 0 DO Files.ReadChar(R, ch); Files.WriteChar(W, ch); DEC(n) END;
+  INC(T.len, B.len); T.changed := TRUE; B.len := 0
 END Insert;
 
 PROCEDURE Append*(T: Text; B: Buffer);

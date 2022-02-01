@@ -823,9 +823,7 @@ BEGIN res := NIL; ok := TRUE;
         AddUniqueToList(list2, res);
         p := p.next
       END
-    ELSE
-      Strings.Copy(fname, errFname);
-      ;;;;;Out.String('Не могу разобраться с '); Out.String(modname); Out.Ln;;;;;
+    ELSE Strings.Copy(fname, errFname)
     END
   END;
   IF ok THEN
