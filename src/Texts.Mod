@@ -49,10 +49,6 @@ BEGIN T.f := Files.Old(fname);
   T.len := SYSTEM.SHORT(Files.Length(T.f)); T.changed := FALSE
 END Open;
 
-PROCEDURE Close*(T: Text);
-BEGIN IF (T.f # NIL) & T.changed THEN Files.Register(T.f) END
-END Close;
-
 PROCEDURE OpenReader*(VAR R: Reader; T: Text; pos: INTEGER);
 BEGIN Files.Set(R.rider, T.f, pos); R.eot := FALSE
 END OpenReader;
@@ -69,6 +65,18 @@ PROCEDURE Next(VAR S: Scanner);
 BEGIN Files.ReadChar(S.rider, S.nextCh);
   IF ~S.rider.eof & (S.nextCh = 0AX) THEN INC(S.line) END
 END Next;
+
+PROCEDURE Store(VAR W: Files.Rider; T: Text);
+VAR ch: CHAR;
+  R: Reader;
+BEGIN OpenReader(R, T, 0); Read(R, ch);
+  WHILE ~R.eot DO Files.WriteChar(W, ch); Read(R, ch) END
+END Store;
+
+PROCEDURE Close*(T: Text; name: ARRAY OF CHAR);
+VAR F: Files.File; W: Files.Rider;
+BEGIN F := Files.New(name); Files.Set(W, F, 0); Store(W, T); Files.Register(F)
+END Close;
 
 PROCEDURE OpenScanner*(VAR S: Scanner; T: Text; pos: INTEGER);
 BEGIN OpenReader(S, T, pos); S.line := 0; S.nextCh := ' '
@@ -240,6 +248,20 @@ BEGIN Files.Set(R, SB.f, 0); Files.Set(W, DB.f, DB.len); n := SB.len;
   WHILE n # 0 DO Files.ReadChar(R, ch); Files.WriteChar(W, ch); DEC(n) END;
   INC(DB.len, SB.len)
 END Copy;
+
+PROCEDURE Delete*(T: Text; beg, end: INTEGER; B: Buffer);
+VAR ch: CHAR;
+  n: INTEGER;
+  R, W: Files.Rider;
+BEGIN
+  IF beg < 0 THEN beg := 0 END;
+  IF end > T.len THEN end := T.len END;
+  IF beg < end THEN
+    (*!FIXME rewrite*)
+    Files.Set(W, T.f, beg); Files.Set(R, T.f, end); n := T.len - end;
+    WHILE n # 0 DO Files.ReadChar(R, ch); Files.WriteChar(W, ch); DEC(n) END
+  END
+END Delete;
 
 PROCEDURE Insert*(T: Text; pos: INTEGER; B: Buffer);
 VAR R, W: Files.Rider;
