@@ -5,7 +5,7 @@ VAR
   W: Texts.Writer;
   R: Texts.Reader;
 BEGIN
-  NEW(T); Texts.Open(T, 'MYTEXT.TXT');
+  NEW(T); Texts.Open(T, '');
   Texts.OpenWriter(W);
   Texts.WriteString(W, 'HELLO');
   Texts.WriteLn(W);
@@ -16,5 +16,5 @@ BEGIN
   Texts.Write(W, '*');
   Texts.WriteLn(W);
   Texts.Insert(T, 17, W.buf);
-  Texts.Close(T)
+  Texts.Close(T, 'ZMYTEXT.TXT')
 END TestWriter.
