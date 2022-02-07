@@ -1,4 +1,4 @@
-MODULE Encript;
+MODULE Encrypt;
 IMPORT Files, Out, SYSTEM;
 VAR key: INTEGER;
 
@@ -41,4 +41,4 @@ END Do;
 
 BEGIN
   Do
-END Encript.
+END Encrypt.
