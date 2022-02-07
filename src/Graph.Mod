@@ -292,6 +292,8 @@ VAR
   target: Bitmap;
   black: Color;
 
+  charRead: CHAR;
+
 PROCEDURE Error(s: ARRAY OF CHAR);
 BEGIN Out.String(s); Out.Ln
 END Error;
@@ -756,11 +758,6 @@ PROCEDURE Delay*(n: INTEGER);
 BEGIN Al.rest(n / 1000)
 END Delay;
 
-PROCEDURE Pause*;
-BEGIN
-
-END Pause;
-
 PROCEDURE ConvertMemoryBitmaps*;
 BEGIN Al.convert_memory_bitmaps
 END ConvertMemoryBitmaps;
@@ -976,7 +973,7 @@ PROCEDURE SwitchToFS*(win: Window);
 BEGIN IF window IN GetWindowOptions(screen) THEN ToggleFS(win) END
 END SwitchToFS;
 
-PROCEDURE ParseEvent(E: Al.Event; VAR event: Event);
+PROCEDURE ParseEvent(E: Al.Event; peek: BOOLEAN; VAR event: Event);
 VAR DE: Al.PDisplayEvent;
   TE: Al.PTimerEvent;
   KE: Al.PKeyboardEvent;
@@ -1011,7 +1008,7 @@ BEGIN
         ELSE event.dx := x - W.lastX; event.dy := y - W.lastY
         END;
         event.x := x; event.y := y;
-        W.lastX := event.x; W.lastY := event.y
+        IF ~peek THEN W.lastX := event.x; W.lastY := event.y END
       END;
       event.button := ME.button;
       event.mod := {};
@@ -1086,10 +1083,12 @@ BEGIN
     IF E.type = Al.eventDisplayResize THEN
       DE := SYSTEM.VAL(Al.PDisplayEvent, SYSTEM.ADR(E));
       d := DE.source; W := GetWindow(d);
-      W.winW := DE.width; W.winH := DE.height
+      IF ~peek THEN W.winW := DE.width; W.winH := DE.height END
     ELSE UE := SYSTEM.VAL(Al.PUserEvent, SYSTEM.ADR(E));
       d := SYSTEM.VAL(Al.Display, UE.data4); W := GetWindow(d);
-      W.winW := Al.get_display_width(d); W.winH := Al.get_display_height(d)
+      IF ~peek THEN
+        W.winW := Al.get_display_width(d); W.winH := Al.get_display_height(d)
+      END
     END;
     fw := W.winW / W.rzoom; fh := W.winH / W.rzoom;
     IF W.scaleOn THEN fw := fw / W.scaleX; fh := fh / W.scaleY END;
@@ -1099,13 +1098,13 @@ BEGIN
       ApplySizeStep(W, w, h)
     END;
     IF (w # W.lastW) OR (h # W.lastH) THEN
-      W.lastW := w; W.lastH := h;
+      IF ~peek THEN W.lastW := w; W.lastH := h END;
       event.type := resize; event.window := W; event.display := d;
       event.w := w; event.h := h;
       IF E.type = Al.eventDisplayResize THEN event.x := DE.x; event.y := DE.y
       ELSE Al.get_window_position(d, event.x, event.y)
       END;
-      ResetWindowBitmap(W)
+      IF ~peek THEN ResetWindowBitmap(W) END
     ELSE ResetFlipVars(W); Flip; event.type := noEvent
     END
   ELSIF E.type = Al.eventDisplayClose THEN
@@ -1120,7 +1119,7 @@ PROCEDURE WaitAndParseEvent(VAR event: Event);
 VAR E: Al.Event;
 BEGIN
   Al.wait_for_event(queue, E);
-  ParseEvent(E, event)
+  ParseEvent(E, FALSE, event)
 END WaitAndParseEvent;
 
 PROCEDURE PeekAndParseEvent(VAR event: Event): BOOLEAN;
@@ -1128,7 +1127,7 @@ VAR E: Al.Event;
   got: BOOLEAN;
 BEGIN
   got := Al.peek_next_event(queue, E);
-  IF got THEN ParseEvent(E, event) END
+  IF got THEN ParseEvent(E, TRUE, event) END
 RETURN got END PeekAndParseEvent;
 
 PROCEDURE WaitEvent*(VAR event: Event);
@@ -1148,6 +1147,32 @@ RETURN got END PeekEvent;
 PROCEDURE HasEvents*(): BOOLEAN;
 VAR e: Event;
 RETURN PeekEvent(e) END HasEvents;
+
+PROCEDURE KeyPressed*(): BOOLEAN;
+VAR e: Event;
+BEGIN
+  WHILE (charRead = 0X) & HasEvents() DO
+    WaitEvent(e);
+    IF e.type = char THEN charRead := e.ch END
+  END
+RETURN charRead # 0X END KeyPressed;
+
+PROCEDURE ReadKey*(): CHAR;
+VAR e: Event;
+  c: CHAR;
+BEGIN
+  WHILE charRead = 0X DO
+    WaitEvent(e);
+    IF e.type = char THEN charRead := e.ch END
+  END;
+  c := charRead; charRead := 0X
+RETURN c END ReadKey;
+
+PROCEDURE Pause*;
+BEGIN
+
+END Pause;
+
 
 PROCEDURE DropNextEvent*;
 VAR e: Event;
@@ -1414,6 +1439,7 @@ BEGIN ok := TRUE;
     END
   ELSE Error('Could not init Allegro.'); ok := FALSE
   END;
+  charRead := 0X;
   Done := ok
 END Init;
 
