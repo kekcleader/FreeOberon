@@ -3,13 +3,13 @@ PATH="$OFRDIR:$PATH"
 export OBERON=.:$OFRDIR/Lib/Sym
 
 ofront+ -887ws Allegro5.Mod && \
-ofront+ -887ws Graph2.Mod && \
+ofront+ -887ws Graph.Mod && \
 ofront+ -887ws TermBox.Mod && \
 ofront+ -887wm Tetragon.Mod && \
 gcc -o Tetragon -g3 -O0 -fno-exceptions \
   -I ../Data/bin/OfrontPlus/Target/Linux_amd64/../../Mod/Lib \
   -I ../Data/bin/OfrontPlus/Target/Linux_amd64/Lib/Obj \
-  Graph2.c TermBox.c Tetragon.c \
+  Graph.c TermBox.c Tetragon.c \
   ../Data/bin/libFreeOberon.a \
   ../Data/bin/OfrontPlus/Target/Linux_amd64/Lib/libOfront.a \
   $(pkg-config \

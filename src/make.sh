@@ -40,7 +40,7 @@ $OFR -7w Dir.Mod &&
 
 $OFR -7w Allegro5.Mod &&
 
-$OFR -7w Graph2.Mod &&
+$OFR -7w Graph.Mod &&
 
 $OFR -7w TermBox.Mod &&
 
@@ -70,15 +70,15 @@ $CCFULL -c Texts.c &&
 $CCFULL -c Random.c &&
 $CCFULL -c StrList.c &&
 $CCFULL -c Dir.c &&
-$CCFULL -c Graph2.c &&
+$CCFULL -c Graph.c &&
 $CCFULL -c TermBox.c &&
 
 $AR -crs ../Data/bin/libFreeOberon.a \
   Utf8.o Strings.o Reals.o Int.o In.o Out.o Args.o Files.o Texts.o Random.o \
-  StrList.o Dir.o Graph2.o TermBox.o &&
+  StrList.o Dir.o Graph.o TermBox.o &&
 
 $CCFULL -o ../$PROG \
-  Graph2.c TermBox.c \
+  Graph.c TermBox.c \
   Config.c term/term_linux.c \
   Term.c OV.c FoStrings.c EditorText.c Editor.c \
   $PROG.c \

@@ -41,7 +41,7 @@ ECHO ON
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w Allegro5.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -7w Graph2.Mod
+%OFR% -7w Graph.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w TermBox.Mod
 @IF ERRORLEVEL 1 GOTO ERR
@@ -84,18 +84,18 @@ windres resources.rc resources.o
 @IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Dir.c -I..\Data\bin\mingw32\include
 @IF ERRORLEVEL 1 GOTO ERR
-%CCFULL% -c Graph2.c
+%CCFULL% -c Graph.c
 @IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c TermBox.c
 @IF ERRORLEVEL 1 GOTO ERR
 
 %AR% -crs ..\Data\bin\FreeOberon.a ^
   Utf8.o Strings.o Reals.o Int.o In.o Out.o Args.o Files.o Texts.o Random.o ^
-  StrList.o Dir.o Graph2.o TermBox.o
+  StrList.o Dir.o Graph.o TermBox.o
 @IF ERRORLEVEL 1 GOTO ERR
 
 %CCFULL% -o ..\%PROG%.exe resources.o ^
-  Graph2.c TermBox.c ^
+  Graph.c TermBox.c ^
   Config.c term\term_win32.c ^
   Term.c OV.c FoStrings.c EditorText.c Editor.c ^
   %PROG%.c ^

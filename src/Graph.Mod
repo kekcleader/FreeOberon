@@ -1,1366 +1,1440 @@
 MODULE Graph;
-(* Copyright 2017-2022 Arthur Yefimov
-
-This file is part of Free Oberon.
-
-Free Oberon is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Free Oberon is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
-*)
-IMPORT SDL := SDL2, SYSTEM, Platform, Out, Utf8, Strings, Texts;
+IMPORT Out, Al := Allegro5, Utf8, Files, Dir, Strings, SYSTEM;
 
 CONST
-  (* Flip Flags *)
-  flipNone* = {};
-  flipH*    = 0;
-  flipV*    = 1;
-  flipHV*   = flipH + flipV;
+  fontPlanes = 4; (*!TODO*)
 
-  (* Draw Mode Flags *)
-  drawSpriteNormal* = 0;
-  drawSpriteLit*    = 1;
-  drawSpriteTrans*  = 2;
+  (* Settings set members *)
+  manual*      = 0;
+  fullscreen*  = 1;
+  window*      = 2;
+  exact*       = 3;
+  smooth*      = 4;
+  software*    = 5;
+  noMouse*     = 6;
+  center*      = 7;
+  resizable*   = 8;
+  maximized*   = 9;
+  minimized*   = 10;
+  frameless*   = 11;
+  nobuffer*    = 12;
+  topleft*     = 13;
 
-  (* Settings, see global varialbe settings *)
-  fullscreen*  = 0;
-  buffered*    = 1;
-  spread*      = 2;
-  sharpPixels* = 3;
-  software*    = 4;
-  initMouse*   = 8;
-  noPng* = 11;
-  noJpg* = 12;
-
-  (* Event Types *)
+  (* Event.type possible values *)
+  noEvent      = 0;
   quit*        = 1;
-  windowEvent* = 2;
-  keyDown*     = 3;
-  keyUp*       = 4;
-  textInput*   = 5;
-  mouseMove*   = 6;
-  mouseDown*   = 7;
-  mouseUp*     = 8;
-  mouseWheel*  = 9;
+  timer*       = 2;
+  windowEvent* = 3;
+  keyDown*     = 4;
+  keyUp*       = 5;
+  char*        = 6;
+  mouseMove*   = 7;
+  mouseDown*   = 8;
+  mouseUp*     = 9;
+  mouseWheel*  = 10;
+  resize*      = 11;
 
-  (* Mouse Buttons *)
-  btnLeft*  = 0;
-  btnRight* = 1;
-  btnMid*   = 2;
+  eventUserResize = 2005;
+
+  (* Window.zoom possible values *)
+  noZoom   = 0; (* The screen is not zoomed *)
+  intZoom  = 1; (* The zoom value is an integer: 2x, 3x etc. *)
+  realZoom = 2; (* The zoom value is not an integer, i.e. 2.5x *)
+
+  (* Flip flags *)
+  flipHor*  = 1;
+  flipVert* = 2;
 
   (* Key Codes *)
-  kA*           = 4;
-  kB*           = 5;
-  kC*           = 6;
-  kD*           = 7;
-  kE*           = 8;
-  kF*           = 9;
-  kG*           = 10;
-  kH*           = 11;
-  kI*           = 12;
-  kJ*           = 13;
-  kK*           = 14;
-  kL*           = 15;
-  kM*           = 16;
-  kN*           = 17;
-  kO*           = 18;
-  kP*           = 19;
-  kQ*           = 20;
-  kR*           = 21;
-  kS*           = 22;
-  kT*           = 23;
-  kU*           = 24;
-  kV*           = 25;
-  kW*           = 26;
-  kX*           = 27;
-  kY*           = 28;
-  kZ*           = 29;
-  k1*           = 30;
-  k2*           = 31;
-  k3*           = 32;
-  k4*           = 33;
-  k5*           = 34;
-  k6*           = 35;
-  k7*           = 36;
-  k8*           = 37;
-  k9*           = 38;
-  k0*           = 39;
-  k1Pad*        = 89;
-  k2Pad*        = 90;
-  k3Pad*        = 91;
-  k4Pad*        = 92;
-  k5Pad*        = 93;
-  k6Pad*        = 94;
-  k7Pad*        = 95;
-  k8Pad*        = 96;
-  k9Pad*        = 97;
-  k0Pad*        = 98;
-  kF1*          = 58;
-  kF2*          = 59;
-  kF3*          = 60;
-  kF4*          = 61;
-  kF5*          = 62;
-  kF6*          = 63;
-  kF7*          = 64;
-  kF8*          = 65;
-  kF9*          = 66;
-  kF10*         = 67;
-  kF11*         = 68;
-  kF12*         = 69;
-  kEsc*         = 41;
-  kTilde*       = 53;
-  kMinus*       = 45;
-  kEquals*      = 46;
-  kBackspace*   = 42;
-  kTab*         = 43;
-  kOpenBrace*   = 47;
-  kCloseBrace*  = 48;
-  kEnter*       = 40;
-  kColon*       = 51;
-  kQuote*       = 52;
-  kBackslash*   = 49;
-  kBackslash2*  = 100;
-  kComma*       = 54;
-  kStop*        = 55;
-  kSlash*       = 56;
-  kSpace*       = 44;
-  kInsert*      = 73;
-  kDel*         = 76;
-  kHome*        = 74;
-  kEnd*         = 77;
-  kPgUp*        = 75;
-  kPgDn*        = 78;
-  kLeft*        = 80;
-  kRight*       = 79;
-  kUp*          = 82;
-  kDown*        = 81;
-  kSlashPad*    = 84;
-  kAsterisk*    = 85;
-  kMinusPad*    = 86;
-  kPlusPad*     = 87;
-  kDelPad*      = 99;
-  kEnterPad*    = 88;
-  kPrtScr*      = 70;
-  kPause*       = 72;
+  kA*          = 1;
+  kB*          = 2;
+  kC*          = 3;
+  kD*          = 4;
+  kE*          = 5;
+  kF*          = 6;
+  kG*          = 7;
+  kH*          = 8;
+  kI*          = 9;
+  kJ*          = 10;
+  kK*          = 11;
+  kL*          = 12;
+  kM*          = 13;
+  kN*          = 14;
+  kO*          = 15;
+  kP*          = 16;
+  kQ*          = 17;
+  kR*          = 18;
+  kS*          = 19;
+  kT*          = 20;
+  kU*          = 21;
+  kV*          = 22;
+  kW*          = 23;
+  kX*          = 24;
+  kY*          = 25;
+  kZ*          = 26;
+  k0*          = 27;
+  k1*          = 28;
+  k2*          = 29;
+  k3*          = 30;
+  k4*          = 31;
+  k5*          = 32;
+  k6*          = 33;
+  k7*          = 34;
+  k8*          = 35;
+  k9*          = 36;
+  k0Pad*       = 37;
+  k1Pad*       = 38;
+  k2Pad*       = 39;
+  k3Pad*       = 40;
+  k4Pad*       = 41;
+  k5Pad*       = 42;
+  k6Pad*       = 43;
+  k7Pad*       = 44;
+  k8Pad*       = 45;
+  k9Pad*       = 46;
+  kF1*         = 47;
+  kF2*         = 48;
+  kF3*         = 49;
+  kF4*         = 50;
+  kF5*         = 51;
+  kF6*         = 52;
+  kF7*         = 53;
+  kF8*         = 54;
+  kF9*         = 55;
+  kF10*        = 56;
+  kF11*        = 57;
+  kF12*        = 58;
+  kEsc*        = 59;
+  kTilde*      = 60;
+  kMinus*      = 61;
+  kEquals*     = 62;
+  kBackspace*  = 63;
+  kTab*        = 64;
+  kOpenBrace*  = 65;
+  kCloseBrace* = 66;
+  kEnter*      = 67;
+  kColon*      = 68;
+  kQuote*      = 69;
+  kBackslash*  = 70;
+  kBackslash2* = 71;
+  kComma*      = 72;
+  kStop*       = 73;
+  kSlash*      = 74;
+  kSpace*      = 75;
+  kInsert*     = 76;
+  kDel*        = 77;
+  kHome*       = 78;
+  kEnd*        = 79;
+  kPgUp*       = 80;
+  kPgDn*       = 81;
+  kLeft*       = 82;
+  kRight*      = 83;
+  kUp*         = 84;
+  kDown*       = 85;
+  kSlashPad*   = 86;
+  kAsterisk*   = 87;
+  kMinusPad*   = 88;
+  kPlusPad*    = 89;
+  kDelPad*     = 90;
+  kEnterPad*   = 91;
+  kPrtScr*     = 92;
+  kPause*      = 93;
+  kEqualsPad*  = 103;
+  kBackquote*  = 104;
+  kSemicolon2* = 105;
+  kCommand*    = 106;
 
-  kModifiers*   = 115;
+  kBack*       = 107;
+  kVolumeUp*   = 108;
+  kVolumeDown* = 109;
 
-  kLShift*      = 225;
-  kRShift*      = 229;
-  kLCtrl*       = 224;
-  kRCtrl*       = 228;
-  kAlt*         = 226;
-  kAltGr*       = 230;
-  kLWin*        = 227;
-  kRWin*        = 231;
-  kMenu*        = 123;
-  kScrLock*     = 124;
-  kNumLock*     = 125;
-  kCapsLock*    = 126;
+  kModifers*   = 215;
 
-  kMax*         = 127;
+  kLShift*     = 215;
+  kRShift*     = 216;
+  kLCtrl*      = 217;
+  kRCtrl*      = 218;
+  kAlt*        = 219;
+  kAltGr*      = 220;
+  kLMeta*      = 221;
+  kRMeta*      = 222;
+  kMenu*       = 223;
+  kScrLock*    = 224;
+  kNumLock*    = 225;
+  kCapsLock*   = 226;
+
+  kMax*        = 226;
 
   (* Modifiers Set *)
-  mLShift*   = 0;
-  mRShift*   = 1;
-  mLCtrl*    = 6;
-  mRCtrl*    = 7;
-  mLAlt*     = 8;
-  mRAlt*     = 9;
-  mLGui*     = 10;
-  mRGui*     = 11;
-  mNum*      = 12;
-  mCaps*     = 13;
-  mMode*     = 14;
-  mReserved* = 15;
-  mCtrl*  = {mLCtrl, mRCtrl};
-  mShift* = {mLShift, mRShift};
-  mAlt*   = {mLAlt, mRAlt};
-  mGui*   = {mLGui, mRGui};
+  mShift*      = 0;
+  mCtrl*       = 1;
+  mAlt*        = 2;
+  mLwin*       = 3;
+  mRwin*       = 4;
+  mMenu*       = 5;
+  mAltGr*      = 6;
+  mCommand*    = 7;
+  mScrolllock* = 8;
+  mNumlock*    = 9;
+  mCapslock*   = 10;
 
 TYPE
   ADRINT = SYSTEM.ADRINT;
-  SET32 = SET;
   REAL = SYSTEM.REAL32;
+  LONGREAL = SYSTEM.REAL64;
+  LONGINT = SYSTEM.INT64;
+  SHORTCHAR = SYSTEM.CHAR8;
+
+  Color* = RECORD
+    r, g, b, a: REAL
+  END;
+
+  Transform* = RECORD
+    m: ARRAY 4, 4 OF REAL
+  END;
+
+  Timer* = POINTER TO TimerDesc;
+  TimerDesc* = RECORD
+    tmr: Al.Timer;
+    next: Timer (* See timerList below *)
+  END;
 
   Bitmap* = POINTER TO BitmapDesc;
   BitmapDesc* = RECORD
-    surface: SDL.Surface;
+    bmp: Al.Bitmap;
     w*, h*: INTEGER
   END;
 
-  MonoFont* = POINTER TO MonoFontDesc;
-  MonoFontDesc* = RECORD
-    bmp*: Bitmap;
-    charW*, charH*: INTEGER;
-    charRows*, charsInRow*: INTEGER;
-    sprites*: POINTER TO ARRAY OF ARRAY OF SDL.Rect
-  END;
-
-  CharGeo* = RECORD
-    w*, x*, y*: INTEGER
-  END;
-
-  Font* = POINTER TO FontDesc;
-  FontDesc* = RECORD
-    bmp*: Bitmap;
-    geo*: ARRAY 512 OF CharGeo;
-    geoCount*: INTEGER;
-    h*: INTEGER
-  END;
-
-  KeyArray = SDL.KeyArray;
-
-  Key* = RECORD
-    code*: INTEGER; (* Physical key code *)
-    sym*: INTEGER; (* Virtual key code *)
-    mod*: SET; (* Key modifiers *)
-    repeat*: BOOLEAN
-  END;
-
-  Region* = RECORD
-    x*, y*, w*, h*: INTEGER
+  Window* = POINTER TO WindowDesc;
+  WindowDesc* = RECORD(BitmapDesc)
+    display: Al.Display;
+    winW, winH: INTEGER; (* Window size in real pixels *)
+    initX, initY: INTEGER; (* Window position upon its creation *)
+    initW, initH: INTEGER; (* Window size upon its creation *)
+    fsW, fsH: INTEGER; (* Window size upon its creation *)
+    wantZoom: REAL; (* Window zoom upon its creation *)
+    lastX, lastY: INTEGER; (* Last mouse position in virtual pixels *)
+    lastW, lastH: INTEGER; (* Last stepped size in virtual pixels *)
+    zoom: INTEGER; (* See constants above; based on this rzoom/izoom is used *)
+    izoom: INTEGER; (* Window.izoom is used if Window.zoom = intZoom  *)
+    rzoom: REAL;    (* Window.rzoom is used if Window.zoom = realZoom *)
+    scaleOn: BOOLEAN; (* If TRUE, scaleX and scaleY are used *)
+    scaleX, scaleY: REAL; (* Deforms pixels on Flip, but zoom is for drawing *)
+    sizeStepX, sizeStepY: INTEGER;
+    flipX, flipY, flipW, flipH: REAL; (* Where to flip the window bitmap to *)
+    iFlipX, iFlipY: INTEGER; (* Same as flipX, flipY, which are always whole *)
+    options: SET;
+    title: ARRAY 256 OF CHAR;
+    resized: BOOLEAN; (* TRUE if fullscreen mode has been toggled for window *)
+    showMouse: BOOLEAN;
+    icons: ARRAY 64 OF Al.Bitmap;
+    noficons: INTEGER;
+    next: Window (* See windowList below *)
   END;
 
   Event* = RECORD
     type*: INTEGER;
-    key*: Key;
-    x*, y*: INTEGER;
-    xRel*, yRel*: INTEGER;
+    time*: REAL;
+    x*, y*, z*, w*, h*: INTEGER;
+    dx*, dy*, dz*, dw*: INTEGER;
     button*: INTEGER;
     buttons*: SET; (* What mouse buttons are pressed *)
     down*: BOOLEAN;
-    s*: ARRAY 32 OF CHAR; (* For Text Input and Text Edit Events (SDL2, !TODO) *)
-    ch*: CHAR
+    count*: LONGINT; (* Timer counter *)
+    key*: INTEGER; (* Physical key code *)
+    ch*: CHAR; (* Typed character for event.type = char *)
+    mod*: SET; (* Key modifiers *)
+    repeat*: BOOLEAN;
+    window*: Window;
+    timer*: Timer;
+    display: Al.Display
   END;
 
-  EventQueue* = RECORD
-    buf: ARRAY 256 OF Event;
-    first, last: INTEGER; (* Index of first and last element *)
-    len: INTEGER (* Amount of elements currently in queue *)
+  FontMessage* = POINTER TO FontMessageDesc;
+  FontMessageDesc* = RECORD
+
   END;
 
-  CloseBtnProc* = PROCEDURE;
+  FontDrawMsg* = POINTER TO FontDrawMsgDesc;
+  FontDrawMsgDesc* = RECORD(FontMessage)
+
+  END;
+
+  Font* = POINTER TO FontDesc;
+  FontDesc* = RECORD
+    fname: ARRAY 256 OF CHAR;
+    handle: PROCEDURE (font: Font; VAR msg: FontMessage);
+    draw: PROCEDURE (font: Font; VAR msg: FontDrawMsg);
+    loaded*: BOOLEAN
+  END;
+
+  MonoFont* = POINTER TO MonoFontDesc;
+  MonoFontDesc* = RECORD(FontDesc)
+    bmp: Bitmap;
+    charW*, charH*: INTEGER;
+    rows, cols: INTEGER
+  END;
 
 VAR
-  window: SDL.Window;
-  renderer: SDL.Renderer;
-  screen: Bitmap;
-  screenTexture: SDL.Texture;
-  events: EventQueue;
-  keyPressed: INTEGER;
+  Done*: BOOLEAN;
 
-  settings, initSettings: SET; (* See constants above *)
-  sizeStepX, sizeStepY: INTEGER;
-  scaleX, scaleY: REAL;
-  scrW, scrH: INTEGER;
-  wantFPS: INTEGER;
-  buffer: Bitmap;
-  lastFlip: INTEGER;
-  frames, framesT: INTEGER;
-  screenAlpha: INTEGER;
+  settings: SET; (* See list of constants Settings above *)
+  wantW, wantH: INTEGER; (* Assigned in procedure Settings *)
+  wantZoom: REAL; (* Assigned in procedure SetZoom *)
+  wantSizeStepX, wantSizeStepY: INTEGER; (* Assigned in SetSizeStep *)
+  wantScaleX, wantScaleY: REAL; (* Assigned in procedure SetScale *)
+  wantTitle: ARRAY 256 OF CHAR; (* Assigned in procedure SetTitle *)
+  queue: Al.EventQueue;
+  userEventSource: Al.EventSource;
+  windowList: Window;
+  timerList: Timer;
+  screen: Window;
+  target: Bitmap;
+  black: Color;
 
-  (* Flip Region *)
-  flipRegion: Region;
+PROCEDURE Error(s: ARRAY OF CHAR);
+BEGIN Out.String(s); Out.Ln
+END Error;
 
-  (* Mouse *)
-  mouseX, mouseY: INTEGER;
-  mouseFocusX, mouseFocusY: INTEGER;
-  lastBlitMouseOutside: BOOLEAN;
-  lastBlitMouseX, lastBlitMouseY: INTEGER;
-  needRedrawMouse: BOOLEAN; (* True if mouse has moved since last redraw *)
-  showMouse: BOOLEAN; (* Whether to show mouse pointer on screen *)
-  stdMousePointer: Bitmap;
-  mousePointer: Bitmap;
-  underMouse: Bitmap; (* Buffer to copy part of image under the mouse *)
+PROCEDURE GetDesktopResolution*(VAR w, h: INTEGER);
+VAR info: Al.MonitorInfo;
+BEGIN
+  IF Al.get_monitor_info(0, info) THEN
+    w := info.x2 - info.x1;
+    h := info.y2 - info.y1
+  ELSE w := -1; h := -1
+  END
+END GetDesktopResolution;
 
-PROCEDURE -AAIncludeSDL2h0 '#include "SDL2.h0"';
+PROCEDURE GetScreen*(): Window;
+RETURN screen END GetScreen;
 
-(* General *)
-
-PROCEDURE GetError*(OUT s: ARRAY OF CHAR);
-TYPE P = POINTER TO ARRAY 2048 OF SHORTCHAR;
-VAR p: P;
-BEGIN p := SYSTEM.VAL(P, SDL.GetError()); Utf8.Decode(p^, s)
-END GetError;
+PROCEDURE GetScreenSize*(VAR width, height: INTEGER);
+BEGIN
+  IF screen # NIL THEN width := screen.w; height := screen.h
+  ELSE width := 0; height := 0
+  END
+END GetScreenSize;
 
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
-BEGIN scrW := w; scrH := h;
-  initSettings := flags;
-  showMouse := initMouse IN flags
+BEGIN wantW := w; wantH := h; settings := flags
 END Settings;
 
 PROCEDURE SetSizeStep*(w, h: INTEGER);
-BEGIN sizeStepX := w; sizeStepY := h
+BEGIN wantSizeStepX := w; wantSizeStepY := h
 END SetSizeStep;
 
-PROCEDURE ApplyScale;
+PROCEDURE ApplySizeStep(W: Window; VAR w, h: INTEGER);
 BEGIN
-  SDL.RenderSetLogicalSize(renderer,
-    SHORT(ENTIER(scrW * scaleX)), SHORT(ENTIER(scrH * scaleY)));
-END ApplyScale;
-
-PROCEDURE SetScale*(x, y: REAL);
-BEGIN scaleX := x; scaleY := y;
-  IF renderer # 0 THEN ApplyScale END
-END SetScale;
-
-PROCEDURE SetFPS*(fps: INTEGER);
-BEGIN IF fps <= 0 THEN fps := -1 END;
-  wantFPS := fps
-END SetFPS;
-
-PROCEDURE GetDesktopResolution*(VAR w, h: INTEGER);
-VAR mode: SDL.DisplayMode;
-BEGIN SDL.GetDesktopDisplayMode(0, mode);
-  w := mode.w; h := mode.h
-END GetDesktopResolution;
-
-(* Flip Region *)
-PROCEDURE SetRegion*(x, y, w, h: INTEGER);
-BEGIN
-  flipRegion.x := x; flipRegion.y := y;
-  flipRegion.w := w; flipRegion.h := h
-END SetRegion;
-
-PROCEDURE UnsetRegion*;
-BEGIN flipRegion.w := -1
-END UnsetRegion;
-
-PROCEDURE AddRegion*(x, y, w, h: INTEGER);
-BEGIN
-  IF flipRegion.w = -1 THEN (* No flip region yet *)
-    SetRegion(x, y, w, h) (* Just set it *)
-  ELSE (* Flip Region exists, add to it *)
-    IF x < flipRegion.x THEN flipRegion.x := x END;
-    IF y < flipRegion.y THEN flipRegion.y := y END;
-    IF x + w > flipRegion.x + flipRegion.w THEN
-      flipRegion.w := w + x - flipRegion.x END;
-    IF y + h > flipRegion.y + flipRegion.h THEN
-      flipRegion.h := h + y - flipRegion.y END
+  IF W.sizeStepX # 1 THEN
+    w := w DIV W.sizeStepX * W.sizeStepX;
+    IF w < W.sizeStepX THEN w := W.sizeStepX END
+  END;
+  IF W.sizeStepY # 1 THEN
+    h := h DIV W.sizeStepY * W.sizeStepY;
+    IF h < W.sizeStepY THEN h := W.sizeStepY END
   END
-END AddRegion;
+END ApplySizeStep;
 
-(* Drawing *)
+PROCEDURE GetTarget*(): Bitmap;
+RETURN target END GetTarget;
 
-PROCEDURE MakeCol*(r, g, b: INTEGER): INTEGER;
+PROCEDURE GetTargetSize*(VAR width, height: INTEGER);
 BEGIN
-  r := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, r) * {0..7});
-  g := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, g) * {0..7});
-  b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, b) * {0..7}) ;
-RETURN SYSTEM.LSH(SYSTEM.LSH(0FF00H + b, 8) + g, 8) + r END MakeCol;
-
-PROCEDURE ColorToRGB*(color: INTEGER; VAR r, g, b: INTEGER);
-BEGIN
-  r := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, color) * {0..7});
-  g := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -8)) * {0..7});
-  b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -16)) * {0..7})
-END ColorToRGB;
-
-PROCEDURE ColorToRGBA*(color: INTEGER; VAR r, g, b, a: INTEGER);
-BEGIN
-  r := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, color) * {0..7});
-  g := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -8)) * {0..7});
-  b := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -16)) * {0..7});
-  a := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET32, SYSTEM.LSH(color, -24)) * {0..7})
-END ColorToRGBA;
-
-PROCEDURE BmpCol*(bmp: Bitmap; r, g, b: INTEGER): INTEGER;
-BEGIN RETURN SDL.MapRGB(bmp.surface.format, SHORT(r), SHORT(g), SHORT(b))
-END BmpCol;
-
-PROCEDURE ClearToColor*(bmp: Bitmap; color: INTEGER);
-BEGIN SDL.FillRectNil(bmp.surface, color)
-END ClearToColor;
-
-PROCEDURE ClearBitmap*(bmp: Bitmap);
-BEGIN ClearToColor(bmp, MakeCol(0, 0, 0))
-END ClearBitmap;
-
-PROCEDURE ClearScreenToColor*(color: INTEGER);
-BEGIN ClearToColor(screen, color)
-END ClearScreenToColor;
-
-PROCEDURE ClearScreen*;
-BEGIN ClearToColor(screen, MakeCol(0, 0, 0))
-END ClearScreen;
-
-PROCEDURE LockBitmap*(bmp: Bitmap);
-BEGIN SDL.LockSurface(bmp.surface)
-END LockBitmap;
-
-PROCEDURE UnlockBitmap*(bmp: Bitmap);
-BEGIN SDL.UnlockSurface(bmp.surface)
-END UnlockBitmap;
-
-PROCEDURE PutPixelFast*(bmp: Bitmap; x, y, color: INTEGER);
-VAR n: ADRINT;
-BEGIN n := SYSTEM.VAL(ADRINT, bmp.surface.pixels);
-  INC(n, (y * bmp.w + x) * 4);
-  SYSTEM.PUT(n, color)
-END PutPixelFast;
-
-PROCEDURE PutPixel*(bmp: Bitmap; x, y, color: INTEGER);
-VAR n: ADRINT;
-BEGIN
-  IF (x >= 0) & (x < bmp.w) &
-     (y >= 0) & (y < bmp.h) THEN
-    SDL.LockSurface(bmp.surface);
-    n := SYSTEM.VAL(ADRINT, bmp.surface.pixels);
-    INC(n, (y * bmp.w + x) * 4);
-    SYSTEM.PUT(n, color);
-    SDL.UnlockSurface(bmp.surface)
+  IF target # NIL THEN width := target.w; height := target.h
+  ELSE width := 0; height := 0
   END
-END PutPixel;
+END GetTargetSize;
 
-PROCEDURE GetPixelFast*(bmp: Bitmap; x, y: INTEGER): INTEGER;
-VAR color: INTEGER;
-  n: ADRINT;
-BEGIN n := SYSTEM.VAL(ADRINT, bmp.surface.pixels);
-  INC(n, (y * bmp.w + x) * 4);
-  SYSTEM.GET(n, color) ;
-RETURN color END GetPixelFast;
+PROCEDURE Target*(bitmap: Bitmap);
+VAR T: Al.Transform;
+  W: Window;
+BEGIN target := bitmap;
+  IF bitmap # NIL THEN
+    IF (bitmap IS Window) & (bitmap.bmp = NIL) THEN W := bitmap(Window);
+      Al.set_target_backbuffer(W.display);
+      Al.build_transform(T, W.flipX, W.flipY, W.scaleX, W.scaleY, 0.0);
+      Al.use_transform(T)
+    ELSE Al.set_target_bitmap(SYSTEM.VAL(Al.Bitmap, bitmap.bmp))
+    END
+  END
+END Target;
 
-PROCEDURE GetPixel*(bmp: Bitmap; x, y: INTEGER): INTEGER;
-VAR color: INTEGER;
-  n: ADRINT;
+PROCEDURE TargetScreen*;
 BEGIN
-  IF (x >= 0) & (x < bmp.w) &
-     (y >= 0) & (y < bmp.h) THEN
-    SDL.LockSurface(bmp.surface);
-    n := SYSTEM.VAL(ADRINT, bmp.surface.pixels);
-    INC(n, (y * bmp.w + x) * 4);
-    SYSTEM.GET(n, color);
-    SDL.UnlockSurface(bmp.surface)
-  ELSE color := 0
-  END ;
-RETURN color END GetPixel;
+  IF screen # NIL THEN Target(screen)
+  ELSIF windowList # NIL THEN Target(windowList)
+  ELSE Target(NIL)
+  END
+END TargetScreen;
 
-PROCEDURE HLine*(bmp: Bitmap; x1, y, x2, color: INTEGER);
-VAR rect: SDL.Rect; t: INTEGER;
+PROCEDURE ResetFlipVars(W: Window);
+VAR w, h: INTEGER;
 BEGIN
-  IF x1 > x2 THEN t := x1; x1 := x2; x2 := t END;
-  rect.x := x1; rect.y := y;
-  rect.w := x2 - x1 + 1; rect.h := 1;
-  SDL.FillRect(bmp.surface, rect, color)
-END HLine;
-
-PROCEDURE VLine*(bmp: Bitmap; x, y1, y2, color: INTEGER);
-VAR rect: SDL.Rect; t: INTEGER;
-BEGIN
-  IF y1 > y2 THEN t := y1; y1 := y2; y2 := t END;
-  rect.x := x; rect.y := y1;
-  rect.w := 1; rect.h := y2 - y1 + 1;
-  SDL.FillRect(bmp.surface, rect, color)
-END VLine;
-
-PROCEDURE Line*(bmp: Bitmap; x1, y1, x2, y2, color: INTEGER);
-VAR x, y, i, dx, dy, sx, sy, e: INTEGER; vert: BOOLEAN;
-BEGIN
-  IF x1 = x2 THEN VLine(bmp, x1, y1, y2, color)
-  ELSIF y1 = y2 THEN HLine(bmp, x1, y1, x2, color)
+  IF W.zoom = intZoom THEN
+    w := W.w * W.izoom; h := W.h * W.izoom;
+    IF W.scaleOn THEN
+      W.flipW := FLT(FLOOR(FLT(w) * W.scaleX + 0.9));
+      W.flipH := FLT(FLOOR(FLT(h) * W.scaleY + 0.9));
+      W.iFlipX := (W.winW - FLOOR(W.flipW + 0.1)) DIV 2;
+      W.iFlipY := (W.winH - FLOOR(W.flipH + 0.1)) DIV 2
+    ELSE W.flipW := FLT(w); W.flipH := FLT(h);
+      W.iFlipX := (W.winW - w) DIV 2; W.iFlipY := (W.winH - h) DIV 2
+    END
   ELSE
-    SDL.LockSurface(bmp.surface);
-    dx := ABS(x1 - x2); dy := ABS(y1 - y2);
-    IF x2 > x1 THEN sx := 1 ELSE sx := -1 END;
-    IF y2 > y1 THEN sy := 1 ELSE sy := -1 END;
-    x := x1; y := y1; vert := dy > dx;
-    IF vert THEN i := dx; dx := dy; dy := i END;
-    e := 2 * dy - dx;
-    FOR i := 0 TO dx DO
-      IF (x >= 0) & (x < bmp.w) &
-         (y >= 0) & (y < bmp.h) THEN
-        PutPixelFast(bmp, x, y, color)
-      END;
-      IF e >= 0 THEN
-        IF vert THEN INC(x, sx) ELSE INC(y, sy) END;
-        DEC(e, 2 * dx)
-      END;
-      IF vert THEN INC(y, sy) ELSE INC(x, sx) END;
-      INC(e, 2 * dy)
-    END;
-    SDL.UnlockSurface(bmp.surface)
-  END
-END Line;
-
-PROCEDURE FastLine*(bmp: Bitmap; x1, y1, x2, y2, color: INTEGER);
-BEGIN
-  (*Al.FastLine(bmp.bmp, x1, y1, x2, y2, color)*)
-END FastLine;
-
-PROCEDURE Rect*(bmp: Bitmap; x1, y1, x2, y2, color: INTEGER); (*!FIXME*)
-VAR rect: SDL.Rect;
-BEGIN
-  rect.x := x1; rect.y := y1;
-  rect.w := 1; rect.h := y2 - y1 + 1;
-  SDL.FillRect(bmp.surface, rect, color);
-  rect.x := x2;
-  SDL.FillRect(bmp.surface, rect, color);
-  rect.x := x1; rect.w := x2 - x1 + 1; rect.h := 1;
-  SDL.FillRect(bmp.surface, rect, color);
-  rect.y := y2;
-  SDL.FillRect(bmp.surface, rect, color)
-END Rect;
-
-PROCEDURE RectFill*(bmp: Bitmap; x1, y1, x2, y2, color: INTEGER);
-VAR rect: SDL.Rect;
-BEGIN
-  rect.x := x1; rect.y := y1;
-  rect.w := x2 - x1 + 1; rect.h := y2 - y1 + 1;
-  SDL.FillRect(bmp.surface, rect, color)
-END RectFill;
-
-PROCEDURE Circle*(b: Bitmap; cx, cy, r, col: INTEGER);
-VAR x, y, d: INTEGER;
-BEGIN x := 0; y := r; d := 3 - 2 * r;
-  WHILE x <= y DO
-    PutPixel(b, cx + x, cy + y, col);
-    PutPixel(b, cx + y, cy + x, col);
-    PutPixel(b, cx + x, cy - y, col);
-    PutPixel(b, cx + y, cy - x, col);
-    PutPixel(b, cx - x, cy + y, col);
-    PutPixel(b, cx - y, cy + x, col);
-    PutPixel(b, cx - x, cy - y, col);
-    PutPixel(b, cx - y, cy - x, col);
-    IF d < 0 THEN d := d + 4 * x + 6
-    ELSE d := d + 4 * (x - y) + 10; DEC(y)
-    END;
-    INC(x)
-  END
-END Circle;
-
-PROCEDURE CircleFill*(b: Bitmap; cx, cy, r, col: INTEGER);
-VAR x, y, d: INTEGER;
-BEGIN x := 0; y := r; d := 3 - 2 * r;
-  WHILE x <= y DO
-    HLine(b, cx - x, cy + y, cx + x, col);
-    HLine(b, cx - y, cy + x, cx + y, col);
-    HLine(b, cx - x, cy - y, cx + x, col);
-    HLine(b, cx - y, cy - x, cx + y, col);
-    IF d < 0 THEN d := d + 4 * x + 6
-    ELSE d := d + 4 * (x - y) + 10; DEC(y)
-    END;
-    INC(x)
-  END
-END CircleFill;
-
-PROCEDURE Ellipse*(bmp: Bitmap; x, y, rx, ry, color: INTEGER);
-BEGIN
-END Ellipse;
-
-PROCEDURE EllipseFill*(bmp: Bitmap; x, y, rx, ry, color: INTEGER);
-BEGIN
-END EllipseFill;
-
-PROCEDURE FloodFill*(bmp: Bitmap; x, y, color: INTEGER);
-BEGIN
-END FloodFill;
-
-(* Bitmap *)
-
-PROCEDURE (bmp: Bitmap) Finalize*, NEW;
-BEGIN
-END Finalize;
-
-PROCEDURE CreateBitmap*(w, h: INTEGER): Bitmap;
-VAR bmp: Bitmap;
-  s: ARRAY 2560 OF CHAR;
-BEGIN NEW(bmp);
-  bmp.surface := SDL.CreateRGBSurface(0, w, h, 32,
-    000000FFH, 0000FF00H, 00FF0000H, -1000000H);
-  IF bmp.surface = NIL THEN
-    GetError(s); Out.String(s); Out.Ln
+    W.flipW := FLT(FLOOR(W.w * W.rzoom * W.scaleX + 0.9));
+    W.flipH := FLT(FLOOR(W.h * W.rzoom * W.scaleY + 0.9));
+    W.iFlipX := (W.winW - FLOOR(W.flipW + 0.1)) DIV 2;
+    W.iFlipY := (W.winH - FLOOR(W.flipH + 0.1)) DIV 2
   END;
-  bmp.w := w; bmp.h := h ;
-RETURN bmp END CreateBitmap;
+  IF topleft IN W.options THEN W.iFlipX := 0; W.iFlipY := 0 END;
+  W.flipX := FLT(W.iFlipX); W.flipY := FLT(W.iFlipY);
+  IF ~(exact IN W.options) & (smooth IN W.options) &
+     ~(topleft IN W.options) & (W.winW - W.flipX - W.flipW < W.rzoom) &
+     (W.winH - W.flipY - W.flipH < W.rzoom) THEN
+    W.iFlipX := 0; W.iFlipY := 0; W.flipX := 0.0; W.flipY := 0.0;
+    W.flipW := FLT(W.winW); W.flipH := FLT(W.winH)
+  END
+END ResetFlipVars;
 
-PROCEDURE DestroyBitmap*(bmp: Bitmap);
-BEGIN SDL.FreeSurface(bmp.surface)
-END DestroyBitmap;
+PROCEDURE ResetWindowBitmap(W: Window);
+VAR opt: SET;
+  w, h, bw, bh: INTEGER;
+  fw, fh: REAL;
+  scaled, wasTarget: BOOLEAN;
+BEGIN scaled := FALSE;
+  IF W.bmp = NIL THEN bw := -1
+  ELSE bw := Al.get_bitmap_width(W.bmp); bh := Al.get_bitmap_height(W.bmp)
+  END;
+  IF ~(exact IN W.options) THEN
+    IF W.zoom = noZoom THEN w := W.winW; h := W.winH
+    ELSIF (W.zoom = intZoom) & ~W.scaleOn THEN
+      w := W.winW DIV W.izoom; h := W.winH DIV W.izoom
+    ELSE scaled := TRUE;
+      w := FLOOR(W.winW / W.rzoom / W.scaleX + 0.1);
+      h := FLOOR(W.winH / W.rzoom / W.scaleY + 0.1)
+    END
+  ELSE w := W.w; h := W.h
+  END;
+  IF W.scaleOn & ~scaled THEN
+    w := FLOOR(w / W.scaleX + 0.1); h := FLOOR(h / W.scaleY + 0.1)
+  END;
 
-PROCEDURE LoadBitmap*(IN filename: ARRAY OF CHAR): Bitmap;
-VAR bmp: Bitmap;
-  s: ARRAY 2048 OF SHORTCHAR;
-BEGIN NEW(bmp); Utf8.Encode(filename, s); bmp.surface := SDL.ImgLoad(s);
-  IF bmp.surface = NIL THEN bmp := NIL
-  ELSE bmp.w := bmp.surface.w; bmp.h := bmp.surface.h END ;
-RETURN bmp END LoadBitmap;
+  ApplySizeStep(W, w, h);
+  IF (w > bw) OR (h > bh) OR (W.zoom = noZoom) THEN
+    IF W.bmp # NIL THEN
+      wasTarget := Al.get_target_bitmap() = W.bmp;
+      Al.destroy_bitmap(W.bmp)
+    END;
+    IF (W.zoom = noZoom) & (nobuffer IN W.options) THEN
+      W.bmp := NIL;
+      IF wasTarget THEN Target(NIL) END
+    ELSE opt := {Al.convertBitmap};
+      IF smooth IN W.options THEN
+      	opt := opt + {Al.minLinear, Al.magLinear}
+      END;
+      Al.set_new_bitmap_flags(opt);
+      W.bmp := Al.create_bitmap(w, h);
+      IF wasTarget THEN Target(W) END
+    END
+  END;
+  W.w := w; W.h := h;
+  ResetFlipVars(W)
+END ResetWindowBitmap;
 
-PROCEDURE SaveBmp*(bmp: Bitmap; IN filename: ARRAY OF CHAR): BOOLEAN;
-VAR s: ARRAY 2048 OF SHORTCHAR;
-BEGIN Utf8.Encode(filename, s) ;
-RETURN SDL.SaveBmpRW(bmp.surface, SDL.RWFromFile(s, 'wb'), 1) = 0 END SaveBmp;
+PROCEDURE GetWindowOptions*(W: Window): SET;
+RETURN W.options END GetWindowOptions;
 
-PROCEDURE SavePng*(bmp: Bitmap; IN filename: ARRAY OF CHAR): BOOLEAN;
-VAR s: ARRAY 2048 OF SHORTCHAR;
-BEGIN Utf8.Encode(filename, s) ;
-RETURN SDL.ImgSavePng(bmp.surface, s) = 0 END SavePng;
+PROCEDURE GetWindowZoom*(W: Window): REAL;
+RETURN W.rzoom END GetWindowZoom;
 
-PROCEDURE SaveJpg*(bmp: Bitmap; IN filename: ARRAY OF CHAR): BOOLEAN;
-VAR s: ARRAY 2048 OF SHORTCHAR;
-BEGIN Utf8.Encode(filename, s) ;
-RETURN SDL.ImgSaveJpg(bmp.surface, s) = 0 END SaveJpg;
+PROCEDURE SetWindowZoomF*(W: Window; zoom: REAL);
+BEGIN W.rzoom := zoom;
+  IF zoom = 1.0 THEN W.zoom := noZoom
+  ELSIF FLOOR(zoom + 0.001) * 100 = FLOOR(zoom * 100 + 0.001) THEN
+    W.zoom := intZoom; W.izoom := FLOOR(zoom + 0.001)
+  ELSE W.zoom := realZoom
+  END;
+  ResetWindowBitmap(W)
+END SetWindowZoomF;
 
-PROCEDURE Blit*(src, dest: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER);
-VAR a, b: SDL.Rect;
-BEGIN a.x := sx; a.y := sy; a.w := sw; a.h := sh;
-  b.x := dx; b.y := dy;
-  SDL.BlitSurface(src.surface, a, dest.surface, b)
-END Blit;
+PROCEDURE SetWindowZoom*(W: Window; zoom: INTEGER);
+BEGIN W.rzoom := FLT(zoom);
+  IF zoom = 1 THEN W.zoom := noZoom
+  ELSE W.zoom := intZoom; W.izoom := zoom
+  END;
+  ResetWindowBitmap(W)
+END SetWindowZoom;
 
-(*!FIXME remove FlipBlit *)
-PROCEDURE FlipBlit*(src, dest: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER;
-    hFlip: BOOLEAN);
-VAR x, y, sx0: INTEGER;
-  c1, c2, r1, r2, g1, g2, b1, b2, a1, a2: INTEGER;
+PROCEDURE SetNewWindowZoomF*(zoom: REAL);
+BEGIN wantZoom := zoom
+END SetNewWindowZoomF;
+
+PROCEDURE SetZoomF*(zoom: REAL);
+BEGIN wantZoom := zoom;
+  IF screen # NIL THEN SetWindowZoomF(screen, zoom) END
+END SetZoomF;
+
+PROCEDURE SetNewWindowZoom*(zoom: INTEGER);
+BEGIN wantZoom := FLT(zoom)
+END SetNewWindowZoom;
+
+PROCEDURE SetZoom*(zoom: INTEGER);
+BEGIN wantZoom := FLT(zoom);
+  IF screen # NIL THEN SetWindowZoom(screen, zoom) END
+END SetZoom;
+
+PROCEDURE SetWindowFullscreenSize*(win: Window; width, height: INTEGER);
+BEGIN win.fsW := width; win.fsH := height
+END SetWindowFullscreenSize;
+
+PROCEDURE ShowWindowMouse*(W: Window; show: BOOLEAN);
 BEGIN
-  IF ~hFlip THEN Blit(src, dest, sx, sy, sw, sh, dx, dy)
+  IF show THEN
+    IF Al.show_mouse_cursor(W.display) THEN W.showMouse := TRUE END
   ELSE
-    IF sx < 0 THEN DEC(sw, -sx); INC(dx, -sx); sx := 0
-    ELSIF sx + sw - 1 >= src.w THEN DEC(sw, sx + sw - 1 - src.w)
-    ELSIF dx + sw - 1 >= dest.w THEN DEC(sw, dx + sw - 1 - dest.w)
-    END;
-    IF sy < 0 THEN DEC(sh, -sy); INC(dy, -sy); sy := 0
-    ELSIF sy + sh - 1 >= src.h THEN DEC(sh, sy + sh - 1 - src.h)
-    ELSIF dy + sh - 1 >= dest.h THEN DEC(sh, dy + sh - 1 - dest.h)
-    END;
-    LockBitmap(src);
-    LockBitmap(dest);
-    sx0 := sx + sw - 1;
-    FOR y := dy TO dy + sh - 1 DO
-      sx := sx0;
-      FOR x := dx TO dx + sw - 1 DO
-        c1 := GetPixelFast(src, sx, sy);
-        ColorToRGBA(c1, r1, g1, b1, a1);
-        IF a1 # 0 THEN
-          c2 := GetPixelFast(dest, x, y);
-          ColorToRGBA(c2, r2, g2, b2, a2);
-          IF a1 # 255 THEN
-            c1 := MakeCol((r1 * a1 + r2 * (255 - a1)) DIV 256, 
-                (g1 * a1 + g2 * (255 - g1)) DIV 256, 
-                (b1 * a1 + b2 * (255 - b1)) DIV 256)
-          END;
-          PutPixelFast(dest, x, y, c1)
-        END;
-        DEC(sx)
-      END;
-      INC(sy)
-    END;
-    UnlockBitmap(dest);
-    UnlockBitmap(src)
+    IF Al.hide_mouse_cursor(W.display) THEN W.showMouse := FALSE END
   END
-END FlipBlit;
-
-PROCEDURE BlitWhole*(src, dest: Bitmap; x, y: INTEGER);
-VAR b: SDL.Rect;
-BEGIN b.x := x; b.y := y;
-  SDL.BlitSurfaceNil(src.surface, dest.surface, b)
-END BlitWhole;
-
-PROCEDURE StretchBlit*(src, dest: Bitmap; sx, sy, sw, sh, dx, dy, dw, dh: INTEGER);
-VAR a, b: SDL.Rect;
-BEGIN
-  a.x := sx; a.y := sy; a.w := sw; a.h := sh;
-  b.x := dx; b.y := dy; b.w := dw; b.h := dh;
-  SDL.BlitScaled(src.surface, a, dest.surface, b)
-END StretchBlit;
-
-PROCEDURE SetScreenAlpha*(alpha: INTEGER);
-BEGIN screenAlpha := alpha
-END SetScreenAlpha;
-
-PROCEDURE SetAlpha*(bmp: Bitmap; alpha: INTEGER);
-BEGIN
-  IF SDL.SetSurfaceAlphaMod(bmp.surface, SYSTEM.VAL(BYTE, alpha)) = 0 THEN END
-END SetAlpha;
-
-PROCEDURE SetClip*(bmp: Bitmap; x, y, w, h: INTEGER);
-VAR r: SDL.Rect;
-BEGIN r.x := x; r.y := y; r.w := w; r.h := h;
-  IF SDL.SetClipRect(bmp.surface, r) = 0 THEN END
-END SetClip;
-
-PROCEDURE UnsetClip*(bmp: Bitmap);
-BEGIN
-  IF SDL.SetClipRectNil(bmp.surface) = 0 THEN END
-END UnsetClip;
-
-PROCEDURE MaskedBlit*(src, dest: Bitmap; sx, sy, dx, dy, w, h: INTEGER);
-BEGIN
-  (*Al.MaskedBlit(src.bmp, dest.bmp, sx, sy, dx, dy, w, h)*)
-END MaskedBlit;
-
-PROCEDURE DrawSpriteEx*(dest, sprite: Bitmap; x, y, mode: INTEGER; flip: SET);
-BEGIN
-  (*Al.DrawSpriteEx(dest.bmp, sprite.bmp, x, y, mode, flip)*)
-END DrawSpriteEx;
-
-PROCEDURE DrawCharacterEx*(dest, sprite: Bitmap; x, y, color, bg: INTEGER);
-BEGIN
-  (*Al.DrawCharacterEx(dest.bmp, sprite.bmp, x, y, color, bg)*)
-END DrawCharacterEx;
-
-PROCEDURE SetColorKey*(bmp: Bitmap; color: INTEGER);
-BEGIN SDL.SetColorKey(bmp.surface, 1, color)
-END SetColorKey;
-
-PROCEDURE SetColorMod*(bmp: Bitmap; r, g, b: INTEGER);
-BEGIN
-  SDL.SetSurfaceColorMod(bmp.surface, r, g, b)
-END SetColorMod;
-
-(* MonoFont *)
-
-PROCEDURE LoadMonoFont*(IN filename: ARRAY OF CHAR;
-    charW, charH: INTEGER): MonoFont;
-VAR bmp: Bitmap; font: MonoFont;
-  x, y, sx, sy, tmp: INTEGER;
-BEGIN
-  bmp := LoadBitmap(filename);
-  IF bmp = NIL THEN font := NIL
-  ELSE
-    bmp.surface := SDL.ConvertSurface(bmp.surface,
-      screen.surface.format, 0);
-    SetColorKey(bmp, BmpCol(bmp, 0, 0, 0));
-    NEW(font); font.bmp := bmp;
-    font.charW := charW; font.charH := charH;
-    font.charsInRow := font.bmp.w DIV charW;
-    font.charRows := font.bmp.h DIV charH;
-    (*!FIXME remove sprites from here at all*)
-    NEW(font.sprites, font.charRows, font.charsInRow);
-    sy := 0;
-    FOR y := 0 TO font.charRows - 1 DO
-      sx := 0;
-      FOR x := 0 TO font.charsInRow - 1 DO
-        font.sprites[y, x].x := sx;
-        font.sprites[y, x].y := sy;
-        font.sprites[y, x].w := charW;
-        font.sprites[y, x].h := charH;
-        INC(sx, charW)
-      END;
-      INC(sy, charH)
-    END
-  END ;
-RETURN font END LoadMonoFont;
-
-PROCEDURE FindFontChar(c: CHAR; OUT n: INTEGER);
-BEGIN
-  IF c <= 0FFX THEN n := ORD(c)
-  ELSIF (410X(*A*) <= c) & (c <= 43FX(*p*)) THEN n := ORD(c) - (410H - 80H)
-  ELSIF (440X(*r*) <= c) & (c <= 44FX(*ja*)) THEN n := ORD(c) - (440H - 0E0H)
-  ELSIF c = 401X(*JO*) THEN n := 0F0H
-  ELSIF c = 451X(*jo*) THEN n := 0F1H
-  ELSE n := -1
-  END
-END FindFontChar;
-
-PROCEDURE DrawCharacter*(dest: Bitmap; font: MonoFont;
-    x, y: INTEGER; ch: CHAR; fg: INTEGER);
-VAR n, fx, fy, r, g, b: INTEGER; dstRect: SDL.Rect;
-BEGIN dstRect.x := x; dstRect.y := y;
-  FindFontChar(ch, n);
-  IF n < 0 THEN n := 1 (* "Bad" character *) END;
-  fx := n MOD font.charsInRow;
-  fy := n DIV font.charsInRow;
-  ColorToRGB(fg, r, g, b);
-  SDL.SetSurfaceColorMod(font.bmp.surface, r, g, b);
-  IF (fy < LEN(font.sprites)) & (fx < LEN(font.sprites[0])) THEN
-    SDL.BlitSurface(font.bmp.surface, font.sprites[fy, fx],
-      screen.surface, dstRect)
-  END
-END DrawCharacter;
-
-PROCEDURE DrawString*(dest: Bitmap; font: MonoFont;
-    x, y: INTEGER; IN s: ARRAY OF CHAR; fg: INTEGER);
-VAR i, cx: INTEGER;
-BEGIN i := 0; cx := x;
-  WHILE (s[i] # 0X) & (cx < dest.w) DO
-    DrawCharacter(dest, font, cx, y, s[i], fg);
-    INC(i); INC(cx, font.charW)
-  END
-END DrawString;
-
-(* Font *)
-
-PROCEDURE LoadFont*(IN fname: ARRAY OF CHAR): Font;
-VAR T: Texts.Text;
-  S: Texts.Scanner;
-  i: INTEGER;
-  s: ARRAY 512 OF CHAR;
-  f: Font;
-BEGIN NEW(f);
-  s := fname$; Strings.Append('.png', s);
-  f.bmp := LoadBitmap(s);
-  IF f.bmp = NIL THEN f := NIL
-  ELSE s := fname$; Strings.Append('.dat', s);
-    NEW(T); Texts.Open(T, s);
-    Texts.OpenScanner(S, T, 0);
-    Texts.Scan(S);
-    IF S.class = Texts.Int THEN f.h := S.i ELSE f.h := 0 END;
-    Texts.Scan(S); i := 0;
-    WHILE ~S.eot & (S.class = Texts.Int) DO
-      f.geo[i].w := S.i; Texts.Scan(S);
-      f.geo[i].x := S.i; Texts.Scan(S);
-      f.geo[i].y := S.i; Texts.Scan(S);
-      INC(i)
-    END;
-    f.geoCount := i
-  END;
-RETURN f END LoadFont;
-
-PROCEDURE GetCharGeometry*(font: Font; ch: INTEGER; VAR fx, fy, w: INTEGER);
-VAR i: INTEGER;
-BEGIN
-  IF (32 <= ch) & (ch <= 127) THEN i := ch - 32
-  ELSIF (1040 <= ch) & (ch <= 1103) THEN i := ch - 1040 + 95
-  ELSIF ch = 1025 THEN i := 64 + 95
-  ELSIF ch = 1105 THEN i := 65 + 95;
-  ELSE i := font.geoCount
-  END;
-  IF i >= font.geoCount THEN i := 31 (*'?'*) END;
-  w  := font.geo[i].w;
-  fx := font.geo[i].x;
-  fy := font.geo[i].y
-END GetCharGeometry;
-
-PROCEDURE GetTextWidth*(font: Font; IN s: ARRAY OF CHAR): INTEGER;
-VAR i, w, tw, maxTw, fx, fy: INTEGER;
-  c1, c2: CHAR;
-  ch: INTEGER;
-BEGIN
-  maxTw := 0; tw := 0; i := 0;
-  IF font # NIL THEN
-    WHILE (i < LEN(s) - 1) & (s[i] # 0X) DO
-      c1 := s[i]; c2 := s[i + 1];
-      IF c1 < 80X THEN ch := ORD(c1); INC(i)
-      ELSE ch := ORD(c1) MOD 32 * 64 + ORD(c2) MOD 64; INC(i, 2)
-      END;
-      IF ch = 0AH THEN
-        IF tw > maxTw THEN maxTw := tw END;
-        tw := 0
-      ELSE
-        GetCharGeometry(font, ch, fx, fy, w);
-        INC(tw, w)
-      END
-    END
-  END;
-  IF tw > maxTw THEN maxTw := tw END;
-RETURN maxTw END GetTextWidth;
-
-PROCEDURE DrawChar*(dest: Bitmap; font: Font; x, y, ch, color: INTEGER;
-    VAR w: INTEGER);
-VAR r, g, b, fx, fy: INTEGER; (* Font X, Y *)
-BEGIN
-  IF font # NIL THEN
-    GetCharGeometry(font, ch, fx, fy, w);
-    IF ch # 32 (*space*) THEN
-      ColorToRGB(color, r, g, b);
-      SetColorMod(font.bmp, r, g, b);
-      Blit(font.bmp, dest, fx, fy, w, font.h, x, y)
-    END
-  END
-END DrawChar;
-
-PROCEDURE DrawText*(dest: Bitmap; font: Font; x, y: INTEGER;
-    IN s: ARRAY OF CHAR; color: INTEGER);
-VAR x0, i, w: INTEGER;
-  c1, c2: CHAR;
-  ch: INTEGER;
-BEGIN
-  IF font # NIL THEN
-    x0 := x; i := 0;
-    WHILE (i < LEN(s) - 1) & (s[i] # 0X) DO
-      c1 := s[i]; c2 := s[i + 1];
-      IF c1 < 80X THEN ch := ORD(c1); INC(i)
-      ELSE ch := ORD(c1) MOD 32 * 64 + ORD(c2) MOD 64; INC(i, 2)
-      END;
-      IF ch = 0AH THEN INC(y, font.h); x := x0
-      ELSE DrawChar(dest, font, x, y, ch, color, w); INC(x, w)
-      END
-    END
-  END
-END DrawText;
-
-(* Events *)
-
-PROCEDURE StartTextInput*;
-BEGIN SDL.StartTextInput
-END StartTextInput;
-
-PROCEDURE StopTextInput*;
-BEGIN SDL.StopTextInput
-END StopTextInput;
-
-PROCEDURE QueueEvent;
-BEGIN INC(events.len); INC(events.last);
-  IF events.last = LEN(events.buf) THEN events.last := 0 END
-END QueueEvent;
-
-PROCEDURE PumpKeyDown(VAR event: SDL.Event);
-VAR e: SDL.KeyboardEvent;
-  n: INTEGER; mod: SET;
-BEGIN
-  IF events.len < LEN(events.buf) THEN
-    e := SYSTEM.VAL(SDL.KeyboardEvent, SYSTEM.ADR(event));
-    n := e.keysym.mod; mod := SYSTEM.VAL(SET32, n);
-    QueueEvent;
-    events.buf[events.last].type := keyDown;
-    events.buf[events.last].key.code := e.keysym.scancode;
-    events.buf[events.last].key.sym := e.keysym.sym;
-    events.buf[events.last].key.mod := mod;
-    events.buf[events.last].key.repeat := e.repeat # 0;
-    INC(keyPressed)
-  END
-END PumpKeyDown;
-
-PROCEDURE PumpTextEvent(event: SDL.Event);
-VAR sym: INTEGER;
-  e: SDL.TextInputEvent;
-BEGIN
-  IF events.len < LEN(events.buf) THEN
-    e := SYSTEM.VAL(SDL.TextInputEvent, SYSTEM.ADR(event));
-    QueueEvent;
-    events.buf[events.last].type := textInput;
-    Utf8.Decode(e.text, events.buf[events.last].s);
-    events.buf[events.last].ch := events.buf[events.last].s[0]
-  END
-END PumpTextEvent;
-
-PROCEDURE UpdateMousePos(event: SDL.Event);
-VAR e: SDL.MouseMotionEvent; newX, newY: INTEGER;
-BEGIN
-  e := SYSTEM.VAL(SDL.MouseMotionEvent, SYSTEM.ADR(event));
-  newX := e.x; newY := e.y;
-  IF newX < 0 THEN newX := 0
-  ELSIF newX >= screen.w THEN newX := screen.w - 1 END;
-  IF newY < 0 THEN newY := 0
-  ELSIF newY >= screen.h THEN newY := screen.h - 1 END;
-  IF (newX # mouseX) OR (newY # mouseY) THEN
-    mouseX := newX;  mouseY := newY;
-    needRedrawMouse := TRUE
-  END
-END UpdateMousePos;
-
-(* Keyboard *)
-
-PROCEDURE GetKeyArray(): KeyArray; BEGIN
-RETURN SYSTEM.VAL(KeyArray, SDL.GetKeyboardStateNil()) END GetKeyArray;
-
-PROCEDURE KeyDown*(key: INTEGER): BOOLEAN;
-VAR keys: KeyArray;
-BEGIN keys := GetKeyArray() ;
-RETURN keys[key] END KeyDown;
-
-PROCEDURE AltPressed*(): BOOLEAN;
-VAR keys: KeyArray;
-BEGIN keys := GetKeyArray() ;
-RETURN keys[kAlt] OR keys[kAltGr] END AltPressed;
-
-PROCEDURE ShiftPressed*(): BOOLEAN;
-VAR keys: KeyArray;
-BEGIN keys := GetKeyArray() ;
-RETURN keys[kLShift] OR keys[kRShift] END ShiftPressed;
-
-PROCEDURE CtrlPressed*(): BOOLEAN;
-VAR keys: KeyArray;
-BEGIN keys := GetKeyArray() ;
-RETURN keys[kLCtrl] OR keys[kRCtrl] END CtrlPressed;
-
-(* Mouse *)
-
-PROCEDURE MouseOnScreen*(): BOOLEAN;
-VAR flags: SET;
-BEGIN flags := SDL.GetWindowFlags(window);
-RETURN SDL.windowMouseFocus IN flags END MouseOnScreen;
+END ShowWindowMouse;
 
 PROCEDURE ShowMouse*(show: BOOLEAN);
-BEGIN showMouse := show
+BEGIN IF screen # NIL THEN ShowWindowMouse(screen, show) END
 END ShowMouse;
 
-PROCEDURE GetRealMousePos*(VAR x, y: INTEGER);
-BEGIN IF SDL.GetMouseState(x, y) = 0 THEN END
-END GetRealMousePos;
-
-PROCEDURE GetMousePos*(VAR x, y: INTEGER);
-BEGIN x := mouseX; y := mouseY
-END GetMousePos;
-
-PROCEDURE GetMouseButtons*(): SET;
-VAR x, y: INTEGER;
+PROCEDURE ApplyScale*(W: Window);
+VAR t: Al.Transform;
 BEGIN
-RETURN SYSTEM.VAL(SET32, SDL.GetMouseState(x, y)) END GetMouseButtons;
+  (*Target(W);
+  Al.build_transform(t, 0.0, 0.0, 6.0, 6.0, 0.0);
+  Al.use_transform(t)*)
+END ApplyScale;
 
-PROCEDURE CreateStdMousePointer*;
-VAR b: Bitmap; fg, bg: INTEGER;
-BEGIN b := CreateBitmap(12, 19);
-  bg := MakeCol(255, 0, 255); fg := MakeCol(0, 0, 0);
-  ClearToColor(b, bg); SetColorKey(b, bg);
-  Line(b, 0, 0, 10, 10, fg); Line(b, 0, 0, 0, 14, fg);
-  Line(b, 0, 14, 3, 11, fg); Line(b, 10, 10, 6, 10, fg);
-  Line(b, 4, 12, 6, 17, fg); Line(b, 6, 11, 9, 17, fg);
-  Line(b, 7, 18, 8, 18, fg); bg := MakeCol(255, 255, 255);
-  VLine(b, 1, 2, 12, bg); VLine(b, 2, 3, 11, bg);
-  VLine(b, 3, 4, 10, bg); VLine(b, 4, 5, 11, bg);
-  VLine(b, 5, 6, 13, bg); VLine(b, 6, 7, 9, bg);
-  VLine(b, 7, 8, 9, bg); VLine(b, 8, 9, 9, bg);
-  VLine(b, 6, 12, 15, bg); VLine(b, 7, 14, 17, bg);
-  VLine(b, 8, 16, 17, bg);
-  stdMousePointer := b
-END CreateStdMousePointer;
+PROCEDURE SetWindowOption*(W: Window; key: INTEGER; on: BOOLEAN);
+BEGIN IF on THEN INCL(W.options, key) ELSE EXCL(W.options, key) END
+END SetWindowOption;
 
-PROCEDURE SetMouseFocus*(x, y: INTEGER);
-BEGIN
-  mouseFocusX := x; mouseFocusY := y;
-  needRedrawMouse := TRUE
-END SetMouseFocus;
+PROCEDURE SetWindowScale*(W: Window; x, y: REAL);
+BEGIN W.scaleOn := (x # 1.0) OR (y # 1.0);
+  W.scaleX := x; W.scaleY := y; ApplyScale(W)
+END SetWindowScale;
 
-PROCEDURE SetMousePointer*(bmp: Bitmap; x, y: INTEGER);
-BEGIN
-  IF bmp = NIL THEN
-    mousePointer := stdMousePointer;
-    x := 0; y := 0
-  ELSE mousePointer := bmp
-  END;
-  SetMouseFocus(x, y);
-  underMouse := CreateBitmap(mousePointer.w, mousePointer.h);
-  needRedrawMouse := TRUE
-END SetMousePointer;
+PROCEDURE SetNewWindowScale*(x, y: REAL);
+BEGIN wantScaleX := x; wantScaleY := y
+END SetNewWindowScale;
 
-PROCEDURE GetMousePointer*(): Bitmap; BEGIN
-RETURN mousePointer END GetMousePointer;
+PROCEDURE SetScale*(x, y: REAL);
+BEGIN wantScaleX := x; wantScaleY := y;
+  IF screen # NIL THEN SetWindowScale(screen, x, y) END
+END SetScale;
 
-PROCEDURE SetStdMousePointer*;
-BEGIN SetMousePointer(stdMousePointer, 0, 0)
-END SetStdMousePointer;
-
-PROCEDURE InitMouseData;
-BEGIN CreateStdMousePointer; SetStdMousePointer
-END InitMouseData;
-
-(* Misc *)
-PROCEDURE SetWindowTitle*(IN title: ARRAY OF CHAR);
-VAR s: ARRAY 2048 OF SHORTCHAR;
-BEGIN Utf8.Encode(title, s); SDL.SetWindowTitle(window, s)
+PROCEDURE SetWindowTitle*(W: Window; title: ARRAY OF CHAR);
+VAR q: ARRAY 256 OF SHORTCHAR;
+BEGIN Utf8.Encode(title, q); Al.set_window_title(W.display, q)
 END SetWindowTitle;
 
-PROCEDURE SwitchToWindowed*;
-BEGIN
-  IF fullscreen IN settings THEN
-    SDL.SetWindowSize(window, screen.w, screen.h);
-    IF SDL.SetWindowFullscreen(window, {}) = 0 THEN
-      EXCL(settings, fullscreen)
-    END
+PROCEDURE SetNewWindowTitle*(title: ARRAY OF CHAR);
+BEGIN wantTitle := title
+END SetNewWindowTitle;
+
+PROCEDURE SetTitle*(title: ARRAY OF CHAR);
+BEGIN wantTitle := title;
+  IF screen # NIL THEN SetWindowTitle(screen, title) END
+END SetTitle;
+
+(*PROCEDURE ClearBitmap*(bmp: Bitmap);
+PROCEDURE ClearScreenToColor*(color: INTEGER);*)
+
+PROCEDURE LoadBitmap*(fname: ARRAY OF CHAR): Bitmap;
+VAR B: Bitmap;
+  q: ARRAY 2048 OF SHORTCHAR;
+BEGIN Al.set_new_bitmap_flags({Al.convertBitmap});
+  NEW(B); Utf8.Encode(fname, q); B.bmp := Al.load_bitmap(q);
+  IF B.bmp = NIL THEN B := NIL
+  ELSE B.w := Al.get_bitmap_width(B.bmp); B.h := Al.get_bitmap_height(B.bmp)
   END
-END SwitchToWindowed;
-
-PROCEDURE SwitchToFullscreen*;
-BEGIN
-  IF ~(fullscreen IN settings) THEN
-    IF SDL.SetWindowFullscreen(window, SDL.windowFullscreenDesktop) = 0 THEN
-      INCL(settings, fullscreen)
-    END
-  END
-END SwitchToFullscreen;
-
-PROCEDURE ToggleFullscreen*;
-BEGIN
-  IF fullscreen IN settings THEN SwitchToWindowed ELSE SwitchToFullscreen END
-END ToggleFullscreen;
-
-PROCEDURE Delay*(n: INTEGER);
-BEGIN SDL.Delay(n)
-END Delay;
-
-PROCEDURE PumpQuit;
-BEGIN
-  IF events.len < LEN(events.buf) THEN
-    QueueEvent;
-    events.buf[events.last].type := quit
-  END
-END PumpQuit;
-
-PROCEDURE PumpMouseMove(VAR event: SDL.Event);
-VAR e: SDL.MouseMotionEvent;
-  newX, newY: INTEGER;
-BEGIN
-  e := SYSTEM.VAL(SDL.MouseMotionEvent, SYSTEM.ADR(event));
-  newX := e.x; newY := e.y;
-  IF newX < 0 THEN newX := 0
-  ELSIF newX >= screen.w THEN newX := screen.w - 1
-  END;
-  IF newY < 0 THEN newY := 0
-  ELSIF newY >= screen.h THEN newY := screen.h - 1
-  END;
-  IF (newX # mouseX) OR (newY # mouseY) THEN
-    mouseX := newX; mouseY := newY;
-    needRedrawMouse := TRUE;
-    IF events.len < LEN(events.buf) THEN
-      QueueEvent;
-      events.buf[events.last].type := mouseMove;
-      events.buf[events.last].x := SHORT(ENTIER(newX / scaleX));
-      events.buf[events.last].y := SHORT(ENTIER(newY / scaleY));
-      events.buf[events.last].xRel := e.xRel;
-      events.buf[events.last].yRel := e.yRel;
-      events.buf[events.last].buttons := SYSTEM.VAL(SET32, e.state)
-    END
-  END
-END PumpMouseMove;
-
-PROCEDURE PumpMouseButton(VAR event: SDL.Event; type: INTEGER);
-VAR e: SDL.MouseButtonEvent;
-BEGIN
-  e := SYSTEM.VAL(SDL.MouseButtonEvent, SYSTEM.ADR(event));
-  IF events.len < LEN(events.buf) THEN
-    QueueEvent;
-    events.buf[events.last].type := type;
-    events.buf[events.last].button := e.button - 1;
-    events.buf[events.last].down := e.state # 0;
-    IF e.x < 0 THEN e.x := 0
-    ELSIF e.x >= screen.w THEN e.x := screen.w - 1
-    END;
-    IF e.y < 0 THEN e.y := 0
-    ELSIF e.y >= screen.h THEN e.y := screen.h - 1
-    END;
-    events.buf[events.last].x := SHORT(ENTIER(e.x / scaleX));
-    events.buf[events.last].y := SHORT(ENTIER(e.y / scaleY))
-  END
-END PumpMouseButton;
-
-PROCEDURE RepeatFlip*;
-BEGIN
-  IF screenTexture # 0 THEN
-    SDL.SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL.RenderClear(renderer);
-    SDL.RenderCopyNil(renderer, screenTexture);
-    SDL.RenderPresent(renderer)
-  END
-END RepeatFlip;
-
-PROCEDURE WaitEvents*(timeout: INTEGER);
-VAR event: SDL.Event; n: INTEGER;
-BEGIN
-  n := SDL.PollEvent(event);
-  IF (n # 0) OR (events.len = 0) THEN
-    IF n = 0 THEN
-      IF timeout > 0 THEN n := SDL.WaitEventTimeout(event, timeout)
-      ELSIF timeout < 0 THEN n := SDL.WaitEvent(event)
-      END
-    END;
-    IF n # 0 THEN
-      REPEAT
-        IF event.type = SDL.mouseMotion THEN
-          PumpMouseMove(event)
-        ELSIF event.type = SDL.mouseButtonDown THEN
-          PumpMouseButton(event, mouseDown)
-        ELSIF event.type = SDL.mouseButtonUp THEN
-          PumpMouseButton(event, mouseUp)
-        ELSIF event.type = SDL.keyDown THEN
-          PumpKeyDown(event)
-        ELSIF event.type = SDL.textInput THEN
-          PumpTextEvent(event)
-        ELSIF event.type = SDL.quit THEN
-          PumpQuit
-        END
-      UNTIL SDL.PollEvent(event) = 0
-    END
-  END
-END WaitEvents;
-
-PROCEDURE PollEvent*(VAR event: Event): BOOLEAN;
-VAR hasEvent: BOOLEAN;
-BEGIN
-  IF events.len > 0 THEN
-    event := events.buf[events.first];
-    IF event.type = keyDown THEN DEC(keyPressed) END;
-    DEC(events.len); INC(events.first);
-    IF events.first = LEN(events.buf) THEN events.first := 0 END;
-    hasEvent := TRUE
-  ELSE hasEvent := FALSE
-  END ;
-RETURN hasEvent END PollEvent;
-
-PROCEDURE KeyPressed*(): BOOLEAN;
-BEGIN WaitEvents(0) ;
-RETURN keyPressed > 0 END KeyPressed;
-
-PROCEDURE ReadKey*(): CHAR;
-VAR event: Event; done: BOOLEAN; ch: CHAR;
-BEGIN done := FALSE;
-  REPEAT
-    WaitEvents(-1);
-    WHILE PollEvent(event) DO
-      CASE event.type OF
-        keyDown: ch := CHR(event.key.sym); done := TRUE
-      | quit: ch := 0X; done := TRUE
-      ELSE
-      END
-    END
-  UNTIL done ;
-RETURN ch END ReadKey;
-
-PROCEDURE Pause*;
-BEGIN IF ReadKey() = 0X THEN END
-END Pause;
-
-PROCEDURE WindowShown*(): BOOLEAN;
-VAR flags: SET;
-BEGIN flags := SDL.GetWindowFlags(window) ;
-RETURN SDL.windowShown IN flags END WindowShown;
-
-PROCEDURE GetTicks*(): INTEGER; BEGIN
-RETURN SDL.GetTicks() END GetTicks;
+RETURN B END LoadBitmap;
 
 PROCEDURE Flip*;
-VAR mx, my: INTEGER; (* Mouse bitmap X Y *)
-    blitMouse: BOOLEAN;
-    dt: INTEGER; (* Delta time *)
-
-  PROCEDURE PrepareMouse;
-  BEGIN
-    mx := mouseX - mouseFocusX;
-    my := mouseY - mouseFocusY;
-    (* Save image under mouse from buffer *)
-    Blit(screen, underMouse, mx, my,
-      underMouse.w, underMouse.h, 0, 0);
-    (* Blit mouse pointer onto buffer *)
-    IF mouseX # -1 THEN
-      Blit(mousePointer, screen, 0, 0,
-        mousePointer.w, mousePointer.h, mx, my)
-    END
-  END PrepareMouse;
-
-  PROCEDURE CleanMouse;
-  BEGIN
-    IF mouseX # -1 THEN (* Restore image under mouse in buffer *)
-      Blit(underMouse, screen, 0, 0, underMouse.w, underMouse.h, mx, my)
-    END;
-    needRedrawMouse := FALSE
-  END CleanMouse;
-
+VAR tmp: Al.Bitmap;
+  W: Window;
+  T: Al.Transform;
+  x, y, w, h: REAL;
 BEGIN
-  IF wantFPS # -1 THEN
-    IF lastFlip # -1 THEN
-      dt := 1000 DIV wantFPS - (GetTicks() - lastFlip);
-      IF (dt > 0) & (dt < 1000) THEN Delay(dt) END
-    END;
-    lastFlip := GetTicks()
+  IF ((target = NIL) OR ~(target IS Window)) & (screen # NIL) THEN
+    Target(screen)
   END;
-  IF WindowShown() THEN
-    mx := 0; my := 0;
-    blitMouse := showMouse & MouseOnScreen();
-    IF blitMouse THEN PrepareMouse END;
-
-    (* Blit buffer on screen *)
-    SDL.SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL.RenderClear(renderer);
-    IF screenTexture # 0 THEN
-      SDL.DestroyTexture(screenTexture);
-      screenTexture := 0
+  IF (target # NIL) & (target IS Window) THEN
+    W := target(Window);
+    tmp := Al.get_target_bitmap();
+    Al.set_target_backbuffer(W.display);
+    Al.identity_transform(T);
+    Al.use_transform(T);
+    IF target.bmp # NIL THEN
+      Al.clear_to_color(SYSTEM.VAL(Al.Color, black));
+      Al.draw_scaled_bitmap(W.bmp, 0.0, 0.0, FLT(W.w), FLT(W.h),
+        W.flipX, W.flipY, W.flipW, W.flipH, {})
+    ELSE w := FLT(W.winW); h := FLT(W.winH);
+      x := FLT(FLOOR(W.flipX + W.flipW + 0.1));
+      y := FLT(FLOOR(W.flipY + W.flipH + 0.1));
+      Al.draw_filled_rectangle(0.0, 0.0, w, W.flipY,
+        SYSTEM.VAL(Al.Color, black));
+      Al.draw_filled_rectangle(0.0, y, w, h, SYSTEM.VAL(Al.Color, black));
+      Al.draw_filled_rectangle(0.0, W.flipY, W.flipX, y,
+        SYSTEM.VAL(Al.Color, black));
+      Al.draw_filled_rectangle(x, W.flipY, w, y, SYSTEM.VAL(Al.Color, black))
     END;
-    screenTexture := SDL.CreateTextureFromSurface(renderer, screen.surface);
-    SDL.SetTextureAlphaMod(screenTexture, screenAlpha);
-    SDL.RenderCopyNil(renderer, screenTexture);
-    SDL.RenderPresent(renderer);
-
-    IF blitMouse THEN CleanMouse END
+    Al.flip_display();
+    Al.set_target_bitmap(tmp)
   END
 END Flip;
 
+PROCEDURE PutPixel2*(x, y: INTEGER; c: Color);
+BEGIN Al.draw_filled_rectangle(FLT(x), FLT(y), FLT(x + 1), FLT(y + 1),
+  SYSTEM.VAL(Al.Color, c))
+END PutPixel2;
+
+PROCEDURE PutPixel*(x, y: INTEGER; c: Color);
+BEGIN Al.draw_pixel(FLT(x) + 0.5, FLT(y) + 0.5, SYSTEM.VAL(Al.Color, c))
+END PutPixel;
+
+PROCEDURE MakeCol*(VAR color: Color; r, g, b: INTEGER);
+BEGIN color.r := r / 255; color.g := g / 255;
+  color.b := b / 255; color.a := 1.0
+END MakeCol;
+
+PROCEDURE ColorToRGB*(color: Color; VAR r, g, b: INTEGER);
+BEGIN r := FLOOR(color.r * 255 + 0.1) MOD 256;
+  g := FLOOR(color.g * 255 + 0.1) MOD 256;
+  b := FLOOR(color.b * 255 + 0.1) MOD 256
+END ColorToRGB;
+
+PROCEDURE ColorToRGBA*(color: Color; VAR r, g, b, a: INTEGER);
+BEGIN r := FLOOR(color.r * 255 + 0.1) MOD 256;
+  g := FLOOR(color.g * 255 + 0.1) MOD 256;
+  b := FLOOR(color.b * 255 + 0.1) MOD 256;
+  a := FLOOR(color.a * 255 + 0.1) MOD 256
+END ColorToRGBA;
+
+PROCEDURE ClearToColor*(c: Color);
+BEGIN Al.clear_to_color(SYSTEM.VAL(Al.Color, c))
+END ClearToColor;
+
+PROCEDURE ClearScreen*;
+BEGIN Al.clear_to_color(SYSTEM.VAL(Al.Color, black))
+END ClearScreen;
+
+PROCEDURE ThickLineF*(x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
+BEGIN Al.draw_line(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color), thickness)
+END ThickLineF;
+
+PROCEDURE ThickLine*(x1, y1, x2, y2: INTEGER; color: Color;
+    thickness: INTEGER);
+BEGIN
+  Al.draw_line(FLT(x1) + 0.5, FLT(y1) + 0.5, FLT(x2) + 0.5, FLT(y2) + 0.5,
+    SYSTEM.VAL(Al.Color, color), FLT(thickness))
+END ThickLine;
+
+PROCEDURE LineF*(x1, y1, x2, y2: REAL; color: Color);
+BEGIN
+  IF x1 < x2 THEN x2 := x2 + 1
+  ELSIF x1 > x2 THEN x1 := x1 + 1
+  ELSE x1 := x1 + 0.5; x2 := x2 + 0.5
+  END;
+  IF y1 < y2 THEN y2 := y2 + 1
+  ELSIF y1 > y2 THEN y1 := y1 + 1
+  ELSE y1 := y1 + 0.5; y2 := y2 + 0.5
+  END;
+  Al.draw_line(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color), 0.0)
+END LineF;
+
+PROCEDURE Line*(x1, y1, x2, y2: INTEGER; color: Color);
+BEGIN LineF(FLT(x1), FLT(y1), FLT(x2), FLT(y2), color)
+END Line;
+
+PROCEDURE HLine*(x, y1, y2: INTEGER; color: Color);
+BEGIN LineF(FLT(x), FLT(y1), FLT(x), FLT(y2), color)
+END HLine;
+
+PROCEDURE VLine*(x1, y, x2: INTEGER; color: Color);
+BEGIN LineF(FLT(x1), FLT(y), FLT(x2), FLT(y), color)
+END VLine;
+
+PROCEDURE FillRectF*(x1, y1, x2, y2: REAL; color: Color);
+BEGIN Al.draw_filled_rectangle(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color))
+END FillRectF;
+
+PROCEDURE FillRect*(x1, y1, x2, y2: INTEGER; color: Color);
+BEGIN
+  Al.draw_filled_rectangle(FLT(x1), FLT(y1),
+    FLT(x2 + 1), FLT(y2 + 1), SYSTEM.VAL(Al.Color, color))
+END FillRect;
+
+PROCEDURE ThickRectF*(x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
+BEGIN Al.draw_rectangle(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color), thickness)
+END ThickRectF;
+
+PROCEDURE ThickRect*(x1, y1, x2, y2: INTEGER; color: Color;
+    thickness: INTEGER);
+BEGIN
+  Al.draw_rectangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
+    FLT(x2) + 0.5, FLT(y2) + 0.5, SYSTEM.VAL(Al.Color, color), FLT(thickness))
+END ThickRect;
+
+PROCEDURE RectF*(x1, y1, x2, y2: REAL; color: Color);
+BEGIN Al.draw_rectangle(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color), 1.0)
+END RectF;
+
+PROCEDURE Rect*(x1, y1, x2, y2: INTEGER; color: Color);
+BEGIN
+  Al.draw_rectangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
+    FLT(x2) + 0.5, FLT(y2) + 0.5, SYSTEM.VAL(Al.Color, color), 1.0)
+END Rect;
+
+PROCEDURE NewBitmap*(w, h: INTEGER): Bitmap;
+VAR b: Bitmap;
+BEGIN NEW(b);
+  Al.set_new_bitmap_flags({Al.convertBitmap});
+  b.bmp := Al.create_bitmap(w, h);
+  IF b.bmp = NIL THEN b := NIL ELSE b.w := w; b.h := h END
+RETURN b END NewBitmap;
+
+PROCEDURE DrawPartFlip*(bmp: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER;
+    flags: SET);
+BEGIN
+  Al.draw_bitmap_region(bmp.bmp, FLT(sx), FLT(sy), FLT(sw), FLT(sh),
+    FLT(dx), FLT(dy), flags)
+END DrawPartFlip;
+
+PROCEDURE DrawPart*(bmp: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER);
+BEGIN
+  Al.draw_bitmap_region(bmp.bmp, FLT(sx), FLT(sy), FLT(sw), FLT(sh),
+    FLT(dx), FLT(dy), {})
+END DrawPart;
+
+PROCEDURE DrawTintedPart*(bmp: Bitmap; color: Color;
+    sx, sy, sw, sh, dx, dy: INTEGER);
+BEGIN
+  IF ~Al.is_compatible_bitmap(bmp.bmp) THEN Out.String('NON-COMPAT'); Out.Ln END;
+  Al.draw_tinted_bitmap_region(bmp.bmp, SYSTEM.VAL(Al.Color, color),
+    FLT(sx), FLT(sy), FLT(sw), FLT(sh), FLT(dx), FLT(dy), {})
+END DrawTintedPart;
+
+PROCEDURE DrawFlip*(bmp: Bitmap; x, y: INTEGER; flags: SET);
+BEGIN Al.draw_bitmap(bmp.bmp, FLT(x), FLT(y), flags)
+END DrawFlip;
+
+PROCEDURE Draw*(bmp: Bitmap; x, y: INTEGER);
+BEGIN Al.draw_bitmap(bmp.bmp, FLT(x), FLT(y), {})
+END Draw;
+
+PROCEDURE DrawEx*(bmp: Bitmap; sx, sy, sw, sh, dx, dy, dw, dh: INTEGER;
+    flags: SET);
+BEGIN
+  Al.draw_scaled_bitmap(bmp.bmp, FLT(sx), FLT(sy), FLT(sw), FLT(sh),
+    FLT(dx), FLT(dy), FLT(dw), FLT(dh), flags)
+END DrawEx;
+
+PROCEDURE DrawRotated*(bmp: Bitmap; cx, cy, dx, dy: INTEGER;
+    angle: REAL; flags: SET);
+BEGIN
+  Al.draw_rotated_bitmap(bmp.bmp, FLT(cx), FLT(cy),
+    FLT(dx), FLT(dy), angle, flags)
+END DrawRotated;
+
+PROCEDURE DrawScaledRotated*(bmp: Bitmap; cx, cy, dx, dy: INTEGER;
+    xScale, yScale, angle: REAL; flags: SET);
+BEGIN
+  Al.draw_scaled_rotated_bitmap(bmp.bmp, FLT(cx), FLT(cy),
+    FLT(dx), FLT(dy), xScale, yScale, angle, flags)
+END DrawScaledRotated;
+
+PROCEDURE DelayF*(n: REAL);
+BEGIN Al.rest(n)
+END DelayF;
+
+PROCEDURE Delay*(n: INTEGER);
+BEGIN Al.rest(n / 1000)
+END Delay;
+
+PROCEDURE Pause*;
+BEGIN
+
+END Pause;
+
+PROCEDURE ConvertMemoryBitmaps*;
+BEGIN Al.convert_memory_bitmaps
+END ConvertMemoryBitmaps;
+
+PROCEDURE RecreateDisplay(W: Window; alterSize: BOOLEAN);
+VAR d: Al.Display;
+  q: ARRAY 256 OF SHORTCHAR;
+  opt: SET;
+  n, x, y, w, h, dw, dh, nw, nh, sw, sh: INTEGER;
+  nwf, nhf: REAL;
+  isCurTarget: BOOLEAN;
+BEGIN isCurTarget := target = W;
+  IF W.display # NIL THEN Al.destroy_display(W.display) END;
+
+  W.rzoom := W.wantZoom;
+  IF W.wantZoom = 1.0 THEN W.zoom := noZoom
+  ELSIF FLOOR(W.wantZoom + 0.001) * 100 = FLOOR(W.wantZoom * 100 + 0.001) THEN
+    W.zoom := intZoom; W.izoom := FLOOR(W.wantZoom + 0.001)
+  ELSE W.zoom := realZoom
+  END;
+
+  Utf8.Encode(W.title, q); Al.set_new_window_title(q);
+  IF software IN W.options THEN n := 0 ELSE n := 1 END;
+  Al.set_new_display_option(Al.renderMethod, n, Al.suggest);
+  Al.set_new_display_option(Al.vsync, 2(*off*), Al.suggest);
+  Al.set_new_display_option(Al.singleBuffer, 1, Al.suggest);
+  IF smooth IN W.options THEN n := 1;
+    Al.set_new_display_option(Al.samples, 8, Al.suggest)
+  ELSE n := 0
+  END;
+  (* Al.set_new_display_option(Al.sampleBuffers, n, Al.suggest); *)
+  GetDesktopResolution(dw, dh);
+  dw := FLOOR(FLT(dw) / wantScaleX + 0.1);
+  dh := FLOOR(FLT(dh) / wantScaleY + 0.1);
+
+  W.scaleOn := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
+  W.scaleX := wantScaleX; W.scaleY := wantScaleY;
+
+  IF fullscreen IN W.options THEN w := W.fsW; h := W.fsH
+  ELSE w := W.initW; h := W.initH
+  END;
+
+  IF (w < 0) OR (h < 0) THEN
+    IF fullscreen IN W.options THEN
+      w := FLOOR(dw / W.wantZoom + 0.1); h := FLOOR(dh / W.wantZoom + 0.1);
+      ApplySizeStep(W, w, h);
+      sw := FLOOR(w * W.wantZoom + 0.1); sh := FLOOR(h * W.wantZoom + 0.1)
+    ELSE w := 640; h := 400; W.zoom := noZoom;
+      ApplySizeStep(W, w, h); sw := w; sh := h
+    END
+  ELSIF fullscreen IN W.options THEN
+    IF smooth IN W.options THEN nwf := dw / w; nhf := dh / h;
+      IF nhf < nwf THEN nwf := nhf END;
+      W.zoom := realZoom; W.rzoom := nwf;
+      IF exact IN W.options THEN
+        sw := FLOOR(w * nwf + 0.1); sh := FLOOR(h * nwf + 0.1)
+      ELSE sw := dw; sh := dh
+      END
+    ELSE nw := dw DIV w; nh := dh DIV h;
+      IF nh < nw THEN nw := nh END;
+      W.zoom := intZoom; W.izoom := nw; W.rzoom := FLT(nw);
+      IF exact IN W.options THEN sw := w * nw; sh := h * nw
+      ELSE sw := dw DIV nw * nw; sh := dh DIV nw * nw
+      END
+    END;
+
+    IF W.zoom = realZoom THEN
+      w := FLOOR(sw / W.rzoom + 0.1); h := FLOOR(sh / W.rzoom + 0.1)
+    ELSIF W.zoom = intZoom THEN w := sw DIV W.izoom; h := sh DIV W.izoom
+    ELSE w := sw; h := sh
+    END;
+    ApplySizeStep(W, w, h); sw := w; sh := h;
+    IF alterSize THEN W.initW := w; W.initH := h END
+  ELSE ApplySizeStep(W, w, h);
+    sw := FLOOR(w * W.wantZoom * W.scaleX + 0.999);
+    sh := FLOOR(h * W.wantZoom * W.scaleY + 0.999)
+  END;
+
+  W.lastW := 0; W.lastH := 0;
+
+  IF center IN W.options THEN GetDesktopResolution(dw, dh);
+    x := (dw - sw) DIV 2; y := (dh - sh) DIV 2;
+    IF x < 0 THEN x := 0 END; IF y < 0 THEN y := 0 END
+  ELSIF (W.initX < 0) OR (W.initY < 0) THEN x := Al.intMax; y := Al.intMax
+  ELSE x := W.initX; y := W.initY
+  END;
+  Al.set_new_window_position(x, y);
+
+  opt := {};
+  IF fullscreen IN W.options THEN INCL(opt, Al.fullscreenWindow)
+  ELSE INCL(opt, Al.windowed)
+  END;
+  IF resizable IN W.options THEN INCL(opt, Al.resizable) END;
+  IF maximized IN W.options THEN INCL(opt, Al.maximized) END;
+  IF minimized IN W.options THEN INCL(opt, Al.minimized) END;
+  IF frameless IN W.options THEN INCL(opt, Al.frameless) END;
+  Al.set_new_display_flags(opt);
+
+  IF W.bmp # NIL THEN Al.destroy_bitmap(W.bmp); W.bmp := NIL END;
+  W.display := Al.create_display(sw, sh);
+  IF W.display # NIL THEN
+    (*IF isCurTarget OR (windowList = NIL) OR (windowList.next = NIL) THEN
+      Al.set_target_backbuffer(W.display);
+      ConvertMemoryBitmaps;
+    END;*)
+    W.winW := Al.get_display_width(W.display);
+    W.winH := Al.get_display_height(W.display);
+    W.w := w; W.h := h;
+    ResetWindowBitmap(W);
+    Al.register_event_source(queue, Al.get_display_event_source(W.display));
+    IF isCurTarget THEN Target(W) END;
+    IF ~W.showMouse THEN ShowWindowMouse(W, FALSE) END;
+    IF W.noficons > 0 THEN
+      Al.set_display_icons(W.display, W.noficons, W.icons)
+    END
+  END
+END RecreateDisplay;
+
+PROCEDURE NewWindow*(x, y, w, h: INTEGER; title: ARRAY OF CHAR;
+    options: SET): Window;
+VAR W: Window;
+  d: Al.Display;
+  q: ARRAY 256 OF SHORTCHAR;
+  opt: SET;
+  i, n, dw, dh, nw, nh, sw, sh: INTEGER;
+  nwf, nhf: REAL;
+BEGIN NEW(W); W.lastX := -1; W.lastY := -1; W.resized := FALSE;
+  W.sizeStepX := wantSizeStepX; W.sizeStepY := wantSizeStepY;
+  IF {fullscreen, window} * options = {} THEN INCL(options, window)
+  ELSIF window IN options THEN EXCL(options, fullscreen)
+  END;
+  W.options := options;
+  W.title := title;
+  W.wantZoom := wantZoom;
+  W.scaleOn := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
+  W.scaleX := wantScaleX; W.scaleY := wantScaleY;
+  W.initX := x; W.initY := y; W.initW := w; W.initH := h;
+  W.fsW := w; W.fsH := h;
+  W.showMouse := TRUE;
+  FOR i := 0 TO LEN(W.icons) - 1 DO W.icons[i] := NIL END;
+  W.noficons := 0;
+
+  W.display := NIL; RecreateDisplay(W, TRUE);
+  IF W.display # NIL THEN W.next := windowList; windowList := W
+  ELSE Error('Could not create dispaly.'); W := NIL
+  END;
+  IF (screen = NIL) & (W # NIL) THEN screen := W; Target(screen) END
+RETURN W END NewWindow;
+
+PROCEDURE CloseWindow*(W: Window);
+BEGIN Al.destroy_display(W.display)
+END CloseWindow;
+
+PROCEDURE NewTimer*(speed: REAL): Timer;
+VAR T: Timer;
+BEGIN NEW(T); T.tmr := Al.create_timer(speed);
+  IF T.tmr # NIL THEN
+    Al.register_event_source(queue, Al.get_timer_event_source(T.tmr));
+    T.next := timerList; timerList := T
+  ELSE T := NIL
+  END;
+RETURN T END NewTimer;
+
+PROCEDURE GetWindow(d: Al.Display): Window;
+VAR W: Window;
+BEGIN W := windowList;
+  WHILE (W # NIL) & (W.display # d) DO W := W.next END
+RETURN W END GetWindow;
+
+PROCEDURE GetTimer(a: Al.Timer): Timer;
+VAR t: Timer;
+BEGIN t := timerList;
+  WHILE (t # NIL) & (t.tmr # a) DO t := t.next END
+RETURN t END GetTimer;
+
+PROCEDURE EmitResizeEvent(W: Window);
+VAR E: Al.UserEvent;
+BEGIN
+  E.type := eventUserResize;
+  E.data4 := SYSTEM.VAL(ADRINT, W.display);
+  IF Al.emit_user_event(userEventSource, SYSTEM.VAL(Al.Event, E), 0) THEN END
+END EmitResizeEvent;
+
+PROCEDURE ToggleFS*(win: Window);
+VAR fs: BOOLEAN;
+  w, h: REAL;
+BEGIN
+  IF (win = NIL) & (screen # NIL) THEN win := screen END;
+  IF (win # NIL) & (win.display # NIL) THEN
+    fs := ~(Al.windowed IN Al.get_display_flags(win.display));
+    IF fs THEN EXCL(win.options, fullscreen); INCL(win.options, window)
+    ELSE INCL(win.options, fullscreen); EXCL(win.options, window);
+      w := Al.get_display_width(win.display) / win.rzoom;
+      h := Al.get_display_height(win.display) / win.rzoom;
+      IF win.scaleOn THEN w := w / win.scaleX; h := h / win.scaleY END;
+      win.initW := FLOOR(w + 0.1); win.initH := FLOOR(h + 0.1);
+      EXCL(win.options, center);
+      Al.get_window_position(win.display, win.initX, win.initY);
+      ApplySizeStep(win, win.initW, win.initH)
+    END;
+    win.scaleX := wantScaleX;
+    win.scaleY := wantScaleY;
+    RecreateDisplay(win, FALSE);
+    EmitResizeEvent(win)
+  END
+END ToggleFS;
+
+PROCEDURE SwitchToWindow*(win: Window);
+BEGIN IF ~(window IN GetWindowOptions(screen)) THEN ToggleFS(win) END
+END SwitchToWindow;
+
+PROCEDURE SwitchToFS*(win: Window);
+BEGIN IF window IN GetWindowOptions(screen) THEN ToggleFS(win) END
+END SwitchToFS;
+
+PROCEDURE ParseEvent(E: Al.Event; VAR event: Event);
+VAR DE: Al.PDisplayEvent;
+  TE: Al.PTimerEvent;
+  KE: Al.PKeyboardEvent;
+  ME: Al.PMouseEvent;
+  UE: Al.PUserEvent;
+  W: Window;
+  d: Al.Display;
+  x, y, w, h: INTEGER;
+  fw, fh: REAL;
+BEGIN
+  event.time := E.timestamp;
+  IF E.type = Al.eventMouseAxes THEN
+    ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
+    W := GetWindow(ME.display);
+    IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
+    ELSIF W.zoom = intZoom THEN
+      x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
+    ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
+      y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
+    END;
+    IF W.scaleOn THEN
+      x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
+    END;
+    IF (x # W.lastX) OR (y # W.lastY) OR (ME.dz # 0) OR (ME.dw # 0) THEN
+      IF (ME.dz # 0) OR (ME.dw # 0) THEN event.type := mouseWheel;
+        event.dz := ME.dz; event.dw := ME.dw;
+        event.x := W.lastX; event.y := W.lastY;
+        event.z := ME.z; event.w := ME.w;
+        event.dx := 0; event.dy := 0
+      ELSE event.type := mouseMove;
+        IF x = -1 THEN event.dx := 0; event.dy := 0
+        ELSE event.dx := x - W.lastX; event.dy := y - W.lastY
+        END;
+        event.x := x; event.y := y;
+        W.lastX := event.x; W.lastY := event.y
+      END;
+      event.button := ME.button;
+      event.mod := {};
+      event.display := ME.display; event.window := W
+    ELSE event.type := noEvent
+    END
+  ELSIF E.type = Al.eventMouseButtonDown THEN
+    event.type := mouseDown;
+    ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
+    W := GetWindow(ME.display); event.window := W;
+    IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
+    ELSIF W.zoom = intZoom THEN
+      x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
+    ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
+      y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
+    END;
+    IF W.scaleOn THEN
+      x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
+    END;
+    event.x := x; event.y := y;
+    event.z := ME.z; event.w := ME.w;
+    event.button := ME.button;
+    event.mod := {};
+    event.display := ME.display
+  ELSIF E.type = Al.eventMouseButtonUp THEN
+    event.type := mouseUp;
+    ME := SYSTEM.VAL(Al.PMouseEvent, SYSTEM.ADR(E));
+    W := GetWindow(ME.display); event.window := W;
+    IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
+    ELSIF W.zoom = intZoom THEN
+      x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
+    ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
+      y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
+    END;
+    IF W.scaleOn THEN
+      x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
+    END;
+    event.x := x; event.y := y;
+    event.z := ME.z; event.w := ME.w;
+    event.button := ME.button;
+    event.mod := {};
+    event.display := ME.display
+  ELSIF E.type = Al.eventTimer THEN
+    event.type := timer;
+    TE := SYSTEM.VAL(Al.PTimerEvent, SYSTEM.ADR(E));
+    event.count := TE.count;
+    event.timer := GetTimer(SYSTEM.VAL(Al.Timer, TE.source))
+  ELSIF E.type = Al.eventKeyDown THEN
+    event.type := keyDown;
+    KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
+    event.key := KE.keycode;
+    event.mod := {};
+    event.display := KE.display;
+    event.window := GetWindow(event.display)
+  ELSIF E.type = Al.eventKeyUp THEN
+    event.type := keyUp;
+    KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
+    event.key := KE.keycode;
+    event.mod := {};
+    event.display := KE.display;
+    event.window := GetWindow(event.display)
+  ELSIF E.type = Al.eventKeyChar THEN
+    KE := SYSTEM.VAL(Al.PKeyboardEvent, SYSTEM.ADR(E));
+    event.type := char;
+    event.key := KE.keycode;
+    event.ch := CHR(KE.unichar);
+    event.mod := KE.modifiers;
+    event.repeat := KE.repeat;
+    event.display := KE.display;
+    event.window := GetWindow(event.display)
+  ELSIF (E.type = Al.eventDisplayResize) OR (E.type = eventUserResize) THEN
+    IF E.type = Al.eventDisplayResize THEN
+      DE := SYSTEM.VAL(Al.PDisplayEvent, SYSTEM.ADR(E));
+      d := DE.source; W := GetWindow(d);
+      W.winW := DE.width; W.winH := DE.height
+    ELSE UE := SYSTEM.VAL(Al.PUserEvent, SYSTEM.ADR(E));
+      d := SYSTEM.VAL(Al.Display, UE.data4); W := GetWindow(d);
+      W.winW := Al.get_display_width(d); W.winH := Al.get_display_height(d)
+    END;
+    fw := W.winW / W.rzoom; fh := W.winH / W.rzoom;
+    IF W.scaleOn THEN fw := fw / W.scaleX; fh := fh / W.scaleY END;
+    w := FLOOR(fw + 0.1); h := FLOOR(fh + 0.1);
+    IF E.type = Al.eventDisplayResize THEN
+      Al.acknowledge_resize(d);
+      ApplySizeStep(W, w, h)
+    END;
+    IF (w # W.lastW) OR (h # W.lastH) THEN
+      W.lastW := w; W.lastH := h;
+      event.type := resize; event.window := W; event.display := d;
+      event.w := w; event.h := h;
+      IF E.type = Al.eventDisplayResize THEN event.x := DE.x; event.y := DE.y
+      ELSE Al.get_window_position(d, event.x, event.y)
+      END;
+      ResetWindowBitmap(W)
+    ELSE ResetFlipVars(W); Flip; event.type := noEvent
+    END
+  ELSIF E.type = Al.eventDisplayClose THEN
+    event.type := quit;
+    event.display := SYSTEM.VAL(Al.Display, E.source);
+    event.window := GetWindow(event.display)
+  ELSE event.type := noEvent
+  END
+END ParseEvent;
+
+PROCEDURE WaitAndParseEvent(VAR event: Event);
+VAR E: Al.Event;
+BEGIN
+  Al.wait_for_event(queue, E);
+  ParseEvent(E, event)
+END WaitAndParseEvent;
+
+PROCEDURE PeekAndParseEvent(VAR event: Event): BOOLEAN;
+VAR E: Al.Event;
+  got: BOOLEAN;
+BEGIN
+  got := Al.peek_next_event(queue, E);
+  IF got THEN ParseEvent(E, event) END
+RETURN got END PeekAndParseEvent;
+
+PROCEDURE WaitEvent*(VAR event: Event);
+BEGIN REPEAT WaitAndParseEvent(event) UNTIL event.type # noEvent
+END WaitEvent;
+
+PROCEDURE PeekEvent*(VAR event: Event): BOOLEAN;
+VAR got: BOOLEAN;
+BEGIN
+  got := PeekAndParseEvent(event);
+  WHILE got & (event.type = noEvent) DO
+    IF Al.drop_next_event(queue) THEN END;
+    got := PeekAndParseEvent(event)
+  END
+RETURN got END PeekEvent;
+
+PROCEDURE HasEvents*(): BOOLEAN;
+VAR e: Event;
+RETURN PeekEvent(e) END HasEvents;
+
+PROCEDURE DropNextEvent*;
+VAR e: Event;
+BEGIN (*WaitEvent(e)*)
+  IF Al.drop_next_event(queue) THEN END
+END DropNextEvent;
+
+PROCEDURE StartTimer*(timer: Timer);
+BEGIN Al.start_timer(timer.tmr)
+END StartTimer;
+
+PROCEDURE StopTimer*(timer: Timer);
+BEGIN Al.stop_timer(timer.tmr)
+END StopTimer;
+
+PROCEDURE ResumeTimer*(timer: Timer);
+BEGIN Al.resume_timer(timer.tmr)
+END ResumeTimer;
+
+(* Font *)
+
+PROCEDURE GetMonoFontSize*(font: Font; VAR charW, charH: INTEGER);
+BEGIN charW := font(MonoFont).charW; charH := font(MonoFont).charH
+END GetMonoFontSize;
+
+PROCEDURE FindFontChar(font: Font; c: CHAR; VAR bmp: Bitmap;
+    VAR x, y, w, h: INTEGER);
+VAR n: INTEGER;
+  m: MonoFont;
+BEGIN m := font(MonoFont);
+  IF c < 200X THEN n := ORD(c)
+  ELSIF (400X <= c) & (c < 500X) THEN n := ORD(c) + (300H - 400H)
+  ELSIF (2500X <= c) & (c < 2600X) THEN n := ORD(c) + (200H - 2500H)
+  ELSE n := -1
+  END;
+  IF n < 0 THEN n := 1 (* "Bad" character *) END;
+  bmp := m.bmp;
+  x := n MOD m.cols * m.charW; y := n DIV m.cols * m.charH;
+  w := m.charW; h := m.charH
+END FindFontChar;
+
+PROCEDURE DrawCharEx*(ch: CHAR; x, y: INTEGER; font: Font; color: Color;
+    VAR w: INTEGER);
+VAR sx, sy, h: INTEGER;
+  bmp: Bitmap;
+BEGIN FindFontChar(font, ch, bmp, sx, sy, w, h);
+  DrawTintedPart(bmp, color, sx, sy, w, h, x, y)
+END DrawCharEx;
+
+PROCEDURE DrawChar*(ch: CHAR; x, y: INTEGER; font: Font; color: Color);
+VAR w: INTEGER;
+BEGIN DrawCharEx(ch, x, y, font, color, w)
+END DrawChar;
+
+PROCEDURE DrawString*(s: ARRAY OF CHAR; x, y: INTEGER;
+    font: Font; color: Color);
+VAR i, cx, cy, charW, destW, destH: INTEGER;
+  m: MonoFont;
+BEGIN m := font(MonoFont); i := 0; cx := x; cy := y;
+  GetTargetSize(destW, destH);
+  WHILE (s[i] # 0X) & (cx < destW) & (cy < destH) DO
+    IF s[i] = 0AX THEN cx := x; INC(cy, m.charH)
+    ELSE DrawCharEx(s[i], cx, cy, font, color, charW);
+      INC(i); INC(cx, charW)
+    END
+  END
+END DrawString;
+
+PROCEDURE MonoFontDraw(f: Font; VAR msg: FontDrawMsg);
+VAR m: MonoFont;
+BEGIN m := f(MonoFont);
+  (*!TODO*)
+END MonoFontDraw;
+
+PROCEDURE MonoFontHandle(f: Font; VAR msg: FontMessage);
+VAR m: MonoFont;
+BEGIN m := f(MonoFont)
+  (*!TODO*)
+END MonoFontHandle;
+
+PROCEDURE ReadWord(VAR r: Files.Rider; VAR s: ARRAY OF CHAR);
+VAR ch: CHAR;
+  i: INTEGER;
+BEGIN
+  Files.ReadChar(r, ch);
+  WHILE ~r.eof & (ch <= ' ') DO Files.ReadChar(r, ch) END;
+
+  i := 0;
+  WHILE ~r.eof & (ch > ' ') DO
+    IF (i # LEN(s) - 1) THEN s[i] := ch; INC(i) END;
+    Files.ReadChar(r, ch)
+  END;
+  s[i] := 0X
+END ReadWord;
+
+PROCEDURE ReadInt(VAR r: Files.Rider; VAR n: INTEGER);
+VAR ch: CHAR;
+  i: INTEGER;
+BEGIN
+  Files.ReadChar(r, ch);
+  WHILE ~r.eof & (ch <= ' ') DO Files.ReadChar(r, ch) END;
+
+  n := 0;
+  WHILE ~r.eof & ('0' <= ch) & (ch <= '9') DO
+    n := n * 10 + ORD(ch) - ORD('0');
+    Files.ReadChar(r, ch)
+  END
+END ReadInt;
+
+PROCEDURE ReadFontInfo(VAR r: Files.Rider): Font;
+VAR f: Font;
+  mf: MonoFont;
+  s: ARRAY 4096 OF CHAR;
+BEGIN f := NIL;
+  ReadWord(r, s);
+  IF s = 'mono' THEN
+    NEW(mf); mf.bmp := NIL;
+    ReadInt(r, mf.charW); ReadInt(r, mf.charH);
+    IF (mf.charW > 0) & (mf.charH > 0) THEN
+      mf.cols := 16; mf.rows := 16 * fontPlanes
+    ELSE mf := NIL
+    END;
+    f := mf
+  END
+RETURN f END ReadFontInfo;
+
+PROCEDURE LoadFontInfo*(fname: ARRAY OF CHAR): Font;
+VAR f: Font;
+  F: Files.File;
+  r: Files.Rider;
+  s: ARRAY 4096 OF CHAR;
+BEGIN f := NIL;
+  s := fname; Strings.Append('.ofi', s);
+  F := Files.Old(s);
+  IF F # NIL THEN
+    s := fname; Strings.Append('.png', s);
+    IF Dir.FileExists(s) THEN
+      Files.Set(r, F, 0);
+      f := ReadFontInfo(r);
+      IF f # NIL THEN
+        f.loaded := FALSE;
+        f.fname := fname;
+        f.draw := MonoFontDraw;
+        f.handle := MonoFontHandle
+      END
+    END
+  END
+RETURN f END LoadFontInfo;
+
+PROCEDURE LoadFontBitmap*(f: Font);
+VAR s: ARRAY 4096 OF CHAR;
+BEGIN
+  s := ''; Strings.Append(f.fname, s); Strings.Append('.png', s);
+  f(MonoFont).bmp := LoadBitmap(s);
+  IF f(MonoFont).bmp # NIL THEN f.loaded := TRUE END
+END LoadFontBitmap;
+
+PROCEDURE LoadFont*(fname: ARRAY OF CHAR): Font;
+VAR f: Font;
+BEGIN f := LoadFontInfo(fname);
+  IF f # NIL THEN LoadFontBitmap(f) END
+RETURN f END LoadFont;
+
+(* Clipboard *)
+
+PROCEDURE GetClipboardText*(win: Window; VAR s: ARRAY OF CHAR);
+TYPE P = POINTER [1] TO ARRAY 5000 OF SHORTCHAR;
+VAR a: Al.ADRINT;
+  p: P;
+  q: ARRAY 20 OF SHORTCHAR;
+BEGIN
+  a := Al.get_clipboard_text(win.display);
+  (*IF a = 0 THEN a := Al.get_clipboard_text(win.display) END; (*Allegro bug*)*)
+  Out.String('PASTE DEBUG. a = ');Out.Int(a, 0);Out.Ln;
+  IF a # 0 THEN p := SYSTEM.VAL(P, a); Utf8.Decode(p^, s);
+    Al.free_with_context(a, 27, 'Graph.Mod', 'GetClipboardText')
+    (*;Utf8.Encode('Привет', q);
+    ;IF Al.set_clipboard_text(win.display, SYSTEM.VAL(Al.ADRINT, SYSTEM.ADR(q))) THEN END*)
+  ELSE s[0] := 0X
+  END
+END GetClipboardText;
+
+PROCEDURE Time*(): REAL;
+RETURN Al.get_time() END Time;
+
+(* Window Icons *)
+
+PROCEDURE SetWindowIconsEx*(win: Window; icons: ARRAY OF Bitmap;
+    from, len: INTEGER);
+VAR m: ARRAY 64 OF Al.Bitmap;
+  i: INTEGER;
+BEGIN
+  FOR i := 0 TO len - 1 DO m[i] := icons[from + i].bmp END;
+  FOR i := 0 TO len - 1 DO win.icons[i] := m[i] END;
+  win.noficons := len;
+  Al.set_display_icons(win.display, len, m)
+END SetWindowIconsEx;
+
+PROCEDURE SetWindowIcons*(win: Window; icons: ARRAY OF Bitmap);
+BEGIN SetWindowIconsEx(win, icons, 0, LEN(icons))
+END SetWindowIcons;
+
+PROCEDURE SetWindowIcon*(win: Window; icon: Bitmap);
+VAR i: INTEGER;
+BEGIN
+  FOR i := 1 TO LEN(win.icons) - 1 DO win.icons[i] := NIL END;
+  win.icons[0] := icon.bmp; win.noficons := 1;
+  Al.set_display_icon(win.display, icon.bmp)
+END SetWindowIcon;
 
 (* Init *)
 
-PROCEDURE Init*(): Bitmap;
-VAR flags: SET; success: BOOLEAN; w, h, nw, nh: INTEGER;
-  s: ARRAY 2000 OF CHAR;
-BEGIN screen := NIL; settings := initSettings;
-  IF SDL.Init({SDL.initVideo}) = 0 THEN
-    flags := {};
-    IF fullscreen IN settings THEN
-      flags := flags + SDL.windowFullscreenDesktop;
-      IF (scrW <= 0) OR (scrH <= 0) THEN
-        GetDesktopResolution(scrW, scrH);
-        scrW := SHORT(ENTIER(scrW / scaleX));
-        scrH := SHORT(ENTIER(scrH / scaleY))
-      ELSIF spread IN settings THEN
-        GetDesktopResolution(w, h);
-        w := SHORT(ENTIER(w / scaleX)); h := SHORT(ENTIER(h / scaleY));
-        IF sharpPixels IN settings THEN
-          nw := w DIV scrW; nh := h DIV scrH;
-          IF nw < nh THEN scrW := w DIV nw; scrH := h DIV nw
-          ELSE scrW := w DIV nh; scrH := h DIV nh
-          END
-        END;
-        IF w / h > scrW / scrH THEN scrW := w * scrH DIV h
-        ELSE scrH := h * scrW DIV w
-        END
-      END
-    ELSIF (scrW <= 0) OR (scrH <= 0) THEN scrW := 640; scrH := 400
-    END;
-    IF sizeStepX # 1 THEN scrW := scrW DIV sizeStepX * sizeStepX END;
-    IF sizeStepY # 1 THEN scrH := scrH DIV sizeStepY * sizeStepY END;
-    window := SDL.CreateWindow('',
-      SDL.windowPosUndefined, SDL.windowPosUndefined,
-      scrW, scrH, flags);
-    IF window # 0 THEN
-      IF software IN settings THEN flags := {SDL.rendererSoftware}
-      ELSE flags := {SDL.rendererAccelerated}
-      END;
-      INCL(flags, SDL.rendererPresentVsync);
-      renderer := SDL.CreateRenderer(window, -1, flags);
-      IF sharpPixels IN settings THEN
-        SDL.SetHint(SDL.hintRenderScaleQuality, '0')
-      ELSE SDL.SetHint(SDL.hintRenderScaleQuality, '1')
-      END;
-      ApplyScale;
-      screen := CreateBitmap(scrW, scrH);
-      screenTexture := 0;
-      UnsetRegion;
-      SDL.ShowCursor(0);
-      IF initMouse IN settings THEN InitMouseData END;
-      IF {noPng, noJpg} - settings # {} THEN flags := {};
-        IF ~(noPng IN settings) THEN INCL(flags, SDL.imgInitPng) END;
-        IF ~(noJpg IN settings) THEN INCL(flags, SDL.imgInitJpg) END;
-        IF flags - SDL.ImgInit(flags) # {} THEN
-          Out.String('Could not initialize image format support.'); Out.Ln;
-          GetError(s); Out.String(s); Out.Ln
-        END
-      END;
-      keyPressed := 0;
-      lastFlip := -1;
-      screenAlpha := 255
+PROCEDURE InitScreen(): BOOLEAN;
+VAR opt: SET;
+BEGIN
+  opt := settings;
+  IF {fullscreen, window} * opt = {} THEN INCL(opt, fullscreen)
+  ELSIF fullscreen IN opt THEN EXCL(opt, window)
+  END;
+  IF (wantW <= 0) OR (wantH <= 0) THEN
+    IF fullscreen IN opt THEN wantW := -1; wantH := -1
+    ELSE wantW := 640; wantH := 400
     END
-  END ;
-RETURN screen END Init;
+  END
+RETURN NewWindow(-1, -1, wantW, wantH, wantTitle, opt) # NIL END InitScreen;
+
+PROCEDURE Init*;
+VAR ok: BOOLEAN;
+BEGIN ok := TRUE;
+  IF Al.install_system(Al.get_allegro_version(), 0) THEN
+    IF ~Al.install_keyboard() THEN
+      Error('Could not install keyboard.'); ok := FALSE
+    END;
+
+    IF ~(noMouse IN settings) & ~Al.install_mouse() THEN
+      Error('Could not install mouse.'); ok := FALSE
+    END;
+
+    IF ~Al.init_primitives_addon() THEN
+      Error('Could not init primitives addon.'); ok := FALSE
+    END;
+
+    IF ~Al.init_image_addon() THEN
+      Error('Could not init image addon.'); ok := FALSE
+    END;
+
+    queue := Al.create_event_queue();
+    IF queue = NIL THEN
+      Error('Could not create queue.'); ok := FALSE
+    END;
+
+    IF ok THEN
+      Al.init_user_event_source(userEventSource);
+      Al.register_event_source(queue,
+        SYSTEM.VAL(Al.PEventSource, SYSTEM.ADR(userEventSource)));
+      Al.register_event_source(queue, Al.get_keyboard_event_source());
+      IF ~(noMouse IN settings) THEN
+        Al.register_event_source(queue, Al.get_mouse_event_source())
+      END
+    END;
+
+    IF ~(manual IN settings) THEN
+      IF ~InitScreen() THEN ok := FALSE END
+    END
+  ELSE Error('Could not init Allegro.'); ok := FALSE
+  END;
+  Done := ok
+END Init;
+
+PROCEDURE ResetDefaults;
+BEGIN
+  wantW := 640; wantH := 400; wantSizeStepX := 1; wantSizeStepY := 1;
+  wantScaleX := 1.0; wantScaleY := 1.0; wantZoom := 1.0;
+  settings := {};
+  wantTitle := 'Oberon';
+  (* Reset global variables *)
+  queue := NIL; windowList := NIL; timerList := NIL;
+  screen := NIL; target := NIL
+END ResetDefaults;
 
 PROCEDURE Close*;
 BEGIN
-  IF screenTexture # 0 THEN
-    SDL.DestroyTexture(screenTexture);
-    screenTexture := 0
-  END;
-  IF renderer # 0 THEN
-    SDL.DestroyRenderer(renderer);
-    renderer := 0
-  END;
-  SDL.Quit
+  Al.uninstall_system;
+  ResetDefaults
 END Close;
 
-BEGIN
-  scrW := 640; scrH := 400;
-  sizeStepX := 1; sizeStepY := 1;
-  initSettings := {fullscreen, spread, sharpPixels};
-  renderer := 0; buffer := NIL; wantFPS := 60;
-  mousePointer := NIL; lastBlitMouseOutside := FALSE;
-  mouseFocusX := 0; mouseFocusY := 0;
-  scaleX := 1; scaleY := 1;
-  events.first := 0; events.last := -1; events.len := 0;
-  keyPressed := 0
+BEGIN Done := FALSE;
+  MakeCol(black, 0, 0, 0);
+  ResetDefaults
 END Graph.

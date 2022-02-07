@@ -1,5 +1,5 @@
 MODULE TermBox;
-IMPORT G := Graph2, Strings, Int, Out, Platform, Kernel;
+IMPORT G := Graph, Strings, Int, Out, Platform, Kernel;
 
 CONST
   partW = 512;

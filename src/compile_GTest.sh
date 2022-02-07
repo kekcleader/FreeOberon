@@ -5,12 +5,12 @@ export OBERON=.:$OFRDIR/Lib/Sym
 OFR="ofront+ -s88"
 
 $OFR -7w Allegro5.Mod && \
-$OFR -7w Graph2.Mod && \
+$OFR -7w Graph.Mod && \
 $OFR -7wm $PROG.Mod && \
 gcc -o $PROG -g3 -O0 -fno-exceptions \
   -I $OFRDIR/../../Mod/Lib \
   -I $OFRDIR/Lib/Obj \
-  Graph2.c $PROG.c \
+  Graph.c $PROG.c \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a \
   $(pkg-config \

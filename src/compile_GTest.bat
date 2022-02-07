@@ -14,13 +14,13 @@ SET CCFULL=%CC% -g3 -O0 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Li
 ECHO ON
 %OFR% -7w Allegro5.Mod
 @IF ERRORLEVEL 1 GOTO ERR
-%OFR% -7w Graph2.Mod
+%OFR% -7w Graph.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7wm GTest.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 
 %CCFULL% -o ..\%PROG%.exe resources.o ^
-  Graph2.c ^
+  Graph.c ^
   %PROG%.c ^
   ..\Data\bin\FreeOberon.a ^
   %OFRDIR%\Lib\Ofront.a ^

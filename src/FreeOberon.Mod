@@ -571,12 +571,11 @@ PROCEDURE ResetSysModules;
   END Add;
 
 BEGIN sysModules := NIL;
-  Add('SYSTEM');  Add('Texts');    Add('Files');  Add('Strings');
-  Add('In');      Add('Out');      Add('Math');   Add('MathL');
-  Add('Modules'); Add('Platform'); Add('Oberon'); Add('Reals');
-  Add('VT100');   Add('Graph');    Add('SDL2');   Add('Term');
-  Add('Graph2');  Add('Allegro5'); Add('TermBox');
-  Add('Dir');     Add('Int');      Add('Random')
+  Add('SYSTEM');   Add('Texts');    Add('Files');   Add('Strings');
+  Add('In');       Add('Out');      Add('Math');    Add('MathL');
+  Add('Modules');  Add('Platform'); Add('Oberon');  Add('Reals');
+  Add('VT100');    Add('Graph');    Add('TermBox'); Add('Term');
+  Add('Allegro5'); Add('Dir');      Add('Int');     Add('Random')
 END ResetSysModules;
 
 PROCEDURE CompileAll(modules: StrList; graph: BOOLEAN;
@@ -833,7 +832,7 @@ BEGIN res := NIL; ok := TRUE;
 RETURN res END UsedModuleList;
 
 PROCEDURE ImportsGraph(p: StrList): BOOLEAN;
-BEGIN WHILE (p # NIL) & (p.s # 'Graph') & (p.s # 'Graph2') (*!FIXME*) DO p := p.next END ;
+BEGIN WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END ;
 RETURN p # NIL END ImportsGraph;
 
 (* "Module.Mod" -> "Module" *)

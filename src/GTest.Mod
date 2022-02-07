@@ -1,6 +1,6 @@
-(* Graph2 Test Module *)
+(* Graph Test Module *)
 MODULE GTest;
-IMPORT G := Graph2, Random, Out;
+IMPORT G := Graph, Random, Out;
 VAR main: G.Window;
   dialogs: ARRAY 10 OF G.Window;
   nofdialogs: INTEGER;
