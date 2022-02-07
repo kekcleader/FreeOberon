@@ -17,7 +17,6 @@ BEGIN
   k := LastBit(x); (* k - максимальная степень двойки такая, что k <= x *)
   REPEAT
     x := Rotate(x, k);
-    Out.Int(x, 10); Out.Ln;
     IF x > max THEN max := x END
   UNTIL x = x0
 RETURN max END Parse;
@@ -28,12 +27,15 @@ VAR T: Texts.Text;
   W: Texts.Writer;
   n: INTEGER;
 BEGIN
-  NEW(T); Texts.Open(T, 'fungame.in'); Texts.OpenScanner(S, T, 0);
-  Texts.Scan(S); n := S.i;
-  n := Parse(n);
-  Texts.Open(T, ''); Texts.OpenWriter(W);
-  Texts.WriteInt(W, n, 0); Texts.WriteLn(W);
-  Texts.Append(T, W.buf); Texts.Close(T, 'fungame.out')
+  NEW(T); Texts.Open(T, 'fungame.in');
+  IF T.len # 0 THEN
+    Texts.OpenScanner(S, T, 0); Texts.Scan(S);
+    n := S.i;
+    n := Parse(n);
+    Texts.Open(T, ''); Texts.OpenWriter(W);
+    Texts.WriteInt(W, n, 0); Texts.WriteLn(W);
+    Texts.Append(T, W.buf); Texts.Close(T, 'fungame.out')
+  END
 END Do;
 
 BEGIN
