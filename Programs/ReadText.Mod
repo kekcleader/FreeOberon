@@ -14,9 +14,8 @@ BEGIN
     n := S.i; Out.Int(S.i, 0); Out.Ln;
     Tx.Scan(S); INC(n, S.i);
     Out.Int(S.class, 5); Out.String('   ---> ');
-    Out.Int(S.i, 0); Out.Ln; Out.Int(n, 20); Out.Ln;
-
-    Tx.Open(T, 'OUT.DAT'); Tx.Close(T)
+    Out.Int(S.i, 0); Out.Ln;
+    Out.String('     Сумма = '); Out.Int(n, 0); Out.Ln
   ELSE Out.String('Файл не найден.'); Out.Ln
   END
 END ReadText.
