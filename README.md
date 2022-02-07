@@ -16,8 +16,8 @@ Free Oberon is a cross-platform integrated development environment for programmi
 
 Free Oberon представляет собой кроссплатформенную интегрированную среду разработки на языке программирования Оберон, выполненную в классическом псевдографическом стиле — знаменитого синего экрана Паскаля).
 
-* Версия 1.1.0-alpha.3
-* Рига, 29 января 2022 г.
+* Версия 1.1.0-alpha.4
+* Рига, 7 февраля 2022 г.
 * Сайт: [free.oberon.org](https://free.oberon.org)
 
 # Установка
@@ -70,8 +70,8 @@ ______
 
 *ENGLISH*
 
-* Version 1.1.0-alpha.3
-* Riga, January 29, 2022
+* Version 1.1.0-alpha.4
+* Riga, February 7, 2022
 * Website: [free.oberon.org](https://free.oberon.org/en)
 
 # Install
