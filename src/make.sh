@@ -9,7 +9,7 @@ export OBERON=.:$OFRDIR/Lib/Sym
 OFR="ofront+ -s -88"
 CC="gcc"
 AR="ar"
-CCFULL="$CC -g3 -O0 -fno-exceptions -I $OFRDIR/../../Mod/Lib -I $OFRDIR/Lib/Obj"
+CCFULL="$CC -O3 -fno-exceptions -I $OFRDIR/../../Mod/Lib -I $OFRDIR/Lib/Obj"
 
 
 $OFR -Cw Config_linux.Mod &&
