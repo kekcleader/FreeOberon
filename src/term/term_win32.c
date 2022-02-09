@@ -149,8 +149,45 @@ int StartProcessIn(char *process, char *dir) {
   siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
   siStartInfo.wShowWindow = SW_HIDE;
 
-  /* Environment block */
-  char chNewEnv[100] = "PATH=..\0"; // Must end with 2 \0s
+  /* Environment variables */
+  
+  LPTSTR pszOldVal, childEnvPath;
+  BOOL envPathExists = TRUE;
+  DWORD pathSize, dwRet, dwErr;
+  
+  // Save original value of the PATH environment variable
+  pszOldVal = (LPTSTR)malloc(BUFSIZE * sizeof(TCHAR));
+  pathSize = GetEnvironmentVariable(TEXT("PATH"), pszOldVal, BUFSIZE);
+  if (pathSize == 0) {
+    dwErr = GetLastError();
+    if (dwErr == ERROR_ENVVAR_NOT_FOUND) {
+      envPathExists = FALSE;
+    }
+  } else if (BUFSIZE < pathSize) {
+    pszOldVal = (LPTSTR)realloc(pszOldVal, pathSize * sizeof(TCHAR));
+    if (pszOldVal == NULL) {
+      ErrorExit(TEXT("realloc out memory"));
+    }
+    dwRet = GetEnvironmentVariable(TEXT("PATH"), pszOldVal, pathSize);
+    if (!dwRet) {
+      ErrorExit(TEXT("GetEnvironmentVariable failed"));
+    }
+  }
+  
+  // Determine the value of environment variable PATH for the child process
+  childEnvPath = (LPTSTR)malloc((pathSize + 3) * sizeof(TCHAR));
+  if (childEnvPath == NULL) {
+    ErrorExit(TEXT("malloc out memory"));
+  }
+  childEnvPath[0] = '.';
+  childEnvPath[1] = '.';
+  childEnvPath[2] = ';';
+  memcpy(childEnvPath + 3, pszOldVal, pathSize);
+  
+  // Set value of PATH for child process to inherit
+  if (!SetEnvironmentVariable(TEXT("PATH"), childEnvPath)) {
+    ErrorExit(TEXT("SetEnvironmentVariable 1 failed"));
+  }
 
   // Create the child process.
   bSuccess = CreateProcess(NULL,
@@ -159,13 +196,22 @@ int StartProcessIn(char *process, char *dir) {
     NULL,    // primary thread security attributes
     TRUE,    // handles are inherited
     CREATE_NO_WINDOW, // creation flags
-    (LPVOID)chNewEnv, // environment block
+    NULL,         // environment block
     dir,          // current directory of the process
     &siStartInfo, // STARTUPINFO pointer
     &piProcInfo); // receives PROCESS_INFORMATION
   
   // If an error occurs, exit the application.
   if (!bSuccess) ErrorExit(TEXT("CreateProcess"));
+  
+  // Restore original value of PATH
+  if (envPathExists) {
+    if (!SetEnvironmentVariable(TEXT("PATH"), pszOldVal)) {
+      ErrorExit(TEXT("SetEnvironmentVariable 2 failed"));
+    }
+  } else {
+    SetEnvironmentVariable(TEXT("PATH"), NULL);
+  }
 
   return bSuccess ? 1 : 0;
 }

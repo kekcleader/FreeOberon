@@ -868,6 +868,7 @@ BEGIN w := c.app.windows;
         needWindowed := graph;
         IF CompileAll(modules, graph, exename) THEN
           tempWindowed := needWindowed & T.IsFS();
+          tempWindowed := FALSE; (*!FIXME Test on Linux and then remove tempWindowed alltogeter*)
           IF tempWindowed THEN T.SwitchToWindow END;
           RunProgram(exename)
         END

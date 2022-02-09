@@ -1169,10 +1169,8 @@ BEGIN
 RETURN c END ReadKey;
 
 PROCEDURE Pause*;
-BEGIN
-
+BEGIN IF ReadKey() = 0X THEN END
 END Pause;
-
 
 PROCEDURE DropNextEvent*;
 VAR e: Event;
