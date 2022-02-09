@@ -5,7 +5,7 @@
 * Add example program TestGraph
 * WinAPI: Fix environment variables when running a compiled program
 * Implement types Texts.Writer, Texts.Buffer
-* Update example program BlitBmp and renamed it to Rocket
+* Update example program BlitBmp and rename it to Rocket
 * Replace SDL2 version of Graph with the Allegro5 version (Graph2)
 
 ## 1.1.0-alpha.3 - 2022-01-29
