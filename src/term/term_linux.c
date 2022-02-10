@@ -40,22 +40,24 @@ int StartProcessIn(char *process, char *dir) {
       }
 
   if ((pipe(p) == -1) || (pipe(q) == -1)) {
-    perror("StartProcess: Could not create pipes.");
+    perror("StartProcessIn: Could not create pipes");
   } else {
     pid = fork();
     if (pid == -1) { // fork() error
-      perror("StartProcess: Could not fork().");
+      perror("StartProcessIn: Could not fork().");
     } else if (pid == 0) { // Child process
       if (dup2(q[0], 0/*stdin*/) == -1) {
-        perror("StartProcess: Could not dup2(stdin) in child process.");
+        perror("StartProcessIn: Could not dup2(stdin) in child process");
       }
       if (dup2(p[1], 1/*stdout*/) == -1) {
-        perror("StartProcess: Could not dup2(stdout) in child process.");
+        perror("StartProcessIn: Could not dup2(stdout) in child process");
       }
       close(q[1]);
       close(p[0]);
       if (dir && dir[0] != '\0') {
-        getcwd(cmd, 256);
+        if (getcwd(cmd, 256) == NULL) {
+          perror("StartProcessIn: Could not getcdw()");
+        }
         i = 0;
         while (cmd[i]) i++;
         if (i && cmd[i - 1] != '/') {
@@ -67,7 +69,7 @@ int StartProcessIn(char *process, char *dir) {
         while (process[j]) { cmd[i] = process[j]; i++; j++; }
         cmd[i] = '\0';
         if (chdir(dir) != 0) {
-          perror("StartProcess: Could not chdir() in child process.");
+          perror("StartProcessIn: Could not chdir() in child process");
         }
         process = &cmd[0];
       }
@@ -115,7 +117,13 @@ int ProcessFinished(int *err) {
 }
 
 void WriteToProcess(char *buf, int len) {
-  write(q[1], buf, len);
+  ssize_t res;
+  do {
+    res = write(q[1], buf, len);
+  } while (res != -1 && res < len);
+  if (res == -1) {
+    perror("WriteToProcess: write failed");
+  }
 }
 
 void ReadFromProcess(char *buf, int *len, int limit) {
