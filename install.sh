@@ -3,7 +3,8 @@
 echo "This script will install Free Oberon."
 
 echo "Installing Allegro5, Git and GCC..."
-sudo apt-get install -y liballegro5-dev git gcc
+sudo apt-get update
+sudo apt-get install -y liballegro5-dev git gcc build-essential
 
 echo "Installing Ofront+ as Git submodule..."
 git submodule update --init
