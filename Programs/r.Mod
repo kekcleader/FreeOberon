@@ -13,7 +13,9 @@ BEGIN
 
   Out.String('Please enter a real number.'); Out.Ln;
   Out.String('x='); In.Real(x);
-  Out.String('['); Out.RealFix(x, 8, 3); Out.String(']'); Out.Ln;
+  Out.String(' REAL1 ['); Out.RealFix(x, 8, 3); Out.String(']'); Out.Ln;
+  Out.String(' REAL2 ['); Out.Real(x, 8); Out.String(']'); Out.Ln;
+  Out.String('AS INT ['); Out.Int(FLOOR(x + 0.5), 8); Out.String(']'); Out.Ln;
   Out.String('Enter string:'); In.Line(s);
   Out.String('{'); Out.String(s); Out.String('}'); Out.Ln;
   i := 0;
