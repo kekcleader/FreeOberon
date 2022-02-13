@@ -1344,7 +1344,7 @@ VAR a: Al.ADRINT;
 BEGIN
   a := Al.get_clipboard_text(win.display);
   (*IF a = 0 THEN a := Al.get_clipboard_text(win.display) END; (*Allegro bug*)*)
-  Out.String('PASTE DEBUG. a = ');Out.Int(a, 0);Out.Ln;
+  (*Out.String('PASTE DEBUG. a = ');Out.Int(a, 0);Out.Ln;*)
   IF a # 0 THEN p := SYSTEM.VAL(P, a); Utf8.Decode(p^, s);
     Al.free_with_context(a, 27, 'Graph.Mod', 'GetClipboardText')
     (*;Utf8.Encode('Привет', q);
