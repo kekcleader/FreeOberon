@@ -113,7 +113,7 @@ PROCEDURE Int*(x, n: INTEGER);
 VAR i: INTEGER; x0: INTEGER;
   a: ARRAY 10 OF CHAR;
 BEGIN
-  IF SYSTEM.ROT(*!FIXME ROR*)(x, 31) = 1 THEN
+  IF SYSTEM.ROT(*!FIXME ROR*)(x, -31) = 1 THEN
     Spaces(n - 11); String('-2147483648')
   ELSE i := 0;
     IF x < 0 THEN DEC(n); x0 := -x ELSE x0 := x END;
@@ -178,24 +178,26 @@ END Real;
 
 PROCEDURE RealFix*(x: REAL; n, k: INTEGER);
 VAR i, m: INTEGER; neg: BOOLEAN;
-  d: ARRAY 12 OF CHAR;
+  d: ARRAY 80 OF CHAR;
 BEGIN
-  IF x = 0.0 THEN DEC(n);
-    WHILE n # 0 DO Char(' '); DEC(n) END;
-    Char('0')
+  IF x = 0.0 THEN Spaces(n - 1); Char('0')
   ELSE
     IF x < 0.0 THEN x := -x; neg := TRUE ELSE neg := FALSE END;
     IF k > 7 THEN k := 7 END;
     x := Ten(k) * x; m := SHORT(ENTIER(x + 0.5));
     i := 0;
     REPEAT d[i] := CHR(m MOD 10 + ORD('0')); m := m DIV 10; INC(i) UNTIL m = 0;
-    Char(' ');
-    WHILE n > i + 3 DO Char(' '); DEC(n) END;
-    IF neg THEN Char('-'); DEC(n) ELSE Char(' ') END;
+    (*Char('['); Int(n, 0); Char('|'); Int(i, 0); Char(']');*)
+    IF neg THEN DEC(n) END;
+    IF k > 0 THEN DEC(n) END;
+    WHILE n > i DO Char(' '); DEC(n) END;
+    IF neg THEN Char('-') END;
     WHILE i > k DO DEC(i); Char(d[i]) END;
-    Char('.');
-    WHILE k > i DO DEC(k); Char('0') END;
-    WHILE i > 0 DO DEC(i); Char(d[i]) END
+    IF (k > i) OR (i > 0) THEN
+      Char('.');
+      WHILE k > i DO DEC(k); Char('0') END;
+      WHILE i > 0 DO DEC(i); Char(d[i]) END
+    END
   END
 END RealFix;
 
