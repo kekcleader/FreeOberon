@@ -50,7 +50,7 @@ CONST
   (* Defaults *)
   defW = 106;
   defH = 25;
-  defLang = 'ru';
+  defLang = 'en';
 
 TYPE
   StrList = POINTER TO StrListDesc;
