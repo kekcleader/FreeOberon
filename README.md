@@ -98,7 +98,7 @@ ______
 ## Installation on Linux
 
 1. Download Free Oberon in tar.gz format from
-   [free.oberon.org](https://free.oberon.org/download)
+   [free.oberon.org](https://free.oberon.org/en/download)
    and unpack it inside home directory (or in any other place).
 
    Option (edge build):
