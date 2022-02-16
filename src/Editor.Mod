@@ -993,7 +993,7 @@ VAR x, y: INTEGER;
   s: ARRAY 30 OF CHAR;
 BEGIN y := c.y + c.h - 1;
   IF c.text.changed THEN T.SetChar(c.x + 2, y, 0FX) END;
-  Int.Str(c.text.y + 1, s); x := 5 + Strings.Length(s);
+  Int.Str(c.text.y + 1, s); x := 8 - Strings.Length(s);
   Strings.Append(':', s); Int.Append(c.text.x + 1, s);
   Strings.Insert(' ', 0, s); Strings.Append(' ', s);
   T.Print(c.x + x, y, c.w - x, s, 15, 1)
