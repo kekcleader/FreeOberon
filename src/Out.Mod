@@ -25,6 +25,7 @@ BEGIN
 END Flush;
 
 PROCEDURE Open*;
+BEGIN
 END Open;
 
 PROCEDURE Char*(ch: CHAR);
@@ -33,10 +34,6 @@ BEGIN
   buf[in] := ch; INC(in);
   IF ch = 0AX THEN Flush END
 END Char;
-
-PROCEDURE Spaces(n: INTEGER);
-BEGIN WHILE n > 0 DO Char(' '); DEC(n) END
-END Spaces;
 
 PROCEDURE Length(IN s: ARRAY OF CHAR): INTEGER;
 VAR n: INTEGER;
@@ -72,7 +69,6 @@ BEGIN
   END
 END Utf8;
 
-(*
 PROCEDURE Int*(x, n: HUGEINT);
   CONST zero = ORD('0');
   VAR s: ARRAY 22 OF CHAR; i: INTEGER; negative: BOOLEAN;
@@ -107,99 +103,6 @@ BEGIN
     ELSE Char(SHORT(CHR((x MOD 16) - 10 + ORD('A')))) END
   END
 END Hex;
-*)
-
-PROCEDURE Int*(x, n: INTEGER);
-VAR i: INTEGER; x0: INTEGER;
-  a: ARRAY 10 OF CHAR;
-BEGIN
-  IF SYSTEM.ROT(*!FIXME ROR*)(x, -31) = 1 THEN
-    Spaces(n - 11); String('-2147483648')
-  ELSE i := 0;
-    IF x < 0 THEN DEC(n); x0 := -x ELSE x0 := x END;
-    REPEAT
-      a[i] := CHR(x0 MOD 10 + ORD('0')); x0 := x0 DIV 10; INC(i)
-    UNTIL x0 = 0;
-    WHILE n > i DO Char(' '); DEC(n) END;
-    IF x < 0 THEN Char('-') END;
-    REPEAT DEC(i); Char(a[i]) UNTIL i = 0
-  END
-END Int;
-
-PROCEDURE Hex*(x: INTEGER);
-VAR i: INTEGER; y: INTEGER;
-  a: ARRAY 10 OF CHAR;
-BEGIN i := 0; Char(' ');
-  REPEAT y := x MOD 10H;
-    IF y < 10 THEN a[i] := CHR(y + ORD('0'))
-    ELSE a[i] := CHR(y + (ORD('A') - 10))
-    END;
-    x := x DIV 10H; INC(i)
-  UNTIL i = 8;
-  REPEAT DEC(i); Char(a[i]) UNTIL i = 0
-END Hex;
-
-PROCEDURE Ten*(e: INTEGER): REAL;
-VAR r, power: REAL;
-BEGIN r := 1.0E0; power := 1.0E1;
-  WHILE e > 0 DO
-    IF ODD(e) THEN r := r * power END;
-    power := power * power; e := SHORT(e DIV 2)
-  END;
-RETURN r END Ten;
-
-PROCEDURE Real*(x: REAL; n: INTEGER);
-VAR e, i, k, m: INTEGER;
-  d: ARRAY 16 OF CHAR;
-BEGIN e := ASH(SYSTEM.VAL(INTEGER, x), -23) MOD 100H; (* Binary exponent *)
-  IF e = 0 THEN Spaces(n - 1); Char('0')
-  ELSIF e = 255 THEN Spaces(n - 4); String(' NaN')
-  ELSE Char(' ');
-    WHILE n >= 15 DO DEC(n); Char(' ') END;
-    (* 2 < n < 9 digits to be written *)
-    IF x < 0.0 THEN Char('-'); x := -x ELSE Char(' ') END;
-    e := (e - 127) * 77 DIV 256 - 6; (* Decimal exponent *)
-    IF e >= 0 THEN x := x / Ten(e) ELSE x := Ten(-e) * x END;
-    m := SHORT(ENTIER(x + 0.5));
-    IF m >= 10000000 THEN INC(e); m := m DIV 10 END;
-    i := 0; k := 13 - n;
-    REPEAT
-      IF i = k THEN INC(m, 5) END; (* Rounding *)
-      d[i] := CHR(m MOD 10 + ORD('0')); m := m DIV 10; INC(i)
-    UNTIL m = 0;
-    DEC(i); Char(d[i]); Char('.');
-    IF i < n - 7 THEN n := 0 ELSE n := 14 - n END;
-    WHILE i > n DO DEC(i); Char(d[i]) END;
-    Char('E'); INC(e, 6);
-    IF e < 0 THEN Char('-'); e := -e ELSE Char('+') END;
-    Char(CHR(e DIV 10 + ORD('0'))); Char(CHR(e MOD 10 + ORD('0')))
-  END
-END Real;
-
-PROCEDURE RealFix*(x: REAL; n, k: INTEGER);
-VAR i, m: INTEGER; neg: BOOLEAN;
-  d: ARRAY 80 OF CHAR;
-BEGIN
-  IF x = 0.0 THEN Spaces(n - 1); Char('0')
-  ELSE
-    IF x < 0.0 THEN x := -x; neg := TRUE ELSE neg := FALSE END;
-    IF k > 7 THEN k := 7 END;
-    x := Ten(k) * x; m := SHORT(ENTIER(x + 0.5));
-    i := 0;
-    REPEAT d[i] := CHR(m MOD 10 + ORD('0')); m := m DIV 10; INC(i) UNTIL m = 0;
-    (*Char('['); Int(n, 0); Char('|'); Int(i, 0); Char(']');*)
-    IF neg THEN DEC(n) END;
-    IF k > 0 THEN DEC(n) END;
-    WHILE n > i DO Char(' '); DEC(n) END;
-    IF neg THEN Char('-') END;
-    WHILE i > k DO DEC(i); Char(d[i]) END;
-    IF (k > i) OR (i > 0) THEN
-      Char('.');
-      WHILE k > i DO DEC(k); Char('0') END;
-      WHILE i > 0 DO DEC(i); Char(d[i]) END
-    END
-  END
-END RealFix;
 
 PROCEDURE Ln*;
 BEGIN String(Platform.NewLine); Flush
@@ -211,12 +114,127 @@ BEGIN
 END digit;
 
 PROCEDURE prepend(IN t: ARRAY OF CHAR; VAR s: ARRAY OF CHAR; VAR i: INTEGER);
-VAR j: INTEGER; l: INTEGER;
+  VAR j: INTEGER; l: INTEGER;
 BEGIN
   l := Length(t); IF l > i THEN l := i END;
   DEC(i, SHORT(l)); j := 0;
   WHILE j < l DO s[i+j] := t[j]; INC(j) END
 END prepend;
+
+PROCEDURE Ten*(e: INTEGER): LONGREAL;
+VAR r, power: LONGREAL;
+BEGIN r := 1.0E0; power := 1.0E1;
+  WHILE e > 0 DO
+    IF ODD(e) THEN r := r*power END;
+    power := power*power; e := SHORT(e DIV 2)
+  END;
+  RETURN r
+END Ten;
+
+PROCEDURE -Entier64(x: LONGREAL): SYSTEM.INT64 "(LONGINT)(x)";
+
+PROCEDURE RealP(x: LONGREAL; n: INTEGER; long: BOOLEAN);
+(** Writes the long real number x to the end of the output
+    stream using an exponential form. If the textual representation of x
+    requires m characters (including a three-digit signed exponent), x is right
+    adjusted in a field of Max(n, m) characters padded with blanks at the left
+    end. A plus sign of the mantissa is not written.  LONGREAL is 1/sign,
+    11/exponent, 52/significand *)
+VAR
+  e:   SHORTINT; (* Exponent field *)
+  f:   HUGEINT;  (* Fraction field *)
+  s:   ARRAY 30 OF CHAR; (* Buffer built backwards *)
+  i:   INTEGER;  (* Index into s *)
+  el:  INTEGER;  (* Exponent length *)
+  x0:  LONGREAL;
+  nn:  BOOLEAN;  (* Number negative *)
+  en:  BOOLEAN;  (* Exponent negative *)
+  m:   HUGEINT;  (* Mantissa digits *)
+  d:   INTEGER;  (* Significant digit count to display *)
+  dr:  INTEGER;  (* Number of insignificant digits that can be dropped *)
+BEGIN
+  e  := SYSTEM.VAL(SHORTINT, (SYSTEM.VAL(HUGEINT, x) DIV 10000000000000L) MOD 800H);
+  f  := SYSTEM.VAL(HUGEINT, x) MOD 10000000000000L;
+  nn := (SYSTEM.VAL(HUGEINT, x) < 0) & ~((e = 7FFH) & (f # 0)); (* Ignore sign on NaN *)
+  IF nn THEN DEC(n) END;
+
+  i := LEN(s);
+  IF e = 7FFH THEN (* NaN / Infinity *)
+    IF f = 0 THEN prepend('Infinity', s, i) ELSE prepend('NaN', s, i) END
+  ELSE
+    (* Calculate number of significant digits caller has proposed space for, and
+       number of digits to generate. *)
+    IF long THEN
+      el := 3;
+      dr := SHORT(n-6);             (* Leave room for dp and '+D000' *)
+      IF dr > 17 THEN dr := 17 END; (* Limit to max useful significant digits *)
+      d := dr;                      (* Number of digits to generate *)
+      IF d < 15 THEN d := 15 END    (* Generate enough digits to do trailing zero suppression *)
+    ELSE
+      el := 2;
+      dr := SHORT(n-5);             (* Leave room for dp and '+E00' *)
+      IF dr > 9 THEN dr := 9 END;   (* Limit to max useful significant digits *)
+      d := dr;                      (* Number of digits to generate *)
+      IF d < 6 THEN d := 6 END      (* Generate enough digits to do trailing zero suppression *)
+    END;
+
+    IF e = 0 THEN
+      WHILE el > 0 DO DEC(i); s[i] := '0'; DEC(el) END;
+      DEC(i); s[i] := '+';
+      m := 0;
+    ELSE
+      IF nn THEN x := -x END;
+
+      (* Scale e to be an exponent of 10 rather than 2 *)
+      e := SHORT(SHORT(LONG(e - 1023) * 77 DIV 256));
+      IF e >= 0 THEN x := x / Ten(e) ELSE x := Ten(SHORT(-e)) * x END;
+      IF x >= 10.0E0 THEN x := 0.1E0 * x; INC(e) END;
+
+      (* Generate the exponent digits *)
+      en := e < 0; IF en THEN e := SHORT(-e) END;
+      WHILE el > 0 DO digit(e, s, i); e := SHORT(e DIV 10); DEC(el) END;
+      DEC(i); IF en THEN s[i] := '-' ELSE s[i] := '+' END;
+
+      (* Scale x to enough significant digits to reliably test for trailing
+         zeroes or to the amount of space available, if greater. *)
+      x0 := Ten(SHORT(d-1));
+      x  := x0 * x;
+      x  := x + 0.5E0; (* Do not combine with previous line as doing so
+                          introduces a least significant bit difference
+                          between 32 bit and 64 bit builds. *)
+      IF x >= 10.0E0 * x0 THEN x := 0.1E0 * x; INC(e); Char('#') END;
+      m := Entier64(x)
+    END;
+
+    DEC(i); IF long THEN s[i] := 'D' ELSE s[i] := 'E' END;
+
+    (* Drop trailing zeroes where caller proposes to use less space *)
+    IF dr < 2 THEN dr := 2 END;
+    WHILE (d > dr) & (m MOD 10 = 0) DO m := m DIV 10; DEC(d) END;
+
+    (* Render significant digits *)
+    WHILE d > 1 DO digit(m, s, i); m := m DIV 10; DEC(d) END;
+    DEC(i); s[i] := '.';
+    digit(m, s, i);
+  END;
+
+  (* Generate leading padding *)
+  DEC(n, SHORT(LEN(s)-i)); WHILE n > 0 DO Char(' '); DEC(n) END;
+
+  (* Render prepared number from right end of buffer s *)
+  IF nn THEN Char('-') END;
+  WHILE i < LEN(s) DO Char(s[i]); INC(i) END
+  ;Char('[');Int(e,0);Char(']')
+END RealP;
+
+
+PROCEDURE Real*(x: REAL; n: INTEGER);
+BEGIN RealP(x, n, FALSE)
+END Real;
+
+PROCEDURE LongReal*(x: LONGREAL; n: INTEGER);
+BEGIN RealP(x, n, TRUE)
+END LongReal;
 
 (* Convert LONGREAL: Write positive integer value of x into array d.
    The value is stored backwards, i.e. least significant digit
@@ -249,11 +267,65 @@ BEGIN
 END ConvertL;
 
 PROCEDURE Expo*(x: REAL): INTEGER;
-VAR i: SHORTINT;
-BEGIN
-  SYSTEM.GET(SYSTEM.ADR(x) + 2, i);
-  RETURN i DIV 128 MOD 256
+VAR i: INTEGER;
+BEGIN SYSTEM.GET(SYSTEM.ADR(x), i);
+  RETURN ASH(i, -23) MOD 100H
 END Expo;
+
+PROCEDURE RealFix*(x: REAL; n, k: INTEGER);
+CONST maxD = 9;
+VAR e, i, minus, p, N: INTEGER; x0: REAL;
+  d: ARRAY maxD OF CHAR;
+
+  PROCEDURE Chars(ch: CHAR; n: INTEGER);
+  BEGIN WHILE n > 0 DO Char(ch); DEC(n) END
+  END Chars;
+
+  PROCEDURE DigitsOut(n: INTEGER);
+  BEGIN WHILE n > 0 DO DEC(i); Char(d[i]); DEC(n) END
+  END DigitsOut;
+
+BEGIN e := Expo(x);
+  IF k < 0 THEN k := 0 END;
+  IF e = 0 THEN
+    IF k = 0 THEN Chars(' ', n - 1); Char('0')
+    ELSE Chars(' ', n - k - 2); Char('0'); Char('.'); Chars('0', k)
+    END
+  ELSIF e = 255 THEN Chars(' ', n - 3); String('NaN')
+  ELSE e := (e - 127) * 77 DIV 256;
+    IF x < 0 THEN minus := 1; x := -x ELSE minus := 0 END;
+    IF e >= 0 THEN  (*x >= 1.0,  77/256 = log 2*) x := SHORT(x / Ten(e))
+      ELSE (*x < 1.0*) x := SHORT(Ten(-e) * x)
+    END;
+    IF x >= 10.0 THEN x := 0.1 * x; INC(e) END;
+    (* 1 <= x < 10 *)
+    IF k + e >= maxD - 1 THEN k := maxD - 1 - e
+    ELSIF k + e < 0 THEN (*k := -e;*) x := 0.0
+    END;
+    x0 := SHORT(Ten(k + e)); x := x0 * x + 0.5;
+    IF x >= 10.0 * x0 THEN INC(e) END;
+    (*e = no. of digits before decimal point*)
+    INC(e); i := k + e; ConvertL(x, i, d);
+    IF e > 0 THEN
+      IF k > 0 THEN p := 0 ELSE p := 1 END;
+      Chars(' ', n - e - k - 1 - minus + p);
+      IF minus # 0 THEN Char('-') END;
+      DigitsOut(e);
+      IF k > 0 THEN Char('.'); DigitsOut(k) END
+    ELSE
+      IF k + e > 0 THEN p := 0 ELSE p := 1 END;
+      (*Char('[');Int(e,0);Char(':');Int(k,0);Char(']');*)
+      N := n - k - 2 - minus + p;
+      IF (k > 0) & (k + e < 0) THEN DEC(N) END;
+      Chars(' ', N);
+      IF minus # 0 THEN Char('-') END;
+      Char('0');
+      IF k + e > 0 THEN Char('.'); Chars('*', -e); DigitsOut(k + e)
+      ELSIF k > 0 THEN Char('.'); Chars('#', k)
+      END
+    END
+  END
+END RealFix;
 
 BEGIN
   IsConsole := Platform.IsConsole(Platform.StdOut);
