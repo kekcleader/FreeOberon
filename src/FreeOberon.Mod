@@ -1059,6 +1059,7 @@ BEGIN
   OV.AddMenu(app, m);
   FoStrings.Get('menuRun', s);
   m := OV.NewMenu(s, '', 0, NIL);
+  FoStrings.Get('menuRunRun', s);
   OV.Add(m, OV.NewMenu(s, 'Ctrl+F9', OV.hCtrlF9, OnBuild));
   FoStrings.Get('menuRunDirectory', s);
   OV.Add(m, OV.NewMenu(s, '', 0, NIL));
