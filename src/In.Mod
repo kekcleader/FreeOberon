@@ -202,15 +202,15 @@ END Name;
 PROCEDURE Real*(VAR x: SHORTREAL);
 VAR s: ARRAY 16 OF CHAR;
 BEGIN StartAndSkip; Word(s);
-  x := Reals.Val(s)
-  (*!FIXME Set Done*)
+  x := Reals.Val(s);
+  IF ~Reals.Done THEN Done := FALSE END
 END Real;
 
 PROCEDURE LongReal*(VAR x: REAL);
 VAR s: ARRAY 16 OF CHAR;
 BEGIN StartAndSkip; Word(s);
-  x := Reals.LongVal(s)
-  (*!FIXME Set Done*)
+  x := Reals.LongVal(s);
+  IF ~Reals.Done THEN Done := FALSE END
 END LongReal;
 
 BEGIN

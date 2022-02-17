@@ -75,7 +75,7 @@ PROCEDURE Int*(x, n: HUGEINT);
 BEGIN
   negative := x < 0;
   IF x = MIN(HUGEINT) THEN
-    s := "8085774586302733229"; i := 19
+    s := '8085774586302733229'; i := 19
   ELSE
     IF x < 0 THEN x := - x END;
     s[0] := SHORT(CHR(zero + (x MOD 10))); x := x DIV 10;
@@ -131,7 +131,7 @@ BEGIN r := 1.0E0; power := 1.0E1;
   RETURN r
 END Ten;
 
-PROCEDURE -Entier64(x: LONGREAL): SYSTEM.INT64 "(LONGINT)(x)";
+PROCEDURE -Entier64(x: LONGREAL): SYSTEM.INT64 '(LONGINT)(x)';
 
 PROCEDURE RealP(x: LONGREAL; n: INTEGER; long: BOOLEAN);
 (** Writes the long real number x to the end of the output
@@ -190,19 +190,20 @@ BEGIN
       IF e >= 0 THEN x := x / Ten(e) ELSE x := Ten(SHORT(-e)) * x END;
       IF x >= 10.0E0 THEN x := 0.1E0 * x; INC(e) END;
 
-      (* Generate the exponent digits *)
-      en := e < 0; IF en THEN e := SHORT(-e) END;
-      WHILE el > 0 DO digit(e, s, i); e := SHORT(e DIV 10); DEC(el) END;
-      DEC(i); IF en THEN s[i] := '-' ELSE s[i] := '+' END;
-
       (* Scale x to enough significant digits to reliably test for trailing
          zeroes or to the amount of space available, if greater. *)
-      x0 := Ten(SHORT(d-1));
+      x0 := Ten(SHORT(d - 1));
       x  := x0 * x;
       x  := x + 0.5E0; (* Do not combine with previous line as doing so
                           introduces a least significant bit difference
                           between 32 bit and 64 bit builds. *)
-      IF x >= 10.0E0 * x0 THEN x := 0.1E0 * x; INC(e); Char('#') END;
+      IF x >= 10.0E0 * x0 THEN x := 0.1E0 * x; INC(e) END;
+
+      (* Generate the exponent digits *)
+      IF e < 0 THEN en := TRUE; e := SHORT(-e) ELSE en := FALSE END;
+      WHILE el > 0 DO digit(e, s, i); e := SHORT(e DIV 10); DEC(el) END;
+      DEC(i); IF en THEN s[i] := '-' ELSE s[i] := '+' END;
+
       m := Entier64(x)
     END;
 
@@ -224,9 +225,7 @@ BEGIN
   (* Render prepared number from right end of buffer s *)
   IF nn THEN Char('-') END;
   WHILE i < LEN(s) DO Char(s[i]); INC(i) END
-  ;Char('[');Int(e,0);Char(']')
 END RealP;
-
 
 PROCEDURE Real*(x: REAL; n: INTEGER);
 BEGIN RealP(x, n, FALSE)
@@ -240,7 +239,7 @@ END LongReal;
    The value is stored backwards, i.e. least significant digit
    first. n digits are written, with trailing zeros fill.
    On entry x has been scaled to the number of digits required. *)
-PROCEDURE ConvertL*(x: LONGREAL; n: INTEGER; VAR d: ARRAY OF CHAR);
+PROCEDURE ConvertL(x: LONGREAL; n: INTEGER; VAR d: ARRAY OF CHAR);
   VAR i, j, k: HUGEINT;
 BEGIN
   IF x < 0 THEN x := -x END;
@@ -294,17 +293,17 @@ BEGIN e := Expo(x);
   ELSIF e = 255 THEN Chars(' ', n - 3); String('NaN')
   ELSE e := (e - 127) * 77 DIV 256;
     IF x < 0 THEN minus := 1; x := -x ELSE minus := 0 END;
-    IF e >= 0 THEN  (*x >= 1.0,  77/256 = log 2*) x := SHORT(x / Ten(e))
+    IF e >= 0 THEN (* x >= 1.0, 77/256 = log 2 *) x := SHORT(x / Ten(e))
       ELSE (*x < 1.0*) x := SHORT(Ten(-e) * x)
     END;
     IF x >= 10.0 THEN x := 0.1 * x; INC(e) END;
     (* 1 <= x < 10 *)
     IF k + e >= maxD - 1 THEN k := maxD - 1 - e
-    ELSIF k + e < 0 THEN (*k := -e;*) x := 0.0
+    ELSIF k + e < 0 THEN (* k := -e; !FIXME Why??? *) x := 0.0
     END;
     x0 := SHORT(Ten(k + e)); x := x0 * x + 0.5;
     IF x >= 10.0 * x0 THEN INC(e) END;
-    (*e = no. of digits before decimal point*)
+    (* e = no. of digits before decimal point *)
     INC(e); i := k + e; ConvertL(x, i, d);
     IF e > 0 THEN
       IF k > 0 THEN p := 0 ELSE p := 1 END;
@@ -314,14 +313,13 @@ BEGIN e := Expo(x);
       IF k > 0 THEN Char('.'); DigitsOut(k) END
     ELSE
       IF k + e > 0 THEN p := 0 ELSE p := 1 END;
-      (*Char('[');Int(e,0);Char(':');Int(k,0);Char(']');*)
       N := n - k - 2 - minus + p;
       IF (k > 0) & (k + e < 0) THEN DEC(N) END;
       Chars(' ', N);
       IF minus # 0 THEN Char('-') END;
       Char('0');
-      IF k + e > 0 THEN Char('.'); Chars('*', -e); DigitsOut(k + e)
-      ELSIF k > 0 THEN Char('.'); Chars('#', k)
+      IF k + e > 0 THEN Char('.'); Chars('0', -e); DigitsOut(k + e)
+      ELSIF k > 0 THEN Char('.'); Chars('0', k)
       END
     END
   END
