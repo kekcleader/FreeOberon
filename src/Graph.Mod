@@ -653,12 +653,12 @@ PROCEDURE Line*(x1, y1, x2, y2: INTEGER; color: Color);
 BEGIN LineF(FLT(x1), FLT(y1), FLT(x2), FLT(y2), color)
 END Line;
 
-PROCEDURE HLine*(x, y1, y2: INTEGER; color: Color);
-BEGIN LineF(FLT(x), FLT(y1), FLT(x), FLT(y2), color)
+PROCEDURE HLine*(x1, y, x2: INTEGER; color: Color);
+BEGIN LineF(FLT(x1), FLT(y), FLT(x2), FLT(y), color)
 END HLine;
 
-PROCEDURE VLine*(x1, y, x2: INTEGER; color: Color);
-BEGIN LineF(FLT(x1), FLT(y), FLT(x2), FLT(y), color)
+PROCEDURE VLine*(x, y1, y2: INTEGER; color: Color);
+BEGIN LineF(FLT(x), FLT(y1), FLT(x), FLT(y2), color)
 END VLine;
 
 PROCEDURE FillRectF*(x1, y1, x2, y2: REAL; color: Color);

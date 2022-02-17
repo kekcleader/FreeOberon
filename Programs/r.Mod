@@ -23,15 +23,13 @@ BEGIN
   Out.String('Please enter a real number: '); In.Real(x);
   FOR i := 0 TO 15 DO
     R(x, i)
-  END
-  (*
-  FOR i := 0 TO 15 BY 5 DO
+  END;
+  FOR i := 0 TO 18 BY 6 DO
     FOR j := 0 TO 3 DO
       RF(x, i, j)
     END;
     RF(x, i, 6)
   END
-  *)
 
   (*
   Out.String('Enter string:'); In.Line(s);
