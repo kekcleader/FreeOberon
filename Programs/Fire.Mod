@@ -9,7 +9,7 @@ CONST signHeat = 63;
 VAR clr: ARRAY 64 OF G.Color;
   w, h: INTEGER;
   heat: INTEGER;
-  m: ARRAY 300*K, 640*K OF BYTE;
+  m: ARRAY 300 * K, 640 * K OF BYTE;
   intro, wait: INTEGER;
   f: G.Font;
 
@@ -161,8 +161,8 @@ END Run;
 PROCEDURE Do;
 VAR i: INTEGER;
 BEGIN
-  G.Settings(320, 200, {});
-  G.Settings(640, 400, {G.smooth});
+  G.Settings(320, 200, {G.smooth});
+  (*G.Settings(640, 400, {G.smooth});*)
   G.Init();
   f := G.LoadFont('../Data/Fonts/Main');
   G.ShowMouse(FALSE);
