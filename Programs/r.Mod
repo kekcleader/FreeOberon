@@ -1,34 +1,36 @@
 MODULE r;
-IMPORT In, Out;
+IMPORT In, Out, Reals;
+TYPE LONGREAL = Reals.LONGREAL;
 VAR a, b, c: INTEGER;
-  x, y: REAL;
+  x, y: LONGREAL;
   s: ARRAY 10 OF CHAR;
   i, j: INTEGER;
 
-PROCEDURE R(x: REAL; n: INTEGER);
+PROCEDURE R(x: LONGREAL; n: INTEGER);
 BEGIN
-  Out.String(' Out.Real(x, ');
-  Out.Int(n, 0); Out.String(') = "');
-  Out.Real(x, n); Out.Char('"'); Out.Ln
+  Out.String(' Out.LongReal(x, ');
+  Out.Int(n, 2); Out.String(') = "');
+  Out.LongReal(x, n); Out.Char('"'); Out.Ln
 END R;
 
-PROCEDURE RF(x: REAL; n, k: INTEGER);
+PROCEDURE RF(x: LONGREAL; n, k: INTEGER);
 BEGIN
-  Out.String(' Out.RealFix(x, ');
-  Out.Int(n, 0); Out.String(', '); Out.Int(k, 0);
-  Out.String(') = "'); Out.RealFix(x, n, k); Out.Char('"'); Out.Ln
+  Out.String(' Out.LongRealFix(x, ');
+  Out.Int(n, 2); Out.String(', '); Out.Int(k, 2);
+  Out.String(') = "'); Out.LongRealFix(x, n, k); Out.Char('"'); Out.Ln
 END RF;
 
 BEGIN
-  Out.String('Please enter a real number: '); In.Real(x);
-  FOR i := 0 TO 15 DO
+  x := 0.9999999;
+  Out.String('Please enter a real number: '); In.LongReal(x);
+  FOR i := 0 TO 35 DO
     R(x, i)
   END;
   FOR i := 0 TO 18 BY 6 DO
     FOR j := 0 TO 3 DO
       RF(x, i, j)
     END;
-    RF(x, i, 6)
+    RF(x, i, 20)
   END
 
   (*
