@@ -158,12 +158,14 @@ RETURN (i < LEN(what)) & (j < LEN(where)) & (what[i] = 0X) END Match;
 
 PROCEDURE FileDialogOkClick*(c: OV.Control);
 VAR w: FileDialog;
-  s, full: ARRAY 257 OF CHAR;
+  s, full: ARRAY 256 OF CHAR;
   i, L: INTEGER;
 BEGIN w := c.parent(FileDialog); s := w.edtFilename.caption$;
   (* Replace all \ with / and set L to length of s *)
   L := 0; WHILE s[L] # 0X DO IF s[L] = '\' THEN s[L] := '/' END; INC(L) END;
-  IF L > 0 THEN
+  IF L = 0 THEN
+    IF w.colFiles.onChange # NIL THEN w.colFiles.onChange(w.colFiles) END
+  ELSE
     IF (s[L - 1] = '/') OR (s[0] = '/') THEN
       IF s[L - 1] # '/' THEN s[L] := '/'; INC(L); s[L] := 0X END;
       FileDialogApplyDir(w, s); FileDialogUpdateFileList(w)

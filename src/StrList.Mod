@@ -41,7 +41,7 @@ PROCEDURE GetCur(L: List; VAR s: ARRAY OF CHAR);
 VAR i: INTEGER; p: Item;
 BEGIN
   IF L.cur # NIL THEN L.eol := FALSE; p := L.cur; i := 0;
-    WHILE (i < LEN(s) - 1) & (p.s[i] # CHR(0)(*!FIXME*)) DO s[i] := p.s[i]; INC(i) END;
+    WHILE (i < LEN(s) - 1) & (p.s[i] # 0X) DO s[i] := p.s[i]; INC(i) END;
     s[i] := 0X
   ELSE s[0] := 0X; L.eol := TRUE
   END

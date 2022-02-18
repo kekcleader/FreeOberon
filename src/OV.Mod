@@ -657,7 +657,7 @@ TYPE
     begin*: INTEGER; (* What index list begins with visually *)
     cur*: INTEGER;
     lastMouseDownItem*: INTEGER;
-    scrollbar: Scrollbar;
+    scrollbar: Scrollbar
   END;
 
   Window* = POINTER TO WindowDesc;
