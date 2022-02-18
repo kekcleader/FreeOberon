@@ -5,13 +5,12 @@ CONST signHeat = 63;
   signWaitDelay = 90;
   signChance = 2;
   fireRand = 3;
-  K = 2; (* Pixel buffer resolution multiplier *)
+  K = 1; (* Pixel buffer resolution multiplier *)
 VAR clr: ARRAY 64 OF G.Color;
   w, h: INTEGER;
   heat: INTEGER;
   m: ARRAY 300 * K, 640 * K OF BYTE;
   intro, wait: INTEGER;
-  f: G.Font;
 
 PROCEDURE PutPixel(x, y, c: INTEGER);
 BEGIN
@@ -162,9 +161,7 @@ PROCEDURE Do;
 VAR i: INTEGER;
 BEGIN
   G.Settings(320, 200, {G.smooth});
-  (*G.Settings(640, 400, {G.smooth});*)
   G.Init();
-  f := G.LoadFont('../Data/Fonts/Main');
   G.ShowMouse(FALSE);
   G.GetTargetSize(w, h);
   IF h > LEN(m) THEN h := LEN(m) END;
