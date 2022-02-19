@@ -1,3 +1,10 @@
+## 1.1.0-alpha.5 - 2022-02-20
+
+* Fix POSIX file creation/rename when temp path was on another partition
+* Fix REAL output in modules Out and Reals
+* Fix Graph.HLine, Graph.VLine and Graph.GetDesktopResolution, Graph.ReadKey
+* Add SetClip, UnsetClip, MakeRGBA, ClearBitmapToColor in module Graph
+
 ## 1.1.0-alpha.4 - 2022-02-10
 
 * Allow usage of module Graph on Windows

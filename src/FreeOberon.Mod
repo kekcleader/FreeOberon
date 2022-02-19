@@ -19,7 +19,7 @@ along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 IMPORT T := TermBox, Files, Args, Utf8,
        OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
 CONST
-  version* = '1.1.0-alpha.4b';
+  version* = '1.1.0-alpha.5';
   year = 2022;
 
   (* Direction of Selection *)
