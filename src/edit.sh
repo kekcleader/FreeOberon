@@ -1,2 +1,2 @@
 #!/bin/bash
-vim -p FreeOberon.Mod Editor.Mod FoStrings.Mod ../Data/Texts/ru.dat
+vim -p Graph.Mod Allegro5.Mod FreeOberon.Mod Editor.Mod FoStrings.Mod ../Data/Texts/ru.dat

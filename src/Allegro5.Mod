@@ -535,6 +535,7 @@ PROCEDURE draw_filled_polygon* ["al_draw_filled_polygon"] (vertices: ARRAY OF RE
 PROCEDURE draw_filled_polygon_with_holes* ["al_draw_filled_polygon_with_holes"] (vertices: ARRAY OF REAL; vertexCounts: ARRAY OF INTEGER; color: Color);
 
 PROCEDURE get_monitor_info* ["al_get_monitor_info"] (adapter: INTEGER; VAR info: MonitorInfo): BOOLEAN;
+PROCEDURE get_num_video_adapters* ["al_get_num_video_adapters"] (): INTEGER;
 
 PROCEDURE rest* ["al_rest"] (seconds: LONGREAL);
 
@@ -545,6 +546,10 @@ PROCEDURE use_transform* ["al_use_transform"] (VAR trans: Transform);
 PROCEDURE get_clipboard_text* ["al_get_clipboard_text"] (display: Display): ADRINT;
 PROCEDURE set_clipboard_text* ["al_set_clipboard_text"] (display: Display; text: ADRINT): BOOLEAN;
 PROCEDURE clipboard_has_text* ["al_clipboard_has_text"] (display: Display): BOOLEAN;
+
+PROCEDURE get_clipping_rectangle* ["al_get_clipping_rectangle"] (VAR x, y, w, h: INTEGER);
+PROCEDURE set_clipping_rectangle* ["al_set_clipping_rectangle"] (x, y, w, h: INTEGER);
+PROCEDURE reset_clipping_rectangle* ["al_reset_clipping_rectangle"];
 
 PROCEDURE free_with_context* ["al_free_with_context"] (ptr: ADRINT; line: INTEGER; file, func: ARRAY OF SHORTCHAR);
 PROCEDURE get_time* ["al_get_time"] (): LONGREAL;

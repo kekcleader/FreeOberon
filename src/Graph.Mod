@@ -41,7 +41,7 @@ CONST
   intZoom  = 1; (* The zoom value is an integer: 2x, 3x etc. *)
   realZoom = 2; (* The zoom value is not an integer, i.e. 2.5x *)
 
-  (* Flip flags *)
+  (* Flip flags for DrawFlip, DrawEx etc. *)
   flipHor*  = 1;
   flipVert* = 2;
 
@@ -300,8 +300,17 @@ END Error;
 
 PROCEDURE GetDesktopResolution*(VAR w, h: INTEGER);
 VAR info: Al.MonitorInfo;
+  n, i: INTEGER;
+  ok: BOOLEAN;
 BEGIN
-  IF Al.get_monitor_info(0, info) THEN
+  n := Al.get_num_video_adapters();
+  i := 0;
+  ok := Al.get_monitor_info(0, info);
+  WHILE (i < n) & ~(ok & (info.x1 = 0) & (info.y1 = 0)) DO
+    INC(i); ok := Al.get_monitor_info(i, info)
+  END;
+  IF i >= n THEN ok := Al.get_monitor_info(0, info) END;
+  IF ok THEN
     w := info.x2 - info.x1;
     h := info.y2 - info.y1
   ELSE w := -1; h := -1
@@ -503,21 +512,13 @@ PROCEDURE ShowMouse*(show: BOOLEAN);
 BEGIN IF screen # NIL THEN ShowWindowMouse(screen, show) END
 END ShowMouse;
 
-PROCEDURE ApplyScale*(W: Window);
-VAR t: Al.Transform;
-BEGIN
-  (*Target(W);
-  Al.build_transform(t, 0.0, 0.0, 6.0, 6.0, 0.0);
-  Al.use_transform(t)*)
-END ApplyScale;
-
 PROCEDURE SetWindowOption*(W: Window; key: INTEGER; on: BOOLEAN);
 BEGIN IF on THEN INCL(W.options, key) ELSE EXCL(W.options, key) END
 END SetWindowOption;
 
 PROCEDURE SetWindowScale*(W: Window; x, y: REAL);
 BEGIN W.scaleOn := (x # 1.0) OR (y # 1.0);
-  W.scaleX := x; W.scaleY := y; ApplyScale(W)
+  W.scaleX := x; W.scaleY := y
 END SetWindowScale;
 
 PROCEDURE SetNewWindowScale*(x, y: REAL);
@@ -529,10 +530,10 @@ BEGIN wantScaleX := x; wantScaleY := y;
   IF screen # NIL THEN SetWindowScale(screen, x, y) END
 END SetScale;
 
-PROCEDURE SetWindowTitle*(W: Window; title: ARRAY OF CHAR);
+PROCEDURE SetThisWindowTitle*(W: Window; title: ARRAY OF CHAR);
 VAR q: ARRAY 256 OF SHORTCHAR;
 BEGIN Utf8.Encode(title, q); Al.set_window_title(W.display, q)
-END SetWindowTitle;
+END SetThisWindowTitle;
 
 PROCEDURE SetNewWindowTitle*(title: ARRAY OF CHAR);
 BEGIN wantTitle := title
@@ -540,11 +541,8 @@ END SetNewWindowTitle;
 
 PROCEDURE SetTitle*(title: ARRAY OF CHAR);
 BEGIN wantTitle := title;
-  IF screen # NIL THEN SetWindowTitle(screen, title) END
+  IF screen # NIL THEN SetThisWindowTitle(screen, title) END
 END SetTitle;
-
-(*PROCEDURE ClearBitmap*(bmp: Bitmap);
-PROCEDURE ClearScreenToColor*(color: INTEGER);*)
 
 PROCEDURE LoadBitmap*(fname: ARRAY OF CHAR): Bitmap;
 VAR B: Bitmap;
@@ -599,6 +597,11 @@ PROCEDURE PutPixel*(x, y: INTEGER; c: Color);
 BEGIN Al.draw_pixel(FLT(x) + 0.5, FLT(y) + 0.5, SYSTEM.VAL(Al.Color, c))
 END PutPixel;
 
+PROCEDURE MakeRGBA*(VAR color: Color; r, g, b, a: INTEGER);
+BEGIN color.r := r / 255; color.g := g / 255;
+  color.b := b / 255; color.a := a / 255
+END MakeRGBA;
+
 PROCEDURE MakeCol*(VAR color: Color; r, g, b: INTEGER);
 BEGIN color.r := r / 255; color.g := g / 255;
   color.b := b / 255; color.a := 1.0
@@ -617,12 +620,24 @@ BEGIN r := FLOOR(color.r * 255 + 0.1) MOD 256;
   a := FLOOR(color.a * 255 + 0.1) MOD 256
 END ColorToRGBA;
 
-PROCEDURE ClearToColor*(c: Color);
-BEGIN Al.clear_to_color(SYSTEM.VAL(Al.Color, c))
-END ClearToColor;
+PROCEDURE ClearBitmapToColor*(bmp: Bitmap; c: Color);
+BEGIN
+  IF bmp # NIL THEN
+    Target(bmp);
+    Al.clear_to_color(SYSTEM.VAL(Al.Color, c))
+  END
+END ClearBitmapToColor;
+
+PROCEDURE ClearBitmap*(bmp: Bitmap);
+BEGIN ClearBitmapToColor(bmp, black)
+END ClearBitmap;
+
+PROCEDURE ClearScreenToColor*(c: Color);
+BEGIN ClearBitmapToColor(GetScreen(), c)
+END ClearScreenToColor;
 
 PROCEDURE ClearScreen*;
-BEGIN Al.clear_to_color(SYSTEM.VAL(Al.Color, black))
+BEGIN ClearBitmapToColor(GetScreen(), black)
 END ClearScreen;
 
 PROCEDURE ThickLineF*(x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
@@ -716,13 +731,13 @@ END DrawPart;
 PROCEDURE DrawTintedPart*(bmp: Bitmap; color: Color;
     sx, sy, sw, sh, dx, dy: INTEGER);
 BEGIN
-  IF ~Al.is_compatible_bitmap(bmp.bmp) THEN Out.String('NON-COMPAT'); Out.Ln END;
+  IF ~Al.is_compatible_bitmap(bmp.bmp) THEN Error('NON-COMPAT') END;
   Al.draw_tinted_bitmap_region(bmp.bmp, SYSTEM.VAL(Al.Color, color),
     FLT(sx), FLT(sy), FLT(sw), FLT(sh), FLT(dx), FLT(dy), {})
 END DrawTintedPart;
 
-PROCEDURE DrawFlip*(bmp: Bitmap; x, y: INTEGER; flags: SET);
-BEGIN Al.draw_bitmap(bmp.bmp, FLT(x), FLT(y), flags)
+PROCEDURE DrawFlip*(bmp: Bitmap; x, y: INTEGER; flip: SET);
+BEGIN Al.draw_bitmap(bmp.bmp, FLT(x), FLT(y), flip)
 END DrawFlip;
 
 PROCEDURE Draw*(bmp: Bitmap; x, y: INTEGER);
@@ -730,25 +745,37 @@ BEGIN Al.draw_bitmap(bmp.bmp, FLT(x), FLT(y), {})
 END Draw;
 
 PROCEDURE DrawEx*(bmp: Bitmap; sx, sy, sw, sh, dx, dy, dw, dh: INTEGER;
-    flags: SET);
+    flip: SET);
 BEGIN
   Al.draw_scaled_bitmap(bmp.bmp, FLT(sx), FLT(sy), FLT(sw), FLT(sh),
-    FLT(dx), FLT(dy), FLT(dw), FLT(dh), flags)
+    FLT(dx), FLT(dy), FLT(dw), FLT(dh), flip)
 END DrawEx;
 
 PROCEDURE DrawRotated*(bmp: Bitmap; cx, cy, dx, dy: INTEGER;
-    angle: REAL; flags: SET);
+    angle: REAL; flip: SET);
 BEGIN
   Al.draw_rotated_bitmap(bmp.bmp, FLT(cx), FLT(cy),
-    FLT(dx), FLT(dy), angle, flags)
+    FLT(dx), FLT(dy), angle, flip)
 END DrawRotated;
 
 PROCEDURE DrawScaledRotated*(bmp: Bitmap; cx, cy, dx, dy: INTEGER;
-    xScale, yScale, angle: REAL; flags: SET);
+    xScale, yScale, angle: REAL; flip: SET);
 BEGIN
   Al.draw_scaled_rotated_bitmap(bmp.bmp, FLT(cx), FLT(cy),
-    FLT(dx), FLT(dy), xScale, yScale, angle, flags)
+    FLT(dx), FLT(dy), xScale, yScale, angle, flip)
 END DrawScaledRotated;
+
+PROCEDURE GetClip*(VAR x, y, w, h: INTEGER);
+BEGIN Al.get_clipping_rectangle(x, y, w, h)
+END GetClip;
+
+PROCEDURE SetClip*(x, y, w, h: INTEGER);
+BEGIN Al.set_clipping_rectangle(x, y, w, h)
+END SetClip;
+
+PROCEDURE UnsetClip*;
+BEGIN Al.reset_clipping_rectangle
+END UnsetClip;
 
 PROCEDURE DelayF*(n: REAL);
 BEGIN Al.rest(n)
@@ -1169,7 +1196,11 @@ BEGIN
 RETURN c END ReadKey;
 
 PROCEDURE Pause*;
-BEGIN IF ReadKey() = 0X THEN END
+BEGIN
+  IF KeyPressed() THEN
+    IF ReadKey() = 0X THEN END
+  END;
+  IF ReadKey() = 0X THEN END
 END Pause;
 
 PROCEDURE DropNextEvent*;
