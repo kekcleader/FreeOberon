@@ -292,7 +292,8 @@ VAR
   target: Bitmap;
   black: Color;
 
-  charRead: CHAR;
+  charRead: CHAR; (* For KeyPressed and ReadKey *)
+  specialChar: BOOLEAN; (* For charRead *)
 
 PROCEDURE Error(s: ARRAY OF CHAR);
 BEGIN Out.String(s); Out.Ln
@@ -632,9 +633,9 @@ PROCEDURE ClearBitmap*(bmp: Bitmap);
 BEGIN ClearBitmapToColor(bmp, black)
 END ClearBitmap;
 
-PROCEDURE ClearScreenToColor*(c: Color);
+PROCEDURE ClearToColor*(c: Color);
 BEGIN ClearBitmapToColor(GetScreen(), c)
-END ClearScreenToColor;
+END ClearToColor;
 
 PROCEDURE ClearScreen*;
 BEGIN ClearBitmapToColor(GetScreen(), black)
@@ -1175,24 +1176,30 @@ PROCEDURE HasEvents*(): BOOLEAN;
 VAR e: Event;
 RETURN PeekEvent(e) END HasEvents;
 
-PROCEDURE KeyPressed*(): BOOLEAN;
+PROCEDURE WaitAndParseKeyEvent;
 VAR e: Event;
-BEGIN
-  WHILE (charRead = 0X) & HasEvents() DO
-    WaitEvent(e);
-    IF e.type = char THEN charRead := e.ch END
+BEGIN WaitEvent(e);
+  IF e.type = char THEN charRead := e.ch; specialChar := FALSE
+  ELSIF (e.type = keyDown) &
+        ((kF1 <= e.key) & (e.key <= kF12) OR
+         (kHome <= e.key) & (e.key <= kDown) OR
+         (e.key = kInsert) OR (e.key = kPause))
+  THEN charRead := CHR(e.key); specialChar := TRUE
   END
-RETURN charRead # 0X END KeyPressed;
+END WaitAndParseKeyEvent;
+
+PROCEDURE KeyPressed*(): BOOLEAN;
+BEGIN
+  WHILE ~specialChar & (charRead = 0X) & HasEvents() DO WaitAndParseKeyEvent END
+RETURN specialChar OR (charRead # 0X) END KeyPressed;
 
 PROCEDURE ReadKey*(): CHAR;
-VAR e: Event;
-  c: CHAR;
+VAR c: CHAR;
 BEGIN
-  WHILE charRead = 0X DO
-    WaitEvent(e);
-    IF e.type = char THEN charRead := e.ch END
-  END;
-  c := charRead; charRead := 0X
+  WHILE ~specialChar & (charRead = 0X) DO WaitAndParseKeyEvent END;
+  IF specialChar THEN c := 0X; specialChar := FALSE
+  ELSE c := charRead; charRead := 0X
+  END
 RETURN c END ReadKey;
 
 PROCEDURE Pause*;
@@ -1468,7 +1475,7 @@ BEGIN ok := TRUE;
     END
   ELSE Error('Could not init Allegro.'); ok := FALSE
   END;
-  charRead := 0X;
+  charRead := 0X; specialChar := FALSE;
   Done := ok
 END Init;
 

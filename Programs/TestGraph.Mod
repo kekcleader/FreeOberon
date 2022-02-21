@@ -3,6 +3,7 @@ IMPORT G := Graph;
 VAR c, f: G.Color;
   X, Y, W, H: INTEGER;
   font: G.Font;
+  ZZ: ARRAY 2 OF CHAR;
 
 PROCEDURE Draw;
 BEGIN
@@ -19,7 +20,8 @@ PROCEDURE Message;
 BEGIN
   IF font # NIL THEN
     G.DrawString('Press space to return. X for down, ESC for up.',
-      0, 0, font, f)
+      0, 0, font, f);
+    G.DrawString(ZZ, 0, 16, font, f)
   END
 END Message;
 
@@ -52,6 +54,7 @@ BEGIN
     ch := G.ReadKey();
     IF ch = 'x' THEN INC(Y, 100)
     ELSIF ch = CHR(27) THEN DEC(Y, 100)
+    ELSE ZZ[0] := ch
     END
   UNTIL ch = ' '
 END ByKey;
@@ -60,14 +63,14 @@ PROCEDURE Do;
 VAR e: G.Event;
   done: BOOLEAN;
 BEGIN
-  (*G.Settings(320, 200, {});*)
+  (*G.Settings(320, 200, {G.window});*)
   G.Init;
   G.ShowMouse(FALSE);
   font := G.LoadFont('../Data/Fonts/Main');
   G.GetTargetSize(W, H); DEC(W); DEC(H);
   G.MakeCol(c, 20, 30, 80);
   G.MakeCol(f, 0, 180, 255);
-  done := FALSE; X := -1;
+  done := FALSE; X := -1; ZZ[0] := 0X; ZZ[1] := 0X;
   REPEAT
     WHILE G.HasEvents() DO
       G.WaitEvent(e);
