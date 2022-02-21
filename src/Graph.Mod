@@ -42,8 +42,8 @@ CONST
   realZoom = 2; (* The zoom value is not an integer, i.e. 2.5x *)
 
   (* Flip flags for DrawFlip, DrawEx etc. *)
-  flipHor*  = 1;
-  flipVert* = 2;
+  flipHor*  = 0;
+  flipVert* = 1;
 
   (* Key Codes *)
   kA*          = 1;
