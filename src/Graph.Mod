@@ -380,6 +380,26 @@ BEGIN
   END
 END TargetScreen;
 
+PROCEDURE ClearBitmapToColor*(bmp: Bitmap; c: Color);
+BEGIN
+  IF bmp # NIL THEN
+    Target(bmp);
+    Al.clear_to_color(SYSTEM.VAL(Al.Color, c))
+  END
+END ClearBitmapToColor;
+
+PROCEDURE ClearBitmap*(bmp: Bitmap);
+BEGIN ClearBitmapToColor(bmp, black)
+END ClearBitmap;
+
+PROCEDURE ClearToColor*(c: Color);
+BEGIN ClearBitmapToColor(GetScreen(), c)
+END ClearToColor;
+
+PROCEDURE ClearScreen*;
+BEGIN ClearBitmapToColor(GetScreen(), black)
+END ClearScreen;
+
 PROCEDURE ResetFlipVars(W: Window);
 VAR w, h: INTEGER;
 BEGIN
@@ -414,6 +434,7 @@ VAR opt: SET;
   w, h, bw, bh: INTEGER;
   fw, fh: REAL;
   scaled, wasTarget: BOOLEAN;
+  tmp: Bitmap;
 BEGIN scaled := FALSE;
   IF W.bmp = NIL THEN bw := -1
   ELSE bw := Al.get_bitmap_width(W.bmp); bh := Al.get_bitmap_height(W.bmp)
@@ -447,7 +468,8 @@ BEGIN scaled := FALSE;
       END;
       Al.set_new_bitmap_flags(opt);
       W.bmp := Al.create_bitmap(w, h);
-      IF wasTarget THEN Target(W) END
+      tmp := GetTarget(); ClearBitmap(W);
+      IF wasTarget THEN Target(W) ELSE Target(tmp) END
     END
   END;
   W.w := w; W.h := h;
@@ -620,26 +642,6 @@ BEGIN r := FLOOR(color.r * 255 + 0.1) MOD 256;
   b := FLOOR(color.b * 255 + 0.1) MOD 256;
   a := FLOOR(color.a * 255 + 0.1) MOD 256
 END ColorToRGBA;
-
-PROCEDURE ClearBitmapToColor*(bmp: Bitmap; c: Color);
-BEGIN
-  IF bmp # NIL THEN
-    Target(bmp);
-    Al.clear_to_color(SYSTEM.VAL(Al.Color, c))
-  END
-END ClearBitmapToColor;
-
-PROCEDURE ClearBitmap*(bmp: Bitmap);
-BEGIN ClearBitmapToColor(bmp, black)
-END ClearBitmap;
-
-PROCEDURE ClearToColor*(c: Color);
-BEGIN ClearBitmapToColor(GetScreen(), c)
-END ClearToColor;
-
-PROCEDURE ClearScreen*;
-BEGIN ClearBitmapToColor(GetScreen(), black)
-END ClearScreen;
 
 PROCEDURE ThickLineF*(x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
 BEGIN Al.draw_line(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color), thickness)
