@@ -8,6 +8,7 @@ TYPE
   END;
 
   DrawHandler* = PROCEDURE (W: Widget; x, y: INTEGER);
+  MouseDownHandler* = PROCEDURE (W: Widget; x, y, btn: INTEGER);
 
   Widget* = POINTER TO WidgetDesc;
   WidgetDesc* = RECORD
@@ -17,7 +18,9 @@ TYPE
     bmp*: G.Bitmap;
     parent*: Widget;
     prev*, next*: Widget;
-    draw*: DrawHandler
+    draw*: DrawHandler;
+    (* Event Handlers *)
+    onMouseDown*: MouseDownHandler
   END;
 
   Window* = POINTER TO WindowDesc;
@@ -30,7 +33,6 @@ VAR
   exitRunLoop: BOOLEAN; (* See procedure Run *)
   font: G.Font;
 
-  newWindowW, newWindowH: INTEGER;
   newWindowSettings: SET;
   ZZZ: INTEGER;
 
@@ -38,10 +40,16 @@ VAR
 
 (* Widget *)
 
+PROCEDURE SetOnMouseDown*(W: Widget; handler: MouseDownHandler);
+BEGIN
+  W.onMouseDown := handler
+END SetOnMouseDown;
+
 PROCEDURE InitWidget*(w: Widget);
 BEGIN
   w.x := 0; w.y := 0; w.w := 24; w.h := 24;
   w.draw := NIL;
+  w.onMouseDown := NIL;
 
   (* Замок *)
   NEW(w.body); w.body.prev := w.body; w.body.next := w.body
@@ -66,19 +74,22 @@ END Place;
 
 (* Window *)
 
-PROCEDURE NewWindowSettings*(w, h: INTEGER; settings: SET);
+PROCEDURE NewWindowSettings*(settings: SET);
 BEGIN
-  newWindowW := w;
-  newWindowH := h;
   newWindowSettings := settings
 END NewWindowSettings;
+
+PROCEDURE DrawWidget(W: Widget; x, y: INTEGER);
+BEGIN
+  W.draw(W, x + W.x, y + W.y)
+END DrawWidget;
 
 PROCEDURE DrawBody*(W: Widget; x, y: INTEGER);
 VAR p: Widget;
 BEGIN
   p := W.body.next;
   WHILE p # W.body DO
-    p.draw(p, x + p.x, y + p.y);
+    DrawWidget(p, x, y);
     p := p.next
   END
 END DrawBody;
@@ -87,7 +98,7 @@ PROCEDURE DrawWindow*(W: Widget; x, y: INTEGER);
 VAR c: G.Color;
   w, h: INTEGER;
 BEGIN
-  G.MakeCol(c, ZZZ * 40 MOD 256, 0, 0);
+  G.MakeCol(c, ZZZ * 40 MOD 256, 120, 120);
   G.ClearToColor(c);
   G.MakeCol(c, 0, 0, ZZZ * 20 MOD 256);
   G.GetScreenSize(w, h);
@@ -96,21 +107,21 @@ BEGIN
   DrawBody(W, x, y)
 END DrawWindow;
 
-PROCEDURE InitWindow*(win: Window);
+PROCEDURE InitWindow*(win: Window; w, h: INTEGER);
 BEGIN
   InitWidget(win);
-  win.win := G.NewWindow(-1, -1, newWindowW, newWindowH,
+  win.win := G.NewWindow(-1, -1, w, h,
     'Window', newWindowSettings);
   win.x := 0; win.y := 0;
   win.w := win.win.w; win.h := win.win.h;
   win.draw := DrawWindow
 END InitWindow;
 
-PROCEDURE NewWindow*(): Window;
+PROCEDURE NewWindow*(w, h: INTEGER): Window;
 VAR win: Window;
 BEGIN
   NEW(win);
-  InitWindow(win);
+  InitWindow(win, w, h);
   globalWin := win
 RETURN win END NewWindow;
 
@@ -129,9 +140,43 @@ RETURN font END GetFont;
 
 (* General *)
 
+PROCEDURE TriggerOnMouseDown*(W: Widget; x, y, btn: INTEGER);
+BEGIN
+  IF (W # NIL) & (W.onMouseDown # NIL) THEN
+    W.onMouseDown(W, x, y, btn)
+  END
+END TriggerOnMouseDown;
+
+PROCEDURE FindWidgetUnderMouse*(W: Widget; VAR x, y: INTEGER): Widget;
+VAR p: Widget;
+BEGIN
+  IF W = NIL THEN p := W
+  ELSIF W.body # NIL THEN
+    p := W.body.prev;
+    WHILE (p # W.body) &
+          ~((p.x <= x) & (x < p.x + p.w) &
+            (p.y <= y) & (y < p.y + p.h))
+    DO p := p.prev
+    END;
+    IF p = W.body THEN p := W END
+  ELSE p := NIL
+  END
+RETURN p END FindWidgetUnderMouse;
+
+PROCEDURE HandleMouseDownEvent*(e: G.Event);
+VAR W: Widget;
+  x, y: INTEGER;
+BEGIN
+  x := e.x; y := e.y;
+  W := FindWidgetUnderMouse(globalWin, x, y);
+  TriggerOnMouseDown(W, x, y, e.button)
+END HandleMouseDownEvent;
+
 PROCEDURE HandleEvent(e: G.Event);
 BEGIN
-  IF e.type = G.keyDown THEN
+  IF e.type = G.mouseDown THEN
+    HandleMouseDownEvent(e)
+  ELSIF e.type = G.keyDown THEN
     IF e.key = G.kEsc THEN exitRunLoop := TRUE END;
     INC(ZZZ)
   ELSIF e.type = G.quit THEN
