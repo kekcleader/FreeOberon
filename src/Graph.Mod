@@ -239,7 +239,6 @@ TYPE
     dx*, dy*, dz*, dw*: INTEGER;
     button*: INTEGER;
     buttons*: SET; (* What mouse buttons are pressed *)
-    down*: BOOLEAN;
     count*: LONGINT; (* Timer counter *)
     key*: INTEGER; (* Physical key code *)
     ch*: CHAR; (* Typed character for event.type = char *)
@@ -709,6 +708,39 @@ BEGIN
   Al.draw_rectangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
     FLT(x2) + 0.5, FLT(y2) + 0.5, SYSTEM.VAL(Al.Color, color), 1.0)
 END Rect;
+
+PROCEDURE CircleF*(x, y, r: REAL; color: Color);
+BEGIN
+  Al.draw_circle(x, y, r, SYSTEM.VAL(Al.Color, color), 1.0)
+END CircleF;
+
+PROCEDURE Circle*(x, y, r: INTEGER; color: Color);
+BEGIN
+  Al.draw_circle(FLT(x) + 0.5, FLT(y) + 0.5, FLT(r),
+    SYSTEM.VAL(Al.Color, color), 1.0)
+END Circle;
+
+PROCEDURE ThickCircleF*(x, y, r: REAL; color: Color; thickness: REAL);
+BEGIN
+  Al.draw_circle(x, y, r, SYSTEM.VAL(Al.Color, color), thickness)
+END ThickCircleF;
+
+PROCEDURE ThickCircle*(x, y, r: INTEGER; color: Color; thickness: INTEGER);
+BEGIN
+  Al.draw_circle(FLT(x) + 0.5, FLT(y) + 0.5, FLT(r),
+    SYSTEM.VAL(Al.Color, color), FLT(thickness))
+END ThickCircle;
+
+PROCEDURE FillCircleF*(x, y, r: REAL; color: Color);
+BEGIN
+  Al.draw_filled_circle(x, y, r, SYSTEM.VAL(Al.Color, color))
+END FillCircleF;
+
+PROCEDURE FillCircle*(x, y, r: INTEGER; color: Color);
+BEGIN
+  Al.draw_filled_circle(FLT(x) + 0.5, FLT(y) + 0.5, FLT(r),
+    SYSTEM.VAL(Al.Color, color))
+END FillCircle;
 
 PROCEDURE NewBitmap*(w, h: INTEGER): Bitmap;
 VAR b: Bitmap;
