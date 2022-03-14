@@ -9,10 +9,17 @@ TYPE
 
   DrawHandler* = PROCEDURE (W: Widget; x, y: INTEGER);
   MouseDownHandler* = PROCEDURE (W: Widget; x, y, btn: INTEGER);
+  MouseUpHandler* = PROCEDURE (W: Widget; x, y, btn: INTEGER);
+  ClickHandler* = PROCEDURE (W: Widget);
+
+  Message* = POINTER TO MsgDesc;
+  MsgDesc* = RECORD END;
+  Handler* = PROCEDURE (W: Widget; VAR msg: Message);
 
   Widget* = POINTER TO WidgetDesc;
   WidgetDesc* = RECORD
     x*, y*, w*, h*: INTEGER;
+    tag*: INTEGER;
     body*: Widget;
     text*: Caption;
     bmp*: G.Bitmap;
@@ -20,12 +27,17 @@ TYPE
     prev*, next*: Widget;
     draw*: DrawHandler;
     (* Event Handlers *)
-    onMouseDown*: MouseDownHandler
+    onMouseDown*: MouseDownHandler;
+    onMouseUp*: MouseUpHandler;
+    onClick*: ClickHandler;
+    (* Message Handler *)
+    handle*: Handler
   END;
 
   Window* = POINTER TO WindowDesc;
   WindowDesc* = RECORD(WidgetDesc)
-    win*: G.Window
+    win*: G.Window;
+    curMouseDownWidget*: Widget (* Widget under mouse down event is saved here *)
   END;
 
 VAR
@@ -45,11 +57,24 @@ BEGIN
   W.onMouseDown := handler
 END SetOnMouseDown;
 
+PROCEDURE SetOnMouseUp*(W: Widget; handler: MouseUpHandler);
+BEGIN
+  W.onMouseUp := handler
+END SetOnMouseUp;
+
+PROCEDURE SetOnClick*(W: Widget; handler: ClickHandler);
+BEGIN
+  W.onClick := handler;
+END SetOnClick;
+
 PROCEDURE InitWidget*(w: Widget);
 BEGIN
   w.x := 0; w.y := 0; w.w := 24; w.h := 24;
+  w.tag := 0;
   w.draw := NIL;
   w.onMouseDown := NIL;
+  w.onMouseUp := NIL;
+  w.onClick := NIL;
 
   (* Замок *)
   NEW(w.body); w.body.prev := w.body; w.body.next := w.body
@@ -114,6 +139,7 @@ BEGIN
     'Window', newWindowSettings);
   win.x := 0; win.y := 0;
   win.w := win.win.w; win.h := win.win.h;
+  win.curMouseDownWidget := NIL;
   win.draw := DrawWindow
 END InitWindow;
 
@@ -147,6 +173,20 @@ BEGIN
   END
 END TriggerOnMouseDown;
 
+PROCEDURE TriggerOnMouseUp*(W: Widget; x, y, btn: INTEGER);
+BEGIN
+  IF (W # NIL) & (W.onMouseUp # NIL) THEN
+    W.onMouseUp(W, x, y, btn)
+  END
+END TriggerOnMouseUp;
+
+PROCEDURE TriggerOnClick*(W: Widget);
+BEGIN
+  IF (W # NIL) & (W.onClick # NIL) THEN
+    W.onClick(W)
+  END
+END TriggerOnClick;
+
 PROCEDURE FindWidgetUnderMouse*(W: Widget; VAR x, y: INTEGER): Widget;
 VAR p: Widget;
 BEGIN
@@ -158,10 +198,23 @@ BEGIN
             (p.y <= y) & (y < p.y + p.h))
     DO p := p.prev
     END;
-    IF p = W.body THEN p := W END
-  ELSE p := NIL
+    IF p = W.body THEN p := W
+    ELSE DEC(x, p.x); DEC(y, p.y);
+      p := FindWidgetUnderMouse(p, x, y)
+    END
+  ELSE p := W
   END
 RETURN p END FindWidgetUnderMouse;
+
+(** Input: (x; y) relative to window.
+    Output: (x; y) relative to widget. *)
+PROCEDURE WindowToWidgetXY*(W: Widget; VAR x, y: INTEGER);
+BEGIN
+  WHILE (W # NIL) & ~(W IS Window) DO
+    DEC(x, W.x); DEC(y, W.y);
+    W := W.parent
+  END
+END WindowToWidgetXY;
 
 PROCEDURE HandleMouseDownEvent*(e: G.Event);
 VAR W: Widget;
@@ -169,13 +222,31 @@ VAR W: Widget;
 BEGIN
   x := e.x; y := e.y;
   W := FindWidgetUnderMouse(globalWin, x, y);
+  IF W # NIL THEN
+    globalWin.curMouseDownWidget := W (* Save for future mouse up event *)
+  END;
   TriggerOnMouseDown(W, x, y, e.button)
 END HandleMouseDownEvent;
+
+PROCEDURE HandleMouseUpEvent*(e: G.Event);
+VAR W: Widget;
+  x, y: INTEGER;
+BEGIN
+  x := e.x; y := e.y;
+  W := globalWin.curMouseDownWidget;
+  WindowToWidgetXY(W, x, y);
+  TriggerOnMouseUp(W, x, y, e.button);
+  IF (x >= 0) & (y >= 0) & (W.w > x) & (W.h > y) THEN
+    TriggerOnClick(W)
+  END
+END HandleMouseUpEvent;
 
 PROCEDURE HandleEvent(e: G.Event);
 BEGIN
   IF e.type = G.mouseDown THEN
     HandleMouseDownEvent(e)
+  ELSIF e.type = G.mouseUp THEN
+    HandleMouseUpEvent(e)
   ELSIF e.type = G.keyDown THEN
     IF e.key = G.kEsc THEN exitRunLoop := TRUE END;
     INC(ZZZ)
