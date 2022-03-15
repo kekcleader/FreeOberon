@@ -16,10 +16,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT OV, T := TermBox, Text := EditorText,
+IMPORT OV, T := TermBox, Text := EditorText, Config,
   Int, Strings, FoStrings, StrList, Dir, Out;
 CONST
-  stdPath* = 'Programs/';
   dotChar = 0B7X; (* To higlight spaces *)
 
   (* Direction of Selection *)
@@ -180,7 +179,7 @@ BEGIN w := c.parent(FileDialog); s := w.edtFilename.caption$;
         Strings.Append(s, full);
         IF Match(w.home, full, 0) THEN
           Strings.Delete(full, 0, Strings.Length(w.home));
-          Strings.Insert(stdPath, 0, full)
+          Strings.Insert(Config.stdPath, 0, full)
         END;
         OV.CloseCurWindow(c);
         IF w.onFileOk # NIL THEN w.onFileOk(c, full) END
@@ -258,7 +257,7 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
     IF c.home[L] = '\' THEN c.home[L] := '/' END; INC(L)
   END; (* L = length of c.home; append / if it is not in the end *)
   IF c.home[L - 1] # '/' THEN c.home[L] := '/'; INC(L); c.home[L] := 0X END;
-  Strings.Append(stdPath, c.home); c.path := c.home$;
+  Strings.Append(Config.stdPath, c.home); c.path := c.home$;
 
   (* ColumnList *)
   c.colFiles := OV.NewColumnList();

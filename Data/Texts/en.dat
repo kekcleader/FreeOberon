@@ -187,6 +187,7 @@
 243 "concatenation of module, type, and guarded variable exceeds maximum name length"
 244 "cyclic type definition not allowed"
 265 "unsupported string operation"
+400 "file not found"
 401 "file contains wrong module name"
 421 "compilation failed"
 422 "linking failed"

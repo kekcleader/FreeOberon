@@ -43,9 +43,9 @@ PROCEDURE MakeErrorStr*(err: INTEGER; VAR s: ARRAY OF CHAR);
 VAR z: ARRAY 256 OF CHAR;
 BEGIN
   GetErrorStr(err, z);
-  s := 'Ошибка #';
+  s := '#';
   Int.Append(err, s);
-  Strings.Append(': ', s);
+  Strings.Append(' ', s);
   Strings.Append(z, s)
 END MakeErrorStr;
 

@@ -1,5 +1,6 @@
 #/bin/bash
-PROG="FreeOberon"
+PROG1="FreeOberon"
+PROG2="fob"
 OFRDIR="../Data/bin/OfrontPlus/Target/Linux_amd64"
 
 PATH="$OFRDIR:$PATH"
@@ -54,7 +55,11 @@ $OFR -Cw EditorText.Mod &&
 
 $OFR -Cw Editor.Mod &&
 
+$OFR -Cw Builder.Mod &&
+
 $OFR -Cwm FreeOberon.Mod &&
+
+$OFR -7wm Fob.Mod &&
 
 
 
@@ -77,14 +82,22 @@ $AR -crs ../Data/bin/libFreeOberon.a \
   Utf8.o Strings.o Reals.o Int.o In.o Out.o Args.o Files.o Texts.o Random.o \
   StrList.o Dir.o Graph.o TermBox.o &&
 
-$CCFULL -o ../$PROG \
+$CCFULL -o ../$PROG1 \
   Graph.c TermBox.c \
-  Config.c term/term_linux.c \
-  Term.c OV.c FoStrings.c EditorText.c Editor.c \
-  $PROG.c \
+  Term.c term/term_linux.c \
+  Config.c OV.c FoStrings.c EditorText.c Editor.c Builder.c \
+  FreeOberon.c \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a \
   $(pkg-config \
     allegro_primitives-5 allegro_image-5 allegro_audio-5 \
     allegro_acodec-5 allegro_font-5 allegro_dialog-5 \
-    allegro-5 --libs --cflags)
+    allegro-5 --libs --cflags) &&
+
+$CCFULL -o ../$PROG2 \
+  FoStrings.c Builder.c \
+  Term.c term/term_linux.c \
+  Config.c Fob.c \
+  ../Data/bin/libFreeOberon.a \
+  $OFRDIR/Lib/libOfront.a
+
