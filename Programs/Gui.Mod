@@ -156,7 +156,8 @@ RETURN win END NewWindow;
 PROCEDURE DrawAll;
 BEGIN
   globalWin.draw(globalWin, 0, 0);
-  G.Flip
+  G.Flip;
+  G.Delay(1)
 END DrawAll;
 
 (* Fonts *)
