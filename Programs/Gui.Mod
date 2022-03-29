@@ -1,6 +1,12 @@
 MODULE Gui;
 IMPORT G := Graph, Strings, Out;
 
+CONST
+  (* Widget.state set members *)
+  hover* = 0;
+  down*  = 1;
+  focus* = 2;
+
 TYPE
   Caption* = POINTER TO CaptionDesc;
   CaptionDesc* = RECORD
@@ -20,6 +26,9 @@ TYPE
   WidgetDesc* = RECORD
     x*, y*, w*, h*: INTEGER;
     tag*: INTEGER;
+    state*: SET;
+    visible: BOOLEAN;
+    enabled: BOOLEAN;
     body*: Widget;
     text*: Caption;
     bmp*: G.Bitmap;
@@ -71,6 +80,9 @@ PROCEDURE InitWidget*(w: Widget);
 BEGIN
   w.x := 0; w.y := 0; w.w := 24; w.h := 24;
   w.tag := 0;
+  w.state := {};
+  w.visible := TRUE;
+  w.enabled := TRUE;
   w.draw := NIL;
   w.onMouseDown := NIL;
   w.onMouseUp := NIL;
@@ -224,9 +236,10 @@ BEGIN
   x := e.x; y := e.y;
   W := FindWidgetUnderMouse(globalWin, x, y);
   IF W # NIL THEN
-    globalWin.curMouseDownWidget := W (* Save for future mouse up event *)
-  END;
-  TriggerOnMouseDown(W, x, y, e.button)
+    INCL(W.state, down); (* Mark button as being mouse-downed *)
+    globalWin.curMouseDownWidget := W; (* Save for future mouse up event *)
+    TriggerOnMouseDown(W, x, y, e.button)
+  END
 END HandleMouseDownEvent;
 
 PROCEDURE HandleMouseUpEvent*(e: G.Event);
@@ -235,10 +248,13 @@ VAR W: Widget;
 BEGIN
   x := e.x; y := e.y;
   W := globalWin.curMouseDownWidget;
-  WindowToWidgetXY(W, x, y);
-  TriggerOnMouseUp(W, x, y, e.button);
-  IF (x >= 0) & (y >= 0) & (W.w > x) & (W.h > y) THEN
-    TriggerOnClick(W)
+  IF W # NIL THEN
+    WindowToWidgetXY(W, x, y);
+    EXCL(W.state, down);
+    TriggerOnMouseUp(W, x, y, e.button);
+    IF (x >= 0) & (y >= 0) & (W.w > x) & (W.h > y) & (e.button = 1) THEN
+      TriggerOnClick(W)
+    END
   END
 END HandleMouseUpEvent;
 
