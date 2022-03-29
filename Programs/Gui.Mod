@@ -14,6 +14,7 @@ TYPE
   END;
 
   DrawHandler* = PROCEDURE (W: Widget; x, y: INTEGER);
+  MouseMoveHandler* = PROCEDURE (W: Widget; x, y, btn: INTEGER);
   MouseDownHandler* = PROCEDURE (W: Widget; x, y, btn: INTEGER);
   MouseUpHandler* = PROCEDURE (W: Widget; x, y, btn: INTEGER);
   ClickHandler* = PROCEDURE (W: Widget);
@@ -36,6 +37,7 @@ TYPE
     prev*, next*: Widget;
     draw*: DrawHandler;
     (* Event Handlers *)
+    onMouseMove*: MouseMoveHandler;
     onMouseDown*: MouseDownHandler;
     onMouseUp*: MouseUpHandler;
     onClick*: ClickHandler;
@@ -61,6 +63,11 @@ VAR
 
 (* Widget *)
 
+PROCEDURE SetOnMouseMove*(W: Widget; handler: MouseMoveHandler);
+BEGIN
+  W.onMouseMove := handler
+END SetOnMouseMove;
+
 PROCEDURE SetOnMouseDown*(W: Widget; handler: MouseDownHandler);
 BEGIN
   W.onMouseDown := handler
@@ -84,6 +91,7 @@ BEGIN
   w.visible := TRUE;
   w.enabled := TRUE;
   w.draw := NIL;
+  w.onMouseMove := NIL;
   w.onMouseDown := NIL;
   w.onMouseUp := NIL;
   w.onClick := NIL;
@@ -179,6 +187,13 @@ RETURN font END GetFont;
 
 (* General *)
 
+PROCEDURE TriggerOnMouseMove*(W: Widget; x, y, btn: INTEGER);
+BEGIN
+  IF (W # NIL) & (W.onMouseMove # NIL) THEN
+    W.onMouseMove(W, x, y, btn)
+  END
+END TriggerOnMouseMove;
+
 PROCEDURE TriggerOnMouseDown*(W: Widget; x, y, btn: INTEGER);
 BEGIN
   IF (W # NIL) & (W.onMouseDown # NIL) THEN
@@ -229,6 +244,27 @@ BEGIN
   END
 END WindowToWidgetXY;
 
+PROCEDURE HandleMouseMoveEvent*(e: G.Event);
+VAR W: Widget;
+  x, y: INTEGER;
+BEGIN
+  x := e.x; y := e.y;
+  IF globalWin.curMouseDownWidget # NIL THEN
+    W := globalWin.curMouseDownWidget;
+    WindowToWidgetXY(W, x, y);
+    IF (x >= 0) & (y >= 0) & (W.w > x) & (W.h > y) (*& (e.button = 1)*) THEN
+      INCL(W.state, down)
+    ELSE EXCL(W.state, down)
+    END
+  ELSE
+    W := FindWidgetUnderMouse(globalWin, x, y);
+  END;
+  IF W # NIL THEN
+    INCL(W.state, hover); (* Mark button as being mouse-hovered *) (*!FIXME not done yet*)
+    TriggerOnMouseMove(W, x, y, e.button)
+  END
+END HandleMouseMoveEvent;
+
 PROCEDURE HandleMouseDownEvent*(e: G.Event);
 VAR W: Widget;
   x, y: INTEGER;
@@ -248,6 +284,7 @@ VAR W: Widget;
 BEGIN
   x := e.x; y := e.y;
   W := globalWin.curMouseDownWidget;
+  globalWin.curMouseDownWidget := NIL;
   IF W # NIL THEN
     WindowToWidgetXY(W, x, y);
     EXCL(W.state, down);
@@ -260,7 +297,9 @@ END HandleMouseUpEvent;
 
 PROCEDURE HandleEvent(e: G.Event);
 BEGIN
-  IF e.type = G.mouseDown THEN
+  IF e.type = G.mouseMove THEN
+    HandleMouseMoveEvent(e)
+  ELSIF e.type = G.mouseDown THEN
     HandleMouseDownEvent(e)
   ELSIF e.type = G.mouseUp THEN
     HandleMouseUpEvent(e)

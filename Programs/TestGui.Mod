@@ -15,6 +15,15 @@ BEGIN
   INC(W.tag)
 END BtnOnClick;
 
+PROCEDURE MyButtonMouseMove(W: Gui.Widget; x, y, btn: INTEGER);
+VAR s: ARRAY 30 OF CHAR;
+BEGIN
+  Int.Str(x, s);
+  Strings.Append(':', s);
+  Int.Append(y, s);
+  Gui.SetText(W, s)
+END MyButtonMouseMove;
+
 PROCEDURE MyButtonMouseDown(W: Gui.Widget; x, y, btn: INTEGER);
 VAR s: ARRAY 30 OF CHAR;
 BEGIN
@@ -45,6 +54,7 @@ BEGIN
   win := Gui.NewWindow(320, 200);
 
   btn := B.NewButton(110, 24, 'Нажми меня');
+  Gui.SetOnMouseMove(btn, MyButtonMouseMove);
   Gui.SetOnMouseDown(btn, MyButtonMouseDown);
   Gui.SetOnMouseUp(btn, MyButtonMouseUp);
   Gui.SetOnClick(btn, BtnOnClick);
