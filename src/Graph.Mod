@@ -224,6 +224,7 @@ TYPE
     flipX, flipY, flipW, flipH: REAL; (* Where to flip the window bitmap to *)
     iFlipX, iFlipY: INTEGER; (* Same as flipX, flipY, which are always whole *)
     options: SET;
+    pressedButtons: SET; (* Mouse buttons that are currenty being pressed *)
     title: ARRAY 256 OF CHAR;
     resized: BOOLEAN; (* TRUE if fullscreen mode has been toggled for window *)
     showMouse: BOOLEAN;
@@ -952,6 +953,7 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1; W.resized := FALSE;
   ELSIF window IN options THEN EXCL(options, fullscreen)
   END;
   W.options := options;
+  W.pressedButtons := {};
   W.title := title;
   W.wantZoom := wantZoom;
   W.scaleOn := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
@@ -1069,10 +1071,12 @@ BEGIN
         IF x = -1 THEN event.dx := 0; event.dy := 0
         ELSE event.dx := x - W.lastX; event.dy := y - W.lastY
         END;
+        event.buttons := W.pressedButtons;
         event.x := x; event.y := y;
         IF ~peek THEN W.lastX := event.x; W.lastY := event.y END
       END;
-      event.button := ME.button;
+      event.button := ME.button; (*!FIXME does ME.button work in Allegro 5 MouseAxes? *)
+      event.buttons := W.pressedButtons;
       event.mod := {};
       event.display := ME.display; event.window := W
     ELSE event.type := noEvent
@@ -1093,6 +1097,7 @@ BEGIN
     event.x := x; event.y := y;
     event.z := ME.z; event.w := ME.w;
     event.button := ME.button;
+    INCL(W.pressedButtons, event.button);
     event.mod := {};
     event.display := ME.display
   ELSIF E.type = Al.eventMouseButtonUp THEN
@@ -1111,6 +1116,7 @@ BEGIN
     event.x := x; event.y := y;
     event.z := ME.z; event.w := ME.w;
     event.button := ME.button;
+    EXCL(W.pressedButtons, event.button);
     event.mod := {};
     event.display := ME.display
   ELSIF E.type = Al.eventTimer THEN
