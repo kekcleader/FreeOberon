@@ -252,7 +252,7 @@ BEGIN
   IF globalWin.curMouseDownWidget # NIL THEN
     W := globalWin.curMouseDownWidget;
     WindowToWidgetXY(W, x, y);
-    IF (x >= 0) & (y >= 0) & (W.w > x) & (W.h > y) (*& (e.button = 1)*) THEN
+    IF (x >= 0) & (y >= 0) & (W.w > x) & (W.h > y) & (1 IN e.buttons) THEN
       INCL(W.state, down)
     ELSE EXCL(W.state, down)
     END
@@ -272,7 +272,9 @@ BEGIN
   x := e.x; y := e.y;
   W := FindWidgetUnderMouse(globalWin, x, y);
   IF W # NIL THEN
-    INCL(W.state, down); (* Mark button as being mouse-downed *)
+    IF e.button = 1 THEN
+      INCL(W.state, down) (* Mark button as being left-mouse-button-down *)
+    END;
     globalWin.curMouseDownWidget := W; (* Save for future mouse up event *)
     TriggerOnMouseDown(W, x, y, e.button)
   END
