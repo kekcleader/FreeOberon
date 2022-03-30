@@ -35,14 +35,14 @@ TYPE
     bmp*: G.Bitmap;
     parent*: Widget;
     prev*, next*: Widget;
-    draw*: DrawHandler;
     (* Event Handlers *)
     onMouseMove*: MouseMoveHandler;
     onMouseDown*: MouseDownHandler;
     onMouseUp*: MouseUpHandler;
     onClick*: ClickHandler;
     (* Message Handler *)
-    handle*: Handler
+    handle*: Handler;
+    draw*: DrawHandler
   END;
 
   Window* = POINTER TO WindowDesc;
@@ -57,7 +57,6 @@ VAR
   font: G.Font;
 
   newWindowSettings: SET;
-  ZZZ: INTEGER;
 
   globalWin: Window; (* !FIXME *)
 
@@ -143,11 +142,8 @@ PROCEDURE DrawWindow*(W: Widget; x, y: INTEGER);
 VAR c: G.Color;
   w, h: INTEGER;
 BEGIN
-  G.MakeCol(c, ZZZ * 40 MOD 256, 120, 120);
+  G.MakeCol(c, 212, 208, 200);
   G.ClearToColor(c);
-  G.MakeCol(c, 0, 0, ZZZ * 20 MOD 256);
-  G.GetScreenSize(w, h);
-  G.Rect(5, 5, w - 6, h - 6, c);
 
   DrawBody(W, x, y)
 END DrawWindow;
@@ -307,7 +303,6 @@ BEGIN
     HandleMouseUpEvent(e)
   ELSIF e.type = G.keyDown THEN
     IF e.key = G.kEsc THEN exitRunLoop := TRUE END;
-    INC(ZZZ)
   ELSIF e.type = G.quit THEN
     exitRunLoop := TRUE
   END
@@ -346,6 +341,5 @@ BEGIN
 END Close;
 
 BEGIN
-  Done := TRUE;
-  ZZZ := 0
+  Done := TRUE
 END Gui.

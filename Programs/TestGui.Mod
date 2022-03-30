@@ -1,9 +1,10 @@
 MODULE TestGui;
-IMPORT Gui, B := Buttons, G := Graph, Int, Strings, Out;
+IMPORT Gui, B := Buttons, Panels, G := Graph, Int, Strings, Out;
 
 VAR
   win: Gui.Window;
-  btn, btn2: B.Button;
+  btn, btn2, btn3: B.Button;
+  panel1: Panels.Panel;
   QQQ, WWW: INTEGER;
 
 PROCEDURE BtnOnClick(W: Gui.Widget);
@@ -53,16 +54,22 @@ BEGIN
   Gui.NewWindowSettings({G.fullscreen});
   win := Gui.NewWindow(320, 200);
 
+  panel1 := Panels.NewPanel(220, 140, 'Кнопки');
+  Gui.Place(win, panel1, (win.w - panel1.w) DIV 2, (win.h - panel1.h) DIV 3);
+
   btn := B.NewButton(110, 24, 'Нажми меня');
   Gui.SetOnMouseMove(btn, MyButtonMouseMove);
   Gui.SetOnMouseDown(btn, MyButtonMouseDown);
   Gui.SetOnMouseUp(btn, MyButtonMouseUp);
   Gui.SetOnClick(btn, BtnOnClick);
-  Gui.Place(win, btn, (win.w - btn.w) DIV 2, (win.h - btn.h) DIV 3);
+  Gui.Place(panel1, btn, 8, 20);
 
   btn2 := B.NewButton(110, 24, 'Щёлкни сюда');
   Gui.SetOnClick(btn2, BtnOnClick);
-  Gui.Place(win, btn2, btn.x, btn.y + btn.h + 4)
+  Gui.Place(panel1, btn2, 8, btn.y + btn.h + 8);
+
+  btn3 := B.NewButton(110, 24, 'Ничто');
+  Gui.Place(panel1, btn3, 8, btn2.y + btn2.h + 8);
 
 END InitInterface;
 

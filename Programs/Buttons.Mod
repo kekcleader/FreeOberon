@@ -44,6 +44,12 @@ BEGIN
   IF Gui.down IN W.state THEN DrawDownButton(W, x, y)
   ELSE DrawNormalButton(W, x, y)
   END;
+
+  IF Gui.hover IN W.state THEN
+    G.MakeCol(c, 255, 0, 0);
+    G.Rect(x, y, x + W.w - 1, y + W.h - 1, c)
+  END;
+
   f := Gui.GetFont(W);
   G.GetMonoFontSize(f, fw, fh);
   G.MakeCol(c, 0, 0, 0);
