@@ -296,6 +296,7 @@ labelSaveFileAs "&Сохранить файл как"
 labelName "&Имя"
 labelFiles "&Файлы"
 labelTextToFind "Искать &текст"
+labelChooseLanguage "Выберите язык"
 
 pressAnyKeyToReturnToIde "Нажмите любую клавишу, чтобы вернуться в среду"
 runtimeError "Ошибка времени выполнения"

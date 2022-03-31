@@ -1110,8 +1110,7 @@ BEGIN w := c.parent(SearchDialog);
 END SearchDialogOkClick;
 
 PROCEDURE InitSearchDialog*(c: SearchDialog; editor: Editor);
-VAR L: INTEGER;
-  s: FoStrings.String;
+VAR s: FoStrings.String;
 BEGIN OV.InitWindow(c); c.do := searchDialogMethod; c.editor := editor;
   FoStrings.Get('titleFind', c.caption);
   c.modal := TRUE; c.w := 55; c.h := 9(*16*); OV.CenterWindow(c);

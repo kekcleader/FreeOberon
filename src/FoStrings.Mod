@@ -13,7 +13,7 @@ TYPE String* = ARRAY strLen OF CHAR;
     value: ARRAY strLen OF CHAR
   END;
 
-VAR lang: ARRAY 6 OF CHAR;
+VAR lang*: ARRAY 6 OF CHAR;
   errorStr: ARRAY maxErrors OF String;
   strings: ARRAY maxStrings OF Pair;
   nofstrings: INTEGER; (* Actual length of strings *)

@@ -3,8 +3,9 @@ IMPORT Out, In, G := Graph;
 VAR c: G.Color;
 BEGIN
   G.Init();
+  G.MakeCol(c, 0, 255, 0);
+  G.Circle(50, 50, 45, c);
   G.MakeCol(c, 255, 0, 0);
-  (*G.Circle(50, 50, 45, G.MakeCol(0, 255, 0));*)
 
   G.Line(FLOOR(200.0), 50, 450, 50, c);
   G.Line(150, 350, 400, 350, c);

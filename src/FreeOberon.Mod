@@ -52,6 +52,11 @@ CONST
 TYPE
   Fnames = ARRAY 32, 256 OF CHAR;
 
+  LanguageDialog* = POINTER TO LanguageDialogDesc;
+  LanguageDialogDesc = RECORD(OV.WindowDesc)
+    btnRu*, btnEn*: OV.Button
+  END;
+
 VAR
   progBuf: ARRAY 16300 OF SHORTCHAR; (* For interacting with a launched program *)
   inputBuf: ARRAY 16300 OF CHAR; (* Saves entered chars before Enter pressed *)
@@ -63,6 +68,48 @@ VAR
   curFg, curBg: INTEGER; (* Current foreground and background of proc. Write *)
   terminalNeedRedraw: BOOLEAN; (* Used when a compiled program is running *)
   terminalMouseShown: BOOLEAN; (* Same *)
+
+(* Language Dialog *)
+
+PROCEDURE LanguageButtonClick*(c: OV.Control);
+VAR lang: ARRAY 10 OF CHAR;
+BEGIN
+  IF c.caption = 'English' THEN lang := 'en' ELSE lang := 'ru' END;
+  IF lang # FoStrings.lang THEN FoStrings.SetLang(lang) END;
+  OV.CloseCurWindow(c)
+END LanguageButtonClick;
+
+PROCEDURE InitLanguageDialog*(c: LanguageDialog);
+VAR lbl: OV.Label;
+  s: FoStrings.String;
+BEGIN OV.InitWindow(c);
+  c.modal := TRUE; c.w := 37; c.h := 8; OV.CenterWindow(c);
+
+  FoStrings.Get('labelChooseLanguage', s);
+  lbl := OV.NewLabel(s);
+  lbl.align := OV.center;
+  lbl.do.resize(lbl, 1, 2, c.w - 2, 1);
+  OV.Add(c, lbl);
+
+  (* Ru button *)
+  c.btnRu := OV.NewButton('Русский');
+  c.btnRu.onClick := LanguageButtonClick;
+  c.btnRu.do.resize(c.btnRu, 5, 4, 11, 1);
+  OV.Add(c, c.btnRu);
+
+  (* En button *)
+  c.btnEn := OV.NewButton('English');
+  c.btnEn.onClick := LanguageButtonClick;
+  c.btnEn.do.resize(c.btnEn, 20, 4, 11, 1);
+  OV.Add(c, c.btnEn)
+END InitLanguageDialog;
+
+PROCEDURE NewLanguageDialog*(): LanguageDialog;
+VAR c: LanguageDialog;
+BEGIN NEW(c); InitLanguageDialog(c) ;
+RETURN c END NewLanguageDialog;
+
+(* General *)
 
 PROCEDURE CountLines(s: ARRAY OF CHAR; width: INTEGER): INTEGER;
 VAR i, x, lines: INTEGER;
@@ -422,6 +469,8 @@ END SearchAgain;
 PROCEDURE OptionsLanguage(c: OV.Control);
 VAR w: OV.Window;
 BEGIN
+  w := NewLanguageDialog();
+  OV.AddWindow(app, w)
 END OptionsLanguage;
 
 PROCEDURE BuildErrorCallback(IN fname: ARRAY OF CHAR;
