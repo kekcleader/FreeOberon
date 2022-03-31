@@ -1,5 +1,5 @@
 MODULE FoStrings;
-IMPORT Strings, Texts, Int, Dir, Out;
+IMPORT Strings, Texts, Int, Dir, Env, Out;
 
 CONST
   maxErrors* = 500;
@@ -59,8 +59,9 @@ BEGIN
 END Clear;
 
 PROCEDURE GetLangFname(lang: ARRAY OF CHAR; VAR fname: ARRAY OF CHAR);
-BEGIN fname := 'Data/Texts/'; Strings.Append(lang, fname);
-  Strings.Append('.dat', fname)
+BEGIN
+  Env.GetAppDir(fname); Strings.Append('Data/Texts/', fname);
+  Strings.Append(lang, fname); Strings.Append('.dat', fname)
 END GetLangFname;
 
 PROCEDURE LoadStrings;

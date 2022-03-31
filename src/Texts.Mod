@@ -286,10 +286,11 @@ VAR ch, quot: CHAR;
   i, j, h, d, e, n, s: INTEGER;
   x: REAL;
 BEGIN ch := S.nextCh; i := 0;
-  WHILE ch <= ' ' DO
+  WHILE (ch # 0X) & (ch <= ' ') DO
     IF ch = LF THEN INC(S.line) END;
     Read(S, ch)
   END;
+
   IF ('A' <= ch) & (ch <= 'Z') OR ('a' <= ch) & (ch <= 'z') THEN (* Name *)
     REPEAT S.s[i] := ch; INC(i); Read(S, ch)
     UNTIL ((ch < '0') & (ch # '.') OR
@@ -345,7 +346,9 @@ BEGIN ch := S.nextCh; i := 0;
         IF neg THEN S.i := -n ELSE S.i := n END;
         IF hex THEN S.class := Inval ELSE S.class := Int END
       END
-    ELSE (* Spectal character *) S.class := Char;
+    ELSIF ch = 0X THEN
+      S.eot := TRUE
+    ELSE (* Special character *) S.class := Char;
       IF neg THEN S.c := '-' ELSE S.c := ch; Read(S, ch) END
     END
   END;

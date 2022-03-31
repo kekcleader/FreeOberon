@@ -48,21 +48,36 @@ BEGIN
   Out.String(msg); Out.Ln
 END BuildErrorCallback;
 
+PROCEDURE ParseArgs(VAR mainFname, lang: ARRAY OF CHAR);
+VAR i: INTEGER;
+  s: ARRAY 4096 OF CHAR;
+BEGIN i := 1; lang := 'en';
+  WHILE i <= Args.Count DO
+    Args.Get(i, s);
+    IF s = '--lang' THEN Args.Get(i + 1, lang); INC(i)
+    ELSE Strings.Copy(s, mainFname)
+    END;
+    INC(i)
+  END
+END ParseArgs;
+
 PROCEDURE Do;
 VAR modules: Builder.StrList;
-  mainFname, modname, exename, errFname, s: ARRAY 256 OF CHAR;
+  mainFname, modname, exename, errFname, lang, s: ARRAY 256 OF CHAR;
   errLine, errCol, res: INTEGER;
   graph: BOOLEAN;
 BEGIN
-  Args.Get(1, mainFname);
-  FoStrings.SetLang('en');
+  ParseArgs(mainFname, lang);
+  FoStrings.SetLang(lang);
   Builder.SetWorkDir(mainFname);
   Builder.GetModuleName(mainFname, modname);
   modules := Builder.UsedModuleList(modname, mainFname,
     errFname, errLine, errCol, res);
   IF res = 0 THEN
     graph := Builder.ImportsGraph(modules);
-    IF Builder.CompileAll(modules, graph, exename, BuildErrorCallback) THEN END
+    IF Builder.CompileAll(modules, graph, exename,
+        TRUE, BuildErrorCallback) THEN
+    END
   ELSE (*res = 400-file not found or 401-file contains wrong module name*)
     FoStrings.MakeErrorStr(res, s);
     BuildErrorCallback(errFname, 1, 1, 401, s)

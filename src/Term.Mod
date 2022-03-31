@@ -24,7 +24,7 @@ PROCEDURE -AAIncludeTermh* '#include "term/term.h"';
 
 PROCEDURE -StartProcess*
   (cmd: ARRAY OF CHAR): BOOLEAN
-  "StartProcess(cmd)";
+  "StartProcessIn(cmd, (char *)0)";
 
 PROCEDURE -StartProcessIn*
   (cmd, dir: ARRAY OF CHAR): BOOLEAN
@@ -44,7 +44,12 @@ PROCEDURE -ReadFromProcess*
 PROCEDURE -RunProcess*
   (cmd: ARRAY OF CHAR; VAR buf: ARRAY OF CHAR;
   limit: INTEGER; VAR len, err: INTEGER): INTEGER
-  "(int)RunProcess((char *)cmd, (char *)buf, limit, len, err)";
+  "(int)RunProcessIn((char *)cmd, (char *)0, (char *)buf, limit, len, err)";
+
+PROCEDURE -RunProcessIn*
+  (cmd, dir: ARRAY OF CHAR; VAR buf: ARRAY OF CHAR;
+  limit: INTEGER; VAR len, err: INTEGER): INTEGER
+  "(int)RunProcessIn((char *)cmd, (char *)dir, (char *)buf, limit, len, err)";
 
 PROCEDURE -SearchPath*
   (filename: ARRAY OF CHAR; VAR result: ARRAY OF CHAR): LONGINT

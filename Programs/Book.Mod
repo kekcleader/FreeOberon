@@ -1,5 +1,5 @@
 MODULE Book;
-IMPORT Out, In, G := Graph2;
+IMPORT Out, In, G := Graph;
 VAR c: G.Color;
 BEGIN
   G.Init();

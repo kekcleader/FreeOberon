@@ -460,8 +460,9 @@ BEGIN w := c.app.windows;
         errFname, errLine, errCol, res);
       IF res = 0 THEN
         graph := Builder.ImportsGraph(modules);
-        IF Builder.CompileAll(modules, graph, exename, BuildErrorCallback) THEN
-          RunProgram(exename)
+        IF Builder.CompileAll(modules, graph, exename,
+            FALSE, BuildErrorCallback)
+        THEN RunProgram(exename)
         END
       ELSE
         FocusOrOpenFile(errFname);
@@ -851,7 +852,6 @@ PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR w, h: INTEGER;
     VAR lang: ARRAY OF CHAR; VAR fnames: Fnames);
 VAR i, nofnames: INTEGER;
   s: ARRAY 2048 OF CHAR;
-  q: ARRAY 2048 OF SHORTCHAR;
 BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := defW; h := defH;
   lang := defLang;
   WHILE i <= Args.Count DO Args.Get(i, s);

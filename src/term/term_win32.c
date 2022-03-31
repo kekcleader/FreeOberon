@@ -216,10 +216,6 @@ int StartProcessIn(char *process, char *dir) {
   return bSuccess ? 1 : 0;
 }
 
-int StartProcess(char *process) {
-  return StartProcessIn(process, (char *)NULL);
-}
-
 int ProcessFinished(int *err) {
   GetExitCodeProcess(piProcInfo.hProcess, &exit_code);
   int result = exit_code != STILL_ACTIVE;
@@ -350,9 +346,9 @@ void ErrorExit(PTSTR lpszFunction) {
   ExitProcess(1);
 }
 
-int RunProcess(char *cmd, char *buf, int limit, int *len, int *err) {
+int RunProcessIn(char *cmd, char *dir, char *buf, int limit, int *len, int *err) {
   int success = 0;
-  if (StartProcess(cmd)) {
+  if (StartProcessIn(cmd, dir)) {
     int n, i = 0;
     do {
       ReadFromProcess(&buf[i], &n, limit - i); //!FIXME add inner loop

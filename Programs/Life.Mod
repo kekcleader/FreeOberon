@@ -6,11 +6,11 @@ CONST maxW = 60*4; maxH = 33*4;
 TYPE
   Field = ARRAY maxH, maxW OF BOOLEAN;
 VAR
-  S: G.Bitmap;
-  W, H: INTEGER; (* Real width and height of field in cells *)
+  sw, sh: INTEGER; (* Screen size in pixels *)
+  W, H: INTEGER; (* Actual width and height of field in cells *)
   m, m2: Field; (* m2 is a temporary copy of m *)
   x0, y0: INTEGER; (* Field offset on screen in pixels *)
-  red, black, white: INTEGER; (* Color constants: black, red etc. *)
+  red, black, white: G.Color;
 
 PROCEDURE Neighbours(x, y: INTEGER): INTEGER;
 VAR n: INTEGER;
@@ -48,12 +48,13 @@ BEGIN
 END Live;
 
 PROCEDURE DrawCell(x, y: INTEGER);
-VAR xx, yy, c: INTEGER;
+VAR xx, yy: INTEGER;
+  c: G.Color;
 BEGIN
   xx := x0 + x * cellSize;
   yy := y0 + y * cellSize;
   IF m[y, x] THEN c := red ELSE c := black END;
-  G.RectFill(S, xx, yy, xx + cellSize - 1, yy + cellSize - 1, c)
+  G.FillRect(xx, yy, xx + cellSize - 1, yy + cellSize - 1, c)
 END DrawCell;
 
 PROCEDURE Draw;
@@ -78,25 +79,26 @@ END Run;
 PROCEDURE Init;
 VAR x, y: INTEGER;
 BEGIN
-  G.Settings(640, 480, {G.sharpPixels, G.spread, G.fullscreen});
-  S := G.Init();
+  G.Settings(640, 480, {});
+  G.Init;
 
-  W := S.w DIV cellSize;
-  H := S.h DIV cellSize;
+  G.GetScreenSize(sw, sh);
+  W := sw DIV cellSize;
+  H := sh DIV cellSize;
   IF W >= maxW THEN W := maxW - 1 END;
   IF H >= maxH THEN H := maxH - 1 END;
 
-  red := G.MakeCol(240, 0, 0);
-  black := G.MakeCol(10, 10, 10);
-  white := G.MakeCol(230, 230, 230);
+  G.MakeCol(red, 240, 0, 0);
+  G.MakeCol(black, 10, 10, 10);
+  G.MakeCol(white, 230, 230, 230);
 
   FOR y := 0 TO H - 1 DO
     FOR x := 0 TO W - 1 DO
       m[y, x] := Random.Uniform() < initial
     END
   END;
-  x0 := (S.w - cellSize * W) DIV 2;
-  y0 := (S.h - cellSize * H) DIV 2
+  x0 := (sw - cellSize * W) DIV 2;
+  y0 := (sh - cellSize * H) DIV 2
 END Init;
 
 BEGIN

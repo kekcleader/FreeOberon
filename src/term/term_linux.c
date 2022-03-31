@@ -34,17 +34,17 @@ int StartProcessIn(char *process, char *dir) {
   int success = 0;
   int i, j;
 
-      // Ignore SIGPIPE in case of a write to a broken pipe
-      if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
-        puts("Could not ignore SIGPIPE signal.");
-      }
+  // Ignore SIGPIPE in case of a write to a broken pipe
+  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+    perror("StartProcessIn: Could not ignore SIGPIPE signal");
+  }
 
   if ((pipe(p) == -1) || (pipe(q) == -1)) {
     perror("StartProcessIn: Could not create pipes");
   } else {
     pid = fork();
     if (pid == -1) { // fork() error
-      perror("StartProcessIn: Could not fork().");
+      perror("StartProcessIn: Could not fork()");
     } else if (pid == 0) { // Child process
       if (dup2(q[0], 0/*stdin*/) == -1) {
         perror("StartProcessIn: Could not dup2(stdin) in child process");
@@ -56,7 +56,7 @@ int StartProcessIn(char *process, char *dir) {
       close(p[0]);
       if (dir && dir[0] != '\0') {
         if (getcwd(cmd, 256) == NULL) {
-          perror("StartProcessIn: Could not getcdw()");
+          perror("StartProcessIn: Could not getcwd()");
         }
         i = 0;
         while (cmd[i]) i++;
@@ -74,7 +74,7 @@ int StartProcessIn(char *process, char *dir) {
         process = &cmd[0];
       }
       if (execl(process, process, (char*)NULL)) {
-        puts("Could not run program.");
+        perror("StartProcess: Could not execl()");
         exit(0);
       }
       /*
@@ -91,10 +91,6 @@ int StartProcessIn(char *process, char *dir) {
     success = 1;
   }
   return success;
-}
-
-int StartProcess(char *process) {
-  return StartProcessIn(process, (char *)NULL);
 }
 
 int ProcessFinished(int *err) {
@@ -131,7 +127,8 @@ void ReadFromProcess(char *buf, int *len, int limit) {
   if (*len < 0) *len = 0;
 }
 
-int RunProcess(char *cmd, char *buf, int limit, int *len, int *err) {
+/* !FIXME dir is ignored now*/
+int RunProcessIn(char *cmd, char *dir, char *buf, int limit, int *len, int *err) {
   int success = 0;
   *err = 0;
   FILE *F;

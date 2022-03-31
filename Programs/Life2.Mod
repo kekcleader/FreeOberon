@@ -1,13 +1,13 @@
 MODULE Life2;
-IMPORT G := Graph2, Random;
-CONST maxW = 60*8; maxH = 33*8;
-  cellSize = 2;
+IMPORT G := Graph, Random;
+CONST maxW = 180; maxH = 100;
+  cellSize = 5;
   initial = 0.2;
 TYPE
   Field = ARRAY maxH, maxW OF INTEGER;
 VAR
-  S: G.Bitmap;
-  W, H: INTEGER; (* Real width and height of field in cells *)
+  SW, SH: INTEGER; (* Screen size in pixels *)
+  W, H: INTEGER; (* Actual width and height of field in cells *)
   m, m2: Field; (* m2 is a temporary copy of m *)
   x0, y0: INTEGER; (* Field offset on screen in pixels *)
   colors: ARRAY 9 OF G.Color; (* Color constants: black, red etc. *)
@@ -87,7 +87,8 @@ BEGIN
       DrawCell(x, y)
     END
   END;
-  G.Flip
+  G.Flip;
+  G.Delay(20)
 END Draw;
 
 PROCEDURE Run;
@@ -101,23 +102,25 @@ END Run;
 PROCEDURE Init;
 VAR x, y: INTEGER;
 BEGIN
-  G.Settings(640, 400, {G.sharpPixels, G.spread, G.fullscreen});
-  S := G.Init();
+  G.Settings(640, 400, {});
+  G.Init();
 
-  W := S.w DIV cellSize;
-  H := S.h DIV cellSize;
+  G.GetScreenSize(SW, SH);
+
+  W := SW DIV cellSize;
+  H := SH DIV cellSize;
   IF W >= maxW THEN W := maxW - 1 END;
   IF H >= maxH THEN H := maxH - 1 END;
 
-  colors[0] := G.MakeCol(10, 10, 10);
-  colors[1] := G.MakeCol(240, 0, 0);
-  colors[2] := G.MakeCol(230, 230, 230);
-  colors[3] := G.MakeCol(0, 100, 255);
-  colors[4] := G.MakeCol(0, 230, 0);
-  colors[5] := G.MakeCol(255, 255, 0);
-  colors[6] := G.MakeCol(230, 0, 230);
-  colors[7] := G.MakeCol(150, 80, 0);
-  colors[8] := G.MakeCol(255, 150, 0);
+  G.MakeCol(colors[0], 10, 10, 10);
+  G.MakeCol(colors[1], 240, 0, 0);
+  G.MakeCol(colors[2], 230, 230, 230);
+  G.MakeCol(colors[3], 0, 100, 255);
+  G.MakeCol(colors[4], 0, 230, 0);
+  G.MakeCol(colors[5], 255, 255, 0);
+  G.MakeCol(colors[6], 230, 0, 230);
+  G.MakeCol(colors[7], 150, 80, 0);
+  G.MakeCol(colors[8], 255, 150, 0);
 
   FOR y := 0 TO H - 1 DO
     FOR x := 0 TO W - 1 DO
@@ -128,8 +131,8 @@ BEGIN
       END
     END
   END;
-  x0 := (S.w - cellSize * W) DIV 2;
-  y0 := (S.h - cellSize * H) DIV 2
+  x0 := (SW - cellSize * W) DIV 2;
+  y0 := (SH - cellSize * H) DIV 2
 END Init;
 
 BEGIN

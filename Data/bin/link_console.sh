@@ -4,13 +4,22 @@
 #   When it is being run, the current directory
 #   must be the root directory of Free Oberon.
 
-cd bin
+# Set DIR = directory of this script
+SOURCE=${BASH_SOURCE[0]}
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
+  SOURCE=$(readlink "$SOURCE")
+  [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
+
+cd _Build
 
 THENAME="${1%.*}"
 ONAME="${THENAME##*/}"
 
-FOBDIR=".."
-OFRDIR="../Data/bin/OfrontPlus"
+FOBDIR="$DIR/../.."
+OFRDIR="$DIR/OfrontPlus"
 OFRTAR="$OFRDIR/Target/Linux_amd64"
 PATH="$OFRTAR:$PATH"
 CC="gcc"
@@ -21,8 +30,8 @@ shift
 
 
 
-# These blanks are left to allow Windows and Linux
-# versions of the script to be viewed in parallel.
+
+
 
 
 

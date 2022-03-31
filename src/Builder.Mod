@@ -16,7 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT Term, FoStrings, Files, Utf8, Config, Strings, Int, Out, Kernel;
+IMPORT Term, FoStrings, Files, Utf8, Config, Strings, Int, Out,
+  Env, Dir, Kernel;
 
 TYPE
   StrList* = POINTER TO StrListDesc;
@@ -48,7 +49,7 @@ RETURN exists END ModuleExists;
 
 PROCEDURE SetWorkDir*(IN fname: ARRAY OF CHAR);
 VAR i: INTEGER;
-BEGIN i := Strings.Length(fname);
+BEGIN i := Strings.Length(fname) - 1;
   WHILE (i # -1) & (fname[i] # '/') & (fname[i] # '\') DO DEC(i) END;
   IF i # -1 THEN Strings.Extract(fname, 0, i + 1, workDir)
   ELSE workDir[0] := 0X
@@ -164,6 +165,16 @@ BEGIN i := 0; j := 0;
   modname[j] := 0X
 END GetModuleName;
 
+(* Appends relative or full path of 'Data/bin/' or 'Data\bin\' to s *)
+PROCEDURE AppendDataBin(VAR s: ARRAY OF CHAR);
+VAR dir: ARRAY 1024 OF CHAR;
+BEGIN
+  Env.GetAppDir(s);
+  IF Config.isWindows THEN Strings.Append('Data\bin\', s)
+  ELSE Strings.Append('Data/bin/', s)
+  END
+END AppendDataBin;
+
 PROCEDURE RunCommand(IN fname, mod: ARRAY OF CHAR; link, graph, main: BOOLEAN;
     list: StrList; onError: ErrorHandler): BOOLEAN;
 CONST bufLen = 20480;
@@ -183,23 +194,19 @@ BEGIN ok := TRUE;
   END;
   IF Config.isWindows THEN
     IF Term.SearchPath('cmd.exe', q) # 0 THEN
-      Utf8.Decode(q, cmd);
-      Strings.Insert('"', 0, cmd);
-      Strings.Append('" /C Data\bin\', cmd);
-      Strings.Append(command, cmd);
-      Strings.Append('.bat ', cmd)
+      Utf8.Decode(q, cmd); Strings.Insert('"', 0, cmd);
+      Strings.Append('" /C ', cmd); AppendDataBin(cmd);
+      Strings.Append(command, cmd); Strings.Append('.bat ', cmd)
     ELSE ok := FALSE; onError('', -1, -1, -1, 'Could not find cmd.exe')
     END
   ELSE (* Linux *)
-    cmd := 'Data/bin/'; Strings.Append(command, cmd);
+    cmd := ''; AppendDataBin(cmd);
+    Strings.Append(command, cmd);
     Strings.Append('.sh ', cmd)
   END;
 
   IF ok THEN
-    IF Strings.Pos(Config.stdPath, fname, 0) = 0 THEN
-      Strings.Extract(fname, Strings.Length(Config.stdPath), LEN(s), s)
-    ELSE s := fname$
-    END;
+    s := fname$;
     Strings.Append(s, cmd);
 
     IF main THEN Strings.Append(' -m', cmd)
@@ -226,7 +233,6 @@ BEGIN ok := TRUE;
       ELSIF link THEN FoStrings.GetErrorStr(422, z)
       ELSE FoStrings.GetErrorStr(421, z)
       END;
-      (*IF z[0] = 0X THEN ShowError(s) ELSE ShowError(z) END*)
       IF z[0] = 0X THEN onError('', -1, -1, -1, s)
       ELSE onError('', -1, -1, -1, z)
       END
@@ -241,15 +247,18 @@ END Compile;
 
 PROCEDURE Link(IN fname, mod: ARRAY OF CHAR;
     graph: BOOLEAN; list: StrList; VAR exename: ARRAY OF CHAR;
-    onError: ErrorHandler): BOOLEAN;
+    onError: ErrorHandler; moveToCwd: BOOLEAN): BOOLEAN;
 VAR ok: BOOLEAN;
   s: ARRAY 2048 OF CHAR;
   res: INTEGER;
 BEGIN ok := RunCommand(fname, mod, TRUE, graph, FALSE, list, onError);
   IF ok THEN (* Move executable file if workDir is non-standard *)
     s := mod$; IF Config.isWindows THEN Strings.Append('.exe', s) END;
-    exename := 'bin/'; Strings.Append(s, exename);
-    IF workDir # Config.stdPath THEN
+    exename := '_Build/'; Strings.Append(s, exename);
+    IF moveToCwd THEN
+      Files.Rename(exename, s, res);
+      IF res = 0 THEN exename := s$ END
+    ELSIF workDir # Config.stdPath THEN
       Strings.Insert(workDir, 0, s);
       Files.Rename(exename, s, res);
       IF res = 0 THEN exename := s$ END
@@ -322,7 +331,8 @@ BEGIN
 END GetSym;
 
 PROCEDURE CompileAll*(modules: StrList; graph: BOOLEAN;
-    VAR exename: ARRAY OF CHAR; onError: ErrorHandler): BOOLEAN;
+    VAR exename: ARRAY OF CHAR; moveToCwd: BOOLEAN;
+    onError: ErrorHandler): BOOLEAN;
 VAR p, last: StrList;
   ok: BOOLEAN;
 BEGIN exename[0] := 0X;
@@ -339,7 +349,8 @@ BEGIN exename[0] := 0X;
       IF ModuleExists(p.fname) THEN
         IF ~Compile(p.fname, '', TRUE, onError) THEN ok := FALSE END
       END;
-      ok := ok & Link(p.fname, p.s, graph, modules, exename, onError);
+      ok := ok & Link(p.fname, p.s, graph, modules,
+          exename, onError, moveToCwd);
     END
   ELSE ok := FALSE
   END ;
@@ -434,7 +445,7 @@ BEGIN L := NIL; res := 0(*OK*);
 RETURN L END UsedModuleList;
 
 PROCEDURE ImportsGraph*(p: StrList): BOOLEAN;
-BEGIN WHILE (p # NIL) & (p.s # 'Graph') DO Out.Char('>');Out.String(p.s); Out.Ln; p := p.next END ;
+BEGIN WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END ;
 RETURN p # NIL END ImportsGraph;
 
 BEGIN
