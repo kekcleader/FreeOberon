@@ -13,7 +13,7 @@ AR="ar"
 CCFULL="$CC -O0 -fno-exceptions -I $OFRDIR/../../Mod/Lib -I $OFRDIR/Lib/Obj"
 
 
-$OFR -Cw Config_linux.Mod &&
+$OFR -Cw Config.Mod &&
 
 $OFR -Cw Utf8.Mod &&
 

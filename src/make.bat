@@ -13,7 +13,7 @@ SET AR=ar
 SET CCFULL=%CC% -O3 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Lib\Obj
 
 ECHO ON
-%OFR% -C Config_win32.Mod
+%OFR% -C Config.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cw Utf8.Mod
 @IF ERRORLEVEL 1 GOTO ERR
