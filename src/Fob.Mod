@@ -26,10 +26,13 @@ BEGIN
   Out.String('Copyright (c) 2017-'); Out.Int(Config.year, 0);
   Out.String(' by Arthur Yefimov and others.'); Out.Ln;
   Out.String('Fob uses Ofront+ and GCC (MinGW).'); Out.Ln; Out.Ln;
-  Out.String('Usage:'); Out.Ln; Out.String('  ');
-  Args.Get(0, s); Out.String(s);
+  Out.String('Usage:'); Out.Ln; Args.Get(0, s);
+  Out.String('  '); Out.String(s);
+  Out.String(' sourceFile'); Out.Ln;
 
-  Out.String(' sourceFile'); Out.Ln; Out.Ln;
+  Out.String('  '); Out.String(s);
+  Out.String(' --lang ru sourceFile'); Out.Ln; Out.Ln;
+
   Out.String('Please specify a single file name - the main module source');
   Out.Ln
 (*Out.String(' [options] MainModuleSourceFile'); Out.Ln; Out.Ln;
