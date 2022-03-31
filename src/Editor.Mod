@@ -1118,7 +1118,7 @@ BEGIN OV.InitWindow(c); c.do := searchDialogMethod; c.editor := editor;
   (* Text To Find Edit *)
   c.edtText := OV.NewEdit();
   c.edtText.do.resize(c.edtText, 3, 3, c.w - 6, 1);
-  OV.EditSetCaption(c.edtText, editor.search);
+  (*OV.EditSetCaption(c.edtText, editor.search);*)
   OV.Add(c, c.edtText);
 
   (* OK button *)
