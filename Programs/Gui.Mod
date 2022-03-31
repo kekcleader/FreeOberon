@@ -3,9 +3,10 @@ IMPORT G := Graph, Strings, Out;
 
 CONST
   (* Widget.state set members *)
-  hover* = 0;
-  down*  = 1;
-  focus* = 2;
+  hover*  = 0;
+  down*   = 1;
+  focus*  = 2;
+  active* = 3;
 
 TYPE
   Caption* = POINTER TO CaptionDesc;
@@ -17,6 +18,8 @@ TYPE
   MouseMoveHandler* = PROCEDURE (W: Widget; x, y, btn: INTEGER);
   MouseDownHandler* = PROCEDURE (W: Widget; x, y, btn: INTEGER);
   MouseUpHandler* = PROCEDURE (W: Widget; x, y, btn: INTEGER);
+  MouseEnterHandler* = PROCEDURE (W: Widget);
+  MouseLeaveHandler* = PROCEDURE (W: Widget);
   ClickHandler* = PROCEDURE (W: Widget);
 
   Message* = POINTER TO MsgDesc;
@@ -28,8 +31,11 @@ TYPE
     x*, y*, w*, h*: INTEGER;
     tag*: INTEGER;
     state*: SET;
-    visible: BOOLEAN;
-    enabled: BOOLEAN;
+    visible*: BOOLEAN;
+    enabled*: BOOLEAN;
+    default*: BOOLEAN;
+    tabStop*: BOOLEAN;
+    tabOrder*: INTEGER;
     body*: Widget;
     text*: Caption;
     bmp*: G.Bitmap;
@@ -39,6 +45,8 @@ TYPE
     onMouseMove*: MouseMoveHandler;
     onMouseDown*: MouseDownHandler;
     onMouseUp*: MouseUpHandler;
+    onMouseEnter*: MouseEnterHandler;
+    onMouseLeave*: MouseLeaveHandler;
     onClick*: ClickHandler;
     (* Message Handler *)
     handle*: Handler;
@@ -48,7 +56,8 @@ TYPE
   Window* = POINTER TO WindowDesc;
   WindowDesc* = RECORD(WidgetDesc)
     win*: G.Window;
-    curMouseDownWidget*: Widget (* Widget under mouse down event is saved here *)
+    curMouseDownWidget*: Widget; (* Widget under mouse down event is saved here *)
+    curHoverWidget*: Widget (* Widget currently being pointed on by mouse *)
   END;
 
 VAR
@@ -77,6 +86,16 @@ BEGIN
   W.onMouseUp := handler
 END SetOnMouseUp;
 
+PROCEDURE SetOnMouseEnter*(W: Widget; handler: MouseEnterHandler);
+BEGIN
+  W.onMouseEnter := handler
+END SetOnMouseEnter;
+
+PROCEDURE SetOnMouseLeave*(W: Widget; handler: MouseLeaveHandler);
+BEGIN
+  W.onMouseLeave := handler
+END SetOnMouseLeave;
+
 PROCEDURE SetOnClick*(W: Widget; handler: ClickHandler);
 BEGIN
   W.onClick := handler;
@@ -89,10 +108,15 @@ BEGIN
   w.state := {};
   w.visible := TRUE;
   w.enabled := TRUE;
+  w.default := FALSE;
+  w.tabStop := TRUE;
+  w.tabOrder := 0;
   w.draw := NIL;
   w.onMouseMove := NIL;
   w.onMouseDown := NIL;
   w.onMouseUp := NIL;
+  w.onMouseEnter := NIL;
+  w.onMouseLeave := NIL;
   w.onClick := NIL;
 
   (* Замок *)
@@ -105,6 +129,45 @@ BEGIN
   Strings.Copy(s, w.text.s)
 END SetText;
 
+(** Returns parent (or w) with .parent=NIL *)
+PROCEDURE GetTopParent*(W: Widget): Widget;
+BEGIN
+  WHILE W.parent # NIL DO W := W.parent END
+RETURN W END GetTopParent;
+
+PROCEDURE UnsetAllDefaultsInside*(W: Widget);
+VAR p: Widget;
+BEGIN
+  W.default := FALSE;
+  p := W.body.next;
+  WHILE p # W.body DO
+    UnsetAllDefaultsInside(p);
+    p := p.next
+  END
+END UnsetAllDefaultsInside;
+
+PROCEDURE UnsetAllDefaultsOutside*(W: Widget);
+BEGIN
+  UnsetAllDefaultsInside(GetTopParent(W))
+END UnsetAllDefaultsOutside;
+
+PROCEDURE SetDefault*(W: Widget; value: BOOLEAN);
+BEGIN
+  IF ~W.default & value THEN UnsetAllDefaultsOutside(W) END;
+  W.default := value;
+  INCL(W.state, active)
+END SetDefault;
+
+PROCEDURE SetEnabled*(w: Widget; value: BOOLEAN);
+BEGIN
+  w.enabled := value
+END SetEnabled;
+
+PROCEDURE SetVisible*(w: Widget; value: BOOLEAN);
+BEGIN
+  w.visible := value
+END SetVisible;
+
 PROCEDURE Place*(where, what: Widget; x, y: INTEGER);
 BEGIN
   what.x := x; what.y := y;
@@ -113,7 +176,14 @@ BEGIN
   what.prev := where.body.prev;
   what.next := where.body;
   where.body.prev.next := what;
-  where.body.prev := what
+  where.body.prev := what;
+
+  what.parent := where;
+
+  IF what.default THEN
+    UnsetAllDefaultsOutside(what);
+    what.default := TRUE
+  END
 END Place;
 
 (* Window *)
@@ -156,6 +226,7 @@ BEGIN
   win.x := 0; win.y := 0;
   win.w := win.win.w; win.h := win.win.h;
   win.curMouseDownWidget := NIL;
+  win.curHoverWidget := win;
   win.draw := DrawWindow
 END InitWindow;
 
@@ -204,6 +275,16 @@ BEGIN
   END
 END TriggerOnMouseUp;
 
+PROCEDURE TriggerOnMouseEnter*(W: Widget);
+BEGIN
+  IF (W # NIL) & (W.onMouseEnter # NIL) THEN W.onMouseEnter(W) END
+END TriggerOnMouseEnter;
+
+PROCEDURE TriggerOnMouseLeave*(W: Widget);
+BEGIN
+  IF (W # NIL) & (W.onMouseLeave # NIL) THEN W.onMouseLeave(W) END
+END TriggerOnMouseLeave;
+
 PROCEDURE TriggerOnClick*(W: Widget);
 BEGIN
   IF (W # NIL) & (W.onClick # NIL) THEN
@@ -214,7 +295,7 @@ END TriggerOnClick;
 PROCEDURE FindWidgetUnderMouse*(W: Widget; VAR x, y: INTEGER): Widget;
 VAR p: Widget;
 BEGIN
-  IF W = NIL THEN p := W
+  IF W = NIL THEN p := NIL
   ELSIF W.body # NIL THEN
     p := W.body.prev;
     WHILE (p # W.body) &
@@ -240,6 +321,46 @@ BEGIN
   END
 END WindowToWidgetXY;
 
+(** Returns TRUE if first widget is parent of second. *)
+PROCEDURE IsParent*(a, b: Widget): BOOLEAN;
+BEGIN
+  WHILE (b # NIL) & (a # b) DO b := b.parent END
+RETURN (a # NIL) & (a = b) END IsParent;
+
+PROCEDURE MouseLeaveCascade(from, to: Widget);
+VAR p: Widget;
+BEGIN
+  p := from;
+  WHILE (p # NIL) & (p # to) & ~IsParent(p, to) DO
+    EXCL(p.state, hover);
+    TriggerOnMouseLeave(p);
+    p := p.parent
+  END
+END MouseLeaveCascade;
+
+PROCEDURE MouseEnterCascade(from, to: Widget);
+VAR p: Widget;
+  m: ARRAY 100 OF Widget;
+  len: INTEGER;
+BEGIN
+  len := 0;
+
+  p := to;
+  WHILE (p # NIL) & (p # from) & ~IsParent(p, from) DO
+    INCL(p.state, hover);
+    IF len < LEN(m) THEN
+      m[len] := p;
+      INC(len)
+    END;
+    p := p.parent
+  END;
+
+  WHILE len > 0 DO
+    DEC(len);
+    TriggerOnMouseEnter(m[len])
+  END
+END MouseEnterCascade;
+
 PROCEDURE HandleMouseMoveEvent*(e: G.Event);
 VAR W: Widget;
   x, y: INTEGER;
@@ -254,9 +375,13 @@ BEGIN
     END
   ELSE
     W := FindWidgetUnderMouse(globalWin, x, y);
+    IF globalWin.curHoverWidget # W THEN
+      MouseLeaveCascade(globalWin.curHoverWidget, W);
+      MouseEnterCascade(globalWin.curHoverWidget, W);
+      globalWin.curHoverWidget := W
+    END
   END;
   IF W # NIL THEN
-    INCL(W.state, hover); (* Mark button as being mouse-hovered *) (*!FIXME not done yet*)
     TriggerOnMouseMove(W, x, y, e.button)
   END
 END HandleMouseMoveEvent;

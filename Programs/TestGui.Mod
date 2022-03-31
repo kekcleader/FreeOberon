@@ -49,15 +49,29 @@ BEGIN
   INC(QQQ)
 END MyButtonMouseUp;
 
+PROCEDURE Btn3OnMouseEnter(W: Gui.Widget);
+BEGIN
+  Gui.SetText(W, 'СЮДА')
+END Btn3OnMouseEnter;
+
+PROCEDURE Btn3OnMouseLeave(W: Gui.Widget);
+BEGIN
+  Gui.SetText(W, 'ТУДА')
+END Btn3OnMouseLeave;
+
 PROCEDURE InitInterface;
 BEGIN
   Gui.NewWindowSettings({G.fullscreen});
   win := Gui.NewWindow(320, 200);
 
+  (*Gui.NewWindowSettings({});
+    win := Gui.NewWindow(800, 600);*)
+
   panel1 := Panels.NewPanel(220, 140, 'Кнопки');
   Gui.Place(win, panel1, (win.w - panel1.w) DIV 2, (win.h - panel1.h) DIV 3);
 
   btn := B.NewButton(110, 24, 'Нажми меня');
+  Gui.SetDefault(btn, TRUE);
   Gui.SetOnMouseMove(btn, MyButtonMouseMove);
   Gui.SetOnMouseDown(btn, MyButtonMouseDown);
   Gui.SetOnMouseUp(btn, MyButtonMouseUp);
@@ -65,11 +79,16 @@ BEGIN
   Gui.Place(panel1, btn, 8, 20);
 
   btn2 := B.NewButton(110, 24, 'Щёлкни сюда');
+  Gui.SetDefault(btn2, TRUE);
   Gui.SetOnClick(btn2, BtnOnClick);
   Gui.Place(panel1, btn2, 8, btn.y + btn.h + 8);
 
   btn3 := B.NewButton(110, 24, 'Ничто');
   Gui.Place(panel1, btn3, 8, btn2.y + btn2.h + 8);
+  Gui.SetOnMouseEnter(btn3, Btn3OnMouseEnter);
+  Gui.SetOnMouseLeave(btn3, Btn3OnMouseLeave);
+
+  Gui.SetDefault(btn3, TRUE);
 
 END InitInterface;
 
