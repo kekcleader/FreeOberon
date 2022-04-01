@@ -1,5 +1,6 @@
 @ECHO OFF
-SET PROG=FreeOberon
+SET PROG1=FreeOberon
+SET PROG2=fob
 SET OFRDIR=..\Data\bin\OfrontPlus\Target\Win32
 SET GCCDIR=C:\mingw-w64\i686\mingw32\bin
 SET GCCDIR=..\Data\bin\mingw32\bin
@@ -57,11 +58,15 @@ ECHO ON
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cw Editor.Mod
 @IF ERRORLEVEL 1 GOTO ERR
+%OFR% -Cw Builder.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cwm FreeOberon.Mod
+@IF ERRORLEVEL 1 GOTO ERR
+%OFR% -7wm Fob.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 windres resources.rc resources.o
 @IF ERRORLEVEL 1 GOTO ERR
-@REM                        -O0 change to -Os (?)   add -s (?)
+
 %CCFULL% -c Utf8.c
 @IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Strings.c
@@ -99,18 +104,27 @@ windres resources.rc resources.o
   StrList.o Dir.o Graph.o TermBox.o
 @IF ERRORLEVEL 1 GOTO ERR
 
-%CCFULL% -o ..\%PROG%.exe resources.o ^
+%CCFULL% -o ..\%PROG1%.exe resources.o ^
   Graph.c TermBox.c ^
   Config.c term\term_win32.c ^
-  Term.c OV.c FoStrings.c EditorText.c Editor.c ^
-  %PROG%.c ^
+  Term.c OV.c FoStrings.c EditorText.c Editor.c Builder.c ^
+  FreeOberon.c ^
   ..\Data\bin\FreeOberon.a ^
   %OFRDIR%\Lib\Ofront.a ^
   -lallegro -lallegro_primitives -lallegro_image ^
   -I..\Data\bin\mingw32\include ^
   -Wl,-e_WinMain@16 ^
-  -nostartfiles %OFRDIR%\..\..\Mod\Lib\crt1.c ^
-  -Wl,-subsystem,windows
+  -nostartfiles %OFRDIR%\..\..\Mod\Lib\crt1.c
+
+%CCFULL% -o ..\%PROG2%.exe ^
+  FoStrings.c Builder.c ^
+  Term.c term/term_win32.c ^
+  Config.c Fob.c ^
+  ..\Data\bin\FreeOberon.a ^
+  %OFRDIR%\Lib\Ofront.a ^
+  -I..\Data\bin\mingw32\include ^
+  -Wl,-e_WinMain@16 ^
+  -nostartfiles %OFRDIR%\..\..\Mod\Lib\crt1.c
 
 @GOTO QUIT
 :ERR

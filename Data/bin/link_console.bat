@@ -4,13 +4,22 @@ REM to link a console program.
 REM When it is being run, the current directory
 REM must be the root directory of Free Oberon.
 
-CD bin >nul 2>&1
-@DEL /s %~n1.exe >nul 2>&1
-SET CURDIR=%~dp0
+
+REM Set DIR = directory of this script
+
+
+
+
+
+SET DIR=%~dp0
+
+CD _Build >nul 2>&1
+
+
 SET ONAME=%~n1
-SET GCCDIR=%CURDIR%mingw32\bin
-SET FOBDIR=%CURDIR%..\..
-SET OFRDIR=%CURDIR%OfrontPlus
+SET GCCDIR=%DIR%mingw32\bin
+SET FOBDIR=%DIR%..\..
+SET OFRDIR=%DIR%OfrontPlus
 SET OFRTAR=%OFRDIR%\Target\Win32
 SET PATH=%OFRTAR%;%GCCDIR%;%PATH%
 SET CC=gcc
@@ -27,6 +36,8 @@ GOTO START
 :FINISH
 REM END Put all ARGS.
 ECHO ON
+
+@DEL /s %~n1.exe >nul 2>&1
 
 @%CC% -O0 -fno-exceptions ^
   -I %FOBDIR%\src ^

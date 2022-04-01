@@ -3,6 +3,7 @@ PROG1="FreeOberon"
 PROG2="fob"
 OFRDIR="../Data/bin/OfrontPlus/Target/Linux_amd64"
 
+
 PATH="$OFRDIR:$PATH"
 export OBERON=.:$OFRDIR/Lib/Sym
 
@@ -65,26 +66,43 @@ $OFR -7wm Fob.Mod &&
 
 
 
+
 $CCFULL -c Utf8.c &&
+
 $CCFULL -c Strings.c &&
+
 $CCFULL -c Reals.c &&
+
 $CCFULL -c Int.c &&
+
 $CCFULL -c In.c &&
+
 $CCFULL -c Out.c &&
+
 $CCFULL -c Args.c &&
+
 $CCFULL -c Env.c &&
+
 $CCFULL -c Files.c &&
+
 $CCFULL -c Texts.c &&
+
 $CCFULL -c Random.c &&
+
 $CCFULL -c StrList.c &&
+
 $CCFULL -c Dir.c &&
+
 $CCFULL -c Graph.c &&
+
 $CCFULL -c TermBox.c &&
+
 
 $AR -crs ../Data/bin/libFreeOberon.a \
   Utf8.o Strings.o Reals.o Int.o In.o Out.o Args.o Env.o \
   Files.o Texts.o Random.o \
   StrList.o Dir.o Graph.o TermBox.o &&
+
 
 $CCFULL -o ../$PROG1 \
   Graph.c TermBox.c \
@@ -98,10 +116,10 @@ $CCFULL -o ../$PROG1 \
     allegro_acodec-5 allegro_font-5 allegro_dialog-5 \
     allegro-5 --libs --cflags) &&
 
+
 $CCFULL -o ../$PROG2 \
   FoStrings.c Builder.c \
   Term.c term/term_linux.c \
   Config.c Fob.c \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a
-

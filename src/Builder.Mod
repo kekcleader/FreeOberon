@@ -158,7 +158,7 @@ PROCEDURE GetModuleName*(IN fname: ARRAY OF CHAR; VAR modname: ARRAY OF CHAR);
 VAR i, j: INTEGER;
 BEGIN i := 0; j := 0;
   WHILE fname[i] # 0X DO INC(i) END; DEC(i);
-  WHILE (i # -1) & (fname[i] # '/') DO DEC(i) END; INC(i);
+  WHILE (i # -1) & (fname[i] # '/') & (fname[i] # '\') DO DEC(i) END; INC(i);
   WHILE (fname[i] # 0X) & (fname[i] # '.') DO
     modname[j] := fname[i]; INC(i); INC(j)
   END;
@@ -220,6 +220,7 @@ BEGIN ok := TRUE;
         p := p.next
       END
     END;
+    ;;;;Out.String(cmd);Out.Ln;
     Utf8.Encode(cmd, q);
     success := (Term.RunProcess(q, buf, bufLen, len, err) # 0) & (err = 0);
     IF ~success & (onError # NIL) THEN

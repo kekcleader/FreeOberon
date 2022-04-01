@@ -1,5 +1,5 @@
 MODULE Env;
-IMPORT CmdArgs, Platform, Utf8;
+IMPORT CmdArgs, Platform, Utf8, SYSTEM;
 TYPE SHORTCHAR = Utf8.SHORTCHAR;
 
 VAR count: INTEGER;
@@ -27,19 +27,27 @@ END GetByName;
 PROCEDURE GetAppDir*(VAR s: ARRAY OF CHAR);
 VAR c, delim: CHAR;
   i: INTEGER;
+  z: ARRAY 260 OF SHORTCHAR;
 BEGIN
-  GetByName('_', s);
-  s[LEN(s) - 1] := 0X;
+  IF Platform.Windows THEN
+    Platform.GetStartDir(z);
+    Utf8.Decode(z, s)
+  ELSE
+    GetByName('_', s);
+    IF s[0] # 0X THEN
+      s[LEN(s) - 1] := 0X;
 
-  i := 0; WHILE s[i] # 0X DO INC(i) END;
+      i := 0; WHILE s[i] # 0X DO INC(i) END;
 
-  IF Platform.Windows THEN delim := '\' ELSE delim := '/' END;
+      IF Platform.Windows THEN delim := '\' ELSE delim := '/' END;
 
-  c := s[0]; s[0] := delim;
-  REPEAT DEC(i) UNTIL s[i] = delim;
-  s[0] := c;
+      c := s[0]; s[0] := delim;
+      REPEAT DEC(i) UNTIL s[i] = delim;
+      s[0] := c;
 
-  s[i + 1] := 0X
+      s[i + 1] := 0X
+    END
+  END
 END GetAppDir;
 
 BEGIN
