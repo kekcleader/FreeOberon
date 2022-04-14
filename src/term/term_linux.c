@@ -54,7 +54,7 @@ int StartProcessIn(char *process, char *dir) {
       }
       close(q[1]);
       close(p[0]);
-      if (dir && dir[0] != '\0') {
+      if (process && process[0] != '/' && dir && dir[0] != '\0') {
         if (getcwd(cmd, 256) == NULL) {
           perror("StartProcessIn: Could not getcwd()");
         }
