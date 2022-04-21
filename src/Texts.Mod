@@ -347,7 +347,7 @@ BEGIN ch := S.nextCh; i := 0;
         IF hex THEN S.class := Inval ELSE S.class := Int END
       END
     ELSIF ch = 0X THEN
-      S.eot := TRUE
+      S.eot := TRUE; S.class := Inval
     ELSE (* Special character *) S.class := Char;
       IF neg THEN S.c := '-' ELSE S.c := ch; Read(S, ch) END
     END
