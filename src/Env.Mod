@@ -6,7 +6,7 @@ VAR count: INTEGER;
 
 PROCEDURE Count*(): INTEGER;
 BEGIN
-  IF count = -1 THEN count := CmdArgs.GetEnvCount() END
+  IF count = -1 THEN count := CmdArgs.EnvCount() END
 RETURN count END Count;
 
 PROCEDURE Get*(n: INTEGER; VAR s: ARRAY OF CHAR);
@@ -30,7 +30,7 @@ VAR c, delim: CHAR;
   z: ARRAY 260 OF SHORTCHAR;
 BEGIN
   IF Platform.Windows THEN
-    Platform.GetStartDir(z);
+    Platform.GetAppDir(z);
     Utf8.Decode(z, s)
   ELSE
     GetByName('_', s);

@@ -220,22 +220,22 @@ BEGIN ok := TRUE;
         p := p.next
       END
     END;
-    ;;;;Out.String(cmd);Out.Ln;
     Utf8.Encode(cmd, q);
     success := (Term.RunProcess(q, buf, bufLen, len, err) # 0) & (err = 0);
     IF ~success & (onError # NIL) THEN
-      s := ' Command returned '; Int.Append(err, s);
-      Strings.Append(' exit status ', s);
+      z := ''; line := 0; col := 0;
       IF (len > 0) & (len < bufLen) THEN
         IF buf[len - 1] = 0AX THEN buf[len - 1] := 0X ELSE buf[len] := 0X END;
         Utf8.Decode(buf, z);
-        ParseErrors(z, fname, line, col, error);
-        onError(fname, col, line, error, z)
+        ParseErrors(z, fname, line, col, error)
       ELSIF link THEN FoStrings.GetErrorStr(422, z)
       ELSE FoStrings.GetErrorStr(421, z)
       END;
-      IF z[0] = 0X THEN onError('', -1, -1, -1, s)
-      ELSE onError('', -1, -1, -1, z)
+      IF z = '' THEN
+        s := ' Command returned '; Int.Append(err, s);
+        Strings.Append(' exit status ', s);
+        onError('', -1, -1, -1, s)
+      ELSE onError(fname, col, line, error, z)
       END
     END
   END ;
