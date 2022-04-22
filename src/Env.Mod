@@ -50,6 +50,17 @@ BEGIN
   END
 END GetAppDir;
 
+PROCEDURE GetLang*(VAR s: ARRAY OF CHAR);
+BEGIN
+  GetByName('LANGUAGE', s);
+  IF s = '' THEN
+    GetByName('LC_ALL', s);
+    IF s = '' THEN
+      GetByName('LANG', s)
+    END
+  END
+END GetLang;
+
 BEGIN
   count := -1
 END Env.

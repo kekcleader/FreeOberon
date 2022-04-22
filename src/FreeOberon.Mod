@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT T := TermBox, Files, Args, Utf8, Builder,
+IMPORT T := TermBox, Files, Args, Utf8, Builder, Env,
        OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
 CONST
   (* Direction of Selection *)
@@ -760,6 +760,7 @@ BEGIN
   (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuLanguage', s);
   OV.Add(m, OV.NewMenu(s, '', 0, OptionsLanguage));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuCompiler', s);
   OV.Add(m, OV.NewMenu(s, '', 0, NIL));
   (*!TODO*) m.children.prev.status := OV.disabled;
@@ -822,6 +823,7 @@ BEGIN
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuSizeMove', s);
   OV.Add(m, OV.NewMenu(s, 'Ctrl+F5', OV.hCtrlF5, NIL));
+  (*!TODO*) m.children.prev.status := OV.disabled;
   FoStrings.Get('menuZoom', s);
   OV.Add(m, OV.NewMenu(s, 'F5', OV.hF5, OV.ZoomCurWindow));
   FoStrings.Get('menuNextWindow', s);
@@ -911,12 +913,18 @@ BEGIN i := 0; w := 0; h := 0;
   Strings.Extract(s, i + 1, 30, x); h := Int.Val(x)
 END ParseSize;
 
+PROCEDURE IdentifyLanguage(VAR lang: ARRAY OF CHAR);
+BEGIN
+  Env.GetLang(lang); lang[2] := 0X;
+  IF ~FoStrings.LangExists(lang) THEN lang := defLang END
+END IdentifyLanguage;
+
 PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR w, h: INTEGER;
     VAR lang: ARRAY OF CHAR; VAR fnames: Fnames);
 VAR i, nofnames: INTEGER;
   s: ARRAY 2048 OF CHAR;
 BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := defW; h := defH;
-  lang := defLang;
+  lang := '';
   WHILE i <= Args.Count DO Args.Get(i, s);
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--software' THEN sw := TRUE
@@ -929,7 +937,7 @@ BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := defW; h := defH;
         INC(i); Args.Get(i, lang);
         IF ~FoStrings.LangExists(lang) THEN Out.String('Language "');
           Out.String(lang); Out.String('" does not exist.'); Out.Ln;
-          lang := defLang
+          lang := ''
         END
       END
     ELSIF nofnames < LEN(fnames) THEN
@@ -940,7 +948,8 @@ BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := defW; h := defH;
     END;
     INC(i)
   END;
-  IF nofnames < LEN(fnames) THEN fnames[nofnames][0] := 0X END
+  IF nofnames < LEN(fnames) THEN fnames[nofnames][0] := 0X END;
+  IF lang = '' THEN IdentifyLanguage(lang) END
 END ParseArgs;
 
 PROCEDURE Init(): BOOLEAN;
