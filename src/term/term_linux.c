@@ -54,24 +54,26 @@ int StartProcessIn(char *process, char *dir) {
       }
       close(q[1]);
       close(p[0]);
-      if (process && process[0] != '/' && dir && dir[0] != '\0') {
-        if (getcwd(cmd, 256) == NULL) {
-          perror("StartProcessIn: Could not getcwd()");
-        }
-        i = 0;
-        while (cmd[i]) i++;
-        if (i && cmd[i - 1] != '/') {
-          cmd[i] = '/';
-          i++;
+      if (dir && dir[0] != '\0') {
+        if (process && process[0] != '/') {
+          if (getcwd(cmd, 256) == NULL) {
+            perror("StartProcessIn: Could not getcwd()");
+          }
+          i = 0;
+          while (cmd[i]) i++;
+          if (i && cmd[i - 1] != '/') {
+            cmd[i] = '/';
+            i++;
+            cmd[i] = '\0';
+          }
+          j = 0;
+          while (process[j]) { cmd[i] = process[j]; i++; j++; }
           cmd[i] = '\0';
+          process = &cmd[0];
         }
-        j = 0;
-        while (process[j]) { cmd[i] = process[j]; i++; j++; }
-        cmd[i] = '\0';
         if (chdir(dir) != 0) {
           perror("StartProcessIn: Could not chdir() in child process");
         }
-        process = &cmd[0];
       }
       if (execl(process, process, (char*)NULL)) {
         perror("StartProcess: Could not execl()");
