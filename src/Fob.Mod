@@ -44,8 +44,11 @@ PROCEDURE BuildErrorCallback(fname: ARRAY OF CHAR; col, line, error: INTEGER;
     msg: ARRAY OF CHAR);
 BEGIN
   IF fname[0] # 0X THEN
-    Out.String(fname); Out.Char(':'); Out.Int(line, 0);
-    Out.Char(':'); Out.Int(col, 0); Out.String(': ')
+    Out.String(fname);
+    IF line >= 0 THEN
+      Out.Char(':'); Out.Int(line, 0); Out.Char(':'); Out.Int(col, 0)
+    END;
+    Out.String(': ')
   END;
   Out.String('error: '); Out.String(msg); Out.Ln
 END BuildErrorCallback;
@@ -84,7 +87,7 @@ BEGIN
     END
   ELSE (*res = 400-file not found or 401-file contains wrong module name*)
     FoStrings.MakeErrorStr(res, s);
-    BuildErrorCallback(errFname, 1, 1, 401, s)
+    BuildErrorCallback(errFname, -1, -1, 401, s)
   END;
   IF ~ok THEN Platform.ExitOS(1) END
 END Do;
