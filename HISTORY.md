@@ -1,3 +1,14 @@
+## 1.1.0-alpha.6 - 2022-04-22
+
+* OS UI language is used
+* File dialog opens the last used directory
+* Enhance video mode on Linux
+* Introduce Fob - the Oberon console compiler
+* Add Graph.Circle
+* Add module Env for environment variable access
+* ReadKey works with more special keys
+* Fix random compilation and linking errors on Windows
+
 ## 1.1.0-alpha.5 - 2022-02-20
 
 * Fix POSIX file creation/rename when temp path was on another partition
