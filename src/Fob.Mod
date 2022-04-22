@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT FoStrings, Builder, Config, Args, Strings, Out, Kernel;
+IMPORT FoStrings, Builder, Config, Args, Strings, Out, Platform, Kernel;
 
 PROCEDURE Usage;
 VAR s: ARRAY 256 OF CHAR;
@@ -45,10 +45,9 @@ PROCEDURE BuildErrorCallback(fname: ARRAY OF CHAR; col, line, error: INTEGER;
 BEGIN
   IF fname[0] # 0X THEN
     Out.String(fname); Out.Char(':'); Out.Int(line, 0);
-    Out.Char(':'); Out.Int(col, 0); Out.String(': error: ')
-  ELSE Out.String('error: ')
+    Out.Char(':'); Out.Int(col, 0); Out.String(': ')
   END;
-  Out.String(msg); Out.Ln
+  Out.String('error: '); Out.String(msg); Out.Ln
 END BuildErrorCallback;
 
 PROCEDURE ParseArgs(VAR mainFname, lang: ARRAY OF CHAR);
@@ -68,7 +67,7 @@ PROCEDURE Do;
 VAR modules: Builder.StrList;
   mainFname, modname, exename, errFname, lang, s: ARRAY 256 OF CHAR;
   errLine, errCol, res: INTEGER;
-  graph: BOOLEAN;
+  ok, graph: BOOLEAN;
 BEGIN
   ParseArgs(mainFname, lang);
   FoStrings.SetLang(lang);
@@ -76,15 +75,18 @@ BEGIN
   Builder.GetModuleName(mainFname, modname);
   modules := Builder.UsedModuleList(modname, mainFname,
     errFname, errLine, errCol, res);
+  ok := FALSE;
   IF res = 0 THEN
     graph := Builder.ImportsGraph(modules);
     IF Builder.CompileAll(modules, graph, exename,
-        TRUE, BuildErrorCallback) THEN
+        TRUE, BuildErrorCallback)
+    THEN ok := TRUE
     END
   ELSE (*res = 400-file not found or 401-file contains wrong module name*)
     FoStrings.MakeErrorStr(res, s);
     BuildErrorCallback(errFname, 1, 1, 401, s)
-  END
+  END;
+  IF ~ok THEN Platform.ExitOS(1) END
 END Do;
 
 BEGIN

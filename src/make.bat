@@ -114,7 +114,8 @@ windres resources.rc resources.o
   -lallegro -lallegro_primitives -lallegro_image ^
   -I..\Data\bin\mingw32\include ^
   -Wl,-e_WinMain@16 ^
-  -nostartfiles %OFRDIR%\..\..\Mod\Lib\crt1.c
+  -nostartfiles %OFRDIR%\..\..\Mod\Lib\crt1.c ^
+  -Wl,-subsystem,windows
 
 %CCFULL% -o ..\%PROG2%.exe ^
   FoStrings.c Builder.c ^
