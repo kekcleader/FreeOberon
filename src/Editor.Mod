@@ -855,6 +855,7 @@ BEGIN
       ELSE c.text.selL := 0 END
     END;
     IF c.text.selT = c.text.selB THEN Order(c.text.selL, c.text.selR) END
+  ELSE c.text.selected := FALSE
   END;
   IF end THEN
     IF c.text.x < c.text.cur.len THEN c.text.x := c.text.cur.len END
