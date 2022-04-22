@@ -846,7 +846,7 @@ BEGIN isCurTarget := target = W;
   IF software IN W.options THEN n := 0 ELSE n := 1 END;
   Al.set_new_display_option(Al.renderMethod, n, Al.suggest);
   Al.set_new_display_option(Al.vsync, 2(*off*), Al.suggest);
-  Al.set_new_display_option(Al.singleBuffer, 1, Al.suggest);
+  (*Al.set_new_display_option(Al.singleBuffer, 1, Al.suggest);*)
   IF smooth IN W.options THEN n := 1;
     Al.set_new_display_option(Al.samples, 8, Al.suggest)
   ELSE n := 0
