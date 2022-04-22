@@ -10,7 +10,7 @@ VAR
 PROCEDURE Decode*(IN in: ARRAY OF SHORTCHAR; OUT out: ARRAY OF CHAR);
 VAR i, j, val, lim: INTEGER; c: SHORTCHAR;
 BEGIN Done := TRUE; c := in[0]; i := 1; j := 0; lim := LEN(out) - 1;
-  WHILE Done & (c # 0X) & (j < lim) DO
+  WHILE Done & (i < LEN(in)) & (c # 0X) & (j < lim) DO
     IF c < 80X THEN out[j] := c; INC(j)
     ELSIF (c < 0E0X) & (i < LEN(in) - 2) THEN val := ORD(c) - 192;
       IF val < 0 THEN out := in$; Done := FALSE END;
