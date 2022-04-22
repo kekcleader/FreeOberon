@@ -15,7 +15,7 @@ SET DIR=%~dp0
 
 SET FNAME=%1
 
-IF "%NFAME:~0,1%"=="\" GOTO ENDIF1
+IF "%FNAME:~0,1%"=="\" GOTO ENDIF1
   SET FNAME=..\%FNAME%
 :ENDIF1
 
@@ -25,7 +25,7 @@ CD _Build
 SET OFRDIR=%DIR%OfrontPlus\Target\Win32
 SET PATH=%OFRDIR%;%PATH%
 SET OBERON=.;%DIR%..\..\src;%OFRDIR%\Lib\Sym
-SET OFR=ofront+ -s -88 -7w
+SET OFR=ofront+ -s -48 -7w
 
 ECHO ON
 @%OFR% %2 %FNAME%

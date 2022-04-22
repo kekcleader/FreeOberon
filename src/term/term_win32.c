@@ -182,7 +182,7 @@ int StartProcessIn(char *process, char *dir) {
   childEnvPath[0] = '.';
   childEnvPath[1] = '.';
   childEnvPath[2] = ';';
-  memcpy(childEnvPath + 3, pszOldVal, pathSize);
+  memcpy(childEnvPath + 3, pszOldVal, pathSize + 1);
   
   // Set value of PATH for child process to inherit
   if (!SetEnvironmentVariable(TEXT("PATH"), childEnvPath)) {
@@ -348,12 +348,13 @@ void ErrorExit(PTSTR lpszFunction) {
 
 int RunProcessIn(char *cmd, char *dir, char *buf, int limit, int *len, int *err) {
   int success = 0;
+  *len = 0;
   if (StartProcessIn(cmd, dir)) {
     int n, i = 0;
     do {
       ReadFromProcess(&buf[i], &n, limit - i); //!FIXME add inner loop
       if (n > 0) i += n;
-      Sleep(10);
+      Sleep(1);
     } while (!ProcessFinished(err) && (i < limit));
     *len = i;
     success = 1;
