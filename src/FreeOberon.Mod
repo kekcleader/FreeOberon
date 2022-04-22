@@ -58,13 +58,14 @@ TYPE
   END;
 
 VAR
-  progBuf: ARRAY 16300 OF SHORTCHAR; (* For interacting with a launched program *)
-  inputBuf: ARRAY 16300 OF CHAR; (* Saves entered chars before Enter pressed *)
+  progBuf: ARRAY 16300 OF SHORTCHAR; (* For interaction with running program *)
+  inputBuf: ARRAY 16300 OF CHAR; (* Holds entered chars before Enter pressed *)
   inputBufLen: INTEGER;
   programFinished: BOOLEAN;
+  lastFileDialogDir: ARRAY 256 OF CHAR; (* Directory path for file dialog *)
   app: OV.App;
 
-  curX, curY: INTEGER; (* Cursor position *)
+  curX, curY: INTEGER; (* Text cursor position *)
   curFg, curBg: INTEGER; (* Current foreground and background of proc. Write *)
   terminalNeedRedraw: BOOLEAN; (* Used when a compiled program is running *)
   terminalMouseShown: BOOLEAN; (* Same *)
@@ -391,8 +392,21 @@ BEGIN dir := prg$; curX := 0; curY := 0; curFg := 7; curBg := 0;
   END
 END RunProgram;
 
+(** Puts in dir part of string s, before the last '/'.
+    If there is no '/', dir is ''. *)
+PROCEDURE DirName(IN s: ARRAY OF CHAR; OUT dir: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN
+  i := 0; WHILE s[i] # 0X DO INC(i) END;
+  WHILE (i >= 0) & (s[i] # '/') DO DEC(i) END;
+  dir[i + 1] := 0X;
+  WHILE i >= 0 DO dir[i] := s[i]; DEC(i) END
+END DirName;
+
 PROCEDURE OpenFileOkClick(c: OV.Control; fname: ARRAY OF CHAR);
-BEGIN DoOpenFile(fname)
+BEGIN
+  DirName(fname, lastFileDialogDir);
+  DoOpenFile(fname)
 END OpenFileOkClick;
 
 PROCEDURE DoSaveFile(c: OV.Control; fname: ARRAY OF CHAR);
@@ -411,7 +425,7 @@ END DoSaveFile;
 PROCEDURE FileOpen(c: OV.Control);
 VAR w: Editor.FileDialog;
 BEGIN
-  w := Editor.NewFileDialog(Editor.open);
+  w := Editor.NewFileDialog(Editor.open, lastFileDialogDir);
   w.onFileOk := OpenFileOkClick;
   OV.AddWindow(app, w)
 END FileOpen;
@@ -430,7 +444,7 @@ END FileReload;
 PROCEDURE FileSaveAs(c: OV.Control);
 VAR d: Editor.FileDialog;
   w: OV.Window; e: Editor.Editor;
-BEGIN d := Editor.NewFileDialog(Editor.save);
+BEGIN d := Editor.NewFileDialog(Editor.save, lastFileDialogDir);
   d.onFileOk := DoSaveFile;
   w := c.app.windows;
   IF (w # NIL) & (w IS Editor.Editor) THEN e := w(Editor.Editor);
@@ -938,6 +952,7 @@ VAR success, fs, sw: BOOLEAN;
   opt: SET;
 BEGIN
   success := FALSE;
+  lastFileDialogDir := '';
   ParseArgs(fs, sw, w, h, lang, fnames);
   opt := {T.resizable, T.center};
   IF fs THEN INCL(opt, T.fullscreen) ELSE INCL(opt, T.window) END;

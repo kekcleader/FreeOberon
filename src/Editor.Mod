@@ -219,7 +219,7 @@ BEGIN C := c(OV.ColumnList); w := C.parent(FileDialog);
   OV.EditSetCaption(w.edtFilename, s)
 END FileDialogListChange;
 
-PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER);
+PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER; IN dir: ARRAY OF CHAR);
 VAR L: INTEGER;
   s: FoStrings.String;
 BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
@@ -257,7 +257,9 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
     IF c.home[L] = '\' THEN c.home[L] := '/' END; INC(L)
   END; (* L = length of c.home; append / if it is not in the end *)
   IF c.home[L - 1] # '/' THEN c.home[L] := '/'; INC(L); c.home[L] := 0X END;
-  Strings.Append(Config.stdPath, c.home); c.path := c.home$;
+  Strings.Append(Config.stdPath, c.home);
+
+  IF dir[0] = 0X THEN c.path := c.home$ ELSE c.path := dir$ END; 
 
   (* ColumnList *)
   c.colFiles := OV.NewColumnList();
@@ -271,9 +273,9 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   OV.Add(c, c.colFiles)
 END InitFileDialog;
 
-PROCEDURE NewFileDialog*(type: INTEGER): FileDialog;
+PROCEDURE NewFileDialog*(type: INTEGER; IN dir: ARRAY OF CHAR): FileDialog;
 VAR c: FileDialog;
-BEGIN NEW(c); InitFileDialog(c, type) ;
+BEGIN NEW(c); InitFileDialog(c, type, dir) ;
 RETURN c END NewFileDialog;
 
 (* FileDialog Method *)
