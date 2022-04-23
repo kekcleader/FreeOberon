@@ -654,15 +654,15 @@ BEGIN
     SYSTEM.VAL(Al.Color, color), FLT(thickness))
 END ThickLine;
 
-PROCEDURE LineF*(x1, y1, x2, y2: REAL; color: Color);
+PROCEDURE LineF(x1, y1, x2, y2: REAL; color: Color);
 BEGIN
   IF x1 < x2 THEN x2 := x2 + 1
   ELSIF x1 > x2 THEN x1 := x1 + 1
-  ELSE x1 := x1 + 0.5; x2 := x2 + 0.5
+  ELSE x1 := x1 + 0.5; x2 := x1
   END;
-  IF y1 < y2 THEN y2 := y2 + 1
+  IF y1 < y2 THEN y1 := y1 + 0.01; y2 := y2 + 0.99
   ELSIF y1 > y2 THEN y1 := y1 + 1
-  ELSE y1 := y1 + 0.5; y2 := y2 + 0.5
+  ELSE y1 := y1 + 0.5; y2 := y1
   END;
   Al.draw_line(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color), 0.0)
 END LineF;
@@ -767,7 +767,10 @@ END DrawPart;
 PROCEDURE DrawTintedPart*(bmp: Bitmap; color: Color;
     sx, sy, sw, sh, dx, dy: INTEGER);
 BEGIN
-  IF ~Al.is_compatible_bitmap(bmp.bmp) THEN Error('NON-COMPAT') END;
+  IF ~Al.is_compatible_bitmap(bmp.bmp) THEN
+    (*Error('Graph: NON-COMPAT');*)
+    Al.convert_bitmap(bmp.bmp)
+  END;
   Al.draw_tinted_bitmap_region(bmp.bmp, SYSTEM.VAL(Al.Color, color),
     FLT(sx), FLT(sy), FLT(sw), FLT(sh), FLT(dx), FLT(dy), {})
 END DrawTintedPart;
