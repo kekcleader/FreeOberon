@@ -24,9 +24,9 @@ echo ================================
 echo      BEGIN PACK
 
 [ -d "$FOLDER" ] && mv $FOLDER $BAKFOLDER
-mkdir -p $FOLDER/bin
-cp ../bin/fungame.in $FOLDER/bin/
-cp ../bin/TEXT.DAT $FOLDER/bin/
+mkdir -p $FOLDER/_Build
+cp ../_Build/fungame.in $FOLDER/_Build/
+cp ../_Build/TEXT.DAT $FOLDER/_Build/
 
 cp ../*.{md,sh} $FOLDER/
 cp ../LICENSE $FOLDER/
