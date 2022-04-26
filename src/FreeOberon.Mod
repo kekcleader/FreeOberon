@@ -928,6 +928,7 @@ BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := defW; h := defH;
   WHILE i <= Args.Count DO Args.Get(i, s);
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--software' THEN sw := TRUE
+    ELSIF s = '--debug' THEN Config.SetDebug(TRUE)
     ELSIF s = '--size' THEN
       IF i # Args.Count THEN
         INC(i); Args.Get(i, s); ParseSize(s, w, h)
