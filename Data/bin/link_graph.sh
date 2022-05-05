@@ -1,8 +1,8 @@
 #!/bin/bash
-#   This script is run by Free Oberon on Linux
-#   to link a graphics program.
-#   When it is being run, the current directory
-#   must be the root directory of Free Oberon.
+### This script is run by Free Oberon on Linux
+### to link a graphics program.
+### When it is being run, the current directory
+### must be the root directory of Free Oberon.
 
 # Set DIR = directory of this script
 SOURCE=${BASH_SOURCE[0]}

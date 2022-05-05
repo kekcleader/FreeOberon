@@ -15,12 +15,20 @@ SET DIR=%~dp0
 
 SET FNAME=%1
 
-IF "%FNAME:~0,1%"=="\" GOTO ENDIF1
-  SET FNAME=..\%FNAME%
+REM If "C:Dir\Dir2"-style relative path given
+IF NOT "%FNAME:~1,1%"==":" GOTO ENDIF1
+IF "%FNAME:~2,1%"=="\" GOTO ENDIF1
+  SET FNAME=%FNAME:~0,2%..\%FNAME:~2%
+  GOTO ENDIF2
 :ENDIF1
+REM Else if not "\" or "C:\"-style absolute path
+IF "%FNAME:~0,1%"=="\" GOTO ENDIF2
+IF "%FNAME:~1,2%"==":\" GOTO ENDIF2
+  SET FNAME=..\%FNAME%
+:ENDIF2
 
 IF NOT EXIST _Build MD _Build
-CD _Build
+CD _Build || EXIT /b 407
 
 SET OFRDIR=%DIR%OfrontPlus\Target\Win32
 SET PATH=%OFRDIR%;%PATH%
@@ -31,5 +39,5 @@ ECHO ON
 @%OFR% %2 %FNAME%
 @SET RETCODE=%ERRORLEVEL%
 @ECHO OFF
-@CD ..
+CD ..
 EXIT /b %RETCODE%

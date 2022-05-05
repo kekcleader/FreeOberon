@@ -221,6 +221,11 @@ BEGIN ok := TRUE;
       END
     END;
     Utf8.Encode(cmd, q);
+
+    IF Config.debug THEN
+      Out.String('Term.RunProcess "'); Out.String(cmd); Out.Char('"'); Out.Ln
+    END;
+
     success := (Term.RunProcess(q, buf, bufLen, len, err) # 0) & (err = 0);
     IF ~success & (onError # NIL) THEN
       z := ''; line := 0; col := 0;

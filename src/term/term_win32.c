@@ -113,23 +113,31 @@ int StartProcessIn(char *process, char *dir) {
   saAttr.lpSecurityDescriptor = NULL;
 
   // Create a pipe for the child process's STDOUT.
-  if (!MyCreatePipeEx(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0, FILE_FLAG_OVERLAPPED, 0) )
+  if (!MyCreatePipeEx(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0, FILE_FLAG_OVERLAPPED, 0)) {
     ErrorExit(TEXT("StdoutRd CreatePipe"));
+    return 0;
+  }
 
   // Ensure the read handle to the pipe for STDOUT is not inherited.
-  if (!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0) )
+  if (!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
     ErrorExit(TEXT("Stdout SetHandleInformation"));
+    return 0;
+  }
 
   // Create a pipe for the child process's STDIN.
-  if (!MyCreatePipeEx(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0, FILE_FLAG_OVERLAPPED, 0))
+  if (!MyCreatePipeEx(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0, FILE_FLAG_OVERLAPPED, 0)) {
     ErrorExit(TEXT("Stdin CreatePipe"));
+    return 0;
+  }
 
   // Ensure the write handle to the pipe for STDIN is not inherited.
-  if (!SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0) )
+  if (!SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0)) {
     ErrorExit(TEXT("Stdin SetHandleInformation"));
+    return 0;
+  }
 
   ZeroMemory(&oOverlap, sizeof(oOverlap));
- 
+
   // ACTUAL START PROCESS
 
   //TCHAR szCmdline[]=TEXT(process);
@@ -150,11 +158,11 @@ int StartProcessIn(char *process, char *dir) {
   siStartInfo.wShowWindow = SW_HIDE;
 
   /* Environment variables */
-  
+
   LPTSTR pszOldVal, childEnvPath;
   BOOL envPathExists = TRUE;
   DWORD pathSize, dwRet, dwErr;
-  
+
   // Save original value of the PATH environment variable
   pszOldVal = (LPTSTR)malloc(BUFSIZE * sizeof(TCHAR));
   pathSize = GetEnvironmentVariable(TEXT("PATH"), pszOldVal, BUFSIZE);
@@ -167,31 +175,42 @@ int StartProcessIn(char *process, char *dir) {
     pszOldVal = (LPTSTR)realloc(pszOldVal, pathSize * sizeof(TCHAR));
     if (pszOldVal == NULL) {
       ErrorExit(TEXT("realloc out memory"));
+      return 0;
     }
     dwRet = GetEnvironmentVariable(TEXT("PATH"), pszOldVal, pathSize);
     if (!dwRet) {
+      free(pszOldVal);
       ErrorExit(TEXT("GetEnvironmentVariable failed"));
+      return 0;
     }
   }
-  
+
   // Determine the value of environment variable PATH for the child process
-  childEnvPath = (LPTSTR)malloc((pathSize + 3) * sizeof(TCHAR));
+  childEnvPath = (LPTSTR)malloc((pathSize + 4) * sizeof(TCHAR));
   if (childEnvPath == NULL) {
+    free(pszOldVal);
     ErrorExit(TEXT("malloc out memory"));
+    return 0;
   }
   childEnvPath[0] = '.';
   childEnvPath[1] = '.';
   childEnvPath[2] = ';';
-  memcpy(childEnvPath + 3, pszOldVal, pathSize + 1);
-  
+  memcpy(childEnvPath + 3, pszOldVal, (pathSize + 1) * sizeof(TCHAR));
+
   // Set value of PATH for child process to inherit
   if (!SetEnvironmentVariable(TEXT("PATH"), childEnvPath)) {
+    free(childEnvPath);
+    free(pszOldVal);
     ErrorExit(TEXT("SetEnvironmentVariable 1 failed"));
+    return 0;
   }
+
+  free(childEnvPath);
+  free(pszOldVal);
 
   // Create the child process.
   bSuccess = CreateProcess(NULL,
-    process, //szCmdline,    // command line
+    process, // command line
     NULL,    // process security attributes
     NULL,    // primary thread security attributes
     TRUE,    // handles are inherited
@@ -200,14 +219,15 @@ int StartProcessIn(char *process, char *dir) {
     dir,          // current directory of the process
     &siStartInfo, // STARTUPINFO pointer
     &piProcInfo); // receives PROCESS_INFORMATION
-  
-  // If an error occurs, exit the application.
+
+  // Show error but do not exit this procedure
   if (!bSuccess) ErrorExit(TEXT("CreateProcess"));
-  
+
   // Restore original value of PATH
   if (envPathExists) {
     if (!SetEnvironmentVariable(TEXT("PATH"), pszOldVal)) {
       ErrorExit(TEXT("SetEnvironmentVariable 2 failed"));
+      return 0;
     }
   } else {
     SetEnvironmentVariable(TEXT("PATH"), NULL);
@@ -332,7 +352,7 @@ void ErrorExit(PTSTR lpszFunction) {
     0, NULL);
 
   lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
-    (lstrlen((LPCTSTR)lpMsgBuf)+lstrlen((LPCTSTR)lpszFunction)+40)*sizeof(TCHAR));
+    (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
 
   snprintf((LPTSTR)lpDisplayBuf,
     LocalSize(lpDisplayBuf) / sizeof(TCHAR),
@@ -343,7 +363,7 @@ void ErrorExit(PTSTR lpszFunction) {
 
   LocalFree(lpMsgBuf);
   LocalFree(lpDisplayBuf);
-  ExitProcess(1);
+  //ExitProcess(1);
 }
 
 int RunProcessIn(char *cmd, char *dir, char *buf, int limit, int *len, int *err) {
