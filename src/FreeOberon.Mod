@@ -507,7 +507,7 @@ END BuildErrorCallback;
 
 PROCEDURE OnBuild(c: OV.Control);
 VAR w: OV.Window;
-  graph: BOOLEAN;
+  graph, foreign: BOOLEAN;
   mainFname, modname, exename, errFname, s: ARRAY 256 OF CHAR;
   errLine, errCol, res: INTEGER;
   modules: Builder.StrList;
@@ -520,9 +520,10 @@ BEGIN w := c.app.windows;
       Builder.SetWorkDir(mainFname);
       Builder.GetModuleName(mainFname, modname);
       modules := Builder.UsedModuleList(modname, mainFname,
-        errFname, errLine, errCol, res);
+        errFname, errLine, errCol, foreign, res);
+      IF foreign THEN res := 402 END;
       IF res = 0 THEN
-        graph := Builder.ImportsGraph(modules);
+        graph := Builder.Includes(modules, 'Graph');
         IF Builder.CompileAll(modules, graph, exename,
             FALSE, BuildErrorCallback)
         THEN RunProgram(exename)
@@ -531,7 +532,7 @@ BEGIN w := c.app.windows;
         FocusOrOpenFile(errFname);
         e := app.windows(Editor.Editor);
         e.text.MoveToLineCol(errLine, errCol, e.h - 2);
-        FoStrings.MakeErrorStr(401(*file contains wrong module name*), s);
+        FoStrings.MakeErrorStr(res(*!FIXME should be just 401?*), s);
         ShowError(s)
       END
     END

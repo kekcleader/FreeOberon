@@ -71,22 +71,22 @@ PROCEDURE Do;
 VAR modules: Builder.StrList;
   mainFname, modname, exename, errFname, lang, s: ARRAY 256 OF CHAR;
   errLine, errCol, res: INTEGER;
-  ok, graph: BOOLEAN;
+  foreign, ok, graph: BOOLEAN;
 BEGIN
   ParseArgs(mainFname, lang);
   FoStrings.SetLang(lang);
   Builder.SetWorkDir(mainFname);
   Builder.GetModuleName(mainFname, modname);
   modules := Builder.UsedModuleList(modname, mainFname,
-    errFname, errLine, errCol, res);
+    errFname, errLine, errCol, foreign, res);
+  IF foreign THEN res := 402 END;
   ok := FALSE;
   IF res = 0 THEN
-    graph := Builder.ImportsGraph(modules);
-    IF Builder.CompileAll(modules, graph, exename,
-        TRUE, BuildErrorCallback)
+    graph := Builder.Includes(modules, 'Graph');
+    IF Builder.CompileAll(modules, graph, exename, TRUE, BuildErrorCallback)
     THEN ok := TRUE
     END
-  ELSE (*res = 400-file not found or 401-file contains wrong module name*)
+  ELSE (*res = 400-bad file, 401-bad module name, or 402-foreign module*)
     FoStrings.MakeErrorStr(res, s);
     BuildErrorCallback(errFname, -1, -1, 401, s)
   END;

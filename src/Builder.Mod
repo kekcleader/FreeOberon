@@ -24,6 +24,7 @@ TYPE
   StrListDesc* = RECORD
     s*: ARRAY 256 OF CHAR; (* Module name *)
     fname*: ARRAY 256 OF CHAR; (* Filename of module source *)
+    foreign*: BOOLEAN; (* TRUE for bindings that do not produce a C-file *)
     next*: StrList
   END;
 
@@ -44,7 +45,7 @@ PROCEDURE ModuleExists(IN fname: ARRAY OF CHAR): BOOLEAN;
 VAR F: Files.File;
   exists: BOOLEAN;
 BEGIN F := Files.Old(fname); exists := F # NIL;
-  IF F # NIL THEN Files.Close(F) END ;
+  IF exists THEN Files.Close(F) END ;
 RETURN exists END ModuleExists;
 
 PROCEDURE SetWorkDir*(IN fname: ARRAY OF CHAR);
@@ -213,7 +214,7 @@ BEGIN ok := TRUE;
     ELSIF link & (list # NIL) THEN
       p := list;
       WHILE p.next # NIL DO
-        IF ModuleExists(p.fname) THEN
+        IF ~p.foreign & ModuleExists(p.fname) THEN
           Strings.Append(' ', cmd); Strings.Append(p.s, cmd);
           Strings.Append('.c', cmd)
         END;
@@ -352,8 +353,8 @@ BEGIN exename[0] := 0X;
       p := p.next
     END;
     IF ok THEN
-      IF ModuleExists(p.fname) THEN
-        IF ~Compile(p.fname, '', TRUE, onError) THEN ok := FALSE END
+      IF ~ModuleExists(p.fname) OR ~Compile(p.fname, '', TRUE, onError) THEN
+        ok := FALSE
       END;
       ok := ok & Link(p.fname, p.s, graph, modules,
           exename, onError, moveToCwd);
@@ -371,19 +372,25 @@ BEGIN IF Config.isWindows THEN Strings.Cap(modname); Strings.Cap(filebase) END;
 RETURN modname = filebase END EqualModuleNames;
 
 PROCEDURE GetImportedModules(IN fname, modname: ARRAY OF CHAR;
-    VAR line, col: INTEGER; VAR res: INTEGER): StrList;
+    VAR line, col: INTEGER; VAR foreign: BOOLEAN; VAR res: INTEGER): StrList;
 VAR F: Files.File;
   R: Files.Rider;
   top, p: StrList;
   ch: CHAR;
   mod, s, fname2: ARRAY 256 OF CHAR;
   exit: BOOLEAN;
-BEGIN res := 401; NEW(top); top.next := NIL; p := top;
+BEGIN foreign := FALSE; res := 401; NEW(top); top.next := NIL; p := top;
   F := Files.Old(fname);
   IF F = NIL THEN res := 400
   ELSE Files.Set(R, F, 0); Files.ReadChar(R, ch);
     line := 1; col := 1; GetSym(R, ch, s, line, col);
     IF s = 'MODULE' THEN GetSym(R, ch, s, line, col);
+      IF s = '[' THEN
+        GetSym(R, ch, s, line, col);
+        IF s = 'foreign' THEN foreign := TRUE END;
+        REPEAT GetSym(R, ch, s, line, col) UNTIL R.eof OR (s = ']');
+        IF ~R.eof THEN GetSym(R, ch, s, line, col) END
+      END;
       IF EqualModuleNames(modname, s) THEN
         res := 0;
         GetSym(R, ch, s, line, col);
@@ -396,7 +403,7 @@ BEGIN res := 401; NEW(top); top.next := NIL; p := top;
               END;
               IF IsSysModule(mod) OR FindModule(mod, fname2) THEN
                 NEW(p.next); p := p.next; p.next := NIL;
-                p.s := mod$; p.fname := fname2$
+                p.s := mod$; p.fname := fname2$; p.foreign := FALSE
               END;
               IF s = ',' THEN GetSym(R, ch, s, line, col)
               ELSE exit := FALSE
@@ -408,6 +415,10 @@ BEGIN res := 401; NEW(top); top.next := NIL; p := top;
     END
   END ;
 RETURN top.next END GetImportedModules;
+
+PROCEDURE Includes*(p: StrList; modname: ARRAY OF CHAR): BOOLEAN;
+BEGIN WHILE (p # NIL) & (p.s # modname) DO p := p.next END ;
+RETURN p # NIL END Includes;
 
 PROCEDURE AddUniqueToList(what: StrList; VAR where: StrList);
 VAR p, q, nextP: StrList;
@@ -428,31 +439,32 @@ BEGIN
 END AddUniqueToList;
 
 PROCEDURE UsedModuleList*(IN modname, fname: ARRAY OF CHAR;
-    VAR errFname: ARRAY OF CHAR;
-    VAR errLine, errCol: INTEGER; VAR res: INTEGER): StrList;
+    VAR errFname: ARRAY OF CHAR; VAR errLine, errCol: INTEGER;
+    VAR foreign: BOOLEAN; VAR res: INTEGER): StrList;
 VAR L, list, list2, p: StrList;
-BEGIN L := NIL; res := 0(*OK*);
+BEGIN L := NIL; res := 0(*OK*); foreign := FALSE;
   IF ~IsSysModule(modname) THEN
-    list := GetImportedModules(fname, modname, errLine, errCol, res);
+    list := GetImportedModules(fname, modname, errLine, errCol, foreign, res);
+    ;;;Out.Char('#'); Out.String(modname); IF foreign THEN Out.String(' - YES') ELSE Out.String(' - NO')END;Out.Ln;
     p := list;
     IF res = 0 THEN
       WHILE (res = 0) & (p # NIL) DO
-        list2 := UsedModuleList(p.s, p.fname, errFname, errLine, errCol, res);
-        AddUniqueToList(list2, L);
+        IF ~Includes(L, p.s) THEN
+          list2 := UsedModuleList(p.s, p.fname, errFname, errLine, errCol,
+            p.foreign, res);
+          AddUniqueToList(list2, L)
+        END;
         p := p.next
       END
     ELSE Strings.Copy(fname, errFname)
     END
   END;
   IF res = 0 THEN
-    NEW(p); p.s := modname$; p.fname := fname$; p.next := NIL;
+    NEW(p); p.s := modname$; p.fname := fname$; p.foreign := foreign;
+    p.next := NIL;
     AddUniqueToList(p, L)
   END ;
 RETURN L END UsedModuleList;
-
-PROCEDURE ImportsGraph*(p: StrList): BOOLEAN;
-BEGIN WHILE (p # NIL) & (p.s # 'Graph') DO p := p.next END ;
-RETURN p # NIL END ImportsGraph;
 
 BEGIN
   ResetSysModules
