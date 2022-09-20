@@ -445,7 +445,6 @@ VAR L, list, list2, p: StrList;
 BEGIN L := NIL; res := 0(*OK*); foreign := FALSE;
   IF ~IsSysModule(modname) THEN
     list := GetImportedModules(fname, modname, errLine, errCol, foreign, res);
-    ;;;Out.Char('#'); Out.String(modname); IF foreign THEN Out.String(' - YES') ELSE Out.String(' - NO')END;Out.Ln;
     p := list;
     IF res = 0 THEN
       WHILE (res = 0) & (p # NIL) DO
