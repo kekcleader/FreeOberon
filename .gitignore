@@ -2,7 +2,7 @@
 /FreeOberon.exe
 /fob
 /fob.exe
-/_Build/*
+_Build
 /src/Makefile
 /src/*.o
 /src/*.h
