@@ -68,7 +68,7 @@ BEGIN i := 1; lang := 'en';
 END ParseArgs;
 
 PROCEDURE Do;
-VAR modules: Builder.StrList;
+VAR modules: Builder.Module;
   mainFname, modname, exename, errFname, lang, s: ARRAY 256 OF CHAR;
   errLine, errCol, res: INTEGER;
   foreign, ok, graph: BOOLEAN;

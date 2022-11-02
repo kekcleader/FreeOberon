@@ -50,6 +50,9 @@ ECHO ON
   -Wl,-e_WinMain@16 -nostartfiles ^
   %OFRDIR%\Mod\Lib\crt1.c
 
+
+
+
 @SET RETCODE=%ERRORLEVEL%
 
 @CD ..

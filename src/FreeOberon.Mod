@@ -510,7 +510,7 @@ VAR w: OV.Window;
   graph, foreign: BOOLEAN;
   mainFname, modname, exename, errFname, s: ARRAY 256 OF CHAR;
   errLine, errCol, res: INTEGER;
-  modules: Builder.StrList;
+  modules: Builder.Module;
   e: Editor.Editor;
 BEGIN w := c.app.windows;
   IF (w # NIL) & (w IS Editor.Editor) THEN
