@@ -1,4 +1,4 @@
-MODULE r;
+MODULE TestReal;
 IMPORT In, Out, Reals;
 TYPE LONGREAL = Reals.LONGREAL;
 VAR a, b, c: INTEGER;
@@ -32,14 +32,4 @@ BEGIN
     END;
     RF(x, i, 20)
   END
-
-  (*
-  Out.String('Enter string:'); In.Line(s);
-  Out.String('{'); Out.String(s); Out.String('}'); Out.Ln;
-  i := 0;
-  WHILE (i < LEN(s)) & (ORD(s[i]) # 0) DO
-    Out.Int(ORD(s[i]), 5); INC(i)
-  END; Out.Ln;
-  Out.String('Bye!'); Out.Ln
-  *)
-END r.
+END TestReal.

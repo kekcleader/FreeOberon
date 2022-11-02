@@ -19,7 +19,7 @@ BEGIN
   G.Init();
   G.ShowMouse(FALSE);
   G.GetTargetSize(w, h);
-  b := G.LoadBitmap('../Data/Examples/rocket.png');
+  b := G.LoadBitmap('Data/rocket.png');
   IF b = NIL THEN
     Out.String('Could not load rocket.png'); Out.Ln; ASSERT(FALSE)
   END;

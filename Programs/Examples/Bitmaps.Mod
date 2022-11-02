@@ -13,7 +13,7 @@ RETURN ABS((x MOD 512) - 256) END Val;
 
 BEGIN
   G.Init; G.ShowMouse(FALSE);
-  b := G.LoadBitmap('../Data/Images/Icon.png');
+  b := G.LoadBitmap('Data/rocket.png');
   IF b = NIL THEN Out.String('Could not load image.'); Out.Ln
   ELSE
     G.MakeRGBA(c, 0, 255, 255, 0);

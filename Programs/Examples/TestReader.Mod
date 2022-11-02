@@ -3,7 +3,7 @@ IMPORT Out, Texts;
 VAR T: Texts.Text; R: Texts.Reader; S: Texts.Scanner;
   ch: CHAR;
 BEGIN
-  NEW(T); Texts.Open(T, 'TEXT.DAT');
+  NEW(T); Texts.Open(T, 'Data/TEXT.DAT');
 
   Texts.OpenScanner(S, T, 1); Texts.Scan(S);
   Out.String(S.s); Out.Char(';'); Out.Ln;

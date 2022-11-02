@@ -1,5 +1,5 @@
 MODULE Intersection;
-IMPORT G := Graph, Random, Int;
+IMPORT G := Graph, Random, Int, Out;
 CONST eps = 0.001;
 
 TYPE
@@ -152,14 +152,18 @@ PROCEDURE Do2;
 VAR ch: CHAR;
 BEGIN
   G.Init;
-  f := G.LoadFont('../Data/Fonts/Main');
-  G.GetScreenSize(W, H);
-  REPEAT
-    Do;
-    G.Flip;
-    ch := G.ReadKey();
-  UNTIL ch = CHR(27);
-  G.Close
+  f := G.LoadFont('Data/Fonts/Main');
+  IF f = NIL THEN
+    Out.String("Could not load font."); Out.Ln
+  ELSE
+    G.GetScreenSize(W, H);
+    REPEAT
+      Do;
+      G.Flip;
+      ch := G.ReadKey();
+    UNTIL ch = CHR(27);
+    G.Close
+  END
 END Do2;
 
 BEGIN

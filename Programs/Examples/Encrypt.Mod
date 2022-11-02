@@ -23,20 +23,23 @@ VAR F, F2: Files.File;
   r, w: Files.Rider;
 BEGIN
   key := 12;
-  F := Files.Old('in.txt');
+  F := Files.Old('Data/in.txt');
   IF F # NIL THEN
     Files.Set(r, F, 0);
-    F2 := Files.New('out.txt');
+    F2 := Files.New('Data/out.txt');
     IF F2 # NIL THEN
       Files.Set(w, F2, 0);
       Parse(r, w);
-      Files.Register(F2)
+      Files.Register(F2);
+      Out.String('Создан файл "Data/out.txt" с зашифрованным'); Out.Ln;
+      Out.String('содержимым файла "Data/in.txt".')
     ELSE
-      Out.String('Не могу создать файл "out.txt".'); Out.Ln
+      Out.String('Не могу создать файл "Data/out.txt".')
     END
   ELSE
-    Out.String('Не могу открыть файл "in.txt".'); Out.Ln
-  END
+    Out.String('Не могу открыть файл "Data/in.txt".')
+  END;
+  Out.Ln
 END Do;
 
 BEGIN

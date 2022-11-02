@@ -16,5 +16,5 @@ BEGIN
   Texts.Write(W, '*');
   Texts.WriteLn(W);
   Texts.Insert(T, 17, W.buf);
-  Texts.Close(T, 'ZMYTEXT.TXT')
+  Texts.Close(T, 'Data/TEXT2.TXT')
 END TestWriter.

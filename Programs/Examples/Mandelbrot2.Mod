@@ -1,8 +1,7 @@
 MODULE Mandelbrot2;
 IMPORT G := Graph, M := Math, Random;
 CONST iter = 768;
-VAR s: G.Bitmap;
-  col: INTEGER;
+VAR col, W, H: INTEGER;
   m: POINTER TO ARRAY OF ARRAY OF INTEGER;
   angle: REAL;
 
@@ -20,23 +19,24 @@ END Go;
 PROCEDURE Draw;
 VAR i, x, y: INTEGER;
   shine: REAL;
+  c: G.Color;
 BEGIN shine := (1 - M.cos(angle)) * 1;
-  FOR y := 0 TO s.h - 1 DO
-    FOR x := 0 TO s.w - 1 DO
+  FOR y := 0 TO H - 1 DO
+    FOR x := 0 TO W - 1 DO
       i := m[y, x];
       IF i # iter THEN
         i := FLOOR(i * shine);
         IF i > 255 THEN i := 255 END;
         CASE col OF
-          0: i := G.MakeCol(i, 0, 0)
-        | 1: i := G.MakeCol(i, i DIV 3, 0)
-        | 2: i := G.MakeCol(i, i, 0)
-        | 3: i := G.MakeCol(0, i, 0)
-        | 4: i := G.MakeCol(0, i DIV 2, i)
-        | 5: i := G.MakeCol(0, 0, i)
-        | 6: i := G.MakeCol(i * 2 DIV 4, 0, i * 2 DIV 4)
+          0: G.MakeCol(c, i, 0, 0)
+        | 1: G.MakeCol(c, i, i DIV 3, 0)
+        | 2: G.MakeCol(c, i, i, 0)
+        | 3: G.MakeCol(c, 0, i, 0)
+        | 4: G.MakeCol(c, 0, i DIV 2, i)
+        | 5: G.MakeCol(c, 0, 0, i)
+        | 6: G.MakeCol(c, i * 2 DIV 4, 0, i * 2 DIV 4)
         END;
-        G.PutPixel(s, x, y, i)
+        G.PutPixel(x, y, c)
       END
     END
   END
@@ -47,12 +47,12 @@ VAR x, y: INTEGER;
   x0, y0, x1, y1: REAL;
 BEGIN
   x0 := cx - r; x1 := cx + r;
-  y0 := cy + r * s.h / s.w; y1 := 2 * cy - y0;
+  y0 := cy + r * H / W; y1 := 2 * cy - y0;
   y := 0;
-  WHILE (y < s.h) & ~G.KeyPressed() DO
-    FOR x := 0 TO s.w - 1 DO
-      Go(x, y, x0 + x / (s.w - 1) * (x1 - x0),
-               y0 + y / (s.h - 1) * (y1 - y0))
+  WHILE (y < H) & ~G.KeyPressed() DO
+    FOR x := 0 TO W - 1 DO
+      Go(x, y, x0 + x / (W - 1) * (x1 - x0),
+               y0 + y / (H - 1) * (y1 - y0))
     END;
     INC(y)
   END
@@ -60,12 +60,12 @@ END Set;
 
 PROCEDURE Do;
 VAR x, y, r: REAL;
-BEGIN G.Settings(0, 0, {G.fullscreen, G.spread});
-  s := G.Init(); G.Flip; NEW(m, s.h, s.w);
+BEGIN G.Settings(320, 200, {G.exact});
+  G.Init; G.Flip; G.GetScreenSize(W, H); NEW(m, H, W);
   x := -0.619; y := -0.456; r := 0.1;
   Set(x, y, r);
   angle := 0.0; col := 0;
-  REPEAT Draw; angle := angle + M.pi / 90.0;
+  REPEAT Draw; angle := angle + M.pi / 45.0;
     IF angle > M.pi * 2.0 THEN
       angle := 0.0;
       col := (col + 1) MOD 7;

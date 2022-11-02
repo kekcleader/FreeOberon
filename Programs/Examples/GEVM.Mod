@@ -91,7 +91,7 @@ VAR i: INTEGER;
 BEGIN
   ok := TRUE;
   G.GetScreenSize(sw, sh);
-  font := G.LoadFont("../Data/Fonts/Main");
+  font := G.LoadFont("Data/Fonts/Main");
   IF font = NIL THEN
     Out.String("Could not load font."); Out.Ln;
     ok := FALSE

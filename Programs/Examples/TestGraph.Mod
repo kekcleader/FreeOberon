@@ -1,5 +1,5 @@
 MODULE TestGraph;
-IMPORT G := Graph;
+IMPORT G := Graph, Out;
 VAR c, f: G.Color;
   X, Y, W, H: INTEGER;
   font: G.Font;
@@ -66,29 +66,33 @@ BEGIN
   (*G.Settings(320, 200, {G.window});*)
   G.Init;
   G.ShowMouse(FALSE);
-  font := G.LoadFont('../Data/Fonts/Main');
-  G.GetTargetSize(W, H); DEC(W); DEC(H);
-  G.MakeCol(c, 20, 30, 80);
-  G.MakeCol(f, 0, 180, 255);
-  done := FALSE; X := -1; ZZ[0] := 0X; ZZ[1] := 0X;
-  REPEAT
-    WHILE G.HasEvents() DO
-      G.WaitEvent(e);
-      IF e.type = G.quit THEN done := TRUE
-      ELSIF e.type = G.mouseMove THEN
-        X := e.x; Y := e.y
-      ELSIF e.type = G.mouseDown THEN
-        IF e.button = 1 THEN Animation
-        ELSIF e.button = 2 THEN ByKey
+  font := G.LoadFont('Data/Fonts/Main');
+  IF font = NIL THEN
+    Out.String("Could not load font."); Out.Ln;
+  ELSE
+    G.GetTargetSize(W, H); DEC(W); DEC(H);
+    G.MakeCol(c, 20, 30, 80);
+    G.MakeCol(f, 0, 180, 255);
+    done := FALSE; X := -1; ZZ[0] := 0X; ZZ[1] := 0X;
+    REPEAT
+      WHILE G.HasEvents() DO
+        G.WaitEvent(e);
+        IF e.type = G.quit THEN done := TRUE
+        ELSIF e.type = G.mouseMove THEN
+          X := e.x; Y := e.y
+        ELSIF e.type = G.mouseDown THEN
+          IF e.button = 1 THEN Animation
+          ELSIF e.button = 2 THEN ByKey
+          END
         END
-      END
-    END;
-    Draw;
-    G.DrawString('Left mouse button - KeyPressed, right - ReadKey test',
-      0, 0, font, f);
-    G.Flip;
-    G.Delay(1)
-  UNTIL done;
+      END;
+      Draw;
+      G.DrawString('Left mouse button - KeyPressed, right - ReadKey test',
+        0, 0, font, f);
+      G.Flip;
+      G.Delay(1)
+    UNTIL done
+  END;
   G.Close
 END Do;
 
