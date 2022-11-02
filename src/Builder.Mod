@@ -312,7 +312,7 @@ BEGIN
   WHILE ~R.eof & (ch <= ' ') DO ReadCh(R, ch, line, col) END;
   i := 0;
   IF ~R.eof THEN
-    IF ch = '(' THEN
+    WHILE ch = '(' DO
       ReadCh(R, ch, line, col);
       IF ch = '*' THEN ReadCh(R, ch, line, col); SkipComment(R, ch, s)
       ELSE s[i] := ch; INC(i)
