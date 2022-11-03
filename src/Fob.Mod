@@ -71,7 +71,7 @@ PROCEDURE Do;
 VAR modules: Builder.Module;
   mainFname, modname, exename, errFname, lang, s: ARRAY 256 OF CHAR;
   errLine, errCol, res: INTEGER;
-  foreign, ok, graph: BOOLEAN;
+  foreign, ok: BOOLEAN;
 BEGIN
   ParseArgs(mainFname, lang);
   FoStrings.SetLang(lang);
@@ -82,8 +82,7 @@ BEGIN
   IF foreign THEN res := 402 END;
   ok := FALSE;
   IF res = 0 THEN
-    graph := Builder.Includes(modules, 'Graph');
-    IF Builder.CompileAll(modules, graph, exename, TRUE, BuildErrorCallback)
+    IF Builder.CompileAll(modules, exename, TRUE, BuildErrorCallback)
     THEN ok := TRUE
     END
   ELSE (*res = 400-bad file, 401-bad module name, or 402-foreign module*)

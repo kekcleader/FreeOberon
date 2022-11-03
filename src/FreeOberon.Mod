@@ -507,7 +507,7 @@ END BuildErrorCallback;
 
 PROCEDURE OnBuild(c: OV.Control);
 VAR w: OV.Window;
-  graph, foreign: BOOLEAN;
+  foreign: BOOLEAN;
   mainFname, modname, exename, errFname, s: ARRAY 256 OF CHAR;
   errLine, errCol, res: INTEGER;
   modules: Builder.Module;
@@ -523,9 +523,7 @@ BEGIN w := c.app.windows;
         errFname, errLine, errCol, foreign, res);
       IF foreign THEN res := 402 END;
       IF res = 0 THEN
-        graph := Builder.Includes(modules, 'Graph');
-        IF Builder.CompileAll(modules, graph, exename,
-            FALSE, BuildErrorCallback)
+        IF Builder.CompileAll(modules, exename, FALSE, BuildErrorCallback)
         THEN RunProgram(exename)
         END
       ELSE

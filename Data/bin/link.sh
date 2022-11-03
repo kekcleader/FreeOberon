@@ -1,6 +1,6 @@
 #!/bin/bash
 ### This script is run by Free Oberon on Linux
-### to link a graphics program.
+### to link user programs.
 ### When it is being run, the current directory
 ### must be the root directory of Free Oberon.
 
@@ -27,13 +27,18 @@ CC="gcc"
 
 shift
 
+FILES=
+FLAGS=
+F=false
 
-
-
-
-
-
-
+for arg in "$@"; do
+  if [ "$arg" = "--linker-libs" ]
+  then F=true
+  elif [ "$F" = false ]
+  then FILES="$FILES $arg"
+  else FLAGS="$FLAGS $arg"
+  fi
+done
 
 
 
@@ -42,13 +47,9 @@ $CC -O0 -fno-exceptions \
   -I $OFRDIR/Mod/Lib \
   -I $OFRTAR/Lib/Obj \
   $ONAME.c -o $ONAME \
-  $@ \
+  $FILES \
   $FOBDIR/Data/bin/libFreeOberon.a \
-  $OFRTAR/Lib/libOfront.a \
-  $(pkg-config \
-    allegro_primitives-5 allegro_image-5 allegro_audio-5 \
-    allegro_acodec-5 allegro_font-5 allegro_dialog-5 \
-    allegro-5 --libs --cflags)
+  $OFRTAR/Lib/libOfront.a $FLAGS
 
 retcode=$?
 cd ..

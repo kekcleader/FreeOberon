@@ -26,6 +26,7 @@ TYPE
     fname*: ARRAY 256 OF CHAR; (* Filename of module source *)
     libs*: ARRAY 4096 OF CHAR; (* String from speical comments *)
     foreign*: BOOLEAN; (* TRUE for bindings that do not produce a C-file *)
+    system*: BOOLEAN;
     next*: Module
   END;
 
@@ -34,6 +35,9 @@ TYPE
 
 VAR
   sysModules: Module;
+  target: ARRAY 64 OF CHAR; (* 'LINUX' or 'WIN32' *)
+  wrongLinkTarget: BOOLEAN; (* TRUE if target was given and does not match *)
+  findLinkInfo: Module; (* If not NIL, special comments will be saved here *)
   workDir: ARRAY 256 OF CHAR; (* Directory of main file of compiled program *)
 
 PROCEDURE IsSysModule(IN name: ARRAY OF CHAR): BOOLEAN;
@@ -41,6 +45,13 @@ VAR p: Module;
 BEGIN p := sysModules;
   WHILE (p # NIL) & (p.s # name) DO p := p.next END ;
 RETURN p # NIL END IsSysModule;
+
+PROCEDURE GetSysLibs(IN name: ARRAY OF CHAR; OUT libs: ARRAY OF CHAR);
+VAR p: Module;
+BEGIN p := sysModules;
+  WHILE (p # NIL) & (p.s # name) DO p := p.next END ;
+  IF p # NIL THEN libs := p.libs$ ELSE libs[0] := 0X END
+END GetSysLibs;
 
 PROCEDURE ModuleExists(IN fname: ARRAY OF CHAR): BOOLEAN;
 VAR F: Files.File;
@@ -177,7 +188,7 @@ BEGIN
   END
 END AppendDataBin;
 
-PROCEDURE RunCommand(IN fname, mod: ARRAY OF CHAR; link, graph, main: BOOLEAN;
+PROCEDURE RunCommand(IN fname, mod: ARRAY OF CHAR; link, main: BOOLEAN;
     list: Module; onError: ErrorHandler): BOOLEAN;
 CONST bufLen = 20480;
 VAR buf: ARRAY bufLen OF SHORTCHAR;
@@ -190,10 +201,7 @@ VAR buf: ARRAY bufLen OF SHORTCHAR;
   s, sN: ARRAY 80 OF CHAR;
   success, ok: BOOLEAN;
 BEGIN ok := TRUE;
-  IF ~link THEN command := 'compile'
-  ELSIF graph THEN command := 'link_graph'
-  ELSE command := 'link_console'
-  END;
+  IF ~link THEN command := 'compile' ELSE command := 'link' END;
   IF Config.isWindows THEN
     IF Term.SearchPath('cmd.exe', q) # 0 THEN
       Utf8.Decode(q, cmd); Strings.Insert('"', 0, cmd);
@@ -220,13 +228,20 @@ BEGIN ok := TRUE;
           Strings.Append('.c', cmd)
         END;
         p := p.next
+      END;
+      Strings.Append(' --linker-libs', cmd);
+      p := list;
+      WHILE p.next # NIL DO
+        IF p.libs[0] # 0X THEN
+          Strings.Append(' ', cmd); Strings.Append(p.libs, cmd)
+        END;
+        p := p.next
       END
     END;
-    Utf8.Encode(cmd, q);
-
     IF Config.debug THEN
-      Out.String('Term.RunProcess "'); Out.String(cmd); Out.Char('"'); Out.Ln
+      Out.String('Running command "');Out.String(cmd); Out.Char('"'); Out.Ln
     END;
+    Utf8.Encode(cmd, q);
 
     success := (Term.RunProcess(q, buf, bufLen, len, err) # 0) & (err = 0);
     IF ~success & (onError # NIL) THEN
@@ -250,16 +265,16 @@ RETURN success END RunCommand;
 
 PROCEDURE Compile(IN fname, mod: ARRAY OF CHAR; main: BOOLEAN;
   onError: ErrorHandler): BOOLEAN;
-BEGIN RETURN RunCommand(fname, mod, FALSE, FALSE, main, NIL, onError)
+BEGIN RETURN RunCommand(fname, mod, FALSE, main, NIL, onError)
 END Compile;
 
 PROCEDURE Link(IN fname, mod: ARRAY OF CHAR;
-    graph: BOOLEAN; list: Module; VAR exename: ARRAY OF CHAR;
+    list: Module; VAR exename: ARRAY OF CHAR;
     onError: ErrorHandler; moveToCwd: BOOLEAN): BOOLEAN;
 VAR ok: BOOLEAN;
   s: ARRAY 2048 OF CHAR;
   res: INTEGER;
-BEGIN ok := RunCommand(fname, mod, TRUE, graph, FALSE, list, onError);
+BEGIN ok := RunCommand(fname, mod, TRUE, FALSE, list, onError);
   IF ok THEN (* Move executable file if workDir is non-standard *)
     s := mod$; IF Config.isWindows THEN Strings.Append('.exe', s) END;
     exename := '_Build/'; Strings.Append(s, exename);
@@ -282,20 +297,113 @@ PROCEDURE ResetSysModules*;
     p.next := sysModules; sysModules := p
   END Add;
 
+  PROCEDURE AddGraph;
+  VAR p: Module;
+  BEGIN
+    Add('Graph'); p := sysModules;
+    IF Config.isWindows THEN
+      p.libs := '-lallegro -lallegro_primitives -lallegro_image';
+      Strings.Append(' -Wl,-subsystem,window', p.libs)
+    ELSE
+      p.libs := '$(pkg-config allegro_primitives-5 allegro_image-5';
+      Strings.Append(' allegro_audio-5 allegro_acodec-5', p.libs);
+      Strings.Append(' allegro_font-5 allegro_dialog-5 allegro-5', p.libs);
+      Strings.Append(' --libs --cflags)', p.libs)
+    END
+  END AddGraph;
+
 BEGIN sysModules := NIL;
   Add('SYSTEM');   Add('Texts');    Add('Files');   Add('Strings');
   Add('In');       Add('Out');      Add('Math');    Add('MathL');
   Add('Modules');  Add('Platform'); Add('Oberon');  Add('Reals');
-  Add('VT100');    Add('Graph');    Add('TermBox'); Add('Term');
+  Add('VT100');    AddGraph;        Add('TermBox'); Add('Term');
   Add('Allegro5'); Add('Dir');      Add('Int');     Add('Random')
 END ResetSysModules;
 
-PROCEDURE SkipComment(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR);
+PROCEDURE GetWord(IN s: ARRAY OF CHAR; VAR i: INTEGER; OUT w: ARRAY OF CHAR);
+VAR j: INTEGER;
+  c: CHAR;
+BEGIN j := 0;
+  WHILE (s[i] <= ' ') & (s[i] # 0X) DO INC(i) END;
+  c := s[i]; INC(i);
+  IF ('A' <= c) & (c <= 'Z') OR ('a' <= c) & (c <= 'z') THEN
+    WHILE ('A' <= c) & (c <= 'Z') OR ('a' <= c) & (c <= 'z') OR
+          ('0' <= c) & (c <= '9') OR (c = '_')
+    DO
+      IF ('a' <= c) & (c <= 'z') THEN
+        c := CHR(ORD('A') - ORD('a') + ORD(c))
+      END;
+      w[j] := c;
+      INC(j); c := s[i]; INC(i)
+    END;
+    DEC(i)
+  ELSE w[j] := c; INC(j)
+  END;
+  w[j] := 0X
+END GetWord;
+
+PROCEDURE ReadLinkTarget(IN s: ARRAY OF CHAR; VAR i: INTEGER);
+VAR w: ARRAY 256 OF CHAR;
+BEGIN
+  wrongLinkTarget := TRUE;
+  GetWord(s, i, w);
+  IF w = 'LIBS' THEN
+    wrongLinkTarget := FALSE;
+    GetWord(s, i, w);
+    IF w = '(' THEN
+      GetWord(s, i, w);
+      IF w # target THEN wrongLinkTarget := TRUE END;
+      GetWord(s, i, w);
+      IF w = ')' THEN GetWord(s, i, w) ELSE wrongLinkTarget := TRUE END
+    END;
+    IF w # ':' THEN wrongLinkTarget := TRUE END
+  END
+END ReadLinkTarget;
+
+PROCEDURE ReadLinkString(IN s: ARRAY OF CHAR; VAR i: INTEGER);
+VAR j: INTEGER;
+  c: CHAR;
+BEGIN
+  IF ~wrongLinkTarget THEN j := 0;
+    WHILE (s[i] # 0X) & (s[i] <= ' ') DO INC(i) END;
+    WHILE (s[i] # 0X) & (j < LEN(findLinkInfo.libs) - 1) DO
+      IF s[i] < ' ' THEN c := ' ' ELSE c := s[i] END;
+      findLinkInfo.libs[j] := c;
+      INC(i); INC(j);
+      IF c <= ' ' THEN
+        WHILE (s[i] # 0X) & (s[i] <= ' ') DO INC(i) END
+      END
+    END;
+    WHILE (j # 0) & (findLinkInfo.libs[j] <= ' ') DO DEC(j) END;
+    findLinkInfo.libs[j + 1] := 0X
+  END
+END ReadLinkString;
+
+PROCEDURE ReadLinkInfo(VAR R: Files.Rider; VAR ch: CHAR);
+VAR s: ARRAY 40960 OF CHAR;
+  last: CHAR;
+  i: INTEGER;
+BEGIN
+  i := 0; last := ch;
+  WHILE ~R.eof & (ch # '%') & ~((last = '*') & (ch = ')')) DO
+    IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
+    last := ch; Files.ReadChar(R, ch)
+  END;
+  IF (i # 0) & (s[i - 1] = '*') THEN DEC(i) END;
+  s[i] := 0X; i := 0;
+  ReadLinkTarget(s, i);
+  ReadLinkString(s, i)
+END ReadLinkInfo;
+
+PROCEDURE SkipComment(VAR R: Files.Rider; VAR ch: CHAR);
 VAR last: CHAR;
 BEGIN last := ch; Files.ReadChar(R, ch);
-  WHILE ~R.eof & ((last # '*') OR (ch # ')')) DO
-    IF (last = '(') & (ch = '*') THEN SkipComment(R, ch, s) END;
-    last := ch; Files.ReadChar(R, ch)
+  WHILE ~R.eof & ~((last = '*') & (ch = ')')) DO
+    IF (last = '(') & (ch = '*') THEN SkipComment(R, ch)
+    ELSIF (ch = '%') & (findLinkInfo # NIL) THEN
+      Files.ReadChar(R, ch); ReadLinkInfo(R, ch)
+    ELSE last := ch; Files.ReadChar(R, ch)
+    END
   END;
   IF ~R.eof THEN Files.ReadChar(R, ch) END;
   WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, ch) END
@@ -315,7 +423,7 @@ BEGIN
   IF ~R.eof THEN
     WHILE ch = '(' DO
       ReadCh(R, ch, line, col);
-      IF ch = '*' THEN ReadCh(R, ch, line, col); SkipComment(R, ch, s)
+      IF ch = '*' THEN ReadCh(R, ch, line, col); SkipComment(R, ch)
       ELSE s[i] := ch; INC(i)
       END
     END;
@@ -338,7 +446,7 @@ BEGIN
   s[i] := 0X
 END GetSym;
 
-PROCEDURE CompileAll*(modules: Module; graph: BOOLEAN;
+PROCEDURE CompileAll*(modules: Module;
     VAR exename: ARRAY OF CHAR; moveToCwd: BOOLEAN;
     onError: ErrorHandler): BOOLEAN;
 VAR p, last: Module;
@@ -357,8 +465,7 @@ BEGIN exename[0] := 0X;
       IF ~ModuleExists(p.fname) OR ~Compile(p.fname, '', TRUE, onError) THEN
         ok := FALSE
       END;
-      ok := ok & Link(p.fname, p.s, graph, modules,
-          exename, onError, moveToCwd);
+      ok := ok & Link(p.fname, p.s, modules, exename, onError, moveToCwd)
     END
   ELSE ok := FALSE
   END ;
@@ -395,9 +502,9 @@ BEGIN mod.foreign := FALSE; res := 401; NEW(top); top.next := NIL; p := top;
         IF ~R.eof THEN GetSym(R, ch, s, line, col) END
       END;
       IF EqualModuleNames(mod.s, s) THEN
-        res := 0;
-        GetSym(R, ch, s, line, col);
-        IF s = ';' THEN GetSym(R, ch, s, line, col); res := 0;
+        res := 0; findLinkInfo := mod; GetSym(R, ch, s, line, col);
+        IF s = ';' THEN
+          GetSym(R, ch, s, line, col); res := 0; findLinkInfo := NIL;
           IF s = 'IMPORT' THEN GetSym(R, ch, s, line, col); exit := FALSE;
             WHILE ~exit & ('A' <= CAP(s[0])) & (CAP(s[0]) <= 'Z') DO
               m := s; GetSym(R, ch, s, line, col); fname2[0] := 0X;
@@ -405,15 +512,16 @@ BEGIN mod.foreign := FALSE; res := 401; NEW(top); top.next := NIL; p := top;
                 m := s; GetSym(R, ch, s, line, col)
               END;
               IF IsSysModule(m) OR FindModule(m, fname2) THEN
-                NEW(p.next); p := p.next; p.next := NIL;
-                p.s := m$; p.fname := fname2$; p.foreign := FALSE
+                NEW(p.next); p := p.next; p.next := NIL; p.s := m$;
+                p.fname := fname2$; p.foreign := FALSE; GetSysLibs(m, p.libs)
               END;
               IF s = ',' THEN GetSym(R, ch, s, line, col)
               ELSE exit := FALSE
               END
             END
           END
-        END
+        END;
+        findLinkInfo := NIL
       END
     END
   END ;
@@ -448,7 +556,11 @@ VAR L, list, list2, p, mod: Module;
 BEGIN L := NIL; res := 0(*OK*);
   NEW(mod); mod.s := modname$; mod.fname := fname$;
   mod.foreign := FALSE; mod.next := NIL;
-  IF ~IsSysModule(modname) THEN
+  IF IsSysModule(modname) THEN
+    NEW(p); p.next := NIL; p.s := modname$; p.fname[0] := 0X;
+    p.foreign := FALSE; p.system := TRUE; GetSysLibs(modname, p.libs);
+    AddUniqueToList(p, L)
+  ELSE
     list := GetModuleInfo(mod, errLine, errCol, res);
     p := list;
     IF res = 0 THEN
@@ -467,5 +579,6 @@ BEGIN L := NIL; res := 0(*OK*);
 RETURN L END UsedModuleList;
 
 BEGIN
-  ResetSysModules
+  ResetSysModules;
+  IF Config.isWindows THEN target := 'WIN32' ELSE target := 'LINUX' END
 END Builder.
