@@ -1,0 +1,578 @@
+                              ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+                           Алгоритм  автоматического
+                       составления документации к модулю
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Поставляемая с компилятором программа для автоматического создания
+документации к проекту работает с исходным кодом модулей проекта и
+предполагает специальное оформление комментариев в исходном коде.
+
+Комментарии, попадающие в документацию будем называть спецкомментариями.
+Спецкомментарии начинаются со скобки, за которой идёт ровно две звёздочки:
+
+    Пример:
+            CONST strLen = 256;  (** Это пойдёт в документацию *)
+
+Система производит частичный синтаксический анализ исходного кода модуля и
+улавливает находяющуюся в нём информацию об экспортированных объектах, а также
+спецкомментарии к ним. Полученные данные сохраняются в древовдиной динамической
+структуре данных. Эта структура данных затем может использоваться для вывода
+документации к модулю в виде текста, двоичном виде или в формате HTML.
+
+Для примера будет использован модуль Apples, текст которого приведён ниже:
+
+(** Module Apples helps count apples.
+    One can create a variable of type Apples.Apple,
+    call Init and other procedures on it. *)
+MODULE Apples;
+(** Это тестовый модуль. *)
+IMPORT Out, Fruits;
+
+CONST
+  (** Общие постоянные **)
+  maxApples*  =  5; (** Maximum amount of apples. Currently unused *)
+  maxSeeds*   = 10; (** Currently not in use *)
+  startApples =  0; (** Start amount of apples. Used in Reset *)
+
+  (** Качество яблока **)
+  unknown* = 0; (** Неизвестное качество *)
+  good*    = 1; (** Сносное качество *)
+  bad*     = 2; (** Отвратное качество *)
+
+TYPE
+  (** Тип яблоко *)
+  Apple* = RECORD(Fruits.Fruit) (** Represents an apple with some seeds *)
+    seeds*: INTEGER;   (** Amount of seeds in the apple *)
+    quality*: INTEGER; (** Качество продукта, см. @Качество яблока *)
+    added: BOOLEAN     (** Whether Add was called on this seed after Init *)
+  END;
+
+VAR
+  applesCreated*: INTEGER; (** How many apples were created using Init *)
+  (** If FALSE, Show shows a welcome message and sets shown to TRUE *)
+  shown: BOOLEAN;
+  lastAdded*: INTEGER; (** How many seeds were added the last time, or -1 *)
+
+(** Sets the given amount of seeds to apple a. *)
+PROCEDURE Set(VAR a: Apple; seeds: INTEGER);
+BEGIN
+  a.seeds := seeds;
+  IF seeds >= 3 THEN a.quality := good
+  ELSIF seeds = 0 THEN a.quality := bad
+  ELSE a.quality := unknown
+  END
+END Set;
+
+PROCEDURE Init*(VAR a: Apple; seeds: INTEGER);
+(** Initializes apple a with the specified amount of seeds. *)
+BEGIN
+  INC(applesCreated);
+  Set(a, seeds);
+  a.added := FALSE
+END Init;
+
+(** Apple manipulation **)
+
+(** Adds n seeds to apple a. *)
+PROCEDURE Add*(VAR a: Apple; n: INTEGER);
+BEGIN
+  lastAdded := n;
+  Set(a, a.seeds + n);
+  a.added := TRUE
+END Add;
+
+PROCEDURE Show*(a: Apple);
+(** Dispalys a message about the apple. *)
+BEGIN
+  IF ~shown THEN
+    Out.String('Welcome to Apples!');
+    Out.Ln;
+    shown := TRUE
+  END;
+  IF a.added THEN
+    Out.String('Added apple with ')
+  ELSE
+    Out.String('Apple with ')
+  END;
+  Out.Int(a.seeds, 0);
+  Out.String(' seeds.');
+  Out.Ln
+END Show;
+
+(** - **)
+
+(** Resets internal apple counter. *)
+PROCEDURE Reset*;
+BEGIN
+  lastAdded := -1;
+  applesCreated := startApples;
+  shown := FALSE
+END Reset;
+
+PROCEDURE Shown*(): BOOLEAN; RETURN shown END Shown; (** Было ли приветствие *)
+
+BEGIN
+  Reset
+END Apples.
+
+                   Принципы работы алгоритма автоматического
+                       составления документации к модулю
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. Учитываются только экспортированные объекты.
+
+2. Модуль учитыватеся в любом случае.
+
+3. Учитываются только комментарии с двумя звёздочками в начале (** ... *)
+
+4. Если комментарий имеет две звёздочки в конце (** ... **), это запоминается.
+
+5. Есть 5 типов объектов:
+   модуль (он один), константы, типы, переменные, процедуры.
+
+6. Пробельные литеры между словами комментария замещаются единичным пробелом.
+   (**     Hello   world
+       Comment  *)        ---> 'Hello world Comment'
+
+7. Если среди пробельных литер есть два переноса строки, выполняется перенос.
+   (**     Hello   world
+
+       Comment  *)        ---> 'Hello world[0AX]Comment'
+
+8. Если строчки комментария имеют больший отступ, чем та величина, на которую
+   отстоит от начала строки первая буква комментария, то пробелы эти лишние
+   сохраняются, а вместе с ними и переносы до и после указанных строк.
+   (** This is my   comment             (** This is my   comment
+       With a normal   indent. *)        Also with a normal   indent. *)
+
+              ---> 'This is my comment With a normal indent.'
+
+   (** This is my   comment
+         With a bigger   indent.
+       And a normal   continuation. *)   --->
+
+   'This is my comment[0AX]' +
+   '  With a bigger   indent.[0AX]' +
+   'And a normal continuation.'
+
+9. Все комментарии, кроме заголовков, автоматически дополняются точкой
+   в конце, если они заканчиваются на букву или цифру.
+
+10. Каждый считанный комментарий прикрепляется к ближайшему к нему объекту или,
+    в случае обладания двумя звёздочками в конце, образует комментарий группы
+    объектов (заголовок).
+
+11. Есть 4 вида прикрепления комментариев к объектам:
+   
+   а) К следующему объекту.
+
+      (** Модуль для яблок. *)
+      MODULE Apples;
+
+      TYPE
+        (** Тип яблоко *)
+        Apple* = RECORD END;
+
+   б) К предыдущему объекту.
+
+      CONST
+        good* = 1; (** Сносное качество *)
+
+   в) К следующей группе объектов (заголовок).
+
+      CONST
+        (** Общие постоянные **)
+        maxApples* = 5;
+        maxSeeds*  = 10;
+
+   г) Комментарий находится внутри объекта.
+
+      MODULE Apples;
+      (** Это тестовый модуль. *)
+      IMPORT Out;
+
+      Apple* = RECORD (** Это комментарий должен быть на той же строке. *)
+
+      PROCEDURE Init*(VAR a: Apple; seeds: INTEGER);
+      (** Initializes apple a with the specified amount of seeds. *)
+      BEGIN
+
+      В случае, если есть два комментария к одному и тому же объекту -
+      один перед и один внутри объекта, - они соединяются через перенос.
+
+12. Для каждого типа объекта сохраняется дополнительная информация о нём:
+
+    Для модуля     - название и импортированные модули, на которые есть ссылки
+                     (при определении типов, переменных или параметров),
+    Для константы  - имя и значение,
+    Для типа       - имя и определение,
+    Для переменной - имя и тип,
+    Для процедуры  - имя, список параметров и тип возвращаемого значения,
+
+    Для записи     - список полей,
+    Для поля       - имя и тип,
+    Для параметра  - имя, тип и способ передачи (по значению, VAR, IN, OUT).
+
+13. Комментарии к группам объектов (заголовки) работают следующим образом:
+
+    1) В рамках каждого вида объектов есть группы.
+
+    2) Если группы не обозначены комментариями (нет заголовков) или часть
+       объектов не входит ни в одну группу (не озагававлена), они заносятся
+       в общую группу (в рамках каждого вида объектов).
+
+    3) Объекты сортируются в алфавитном порядке внутри каждой группы. Но
+       если группа целиком состоит из различных числовых или литерных
+       постоянных, то сортировка не происходит и сохраняется исходный порядок.
+
+       null = 0; apple = 1; pineapple = 2; other = 3;
+
+    4) Комментарий-заголовок, в котором находится только знак минус приводит
+       к тому, что идущие за ним объекты относятся к безымянной группе.
+
+       (** - **)            (**-**)       (**   -  **)
+
+
+                             ПРИМЕР ГЕНЕРИРУЕМОЙ
+                        СТРУКТУРЫ ДАННЫХ ДОКУМЕНТАЦИИ
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Используется произвольный наглядный формат с указанием типов данных (записей).
+Помета "next ->" означает, что записи связаны в связной список. Предполагается,
+что тип List обладает возможностью хранить связные списки различных типов:
+Const, Var, Procedure, Type или Group.
+
+Module {
+  name = 'Apples'
+  imports = ['Fruits']
+  consts = List {
+    Group {
+      name = 'Общие постоянные'
+      body = Objects {
+        Const {
+          comment = 'Maximum amount of apples. Currently not used.'
+          name = 'maxApples'
+          value = '5'
+        }
+        Const {
+          comment = 'Currently not in use.'
+          name = 'maxSeeds'
+          value = '10'
+        }
+      }
+    } next ->
+    Group {
+      name = 'Качество яблока'
+      body = List {
+        Const {
+          comment = 'Неизвестное качество.'
+          name = 'unknown'
+          value = '0'
+        }
+        Const {
+          comment = 'Сносное качество.'
+          name = 'good'
+          value = '1'
+        }
+        Const {
+          comment = 'Отвратное качество.'
+          name = 'bad'
+          value = '2'
+        }
+      }
+    }
+  }
+  types = List {
+    Group {
+      name = ''
+      body = List {
+        Type {
+          comment = 'Тип яблоко.[0AX]Represents an apple with some seeds.'
+          name = 'Apple'
+          form = record
+          extends = 'Fruits.Fruit'
+          fields = List {
+            Field {
+              comment = 'Amount of seeds in the apple.'
+              name = 'seeds'
+              type = Type {
+                name = 'INTEGER'
+                form = named
+              }
+            } next ->
+            Field {
+              comment = 'Качество продукта, см. @Качество яблока.'
+              name = 'quality'
+              type = Type {
+                name = 'INTEGER'
+                form = named
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  vars = List {
+    Group {
+      name = ''
+      body List {
+        Var {
+          name = 'applesCreated'
+          comment = 'How many apples were created using Init.'
+          type = Type {
+            name = 'INTEGER'
+            form = named
+          }
+        }
+        Var {
+          name = 'lastAdded'
+          comment = 'How many seeds were added the last time, or -1.'
+          type = Type {
+            name = 'INTEGER'
+            form = named
+          }
+        }
+      }
+    }
+  }
+  procedures = List {
+    Group {
+      name = ''
+      body = List {
+        Procedure {
+          name = 'Init'
+          comment = 'Initializes apple a with the specified amount of seeds.'
+          returnType = NIL
+          params = List {
+            Param {
+              name = 'a'
+              pass = byVar
+              type = Type {
+                name = 'Apple'
+                form = named
+              }
+            } next ->
+            Param {
+              name = 'seeds'
+              pass = byValue
+              type = Type {
+                name = 'INTEGER'
+                form = named
+              }
+            }
+          }
+        } next ->
+        Procedure {
+          name = 'Reset'
+          comment = 'Resets internal apple counter.'
+          returnType = NIL
+          params = List { NIL }
+        } next ->
+        Procedure {
+          name = 'Shown'
+          comment = 'Было ли приветствие.'
+          returnType = Type {
+            name = 'BOOLEAN'
+            form = named
+          }
+          params = List { NIL }
+        }
+      }
+    }
+    Group {
+      name = 'Apple manipulation'
+      body = List {
+        Procedure {
+          name = 'Add'
+          comment = 'Adds n seeds to apple a.'
+          returnType = NIL
+          params = List {
+            Param {
+              name = 'a'
+              pass = byVar
+              type = Type {
+                name = 'Apple'
+                form = named
+              }
+            } next ->
+            Param {
+              name = 'n'
+              pass = byValue
+              type = Type {
+                name = 'INTEGER'
+                form = named
+              }
+            }
+          }
+        } next ->
+        Procedure {
+          name = 'Show'
+          comment = 'Dispalys a message about the apple.'
+          returnType = NIL
+          params = List {
+            Param {
+              name = 'a'
+              pass = byValue
+              type = Type {
+                name = 'Apple'
+                form = named
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+                      ПРИМЕР ПРЕДСТАВЛЕНИЯ ДОКУМЕНТАЦИИ
+
+МОДУЛЬ Apples
+
+ОПИСАНИЕ
+
+  Module Apples helps count apples. One can create a variable of type
+  Apples.Apple, call Init and other procedures on it. Это тестовый модуль.
+
+ИНТЕРФЕЙС
+
+  DEFINITION Apples;
+    IMPORT
+      Fruits;
+
+    CONST
+      bad = 2;
+      good = 1;
+      maxApples = 5;
+      maxSeeds = 10;
+      unknown = 0;
+
+    TYPE
+      Apple = RECORD (Fruits.Fruit)
+        seeds, quality: INTEGER
+      END;
+
+    VAR
+      applesCreated: INTEGER;
+      lastAdded: INTEGER;
+
+    PROCEDURE Add (VAR a: Apple; n: INTEGER);
+    PROCEDURE Init (VAR a: Apple; seeds: INTEGER);
+    PROCEDURE Reset;
+    PROCEDURE Show (a: Apple);
+    PROCEDURE Shown (): BOOLEAN;
+  END Apples.
+
+ИМПОРТ
+  * Fruits
+
+ПОСТОЯННЫЕ
+
+  ### Общие постоянные ###
+
+    * maxApples = 5
+      Maximum amount of apples. Currently unused.
+
+    * maxSeeds = 10
+      Currently not in use.
+
+  ### Качество яблока ###
+
+    * unknown = 0
+      Неизвестное качество.
+
+    * good = 1
+      Сносное качество.
+
+    * bad = 2
+      Отвратное качество.
+
+ТИПЫ
+
+  Тип Apple
+
+    Apple = RECORD(Fruits.Fruit)
+      seeds: INTEGER;  (* Amount of seeds in the apple *)
+      quality: INTEGER (* Качество продукта, см. @Качество яблока *)
+    END;
+
+    Тип яблоко. Represents an apple with some seeds.
+
+ПЕРЕМЕННЫЕ
+
+  * applesCreated: INTEGER;
+    How many apples were created using Init.
+
+  * lastAdded: INTEGER;
+    How many seeds were added the last time, or -1.
+
+ПРОЦЕДУРЫ
+
+  ### Apple manipulation ###
+
+    * PROCEDURE Add*(VAR a: Apple; n: INTEGER);
+      Adds n seeds to apple a.
+
+    * PROCEDURE Show*(a: Apple);
+      Dispalys a message about the apple.
+
+  ### Другие процедуры ###
+
+    * PROCEDURE Init(VAR a: Apple; seeds: INTEGER);
+      Initializes apple a with the specified amount of seeds.
+
+    * PROCEDURE Reset*;
+      Resets internal apple counter.
+
+    * PROCEDURE Shown*(): BOOLEAN;
+      Было ли приветствие
+
+
+              ПРЕДСТАВЛЕНИЕ ДАННЫХ О РАЗЛИЧНЫХ ТИПАХ В ПАМЯТИ
+
+Общие поля типа любой формы:
+  Type {
+    comment = ...
+    name = ...
+    form = ...
+  }
+
+Непосредственно объявленный записной тип (RECORD):
+  Type {
+    ...
+    form = record
+    extends = ...
+    fields = List { ... }
+  }
+
+Базовый тип (INTEGER, BOOLEAN, CHAR и т. д.)
+  Type {
+    ...
+    form = named
+    name = 'INTEGER'           (или другое)
+  }
+
+Любой заранее объявленный именованный тип:
+  Type {
+    ...
+    form = named
+    name = 'Fruits.Fruit'      (или другое)
+  }
+
+Непосредственно объявленный тип-массив (ARRAY):
+  Type {
+    ...
+    form = array
+    len  = 10                  (-1 для открытых массивов)
+    base = Type { ... }
+  }
+
+Непосредственно объявленный указательный тип (POINTER):
+  Type {
+    ...
+    form = pointer
+    base = Type { ... }
+  }
+
