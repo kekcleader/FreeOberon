@@ -188,6 +188,24 @@ BEGIN
   END
 END AppendDataBin;
 
+PROCEDURE AppendArgument(IN arg: ARRAY OF CHAR; VAR s: ARRAY OF CHAR);
+BEGIN Strings.Append(arg, s)
+END AppendArgument;
+
+(*PROCEDURE AppendArgument(IN arg: ARRAY OF CHAR; VAR s: ARRAY OF CHAR);
+VAR i, j: INTEGER;
+BEGIN
+  j := 0; WHILE s[j] # 0X DO INC(j) END;
+  i := 0;
+  WHILE arg[i] # 0X DO
+    IF arg[i] = ',' THEN s[j] := '^'; INC(j); s[j] := ','
+    ELSE s[j] := arg[i]
+    END;
+    INC(i); INC(j)
+  END;
+  s[j] := 0X
+END AppendArgument;*)
+
 PROCEDURE RunCommand(IN fname, mod: ARRAY OF CHAR; link, main: BOOLEAN;
     list: Module; onError: ErrorHandler): BOOLEAN;
 CONST bufLen = 20480;
@@ -233,7 +251,7 @@ BEGIN ok := TRUE;
       p := list;
       WHILE p.next # NIL DO
         IF p.libs[0] # 0X THEN
-          Strings.Append(' ', cmd); Strings.Append(p.libs, cmd)
+          Strings.Append(' ', cmd); AppendArgument(p.libs, cmd)
         END;
         p := p.next
       END
@@ -303,7 +321,7 @@ PROCEDURE ResetSysModules*;
     Add('Graph'); p := sysModules;
     IF Config.isWindows THEN
       p.libs := '-lallegro -lallegro_primitives -lallegro_image';
-      Strings.Append(' -Wl,-subsystem,window', p.libs)
+      Strings.Append(' "-Wl,-subsystem,windows"', p.libs)
     ELSE
       p.libs := '$(pkg-config allegro_primitives-5 allegro_image-5';
       Strings.Append(' allegro_audio-5 allegro_acodec-5', p.libs);

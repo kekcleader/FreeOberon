@@ -1,6 +1,6 @@
 @ECHO OFF
 REM This script is run by Free Oberon on Windows
-REM to link a console program.
+REM to link a graphics program.
 REM When it is being run, the current directory
 REM must be the root directory of Free Oberon.
 
@@ -24,17 +24,25 @@ SET OFRTAR=%OFRDIR%\Target\Win32
 SET PATH=%OFRTAR%;%GCCDIR%;%PATH%
 SET CC=gcc
 
-REM Put all arguments starting from the 2nd to ARGS
+REM Put all args from 2nd upto --linker-libs to FILES, put others in FLAGS
 SHIFT
-SET ARGS=%1
-SHIFT
+SET FILES=
 :START
 IF [%1] == [] GOTO FINISH
-SET ARGS=%ARGS% %1
+IF [%1] == [--linker-libs] GOTO FLAGSLOOP
+SET FILES=%FILES% %1
 SHIFT
 GOTO START
+:FLAGSLOOP
+SHIFT
+SET FLAGS=
+:START2
+IF [%1] == [] GOTO FINISH
+SET FLAGS=%FLAGS% %1
+SHIFT
+GOTO START2
 :FINISH
-REM END Put all ARGS.
+REM END: Put all FILES and FLAGS
 ECHO ON
 
 @DEL /s %~n1.exe >nul 2>&1
@@ -44,14 +52,13 @@ ECHO ON
   -I %OFRDIR%\Mod\Lib ^
   -I %OFRTAR%\Lib\Obj ^
   %ONAME%.c -o %ONAME%.exe ^
-  %ARGS% ^
+  %FILES% ^
   %FOBDIR%\Data\bin\FreeOberon.a ^
   %OFRTAR%\Lib\Ofront.a ^
+  -I..\Data\bin\mingw32\include ^
   -Wl,-e_WinMain@16 -nostartfiles ^
-  %OFRDIR%\Mod\Lib\crt1.c
-
-
-
+  %OFRDIR%\Mod\Lib\crt1.c ^
+  %FLAGS%
 
 @SET RETCODE=%ERRORLEVEL%
 

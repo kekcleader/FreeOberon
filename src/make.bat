@@ -2,7 +2,7 @@
 SET PROG1=FreeOberon
 SET PROG2=fob
 SET OFRDIR=..\Data\bin\OfrontPlus\Target\Win32
-SET GCCDIR=C:\mingw-w64\i686\mingw32\bin
+SET GCCDIR=C:\prg\mingw32\bin
 SET GCCDIR=..\Data\bin\mingw32\bin
 SET PATH=%GCCDIR%;%OFRDIR%;%PATH%
 SET OBERON=.;%OFRDIR%\Lib\Sym
