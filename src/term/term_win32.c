@@ -186,7 +186,7 @@ int StartProcessIn(char *process, char *dir) {
   }
 
   // Determine the value of environment variable PATH for the child process
-  childEnvPath = (LPTSTR)malloc((pathSize + 4) * sizeof(TCHAR));
+  childEnvPath = (LPTSTR)malloc((pathSize + 19) * sizeof(TCHAR));
   if (childEnvPath == NULL) {
     free(pszOldVal);
     ErrorExit(TEXT("malloc out memory"));
@@ -195,7 +195,22 @@ int StartProcessIn(char *process, char *dir) {
   childEnvPath[0] = '.';
   childEnvPath[1] = '.';
   childEnvPath[2] = ';';
-  memcpy(childEnvPath + 3, pszOldVal, (pathSize + 1) * sizeof(TCHAR));
+  childEnvPath[3] = '.';
+  childEnvPath[4] = '.';
+  childEnvPath[5] = '\\';
+  childEnvPath[6] = '.';
+  childEnvPath[7] = '.';
+  childEnvPath[8] = ';';
+  childEnvPath[9] = '.';
+  childEnvPath[10] = '.';
+  childEnvPath[11] = '\\';
+  childEnvPath[12] = '.';
+  childEnvPath[13] = '.';
+  childEnvPath[14] = '\\';
+  childEnvPath[15] = '.';
+  childEnvPath[16] = '.';
+  childEnvPath[17] = ';';
+  memcpy(childEnvPath + 18, pszOldVal, (pathSize + 1) * sizeof(TCHAR));
 
   // Set value of PATH for child process to inherit
   if (!SetEnvironmentVariable(TEXT("PATH"), childEnvPath)) {
