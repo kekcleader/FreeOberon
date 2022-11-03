@@ -571,7 +571,7 @@ PROCEDURE UsedModuleList*(IN modname, fname: ARRAY OF CHAR;
     VAR errFname: ARRAY OF CHAR; VAR errLine, errCol: INTEGER;
     VAR foreign: BOOLEAN; VAR res: INTEGER): Module;
 VAR L, list, list2, p, mod: Module;
-BEGIN L := NIL; res := 0(*OK*);
+BEGIN L := NIL; res := 0(*OK*); foreign := FALSE;
   NEW(mod); mod.s := modname$; mod.fname := fname$;
   mod.foreign := FALSE; mod.next := NIL;
   IF IsSysModule(modname) THEN
@@ -593,7 +593,7 @@ BEGIN L := NIL; res := 0(*OK*);
     ELSE Strings.Copy(fname, errFname)
     END
   END;
-  IF res = 0 THEN AddUniqueToList(mod, L) END ;
+  IF res = 0 THEN AddUniqueToList(mod, L); foreign := mod.foreign END ;
 RETURN L END UsedModuleList;
 
 BEGIN
