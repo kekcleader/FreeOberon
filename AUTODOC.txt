@@ -293,7 +293,7 @@ Module {
         Type {
           comment = 'Тип яблоко.[0AX]Represents an apple with some seeds.'
           name = 'Apple'
-          form = record
+          form = recordType
           base = 'Fruits.Fruit'
           fields = List {
             Field {
@@ -301,7 +301,7 @@ Module {
               name = 'seeds'
               type = Type {
                 name = 'INTEGER'
-                form = named
+                form = namedType
               }
             } next ->
             Field {
@@ -309,7 +309,7 @@ Module {
               name = 'quality'
               type = Type {
                 name = 'INTEGER'
-                form = named
+                form = namedType
               }
             }
           }
@@ -326,7 +326,7 @@ Module {
           comment = 'How many apples were created using Init.'
           type = Type {
             name = 'INTEGER'
-            form = named
+            form = namedType
           }
         }
         Var {
@@ -334,7 +334,7 @@ Module {
           comment = 'How many seeds were added the last time, or -1.'
           type = Type {
             name = 'INTEGER'
-            form = named
+            form = namedType
           }
         }
       }
@@ -354,7 +354,7 @@ Module {
               pass = byVar
               type = Type {
                 name = 'Apple'
-                form = named
+                form = namedType
               }
             } next ->
             Param {
@@ -362,7 +362,7 @@ Module {
               pass = byValue
               type = Type {
                 name = 'INTEGER'
-                form = named
+                form = namedType
               }
             }
           }
@@ -378,7 +378,7 @@ Module {
           comment = 'Было ли приветствие.'
           returnType = Type {
             name = 'BOOLEAN'
-            form = named
+            form = namedType
           }
           params = List { NIL }
         }
@@ -397,7 +397,7 @@ Module {
               pass = byVar
               type = Type {
                 name = 'Apple'
-                form = named
+                form = namedType
               }
             } next ->
             Param {
@@ -405,7 +405,7 @@ Module {
               pass = byValue
               type = Type {
                 name = 'INTEGER'
-                form = named
+                form = namedType
               }
             }
           }
@@ -420,7 +420,7 @@ Module {
               pass = byValue
               type = Type {
                 name = 'Apple'
-                form = named
+                form = namedType
               }
             }
           }
@@ -545,7 +545,7 @@ Module {
 Непосредственно объявленный записной тип (RECORD):
   Type {
     ...
-    form = record
+    form = recordType
     base = ...
     fields = List { ... }
   }
@@ -553,21 +553,21 @@ Module {
 Базовый тип (INTEGER, BOOLEAN, CHAR и т. д.)
   Type {
     ...
-    form = named
+    form = namedType
     name = 'INTEGER'           (или другое)
   }
 
 Любой заранее объявленный именованный тип:
   Type {
     ...
-    form = named
+    form = namedType
     name = 'Fruits.Fruit'      (или другое)
   }
 
 Непосредственно объявленный тип-массив (ARRAY):
   Type {
     ...
-    form = array
+    form = arrayType
     len  = 10                  (-1 для открытых массивов)
     base = Type { ... }
   }
@@ -575,7 +575,14 @@ Module {
 Непосредственно объявленный указательный тип (POINTER):
   Type {
     ...
-    form = pointer
+    form = pointerType
     base = Type { ... }
+  }
+
+Непосредственно объявленный процедурный тип:
+  Type {
+    ...
+    form = procedureType
+    procedure = Procedure { ... }
   }
 
