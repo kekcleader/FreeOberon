@@ -291,7 +291,7 @@ Module {
           comment = 'Тип яблоко.[0AX]Represents an apple with some seeds.'
           name = 'Apple'
           form = record
-          extends = 'Fruits.Fruit'
+          base = 'Fruits.Fruit'
           fields = List {
             Field {
               comment = 'Amount of seeds in the apple.'
@@ -317,7 +317,7 @@ Module {
   vars = List {
     Group {
       name = ''
-      body List {
+      body = List {
         Var {
           name = 'applesCreated'
           comment = 'How many apples were created using Init.'
@@ -543,7 +543,7 @@ Module {
   Type {
     ...
     form = record
-    extends = ...
+    base = ...
     fields = List { ... }
   }
 
