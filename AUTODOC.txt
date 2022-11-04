@@ -245,10 +245,13 @@ Const, Var, Procedure, Type или Group.
 
 Module {
   name = 'Apples'
+  comment = 'Module Apples helps count apples. One can create ' +
+            'a variable of type Apples.Apple, call Init and other ' +
+            'procedures on it. Это тестовый модуль.'
   imports = ['Fruits']
   consts = List {
     Group {
-      name = 'Общие постоянные'
+      comment = 'Общие постоянные'
       body = Objects {
         Const {
           comment = 'Maximum amount of apples. Currently not used.'
@@ -263,7 +266,7 @@ Module {
       }
     } next ->
     Group {
-      name = 'Качество яблока'
+      comment = 'Качество яблока'
       body = List {
         Const {
           comment = 'Неизвестное качество.'
@@ -285,7 +288,7 @@ Module {
   }
   types = List {
     Group {
-      name = ''
+      comment = ''
       body = List {
         Type {
           comment = 'Тип яблоко.[0AX]Represents an apple with some seeds.'
@@ -316,7 +319,7 @@ Module {
   }
   vars = List {
     Group {
-      name = ''
+      comment = ''
       body = List {
         Var {
           name = 'applesCreated'
@@ -339,7 +342,7 @@ Module {
   }
   procedures = List {
     Group {
-      name = ''
+      comment = ''
       body = List {
         Procedure {
           name = 'Init'
@@ -382,7 +385,7 @@ Module {
       }
     }
     Group {
-      name = 'Apple manipulation'
+      comment = 'Apple manipulation'
       body = List {
         Procedure {
           name = 'Add'
