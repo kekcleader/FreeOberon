@@ -235,7 +235,7 @@ PROCEDURE IsDec(x: CHAR): BOOLEAN;
 RETURN ('0' <= x) & (x <= '9') END IsDec;
 
 PROCEDURE IsHex(x: CHAR): BOOLEAN;
-RETURN IsDec(x) OR ('a' <= x) & (x <= 'f') OR ('A' <= x) OR (x <= 'F')
+RETURN IsDec(x) OR ('a' <= x) & (x <= 'f') OR ('A' <= x) & (x <= 'F')
 END IsHex;
 
 PROCEDURE FromHex(x: CHAR): INTEGER;
@@ -247,27 +247,6 @@ BEGIN
   ELSE ASSERT(FALSE)
   END
 RETURN n END FromHex;
-
-(** Identifies global var id and sets globar var sym. *)
-PROCEDURE IdentifyKeyword;
-BEGIN
-  IF    id = 'MODULE'  THEN sym := module
-  ELSIF id = 'IMPORT'  THEN sym := import
-  ELSIF id = 'CONST'   THEN sym := const
-  ELSIF id = 'TYPE'    THEN sym := type
-  ELSIF id = 'VAR'     THEN sym := var
-  ELSIF id = 'RECORD'  THEN sym := record
-  ELSIF id = 'ARRAY'   THEN sym := array
-  ELSIF id = 'POINTER' THEN sym := pointer
-  ELSIF id = 'TO'      THEN sym := to
-  ELSIF id = 'OF'      THEN sym := of
-  ELSIF id = 'BEGIN'   THEN sym := begin
-  ELSIF id = 'END'     THEN sym := end
-  ELSIF id = 'DIV'     THEN sym := div
-  ELSIF id = 'MOD'     THEN sym := mod
-  ELSE sym := ident
-  END
-END IdentifyKeyword;
 
 (** Reads a decimal or hexadecimal number (or a hexadecimal char literal),
     puts it in id, len, ival, sym. *)
@@ -285,13 +264,11 @@ BEGIN
   isChar := c = 'X';
   IF (c = 'H') OR (c = 'X') THEN hex := TRUE; Read ELSE hex := FALSE END;
 
-  ival := 0;
+  ival := 0; i := 0;
   IF hex THEN
-    i := 0;
     WHILE id[i] # 0X DO ival := ival * 16 + FromHex(id[i]); INC(i) END;
     IF isChar THEN sym := char ELSE sym := int END
   ELSE
-    i := 0;
     WHILE id[i] # 0X DO
       IF IsDec(id[i]) THEN ival := ival * 10 + ORD(id[i]) - ORD('0')
       ELSE Mark('Not a hexadecimal number')
@@ -347,6 +324,27 @@ BEGIN Read; closed := FALSE; writingDoc := FALSE;
     Out.Char('"'); Out.String(doc); Out.Char('"'); Out.Ln
   END
 END ReadComment;
+
+(** Identifies global var id and sets globar var sym. *)
+PROCEDURE IdentifyKeyword;
+BEGIN
+  IF    id = 'MODULE'  THEN sym := module
+  ELSIF id = 'IMPORT'  THEN sym := import
+  ELSIF id = 'CONST'   THEN sym := const
+  ELSIF id = 'TYPE'    THEN sym := type
+  ELSIF id = 'VAR'     THEN sym := var
+  ELSIF id = 'RECORD'  THEN sym := record
+  ELSIF id = 'ARRAY'   THEN sym := array
+  ELSIF id = 'POINTER' THEN sym := pointer
+  ELSIF id = 'TO'      THEN sym := to
+  ELSIF id = 'OF'      THEN sym := of
+  ELSIF id = 'BEGIN'   THEN sym := begin
+  ELSIF id = 'END'     THEN sym := end
+  ELSIF id = 'DIV'     THEN sym := div
+  ELSIF id = 'MOD'     THEN sym := mod
+  ELSE sym := ident
+  END
+END IdentifyKeyword;
 
 PROCEDURE GetSym;
 BEGIN
