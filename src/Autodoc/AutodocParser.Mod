@@ -2,45 +2,47 @@ MODULE AutodocParser;
 IMPORT Files, Texts, Out, Args, Strings, Config, Platform;
 CONST
   (** Lexer constants **)
-  null*    = 0;
-  comment* = 1;
+  null    = 0;
+  comment = 1;
 
-  ident*   = 1;
-  int*     = 2;
-  real*    = 3;
-  set*     = 4;
-  char*    = 5;
-  string*  = 6;
+  ident   = 1;
+  int     = 2;
+  real    = 3;
+  set     = 4;
+  char    = 5;
+  string  = 6;
 
-  module*  = 10;
-  record*  = 11;
-  array*   = 12;
-  pointer* = 13;
-  to*      = 14;
-  of*      = 15;
-  begin*   = 16;
-  end*     = 17;
+  module  = 10;
+  record  = 11;
+  array   = 12;
+  pointer = 13;
+  to      = 14;
+  of      = 15;
+  begin   = 16;
+  end     = 17;
 
-  lparen*  = 30;
-  rparen*  = 31;
-  lbrak*   = 32;
-  rbrak*   = 33;
-  lbrace*  = 34;
-  rbrace*  = 35;
-  period*  = 36;
-  comma*   = 37;
-  upto*    = 38;
-  colon*   = 39;
-  semicol* = 40;
-  equals*  = 41;
-  plus*    = 42;
-  minus*   = 43;
-  times*   = 44;
-  div*     = 45;
-  mod*     = 46;
-  rdiv*    = 47;
+  lparen  = 30;
+  rparen  = 31;
+  lbrak   = 32;
+  rbrak   = 33;
+  lbrace  = 34;
+  rbrace  = 35;
+  period  = 36;
+  comma   = 37;
+  upto    = 38;
+  colon   = 39;
+  semicol = 40;
+  equals  = 41;
+  becomes = 42;
+  plus    = 43;
+  minus   = 44;
+  times   = 45;
+  div     = 46;
+  mod     = 47;
+  rdiv    = 48;
+  not     = 49;
 
-  eot*     = 70;
+  eot     = 70;
 
   (** Forms of Types **)
 
@@ -125,6 +127,10 @@ VAR
 
   ival: INTEGER;
 
+  writingDoc: BOOLEAN; (** TRUE when inside a doc comment *)
+  doc: LongStr; (** Currently saved documentation comment *)
+  docLen: INTEGER; (** Actual length of doc *)
+
 (** Error Handling **)
 
 PROCEDURE Mark(s: ARRAY OF CHAR);
@@ -185,6 +191,8 @@ BEGIN
   ELSIF id = 'OF'      THEN sym := of
   ELSIF id = 'BEGIN'   THEN sym := begin
   ELSIF id = 'END'     THEN sym := end
+  ELSIF id = 'DIV'     THEN sym := div
+  ELSIF id = 'MOD'     THEN sym := mod
   ELSE sym := ident
   END
 END IdentifyKeyword;
@@ -222,8 +230,55 @@ BEGIN
   END
 END ReadNumber;
 
+PROCEDURE WriteDoc(c: CHAR);
+BEGIN
+  IF writingDoc THEN
+    IF docLen < LEN(doc) - 1 THEN
+      IF (c > ' ') OR (docLen # 0) & (doc[docLen - 1] > ' ') THEN
+        IF c < ' ' THEN c := ' ' END;
+        doc[docLen] := c; INC(docLen)
+      END
+    END
+  END
+END WriteDoc;
+
+PROCEDURE ReadComment(toplevel: BOOLEAN);
+VAR closed, tmp: BOOLEAN;
+BEGIN Read; closed := FALSE; writingDoc := FALSE;
+  IF c = '*' THEN Read; (* Second star *)
+    IF c = ')' THEN Read; closed := TRUE
+    ELSIF toplevel THEN writingDoc := TRUE; docLen := 0
+    END
+  END;
+  IF ~closed THEN
+    REPEAT
+      WHILE (c # 0X) & (c # '*') DO
+        IF c = '(' THEN Read;
+          IF c = '*' THEN
+            tmp := writingDoc;
+            ReadComment(FALSE);
+            writingDoc := tmp
+          ELSE WriteDoc('(')
+          END
+        END;
+        WriteDoc(c); Read
+      END;
+      IF c = '*' THEN Read;
+        IF c # ')' THEN WriteDoc(c) END
+      END
+    UNTIL (c = 0X) OR (c = ')');
+    IF c = ')' THEN Read END
+  END;
+  IF writingDoc & (docLen # 0) THEN
+    REPEAT DEC(docLen) UNTIL (docLen = -1) OR (doc[docLen] > ' ');
+    doc[docLen + 1] := 0X;
+    Out.Char('"'); Out.String(doc); Out.Char('"'); Out.Ln
+  END
+END ReadComment;
+
 PROCEDURE Get(VAR sym: INTEGER);
 BEGIN
+  WHILE (c # 0X) & (c <= ' ') DO Read END;
   IF IsLetter(c) THEN
     len := 0;
     REPEAT
@@ -233,6 +288,27 @@ BEGIN
     id[len] := 0X;
     IdentifyKeyword
   ELSIF IsDec(c) THEN ReadNumber
+  ELSIF c = '+' THEN Read; sym := plus
+  ELSIF c = '-' THEN Read; sym := minus
+  ELSIF c = '*' THEN Read; sym := times
+  ELSIF c = '/' THEN Read; sym := rdiv
+  ELSIF c = '~' THEN Read; sym := not
+  ELSIF c = ',' THEN Read; sym := comma
+  ELSIF c = ':' THEN Read;
+    IF c = '=' THEN Read; sym := becomes ELSE sym := colon END
+  ELSIF c = '.' THEN Read;
+    IF c = '.' THEN Read; sym := upto ELSE sym := period END
+  ELSIF c = '(' THEN Read;
+    IF c = '*' THEN ReadComment(TRUE) ELSE Read; sym := lparen END
+  ELSIF c = ')' THEN Read; sym := rparen
+  ELSIF c = '[' THEN Read; sym := lbrak
+  ELSIF c = ']' THEN Read; sym := rbrak
+  ELSIF c = '{' THEN Read; sym := lbrace
+  ELSIF c = '}' THEN Read; sym := rbrace
+  ELSIF c = ';' THEN Read; sym := semicol
+  ELSIF c = '=' THEN Read; sym := equals
+  ELSIF c = 0X THEN sym := eot
+  ELSE Read; sym := null
   END;
   sym := module
 END Get;
