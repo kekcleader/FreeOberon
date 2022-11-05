@@ -2,6 +2,8 @@
 /FreeOberon.exe
 /fob
 /fob.exe
+Autodoc
+Autodoc.exe
 _Build
 /src/Makefile
 /src/*.o
