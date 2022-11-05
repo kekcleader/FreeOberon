@@ -1,11 +1,14 @@
 
 all: Autodoc
 
-Autodoc: Autodoc.Mod
+Autodoc: Autodoc.Mod AutodocParser.Mod
 	fob Autodoc.Mod
 
 run: Autodoc
 	clear;./Autodoc Test/Apples.Mod
 
-.phony: run
+clean:
+	@rm -rf _Build Autodoc
+
+.phony: run clean
 

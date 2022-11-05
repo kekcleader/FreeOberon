@@ -9,7 +9,8 @@ CONST
   int*     = 2;
   real*    = 3;
   set*     = 4;
-  string*  = 5;
+  char*    = 5;
+  string*  = 6;
 
   module*  = 10;
   record*  = 11;
@@ -111,11 +112,144 @@ TYPE
   ModuleDesc* = RECORD(ObjectDesc)
   END;
 
-PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
-VAR module: Module;
+VAR
+  R: Files.Rider; (** Rider of the currently parsed module *)
+  c: CHAR; (** One step ahead character read from rider R *)
+  line, col: INTEGER; (** Position in R *)
+  lastError: INTEGER; (** Position in R of last error, or -1 *)
+
+  sym: INTEGER; (** One step ahead (syntactic) symbol read *)
+
+  id: ARRAY 256 OF CHAR; (** Identifier read *)
+  len: INTEGER; (** Actual length of id *)
+
+  ival: INTEGER;
+
+(** Error Handling **)
+
+PROCEDURE Mark(s: ARRAY OF CHAR);
+VAR pos: INTEGER;
 BEGIN
-  NEW(module);
-  RETURN module
-END ParseModule;
+  pos := Files.Pos(R);
+  IF (lastError = -1) OR (lastError + 7 < pos) THEN 
+    Out.Int(line, 0); Out.Char(':'); Out.Int(col, 0);
+    Out.String(': '); Out.String(s); Out.Ln
+  END;
+  lastError := pos
+END Mark;
+
+(** Handle Comments **)
+
+PROCEDURE ClearComments;
+BEGIN
+
+END ClearComments;
+
+(** Scanner **)
+
+PROCEDURE Read;
+BEGIN
+  IF c = 0AX THEN INC(line); col := 0 END;
+  IF ~R.eof THEN Files.ReadChar(R, c); INC(col) ELSE c := 0X END
+END Read;
+
+PROCEDURE IsLetter(x: CHAR): BOOLEAN;
+RETURN ('a' <= x) & (x <= 'z') OR ('A' <= x) & (x <= 'Z') OR (x = '_')
+END IsLetter;
+
+PROCEDURE IsDec(x: CHAR): BOOLEAN;
+RETURN ('0' <= x) & (x <= '9') END IsDec;
+
+PROCEDURE IsHex(x: CHAR): BOOLEAN;
+RETURN IsDec(x) OR ('a' <= x) & (x <= 'f') OR ('A' <= x) OR (x <= 'F')
+END IsHex;
+
+PROCEDURE FromHex(x: CHAR): INTEGER;
+VAR n: INTEGER;
+BEGIN
+  IF ('A' <= x) & (x <= 'F') THEN n := 10 - ORD('A') + ORD(x)
+  ELSIF ('a' <= x) & (x <= 'f') THEN n := 10 - ORD('a') + ORD(x)
+  ELSIF ('0' <= x) & (x <= '9') THEN n := ORD(x) - ORD('0')
+  ELSE ASSERT(FALSE)
+  END
+RETURN n END FromHex;
+
+(** Identifies global var id and sets globar var sym. *)
+PROCEDURE IdentifyKeyword;
+BEGIN
+  IF    id = 'MODULE'  THEN sym := module
+  ELSIF id = 'RECORD'  THEN sym := record
+  ELSIF id = 'ARRAY'   THEN sym := array
+  ELSIF id = 'POINTER' THEN sym := pointer
+  ELSIF id = 'TO'      THEN sym := to
+  ELSIF id = 'OF'      THEN sym := of
+  ELSIF id = 'BEGIN'   THEN sym := begin
+  ELSIF id = 'END'     THEN sym := end
+  ELSE sym := ident
+  END
+END IdentifyKeyword;
+
+(** Reads a decimal or hexadecimal number (or a hexadecimal char literal),
+    puts it in id, len, ival, sym. *)
+PROCEDURE ReadNumber;
+VAR hex, isChar: BOOLEAN;
+  i: INTEGER;
+BEGIN
+  len := 0;
+  REPEAT
+    IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
+    Read
+  UNTIL ~IsHex(c);
+  id[len] := 0X;
+
+  isChar := c = 'X';
+  IF (c = 'H') OR (c = 'X') THEN hex := TRUE; Read ELSE hex := FALSE END;
+
+  ival := 0;
+  IF hex THEN
+    i := 0;
+    WHILE id[i] # 0X DO ival := ival * 16 + FromHex(id[i]); INC(i) END;
+    IF isChar THEN sym := char ELSE sym := int END
+  ELSE
+    i := 0;
+    WHILE id[i] # 0X DO
+      IF IsDec(id[i]) THEN ival := ival * 10 + ORD(id[i]) - ORD('0')
+      ELSE Mark('Not a hexadecimal number')
+      END;
+      INC(i)
+    END;
+    sym := int
+  END
+END ReadNumber;
+
+PROCEDURE Get(VAR sym: INTEGER);
+BEGIN
+  IF IsLetter(c) THEN
+    len := 0;
+    REPEAT
+      IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
+      Read
+    UNTIL ~IsLetter(c) & ~IsDec(c);
+    id[len] := 0X;
+    IdentifyKeyword
+  ELSIF IsDec(c) THEN ReadNumber
+  END;
+  sym := module
+END Get;
+
+(** Parser **)
+
+PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
+VAR M: Module;
+  sym: INTEGER;
+BEGIN
+  R := r; c := 0X; line := 1; col := 0; lastError := -1;
+  Read; ClearComments; Get(sym);
+  IF sym = module THEN
+    Get(sym)
+  ELSE Mark('MODULE expected')
+  END;
+  NEW(M)
+RETURN M END ParseModule;
 
 END AutodocParser.
