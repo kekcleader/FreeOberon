@@ -245,6 +245,7 @@ Const, Var, Procedure, Type или Group.
 
 Module {
   name = 'Apples'
+  foreign = FALSE
   comment = 'Module Apples helps count apples. One can create ' +
             'a variable of type Apples.Apple, call Init and other ' +
             'procedures on it. Это тестовый модуль.'

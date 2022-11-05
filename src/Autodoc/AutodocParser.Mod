@@ -1,9 +1,8 @@
 MODULE AutodocParser;
-IMPORT Files, Texts, Out, Args, Strings, Config, Platform;
+IMPORT Files, Texts, Out, Args, Strings, Config, Platform, Int;
 CONST
   (** Lexer constants **)
   null    = 0;
-  comment = 1;
 
   ident   = 1;
   int     = 2;
@@ -12,14 +11,19 @@ CONST
   char    = 5;
   string  = 6;
 
-  module  = 10;
-  record  = 11;
-  array   = 12;
-  pointer = 13;
-  to      = 14;
-  of      = 15;
-  begin   = 16;
-  end     = 17;
+  module    = 10;
+  import    = 11;
+  const     = 12;
+  type      = 13;
+  var       = 14;
+  record    = 15;
+  array     = 16;
+  pointer   = 17;
+  to        = 18;
+  of        = 19;
+  procedure = 20;
+  begin     = 21;
+  end       = 22;
 
   lparen  = 30;
   rparen  = 31;
@@ -112,9 +116,11 @@ TYPE
 
   Module* = POINTER TO ModuleDesc;
   ModuleDesc* = RECORD(ObjectDesc)
+    foreign*: BOOLEAN (** TRUE if module has a [foreign] mark *)
   END;
 
 VAR
+  curFname: Str; (** Set by SetFname and used in Mark for error output *)
   R: Files.Rider; (** Rider of the currently parsed module *)
   c: CHAR; (** One step ahead character read from rider R *)
   line, col: INTEGER; (** Position in R *)
@@ -125,6 +131,7 @@ VAR
   id: ARRAY 256 OF CHAR; (** Identifier read *)
   len: INTEGER; (** Actual length of id *)
 
+  sval: Str; (** String read, when sym = string *)
   ival: INTEGER;
 
   writingDoc: BOOLEAN; (** TRUE when inside a doc comment *)
@@ -133,16 +140,77 @@ VAR
 
 (** Error Handling **)
 
+(** Used for error output in Mark *)
+PROCEDURE SetFname*(fname: ARRAY OF CHAR);
+BEGIN curFname := fname
+END SetFname;
+
 PROCEDURE Mark(s: ARRAY OF CHAR);
 VAR pos: INTEGER;
 BEGIN
   pos := Files.Pos(R);
   IF (lastError = -1) OR (lastError + 7 < pos) THEN 
+    Out.String(curFname); Out.Char(':');
     Out.Int(line, 0); Out.Char(':'); Out.Int(col, 0);
-    Out.String(': '); Out.String(s); Out.Ln
+    Out.String(': error: '); Out.String(s); Out.Ln
   END;
   lastError := pos
 END Mark;
+
+PROCEDURE SymToStr(sym: INTEGER; VAR s: ARRAY OF CHAR);
+BEGIN
+  IF    sym = null      THEN s := 'nothing'
+  ELSIF sym = ident     THEN Strings.Copy(id, s)
+  ELSIF sym = int       THEN Int.Str(ival, s)
+  ELSIF sym = real      THEN s := 'real number'
+  ELSIF sym = set       THEN s := 'set'
+  ELSIF sym = string    THEN s := 'string'
+  ELSIF sym = module    THEN s := 'MODULE'
+  ELSIF sym = import    THEN s := 'IMPORT'
+  ELSIF sym = const     THEN s := 'CONST'
+  ELSIF sym = type      THEN s := 'TYPE'
+  ELSIF sym = var       THEN s := 'VAR'
+  ELSIF sym = record    THEN s := 'RECORD'
+  ELSIF sym = array     THEN s := 'ARRAY'
+  ELSIF sym = pointer   THEN s := 'POINTER'
+  ELSIF sym = to        THEN s := 'TO'
+  ELSIF sym = of        THEN s := 'OF'
+  ELSIF sym = procedure THEN s := 'PROCEDURE'
+  ELSIF sym = begin     THEN s := 'BEGIN'
+  ELSIF sym = end       THEN s := 'END'
+  ELSIF sym = div       THEN s := 'DIV'
+  ELSIF sym = mod       THEN s := 'MOD'
+  ELSIF sym = lparen    THEN s := '('
+  ELSIF sym = rparen    THEN s := ')'
+  ELSIF sym = lbrak     THEN s := '['
+  ELSIF sym = rbrak     THEN s := ']'
+  ELSIF sym = lbrace    THEN s := '{'
+  ELSIF sym = rbrace    THEN s := '}'
+  ELSIF sym = period    THEN s := '.'
+  ELSIF sym = comma     THEN s := ','
+  ELSIF sym = upto      THEN s := '..'
+  ELSIF sym = colon     THEN s := ':'
+  ELSIF sym = semicol   THEN s := ';'
+  ELSIF sym = equals    THEN s := '='
+  ELSIF sym = becomes   THEN s := ':='
+  ELSIF sym = plus      THEN s := '+'
+  ELSIF sym = minus     THEN s := '-'
+  ELSIF sym = times     THEN s := '*'
+  ELSIF sym = rdiv      THEN s := '/'
+  ELSIF sym = not       THEN s := '~'
+  ELSIF sym = eot       THEN s := 'end of text'
+  ELSE s := 'Symbol #'; Int.Append(sym, s)
+  END
+END SymToStr;
+
+PROCEDURE MarkExp(name: ARRAY OF CHAR);
+VAR s, word: ARRAY 256 OF CHAR;
+BEGIN
+  s := name; Strings.Append(' expected, but ', s);
+  SymToStr(sym, word); Strings.Append(word, s);
+  Strings.Append(' found', s);
+  Mark(s)
+END MarkExp;
 
 (** Handle Comments **)
 
@@ -184,6 +252,10 @@ RETURN n END FromHex;
 PROCEDURE IdentifyKeyword;
 BEGIN
   IF    id = 'MODULE'  THEN sym := module
+  ELSIF id = 'IMPORT'  THEN sym := import
+  ELSIF id = 'CONST'   THEN sym := const
+  ELSIF id = 'TYPE'    THEN sym := type
+  ELSIF id = 'VAR'     THEN sym := var
   ELSIF id = 'RECORD'  THEN sym := record
   ELSIF id = 'ARRAY'   THEN sym := array
   ELSIF id = 'POINTER' THEN sym := pointer
@@ -276,56 +348,115 @@ BEGIN Read; closed := FALSE; writingDoc := FALSE;
   END
 END ReadComment;
 
-PROCEDURE Get(VAR sym: INTEGER);
+PROCEDURE GetSym;
 BEGIN
-  WHILE (c # 0X) & (c <= ' ') DO Read END;
-  IF IsLetter(c) THEN
-    len := 0;
-    REPEAT
-      IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
-      Read
-    UNTIL ~IsLetter(c) & ~IsDec(c);
-    id[len] := 0X;
-    IdentifyKeyword
-  ELSIF IsDec(c) THEN ReadNumber
-  ELSIF c = '+' THEN Read; sym := plus
-  ELSIF c = '-' THEN Read; sym := minus
-  ELSIF c = '*' THEN Read; sym := times
-  ELSIF c = '/' THEN Read; sym := rdiv
-  ELSIF c = '~' THEN Read; sym := not
-  ELSIF c = ',' THEN Read; sym := comma
-  ELSIF c = ':' THEN Read;
-    IF c = '=' THEN Read; sym := becomes ELSE sym := colon END
-  ELSIF c = '.' THEN Read;
-    IF c = '.' THEN Read; sym := upto ELSE sym := period END
-  ELSIF c = '(' THEN Read;
-    IF c = '*' THEN ReadComment(TRUE) ELSE Read; sym := lparen END
-  ELSIF c = ')' THEN Read; sym := rparen
-  ELSIF c = '[' THEN Read; sym := lbrak
-  ELSIF c = ']' THEN Read; sym := rbrak
-  ELSIF c = '{' THEN Read; sym := lbrace
-  ELSIF c = '}' THEN Read; sym := rbrace
-  ELSIF c = ';' THEN Read; sym := semicol
-  ELSIF c = '=' THEN Read; sym := equals
-  ELSIF c = 0X THEN sym := eot
-  ELSE Read; sym := null
-  END;
-  sym := module
-END Get;
+  sym := null;
+  REPEAT
+    WHILE (c # 0X) & (c <= ' ') DO Read END;
+    IF IsLetter(c) THEN
+      len := 0;
+      REPEAT
+        IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
+        Read
+      UNTIL ~IsLetter(c) & ~IsDec(c);
+      id[len] := 0X;
+      IdentifyKeyword
+    ELSIF IsDec(c) THEN ReadNumber
+    ELSIF c = '+' THEN Read; sym := plus
+    ELSIF c = '-' THEN Read; sym := minus
+    ELSIF c = '*' THEN Read; sym := times
+    ELSIF c = '/' THEN Read; sym := rdiv
+    ELSIF c = '~' THEN Read; sym := not
+    ELSIF c = ',' THEN Read; sym := comma
+    ELSIF c = ':' THEN Read;
+      IF c = '=' THEN Read; sym := becomes ELSE sym := colon END
+    ELSIF c = '.' THEN Read;
+      IF c = '.' THEN Read; sym := upto ELSE sym := period END
+    ELSIF c = '(' THEN Read;
+      IF c = '*' THEN ReadComment(TRUE) ELSE Read; sym := lparen END
+    ELSIF c = ')' THEN Read; sym := rparen
+    ELSIF c = '[' THEN Read; sym := lbrak
+    ELSIF c = ']' THEN Read; sym := rbrak
+    ELSIF c = '{' THEN Read; sym := lbrace
+    ELSIF c = '}' THEN Read; sym := rbrace
+    ELSIF c = ';' THEN Read; sym := semicol
+    ELSIF c = '=' THEN Read; sym := equals
+    ELSIF c = 0X THEN sym := eot
+    ELSE Read
+    END
+  UNTIL sym # null
+END GetSym;
+
+(** Object **)
+
+PROCEDURE InitObject(o: Object);
+BEGIN o.name[0] := 0X; o.comment[0] := 0X; o.next := NIL
+END InitObject;
 
 (** Parser **)
 
+PROCEDURE ParseConstDecl(o: Object);
+BEGIN
+  GetSym
+END ParseConstDecl;
+
+PROCEDURE ParseTypeDecl(o: Object);
+BEGIN
+  GetSym
+END ParseTypeDecl;
+
+PROCEDURE ParseVarDecl(o: Object);
+BEGIN
+  GetSym
+END ParseVarDecl;
+
+PROCEDURE Declarations(o: Object);
+BEGIN
+  IF sym = const THEN ParseConstDecl(o) END;
+  IF sym = type THEN ParseTypeDecl(o) END;
+  IF sym = var THEN ParseVarDecl(o) END
+  ;GetSym
+END Declarations;
+
+PROCEDURE ParseImport(M: Module);
+BEGIN
+  GetSym
+END ParseImport;
+
 PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
 VAR M: Module;
-  sym: INTEGER;
-BEGIN
+BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
   R := r; c := 0X; line := 1; col := 0; lastError := -1;
-  Read; ClearComments; Get(sym);
-  IF sym = module THEN
-    Get(sym)
-  ELSE Mark('MODULE expected')
+  Read; ClearComments; GetSym;
+  IF sym = module THEN GetSym;
+    IF sym = lbrak THEN GetSym;
+      IF (sym = ident) & (id = 'foreign') THEN M.foreign := TRUE END;
+      REPEAT GetSym UNTIL (sym = eot) OR (sym = rbrak);
+      GetSym
+    END;
+    IF sym = ident THEN Strings.Copy(id, M.name); GetSym
+    ELSE MarkExp('module name')
+    END;
+    IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
+    IF sym = import THEN ParseImport(M) END;
+    Declarations(M);
+    IF sym = begin THEN
+      REPEAT GetSym UNTIL (sym = eot) OR (sym = end)
+    END;
+    IF sym = end THEN GetSym
+    ELSE
+      MarkExp('END of module');
+      REPEAT GetSym UNTIL (sym = eot) OR (sym = end)
+    END;
+    IF sym = ident THEN
+      IF M.name # id THEN Mark('Module name mismatch') END
+    ELSE MarkExp('module name')
+    END;
+    IF sym # period THEN MarkExp('.') END
+  ELSE MarkExp('MODULE')
   END;
-  NEW(M)
+  IF lastError # -1 THEN M := NIL; err := 'Error' (*!FIXME*) END
 RETURN M END ParseModule;
 
+BEGIN curFname[0] := 0X
 END AutodocParser.

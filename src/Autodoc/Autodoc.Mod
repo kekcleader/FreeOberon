@@ -31,6 +31,7 @@ VAR err: ARRAY 1024 OF CHAR;
   module: Module;
 BEGIN
   IF OpenFile(in, r) THEN
+    P.SetFname(in);
     module := P.ParseModule(r, err);
     IF module # NIL THEN
       IF SaveHtml(module, out) THEN
