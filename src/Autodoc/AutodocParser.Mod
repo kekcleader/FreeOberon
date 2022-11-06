@@ -45,6 +45,7 @@ CONST
   mod     = 47;
   rdiv    = 48;
   not     = 49;
+  arrow   = 50;
 
   eot     = 70;
 
@@ -111,6 +112,7 @@ TYPE
   Procedure* = POINTER TO ProcedureDesc;
   ProcedureDesc* = RECORD(ObjectDesc)
     returnType*: Type;
+    exported*: BOOLEAN;
     params*: List
   END;
 
@@ -198,6 +200,7 @@ BEGIN
   ELSIF sym = times     THEN s := '*'
   ELSIF sym = rdiv      THEN s := '/'
   ELSIF sym = not       THEN s := '~'
+  ELSIF sym = arrow     THEN s := '^'
   ELSIF sym = eot       THEN s := 'end of text'
   ELSE s := 'Symbol #'; Int.Append(sym, s)
   END
@@ -211,6 +214,13 @@ BEGIN
   Strings.Append(' found', s);
   Mark(s)
 END MarkExp;
+
+PROCEDURE MarkEnd(title, name: ARRAY OF CHAR);
+VAR s, word: ARRAY 256 OF CHAR;
+BEGIN
+  Strings.Copy(title, s); Strings.Append(' ', s); Strings.Append(name, s);
+  Strings.Append(' is not closed.', s); Mark(s)
+END MarkEnd;
 
 (** Handle Comments **)
 
@@ -328,37 +338,43 @@ END ReadComment;
 (** Identifies global var id and sets globar var sym. *)
 PROCEDURE IdentifyKeyword;
 BEGIN
-  IF    id = 'MODULE'  THEN sym := module
-  ELSIF id = 'IMPORT'  THEN sym := import
-  ELSIF id = 'CONST'   THEN sym := const
-  ELSIF id = 'TYPE'    THEN sym := type
-  ELSIF id = 'VAR'     THEN sym := var
-  ELSIF id = 'RECORD'  THEN sym := record
-  ELSIF id = 'ARRAY'   THEN sym := array
-  ELSIF id = 'POINTER' THEN sym := pointer
-  ELSIF id = 'TO'      THEN sym := to
-  ELSIF id = 'OF'      THEN sym := of
-  ELSIF id = 'BEGIN'   THEN sym := begin
-  ELSIF id = 'END'     THEN sym := end
-  ELSIF id = 'DIV'     THEN sym := div
-  ELSIF id = 'MOD'     THEN sym := mod
+  IF    id = 'MODULE'    THEN sym := module
+  ELSIF id = 'IMPORT'    THEN sym := import
+  ELSIF id = 'CONST'     THEN sym := const
+  ELSIF id = 'TYPE'      THEN sym := type
+  ELSIF id = 'VAR'       THEN sym := var
+  ELSIF id = 'RECORD'    THEN sym := record
+  ELSIF id = 'ARRAY'     THEN sym := array
+  ELSIF id = 'POINTER'   THEN sym := pointer
+  ELSIF id = 'TO'        THEN sym := to
+  ELSIF id = 'OF'        THEN sym := of
+  ELSIF id = 'PROCEDURE' THEN sym := procedure
+  ELSIF id = 'BEGIN'     THEN sym := begin
+  ELSIF id = 'END'       THEN sym := end
+  ELSIF id = 'DIV'       THEN sym := div
+  ELSIF id = 'MOD'       THEN sym := mod
   ELSE sym := ident
   END
 END IdentifyKeyword;
 
+PROCEDURE ReadIdentOrKeyword;
+BEGIN
+  len := 0;
+  REPEAT
+    IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
+    Read
+  UNTIL ~IsLetter(c) & ~IsDec(c);
+  id[len] := 0X;
+  IdentifyKeyword
+END ReadIdentOrKeyword;
+
 PROCEDURE GetSym;
+VAR z: ARRAY 200 OF CHAR;
 BEGIN
   sym := null;
   REPEAT
     WHILE (c # 0X) & (c <= ' ') DO Read END;
-    IF IsLetter(c) THEN
-      len := 0;
-      REPEAT
-        IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
-        Read
-      UNTIL ~IsLetter(c) & ~IsDec(c);
-      id[len] := 0X;
-      IdentifyKeyword
+    IF IsLetter(c) THEN ReadIdentOrKeyword
     ELSIF IsDec(c) THEN ReadNumber
     ELSIF c = '+' THEN Read; sym := plus
     ELSIF c = '-' THEN Read; sym := minus
@@ -371,7 +387,7 @@ BEGIN
     ELSIF c = '.' THEN Read;
       IF c = '.' THEN Read; sym := upto ELSE sym := period END
     ELSIF c = '(' THEN Read;
-      IF c = '*' THEN ReadComment(TRUE) ELSE Read; sym := lparen END
+      IF c = '*' THEN Read; ReadComment(TRUE) ELSE sym := lparen END
     ELSIF c = ')' THEN Read; sym := rparen
     ELSIF c = '[' THEN Read; sym := lbrak
     ELSIF c = ']' THEN Read; sym := rbrak
@@ -379,10 +395,12 @@ BEGIN
     ELSIF c = '}' THEN Read; sym := rbrace
     ELSIF c = ';' THEN Read; sym := semicol
     ELSIF c = '=' THEN Read; sym := equals
+    ELSIF c = '^' THEN Read; sym := arrow
     ELSIF c = 0X THEN sym := eot
     ELSE Read
     END
   UNTIL sym # null
+  (*;SymToStr(sym, z);Out.String(z);Out.Ln;*)
 END GetSym;
 
 (** Object **)
@@ -391,34 +409,102 @@ PROCEDURE InitObject(o: Object);
 BEGIN o.name[0] := 0X; o.comment[0] := 0X; o.next := NIL
 END InitObject;
 
+(** Type **)
+
+PROCEDURE NewType(): Type;
+VAR T: Type;
+BEGIN NEW(T); T.form := undefType; T.len := 0
+RETURN T END NewType;
+
+(** List **)
+
+PROCEDURE NewList(): List;
+VAR L: List;
+BEGIN NEW(L)
+RETURN L END NewList;
+
 (** Parser **)
 
 PROCEDURE ParseConstDecl(o: Object);
 BEGIN
-  GetSym
+  REPEAT GetSym UNTIL (sym = eot) OR (sym = type) OR (sym = var)
 END ParseConstDecl;
 
 PROCEDURE ParseTypeDecl(o: Object);
 BEGIN
-  GetSym
+  REPEAT GetSym UNTIL (sym = eot) OR (sym = var) OR (sym = procedure)
 END ParseTypeDecl;
 
 PROCEDURE ParseVarDecl(o: Object);
 BEGIN
-  GetSym
+  REPEAT GetSym UNTIL (sym = eot) OR (sym = procedure)
 END ParseVarDecl;
+
+PROCEDURE ParseNamedType(P: Procedure);
+BEGIN
+  IF sym = ident THEN
+    P.returnType := NewType();
+    Strings.Copy(id, P.returnType.name);
+    GetSym;
+    IF sym = period THEN GetSym; Strings.Append('.', P.returnType.name);
+      IF sym = ident THEN Strings.Append(id, P.returnType.name); GetSym
+      ELSE MarkExp('identifier')
+      END
+    END
+  ELSE MarkExp('type identifier')
+  END
+END ParseNamedType;
+
+(** Reads input stream until "END name" is found.
+    Stops on "name" (sym = ident), or sym = eot *)
+PROCEDURE ReachEndOf(name: ARRAY OF CHAR);
+BEGIN
+  REPEAT
+    WHILE (sym # eot) & (sym # end) DO GetSym END;
+    IF sym = end THEN GetSym END
+  UNTIL (sym = eot) OR (sym = ident) & (id = name)
+END ReachEndOf;
+
+PROCEDURE ParseProcedureDecl(o: Object);
+VAR name: Str;
+  P: Procedure;
+BEGIN
+  WHILE sym = procedure DO GetSym; NEW(P); InitObject(P);
+    P.params := NewList(); P.exported := FALSE;
+    IF (sym = minus) OR (sym = times) OR (sym = arrow) THEN GetSym END;
+    
+    IF sym = ident THEN Strings.Copy(id, P.name); GetSym
+    ELSE MarkExp('procedure name')
+    END;
+    IF (sym = minus) OR (sym = arrow) THEN GetSym END;
+    IF sym = times THEN GetSym; P.exported := TRUE END;
+    IF sym = lparen THEN
+      REPEAT GetSym UNTIL (sym = eot) OR (sym = rparen); (*!TODO*)
+      GetSym;
+      IF sym = colon THEN GetSym; ParseNamedType(P) END
+    END;
+    IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
+    ReachEndOf(P.name);
+    IF sym = ident THEN GetSym;
+      IF sym = semicol THEN GetSym ELSE MarkExp(';') END
+    ELSE (* sym = eot *) MarkEnd('Procedure', P.name)
+    END
+    (*;Out.Int(line, 6);Out.Char(':');Out.Int(col, 0); Out.Ln;*)
+  END
+END ParseProcedureDecl;
 
 PROCEDURE Declarations(o: Object);
 BEGIN
   IF sym = const THEN ParseConstDecl(o) END;
   IF sym = type THEN ParseTypeDecl(o) END;
-  IF sym = var THEN ParseVarDecl(o) END
-  ;GetSym
+  IF sym = var THEN ParseVarDecl(o) END;
+  ParseProcedureDecl(o)
 END Declarations;
 
 PROCEDURE ParseImport(M: Module);
 BEGIN
-  GetSym
+  REPEAT GetSym UNTIL (sym = eot) OR (sym = procedure) OR (sym = begin) OR
+    (sym = end) OR (sym = const) OR (sym = type) OR (sym = var)
 END ParseImport;
 
 PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
@@ -441,16 +527,11 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
     IF sym = begin THEN
       REPEAT GetSym UNTIL (sym = eot) OR (sym = end)
     END;
-    IF sym = end THEN GetSym
-    ELSE
-      MarkExp('END of module');
-      REPEAT GetSym UNTIL (sym = eot) OR (sym = end)
-    END;
-    IF sym = ident THEN
-      IF M.name # id THEN Mark('Module name mismatch') END
-    ELSE MarkExp('module name')
-    END;
-    IF sym # period THEN MarkExp('.') END
+    ReachEndOf(M.name);
+    IF sym = ident THEN GetSym;
+      IF sym # period THEN MarkExp('.') END
+    ELSE (* sym = eot *) MarkEnd('Module', M.name)
+    END
   ELSE MarkExp('MODULE')
   END;
   IF lastError # -1 THEN M := NIL; err := 'Error' (*!FIXME*) END
