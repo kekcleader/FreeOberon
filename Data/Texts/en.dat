@@ -2,7 +2,7 @@
 1 "multiply defined identifier"
 2 "illegal character in number"
 3 "illegal character in string"
-4 "identifier does not match procedure name"
+4 "identifier does not match procedure (module) name"
 5 "comment not closed"
 11 '"=" expected'
 12 "type definition starts with incorrect symbol"
