@@ -502,7 +502,15 @@ END PrintType;
 PROCEDURE PrintProcedure(P: Procedure; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
   PrintIndent(indent, inlined);
-  Out.String('Procedure');
+  Out.String('Procedure '); Out.String(P.name);
+  IF P.returnType # NIL THEN
+    Out.String(' returns '); PrintType(P.returnType, indent, TRUE)
+  END;
+  IF P.params.first # NIL THEN
+    Out.String(', parameters:'); Out.Ln;
+    PrintList(P.params, indent + 1, FALSE)
+  ELSE Out.Ln
+  END
 END PrintProcedure;
 
 PROCEDURE PrintModule(M: Module; indent: INTEGER; inlined: BOOLEAN);
@@ -764,10 +772,10 @@ BEGIN
   UNTIL (sym = eot) OR (sym = ident) & (id = name)
 END ReachEndOf;
 
-PROCEDURE ParseProcedureDecl(o: Object);
+PROCEDURE ParseProcedureDecl(M: Module);
 VAR name: Str;
   P: Procedure;
-BEGIN
+BEGIN M.procedures := NewList();
   WHILE sym = procedure DO GetSym; NEW(P); InitObject(P);
     P.params := NewList(); P.exported := FALSE;
     IF (sym = minus) OR (sym = times) OR (sym = arrow) THEN GetSym END;
@@ -789,8 +797,8 @@ BEGIN
     IF sym = ident THEN GetSym;
       IF sym = semicol THEN GetSym ELSE MarkExp(';') END
     ELSE (* sym = eot *) MarkEnd('Procedure', P.name)
-    END
-    (*;Out.Int(line, 6);Out.Char(':');Out.Int(col, 0); Out.Ln;*)
+    END;
+    AddToList(M.procedures, P)
   END
 END ParseProcedureDecl;
 
