@@ -48,6 +48,9 @@ VAR
   (** If FALSE, Show shows a welcome message and sets shown to TRUE *)
   shown: BOOLEAN;
   lastAdded*: INTEGER; (** How many seeds were added the last time, or -1 *)
+  R: RECORD
+    x: INTEGER
+  END;
 
   (**: PROCEDURE;
   b*: PROCEDURE(): INTEGER;

@@ -99,7 +99,7 @@ TYPE
     fields*: List
   END;
 
-  Var* = POINTER TO VarDesc;
+  Var* = POINTER TO VarDesc; (** Global variables and record fields *)
   VarDesc* = RECORD(ObjectDesc)
     type*: Type
   END;
@@ -144,7 +144,7 @@ VAR
   doc: LongStr; (** Currently saved documentation comment *)
   docLen: INTEGER; (** Actual length of doc *)
   
-  ShowType: PROCEDURE (L: Type);
+  PrintObject: PROCEDURE (o: Object; indent: INTEGER; inlined: BOOLEAN);
   ParseType: PROCEDURE (): Type;
   ParseParamType: PROCEDURE (): Type;
 
@@ -425,30 +425,117 @@ BEGIN
   L.last := o
 END AddToList;
 
-PROCEDURE ShowList(L: List);
+(** Printing **)
+
+PROCEDURE PrintIndent(n: INTEGER; inlined: BOOLEAN);
+BEGIN
+  IF ~inlined THEN
+    WHILE n > 0 DO Out.String('  '); DEC(n) END
+  END
+END PrintIndent;
+
+PROCEDURE PrintList(L: List; indent: INTEGER; inlined: BOOLEAN);
 VAR o: Object;
 BEGIN
-  o := L.first;
-  Out.String('List:'); Out.Ln;
-  WHILE o # NIL DO
-    IF o IS Param THEN
-      Out.String('  Param "');
-      Out.String(o.name);
-      Out.String('", passed by ');
-      IF o(Param).passed = byVar THEN Out.String('variable')
-      ELSIF o(Param).passed = byValue THEN Out.String('value')
-      ELSE Out.String('?')
-      END;
-      Out.String(', type = ');
-      ShowType(o(Param).type)
-    ELSE
-      Out.String('  Object "');
-      Out.String(o.name); Out.String('"')
-    END;
-    Out.Ln;
-    o := o.next
+  IF L # NIL THEN
+    o := L.first;
+    WHILE o # NIL DO
+      PrintObject(o, indent, FALSE);
+      o := o.next
+    END
+  ELSE PrintIndent(indent, FALSE); Out.Char('-'); Out.Ln
   END
-END ShowList;
+END PrintList;
+
+PROCEDURE PrintConst(C: Const; indent: INTEGER; inlined: BOOLEAN);
+BEGIN
+  PrintIndent(indent, inlined);
+  Out.String('Const')
+END PrintConst;
+
+PROCEDURE PrintParam(par: Param; indent: INTEGER; inlined: BOOLEAN);
+BEGIN
+  PrintIndent(indent, inlined);
+  Out.String('Param')
+END PrintParam;
+
+PROCEDURE PrintVar(v: Var; indent: INTEGER; inlined: BOOLEAN);
+BEGIN
+  PrintIndent(indent, inlined);
+  Out.String(v.name);
+  Out.String(' of '); PrintObject(v.type, indent, TRUE)
+END PrintVar;
+
+PROCEDURE PrintType(T: Type; indent: INTEGER; inlined: BOOLEAN);
+VAR x: Object;
+BEGIN
+  PrintIndent(indent, inlined);
+  IF T = NIL THEN Out.String('NIL')
+  ELSIF T.form = namedType THEN
+    Out.String('type '); Out.String(T.name)
+  ELSIF T.form = arrayType THEN
+    IF T.len[0] = 0X THEN Out.String('open ') END;
+    Out.String('array type ');
+    IF T.len[0] # 0X THEN Out.String('with length '); Out.String(T.len) END;
+    Out.String(' of '); PrintObject(T.base, indent, TRUE)
+  ELSIF T.form = recordType THEN Out.String('record type ');
+    IF T.base # NIL THEN Out.String(' extends '); Out.String(T.base.name) END;
+    IF T.fields.first # NIL THEN Out.String('with fields:'); Out.Ln;
+      PrintList(T.fields, indent + 1, FALSE)
+    ELSE Out.String('with no fields')
+    END
+  ELSIF T.form = procedureType THEN Out.String('procedure type ');
+    IF T.fields.first # NIL THEN
+      PrintIndent(indent, FALSE); Out.Char('(');
+      PrintList(T.fields, indent + 1, TRUE);
+      Out.String(') ')
+    END;
+    IF T.base # NIL THEN
+      Out.String('that returns '); PrintObject(T.base, ident, TRUE)
+    END
+  ELSIF T.form = pointerType THEN Out.String('pointer type to ');
+    PrintObject(T.base, indent, TRUE)
+  ELSE Out.String('?')
+  END
+END PrintType;
+
+PROCEDURE PrintProcedure(P: Procedure; indent: INTEGER; inlined: BOOLEAN);
+BEGIN
+  PrintIndent(indent, inlined);
+  Out.String('Procedure');
+END PrintProcedure;
+
+PROCEDURE PrintModule(M: Module; indent: INTEGER; inlined: BOOLEAN);
+BEGIN
+  PrintIndent(indent, inlined);
+  Out.String('Module '); Out.String(M.name); Out.Ln;
+  PrintIndent(indent, FALSE);
+  Out.String('Constants:'); Out.Ln; PrintList(M.consts, indent + 1, FALSE);
+  PrintIndent(indent, FALSE);
+  Out.String('Types:'); Out.Ln; PrintList(M.types, indent + 1, FALSE);
+  PrintIndent(indent, FALSE);
+  Out.String('Variables:'); Out.Ln; PrintList(M.vars, indent + 1, FALSE);
+  PrintIndent(indent, FALSE);
+  Out.String('Procedures:'); Out.Ln; PrintList(M.procedures, indent + 1, FALSE)
+END PrintModule;
+
+PROCEDURE PrintObject0(o: Object; indent: INTEGER; inlined: BOOLEAN);
+BEGIN
+  IF o = NIL THEN PrintIndent(indent, inlined); Out.String('NIL')
+  ELSIF o IS Module THEN PrintModule(o(Module), indent, inlined)
+  ELSIF o IS Var THEN PrintVar(o(Var), indent, inlined)
+  ELSIF o IS Const THEN PrintConst(o(Const), indent, inlined)
+  ELSIF o IS Type THEN PrintType(o(Type), indent, inlined)
+  ELSIF o IS Procedure THEN PrintProcedure(o(Procedure), indent, inlined)
+  ELSIF o IS Param THEN PrintParam(o(Param), indent, inlined)
+  ELSE PrintIndent(indent, inlined); Out.String('?')
+  END;
+  IF ~inlined THEN Out.Ln END
+END PrintObject0;
+
+PROCEDURE Print*(o: Object);
+BEGIN PrintObject(o, 0, FALSE)
+END Print;
 
 (** Object **)
 
@@ -463,34 +550,6 @@ VAR T: Type;
 BEGIN NEW(T); T.form := form; T.len[0] := 0X; T.base := NIL
 RETURN T END NewType;
 
-PROCEDURE ShowType0(T: Type);
-VAR x: Object;
-BEGIN
-  IF T = NIL THEN Out.String('NIL')
-  ELSIF T.form = namedType THEN
-    Out.String('named type "'); Out.String(T.name); Out.Char('"')
-  ELSIF T.form = arrayType THEN
-    IF T.len[0] = 0X THEN Out.String('open ') END;
-    Out.String('array type ');
-    IF T.len[0] # 0X THEN Out.String('with length '); Out.String(T.len) END;
-    Out.String(' of '); ShowType(T.base)
-  ELSIF T.form = recordType THEN Out.String('record type ');
-    IF T.base # NIL THEN Out.String('with base '); Out.String(T.base.name) END;
-    (*!TODO*)
-  ELSIF T.form = procedureType THEN Out.String('procedure type ');
-    IF T.fields.first # NIL THEN
-      Out.Char('(');
-      ShowList(T.fields);
-      Out.String(') ')
-    END;
-    IF T.base # NIL THEN
-      Out.String('that returns '); ShowType(T.base)
-    END
-  ELSIF T.form = pointerType THEN Out.String('pointer type to '); ShowType(T.base)
-  ELSE Out.String('?')
-  END
-END ShowType0;
-
 (** Param **)
 
 PROCEDURE NewParam(passed: INTEGER): Param;
@@ -500,16 +559,16 @@ RETURN par END NewParam;
 
 (** Var **)
 
+(** Sets exported field of object and skips the star mark. *)
+PROCEDURE CheckExportMark(o: Object);
+BEGIN
+  IF sym = times THEN GetSym; o.exported := TRUE ELSE o.exported := FALSE END
+END CheckExportMark;
+
 PROCEDURE NewVar(): Var;
 VAR v: Var;
 BEGIN NEW(v); InitObject(v); Strings.Copy(id, v.name)
 RETURN v END NewVar;
-
-PROCEDURE ShowVar(v: Var);
-BEGIN
-  Out.String('Variable '); Out.String(v.name);
-  Out.String(' of '); ShowType(v.type); Out.Ln
-END ShowVar; 
 
 (** Parser **)
 
@@ -546,6 +605,34 @@ BEGIN
   s[i] := 0X
 END ParseConstExpr;
 
+PROCEDURE ParseVars(needSemicol: BOOLEAN): List;
+VAR first, v: Var;
+  L: List;
+  x: Object;
+  passed: INTEGER;
+  T: Type;
+BEGIN L := NewList();
+  WHILE sym = ident DO
+    first := NewVar(); GetSym; CheckExportMark(first);
+    AddToList(L, first);
+    WHILE sym = comma DO GetSym;
+      IF sym = ident THEN v := NewVar(); GetSym; CheckExportMark(first);
+        AddToList(L, v)
+      ELSE MarkExp('variable (field) name')
+      END
+    END;
+    IF sym = colon THEN GetSym; T := ParseType();
+      IF first # NIL THEN
+        first.type := T;
+        x := first.next;
+        WHILE x # NIL DO x(Param).type := T; x := x.next END
+      END;
+      IF sym = semicol THEN GetSym ELSIF needSemicol THEN MarkExp(';') END
+    ELSE MarkExp(':')
+    END
+  END
+RETURN L END ParseVars;
+
 PROCEDURE ParseConstDecl(o: Object);
 BEGIN
   REPEAT GetSym UNTIL (sym = eot) OR (sym = type) OR (sym = var)
@@ -555,12 +642,6 @@ PROCEDURE ParseTypeDecl(o: Object);
 BEGIN
   REPEAT GetSym UNTIL (sym = eot) OR (sym = var) OR (sym = procedure)
 END ParseTypeDecl;
-
-(** Sets exported field of object and skips the star mark. *)
-PROCEDURE CheckExportMark(o: Object);
-BEGIN
-  IF sym = times THEN GetSym; o.exported := TRUE ELSE o.exported := FALSE END
-END CheckExportMark;
 
 PROCEDURE ParseNamedType(): Type;
 VAR T: Type;
@@ -596,7 +677,11 @@ RETURN T END ParseArrayType;
 PROCEDURE ParseRecordType(): Type;
 VAR T: Type;
 BEGIN ASSERT(sym = record); GetSym; T := NewType(recordType);
-  (*!TODO*)
+  IF sym = lparen THEN GetSym; T.base := ParseNamedType();
+    IF sym = rparen THEN GetSym ELSE MarkExp(')') END
+  END;
+  T.fields := ParseVars(FALSE);
+  IF sym = end THEN GetSym ELSE MarkExp('END') END
 RETURN T END ParseRecordType;
 
 PROCEDURE ParsePointerType(): Type;
@@ -669,38 +754,6 @@ BEGIN
   END
 RETURN T END ParseType0;
 
-PROCEDURE ParseVarDecl(o: Object);
-VAR first, v: Var;
-  L: List;
-  x: Object;
-  passed: INTEGER;
-  T: Type;
-BEGIN ASSERT(sym = var); GetSym; L := NewList();
-  WHILE sym = ident DO
-    first := NewVar(); GetSym; CheckExportMark(first);
-    AddToList(L, first);
-    WHILE sym = comma DO GetSym;
-      IF sym = ident THEN v := NewVar(); GetSym; CheckExportMark(first);
-        AddToList(L, v)
-      ELSE MarkExp('variable name')
-      END
-    END;
-    IF sym = colon THEN GetSym; T := ParseType();
-      IF first # NIL THEN
-        first.type := T;
-        x := first.next;
-        WHILE x # NIL DO x(Param).type := T; x := x.next END
-
-        ;x := first; WHILE x # NIL DO ShowVar(x(Var)); x := x.next END
-
-      END;
-      IF sym = semicol THEN GetSym ELSE MarkExp(';') END
-    ELSE MarkExp(':')
-    END
-  END;
-  o(Module).vars := L
-END ParseVarDecl;
-
 (** Reads input stream until "END name" is found.
     Stops on "name" (sym = ident), or sym = eot *)
 PROCEDURE ReachEndOf(name: ARRAY OF CHAR);
@@ -731,8 +784,6 @@ BEGIN
       IF sym = rparen THEN GetSym ELSE MarkExp(')') END;
       IF sym = colon THEN GetSym; P.returnType := ParseNamedType() END
     END;
-    Out.String('Procedure '); Out.String(P.name);
-    Out.String(' Parameter '); ShowList(P.params);
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
     ReachEndOf(P.name);
     IF sym = ident THEN GetSym;
@@ -743,12 +794,16 @@ BEGIN
   END
 END ParseProcedureDecl;
 
-PROCEDURE Declarations(o: Object);
+PROCEDURE ParseVarDecl(M: Module);
+BEGIN ASSERT(sym = var); GetSym; M.vars := ParseVars(TRUE)
+END ParseVarDecl;
+
+PROCEDURE Declarations(M: Module);
 BEGIN
-  IF sym = const THEN ParseConstDecl(o) END;
-  IF sym = type THEN ParseTypeDecl(o) END;
-  IF sym = var THEN ParseVarDecl(o) END;
-  ParseProcedureDecl(o)
+  IF sym = const THEN ParseConstDecl(M) END;
+  IF sym = type THEN ParseTypeDecl(M) END;
+  IF sym = var THEN ParseVarDecl(M) END;
+  ParseProcedureDecl(M)
 END Declarations;
 
 PROCEDURE ParseImport(M: Module);
@@ -788,7 +843,7 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
 RETURN M END ParseModule;
 
 BEGIN curFname[0] := 0X;
-  ShowType := ShowType0;
+  PrintObject := PrintObject0;
   ParseType := ParseType0;
   ParseParamType := ParseParamType0
 END AutodocParser.
