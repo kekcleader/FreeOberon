@@ -49,6 +49,11 @@ VAR
   shown: BOOLEAN;
   lastAdded*: INTEGER; (** How many seeds were added the last time, or -1 *)
 
+  (**: PROCEDURE;
+  b*: PROCEDURE(): INTEGER;
+  y: ARRAY N, M OF PROCEDURE (VAR n: ARRAY OF BOOLEAN; VAR x, y: INTEGER): REAL;
+  p*: POINTER TO Bird;*)
+
 (** Sets the given amount of seeds to apple a. *)
 PROCEDURE Set(VAR a: Apple; seeds: INTEGER);
 BEGIN
@@ -70,7 +75,8 @@ END Init;
 (** Apple manipulation **)
 
 (** Adds n seeds to apple a. *)
-PROCEDURE Add*(VAR a: ARRAY 25 OF Fruits.Fruit23; VAR x, y, z, n: INTEGER);
+(*PROCEDURE Add*(VAR a: ARRAY 25 OF Fruits.Fruit23; VAR x, y, z, n: INTEGER);*)
+PROCEDURE Add*(VAR a: Apple; n: INTEGER);
 BEGIN
   lastAdded := n;
   Set(a, a.seeds + n);
