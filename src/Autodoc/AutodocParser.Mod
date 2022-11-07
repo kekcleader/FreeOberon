@@ -139,6 +139,8 @@ VAR
   writingDoc: BOOLEAN; (** TRUE when inside a doc comment *)
   doc: LongStr; (** Currently saved documentation comment *)
   docLen: INTEGER; (** Actual length of doc *)
+  
+  ParseParamType: PROCEDURE(): Type;
 
 (** Error Handling **)
 
@@ -411,10 +413,21 @@ END InitObject;
 
 (** Type **)
 
-PROCEDURE NewType(): Type;
+PROCEDURE NewType(form: INTEGER): Type;
 VAR T: Type;
-BEGIN NEW(T); T.form := undefType; T.len := 0
+BEGIN NEW(T); T.form := form; T.len := 0; T.base := NIL
 RETURN T END NewType;
+
+PROCEDURE ShowType(T: Type);
+BEGIN
+  IF T = NIL THEN Out.String('NIL')
+  ELSIF T.form = namedType THEN
+    Out.String('named type "'); Out.String(T.name); Out.Char('"')
+  ELSIF T.form = arrayType THEN
+    Out.String('array type '); Out.Int(T.len, 0); Out.String(' of ');
+    ShowType(T.base)
+  END
+END ShowType;
 
 (** List **)
 
@@ -422,6 +435,38 @@ PROCEDURE NewList(): List;
 VAR L: List;
 BEGIN NEW(L)
 RETURN L END NewList;
+
+PROCEDURE AddToList(L: List; o: Object);
+BEGIN
+  IF L.first = NIL THEN L.first := o ELSE L.last.next := o END;
+  WHILE o.next # NIL DO o := o.next END;
+  L.last := o
+END AddToList;
+
+PROCEDURE ShowList(L: List);
+VAR o: Object;
+BEGIN
+  o := L.first;
+  Out.String('List:'); Out.Ln;
+  WHILE o # NIL DO
+    IF o IS Param THEN
+      Out.String('  Param "');
+      Out.String(o.name);
+      Out.String('", passed by ');
+      IF o(Param).pass = byVar THEN Out.String('variable')
+      ELSIF o(Param).pass = byValue THEN Out.String('value')
+      ELSE Out.String('?')
+      END;
+      Out.String(', type = ');
+      ShowType(o(Param).type)
+    ELSE
+      Out.String('  Object "');
+      Out.String(o.name); Out.String('"')
+    END;
+    Out.Ln;
+    o := o.next
+  END
+END ShowList;
 
 (** Parser **)
 
@@ -440,20 +485,37 @@ BEGIN
   REPEAT GetSym UNTIL (sym = eot) OR (sym = procedure)
 END ParseVarDecl;
 
-PROCEDURE ParseNamedType(P: Procedure);
+PROCEDURE ParseNamedType(): Type;
+VAR T: Type;
 BEGIN
   IF sym = ident THEN
-    P.returnType := NewType();
-    Strings.Copy(id, P.returnType.name);
+    T := NewType(namedType);
+    Strings.Copy(id, T.name);
     GetSym;
-    IF sym = period THEN GetSym; Strings.Append('.', P.returnType.name);
-      IF sym = ident THEN Strings.Append(id, P.returnType.name); GetSym
+    IF sym = period THEN GetSym; Strings.Append('.', T.name);
+      IF sym = ident THEN Strings.Append(id, T.name); GetSym
       ELSE MarkExp('identifier')
       END
     END
-  ELSE MarkExp('type identifier')
+  ELSE T := NIL; MarkExp('type identifier')
   END
-END ParseNamedType;
+RETURN T END ParseNamedType;
+
+PROCEDURE ParseArrayType(): Type;
+VAR T: Type;
+BEGIN ASSERT(sym = array); GetSym; T := NewType(arrayType);
+  IF sym = int THEN GetSym; T.len := ival ELSE T.len := -1 END;
+  IF sym = of THEN GetSym ELSE MarkExp('OF') END;
+  T.base := ParseParamType()
+RETURN T END ParseArrayType;
+
+PROCEDURE ParseParamType0(): Type;
+VAR T: Type;
+BEGIN
+  IF sym = array THEN T := ParseArrayType()
+  ELSIF sym = ident THEN T := ParseNamedType()
+  END
+RETURN T END ParseParamType0;
 
 (** Reads input stream until "END name" is found.
     Stops on "name" (sym = ident), or sym = eot *)
@@ -464,6 +526,37 @@ BEGIN
     IF sym = end THEN GetSym END
   UNTIL (sym = eot) OR (sym = ident) & (id = name)
 END ReachEndOf;
+
+PROCEDURE NewParam(pass: INTEGER): Param;
+VAR par: Param;
+BEGIN NEW(par); InitObject(par); par.pass := pass; Strings.Copy(id, par.name)
+RETURN par END NewParam;
+
+PROCEDURE ParseFormalParamSection(P: Procedure);
+VAR first, par: Param;
+  L: List;
+  o: Object;
+  pass: INTEGER;
+BEGIN L := NewList();
+  IF sym = var THEN GetSym; pass := byVar ELSE pass := byValue END;
+
+  IF sym = ident THEN first := NewParam(pass); GetSym;
+    AddToList(P.params, first)
+  ELSE MarkExp('parameter name')
+  END;
+  WHILE sym = comma DO GetSym;
+    IF sym = ident THEN par := NewParam(pass); GetSym;
+      AddToList(P.params, par)
+    ELSE MarkExp('parameter name')
+    END
+  END;
+  IF sym = colon THEN GetSym;
+    first.type := ParseParamType();
+    o := first.next;
+    WHILE o # NIL DO o(Param).type := first.type; o := o.next END
+  ELSE MarkExp(':')
+  END
+END ParseFormalParamSection;
 
 PROCEDURE ParseProcedureDecl(o: Object);
 VAR name: Str;
@@ -478,11 +571,15 @@ BEGIN
     END;
     IF (sym = minus) OR (sym = arrow) THEN GetSym END;
     IF sym = times THEN GetSym; P.exported := TRUE END;
-    IF sym = lparen THEN
-      REPEAT GetSym UNTIL (sym = eot) OR (sym = rparen); (*!TODO*)
-      GetSym;
-      IF sym = colon THEN GetSym; ParseNamedType(P) END
+    IF sym = lparen THEN GetSym;
+      IF sym # rparen THEN ParseFormalParamSection(P);
+        WHILE sym = semicol DO GetSym; ParseFormalParamSection(P) END
+      END;
+      IF sym = rparen THEN GetSym ELSE MarkExp(')') END;
+      IF sym = colon THEN GetSym; P.returnType := ParseNamedType() END
     END;
+    Out.String('Procedure '); Out.String(P.name);
+    Out.String(' Parameter '); ShowList(P.params);
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
     ReachEndOf(P.name);
     IF sym = ident THEN GetSym;
@@ -537,5 +634,6 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
   IF lastError # -1 THEN M := NIL; err := 'Error' (*!FIXME*) END
 RETURN M END ParseModule;
 
-BEGIN curFname[0] := 0X
+BEGIN curFname[0] := 0X;
+  ParseParamType := ParseParamType0
 END AutodocParser.

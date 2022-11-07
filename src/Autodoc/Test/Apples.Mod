@@ -70,7 +70,7 @@ END Init;
 (** Apple manipulation **)
 
 (** Adds n seeds to apple a. *)
-PROCEDURE Add*(VAR a: Apple; n: INTEGER);
+PROCEDURE Add*(VAR a: ARRAY 25 OF Fruits.Fruit23; VAR x, y, z, n: INTEGER);
 BEGIN
   lastAdded := n;
   Set(a, a.seeds + n);
