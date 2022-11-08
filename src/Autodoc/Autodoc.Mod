@@ -1,5 +1,6 @@
 MODULE Autodoc;
-IMPORT Files, Texts, Out, Args, Strings, Config, Platform, P := AutodocParser;
+IMPORT Files, Texts, Out, Args, Strings, Config, Platform,
+  P := AutodocParser, H := AutodocHtml;
 
 CONST
   delim = Platform.PathDelimiter;
@@ -33,9 +34,8 @@ BEGIN
   IF OpenFile(in, r) THEN
     P.SetFname(in);
     module := P.ParseModule(r, err);
-    P.Print(module);
     IF module # NIL THEN
-      IF SaveHtml(module, out) THEN
+      IF H.Save(module, out) THEN
         Out.String('Created "'); Out.String(out);
         Out.String('".'); Out.Ln
       ELSE
