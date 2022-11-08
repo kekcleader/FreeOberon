@@ -42,6 +42,10 @@ TYPE
     quality*: INTEGER; (** Качество продукта, см. @Качество яблока *)
     added: BOOLEAN     (** Whether Add was called on this seed after Init *)
   END;
+  
+  INT32* = SYSTEM.INT32;
+  INT64 = LONGINT;
+  Array* = POINTER TO ARRAY OF RECORD i: INTEGER END;
 
 VAR
   applesCreated*: INTEGER; (** How many apples were created using Init *)
@@ -49,7 +53,8 @@ VAR
   shown: BOOLEAN;
   lastAdded*: INTEGER; (** How many seeds were added the last time, or -1 *)
   R: RECORD
-    x: INTEGER
+    t, x: INTEGER;
+    z, y: Array
   END;
 
   (**: PROCEDURE;

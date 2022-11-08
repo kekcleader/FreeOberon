@@ -437,7 +437,7 @@ END PrintIndent;
 PROCEDURE PrintList(L: List; indent: INTEGER; inlined: BOOLEAN);
 VAR o: Object;
 BEGIN
-  IF L # NIL THEN
+  IF (L # NIL) & (L.first # NIL) THEN
     o := L.first;
     WHILE o # NIL DO
       PrintObject(o, indent, FALSE);
@@ -450,13 +450,18 @@ END PrintList;
 PROCEDURE PrintConst(C: Const; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
   PrintIndent(indent, inlined);
-  Out.String('Const')
+  Out.String('Const '); Out.String(C.name);
+  Out.String(' with value '); Out.String(C.value)
 END PrintConst;
 
 PROCEDURE PrintParam(par: Param; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
   PrintIndent(indent, inlined);
-  Out.String('Param')
+  IF par.passed = byVar THEN Out.String('Variable')
+  ELSIF par.passed = byValue THEN Out.String('Value')
+  END;
+  Out.String(' parameter '); Out.String(par.name);
+  Out.String(' of '); PrintObject(par.type, indent, TRUE)
 END PrintParam;
 
 PROCEDURE PrintVar(v: Var; indent: INTEGER; inlined: BOOLEAN);
@@ -472,14 +477,21 @@ BEGIN
   PrintIndent(indent, inlined);
   IF T = NIL THEN Out.String('NIL')
   ELSIF T.form = namedType THEN
-    Out.String('type '); Out.String(T.name)
+    Out.String('type '); Out.String(T.name);
+    IF T.base # NIL THEN
+      Out.String(' is '); PrintType(T.base, indent, TRUE)
+    END
   ELSIF T.form = arrayType THEN
     IF T.len[0] = 0X THEN Out.String('open ') END;
     Out.String('array type ');
-    IF T.len[0] # 0X THEN Out.String('with length '); Out.String(T.len) END;
-    Out.String(' of '); PrintObject(T.base, indent, TRUE)
+    IF T.len[0] # 0X THEN Out.String('with length ');
+      Out.String(T.len); Out.Char(' ')
+    END;
+    Out.String('of '); PrintObject(T.base, indent, TRUE)
   ELSIF T.form = recordType THEN Out.String('record type ');
-    IF T.base # NIL THEN Out.String(' extends '); Out.String(T.base.name) END;
+    IF T.base # NIL THEN Out.String('that extends ');
+      Out.String(T.base.name); Out.Char(' ')
+    END;
     IF T.fields.first # NIL THEN Out.String('with fields:'); Out.Ln;
       PrintList(T.fields, indent + 1, FALSE)
     ELSE Out.String('with no fields')
@@ -551,6 +563,12 @@ PROCEDURE InitObject(o: Object);
 BEGIN o.name[0] := 0X; o.comment[0] := 0X; o.next := NIL
 END InitObject;
 
+(** Sets exported field of object and skips the star mark. *)
+PROCEDURE CheckExportMark(o: Object);
+BEGIN
+  IF sym = times THEN GetSym; o.exported := TRUE ELSE o.exported := FALSE END
+END CheckExportMark;
+
 (** Type **)
 
 PROCEDURE NewType(form: INTEGER): Type;
@@ -565,13 +583,14 @@ VAR par: Param;
 BEGIN NEW(par); InitObject(par); par.passed := passed; Strings.Copy(id, par.name)
 RETURN par END NewParam;
 
-(** Var **)
+(** Const **)
 
-(** Sets exported field of object and skips the star mark. *)
-PROCEDURE CheckExportMark(o: Object);
-BEGIN
-  IF sym = times THEN GetSym; o.exported := TRUE ELSE o.exported := FALSE END
-END CheckExportMark;
+PROCEDURE NewConst(): Const;
+VAR C: Const;
+BEGIN NEW(C); InitObject(C); Strings.Copy(id, C.name)
+RETURN C END NewConst;
+
+(** Var **)
 
 PROCEDURE NewVar(): Var;
 VAR v: Var;
@@ -591,7 +610,8 @@ BEGIN
   END;
   IF i # 0 THEN
     start := Files.Pos(R); x := c;
-    REPEAT GetSym UNTIL (sym = eot) OR (sym = comma) OR (sym = of);
+    REPEAT GetSym UNTIL (sym = eot) OR (sym = comma) OR (sym = of) OR
+                        (sym = semicol);
     IF sym # eot THEN
       tmp := Files.Pos(R); end := tmp;
       IF sym = of THEN DEC(end, 3) ELSE DEC(end, 2) END;
@@ -619,36 +639,56 @@ VAR first, v: Var;
   x: Object;
   passed: INTEGER;
   T: Type;
-BEGIN L := NewList();
-  WHILE sym = ident DO
+  stop: BOOLEAN;
+BEGIN L := NewList(); stop := FALSE;
+  WHILE ~stop & (sym = ident) DO
     first := NewVar(); GetSym; CheckExportMark(first);
     AddToList(L, first);
     WHILE sym = comma DO GetSym;
-      IF sym = ident THEN v := NewVar(); GetSym; CheckExportMark(first);
+      IF sym = ident THEN v := NewVar(); GetSym; CheckExportMark(v);
         AddToList(L, v)
       ELSE MarkExp('variable (field) name')
       END
     END;
-    IF sym = colon THEN GetSym; T := ParseType();
-      IF first # NIL THEN
-        first.type := T;
-        x := first.next;
-        WHILE x # NIL DO x(Param).type := T; x := x.next END
-      END;
-      IF sym = semicol THEN GetSym ELSIF needSemicol THEN MarkExp(';') END
-    ELSE MarkExp(':')
+    IF sym = colon THEN GetSym ELSE MarkExp(':') END;
+    T := ParseType();
+    IF first # NIL THEN
+      first.type := T; x := first.next;
+      WHILE x # NIL DO x(Var).type := T; x := x.next END
+    END;
+    IF sym = semicol THEN GetSym
+    ELSIF needSemicol THEN MarkExp(';')
+    ELSE stop := TRUE
     END
   END
 RETURN L END ParseVars;
 
-PROCEDURE ParseConstDecl(o: Object);
-BEGIN
-  REPEAT GetSym UNTIL (sym = eot) OR (sym = type) OR (sym = var)
+PROCEDURE ParseConstDecl(M: Module);
+VAR C: Const;
+BEGIN M.consts := NewList();
+  IF sym = const THEN GetSym;
+    WHILE sym = ident DO
+      C := NewConst(); GetSym; CheckExportMark(C);
+      AddToList(M.consts, C);
+      IF sym = equals THEN GetSym ELSE MarkExp('=') END;
+      ParseConstExpr(C.value);
+      IF sym = semicol THEN GetSym ELSE MarkExp(';') END
+    END
+  END
 END ParseConstDecl;
 
-PROCEDURE ParseTypeDecl(o: Object);
-BEGIN
-  REPEAT GetSym UNTIL (sym = eot) OR (sym = var) OR (sym = procedure)
+PROCEDURE ParseTypeDecl(M: Module);
+VAR T: Type;
+BEGIN M.types := NewList();
+  IF sym = type THEN GetSym;
+    WHILE sym = ident DO
+      T := NewType(namedType); AddToList(M.types, T);
+      Strings.Copy(id, T.name); GetSym; CheckExportMark(T);
+      IF sym = equals THEN GetSym ELSE MarkExp('=') END;
+      T.base := ParseType();
+      IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
+    END
+  END
 END ParseTypeDecl;
 
 PROCEDURE ParseNamedType(): Type;
