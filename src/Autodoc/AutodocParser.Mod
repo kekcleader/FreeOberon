@@ -62,6 +62,9 @@ CONST
   byValue* = 0;
   byVar*   = 1;
 
+  (** Comment separator **)
+  tab = 9X;
+
 TYPE
   Str* = ARRAY 256 OF CHAR;
   LongStr* = ARRAY 40960 OF CHAR;
@@ -75,14 +78,12 @@ TYPE
   END;
 
   List* = POINTER TO ListDesc;
-  ListDesc* = RECORD
+  ListDesc* = RECORD(ObjectDesc)
     first*, last: Object
   END;
 
   Group* = POINTER TO GroupDesc;
-  GroupDesc* = RECORD(ObjectDesc)
-    body*: List
-  END;
+  GroupDesc* = RECORD(ListDesc) END;
 
   Const* = POINTER TO ConstDesc;
   ConstDesc* = RECORD(ObjectDesc)
@@ -143,9 +144,11 @@ VAR
   writingDoc: BOOLEAN; (** TRUE when inside a doc comment *)
   doc: LongStr; (** Currently saved documentation comment *)
   docLen: INTEGER; (** Actual length of doc *)
+  docLine: INTEGER; (** Line where the last doc-comment started *)
+  curTitle: Str; (** Title of the current group of comments *)
   
   PrintObject: PROCEDURE (o: Object; indent: INTEGER; inlined: BOOLEAN);
-  ParseType: PROCEDURE (): Type;
+  ParseType: PROCEDURE (docObj: Object): Type;
   ParseParamType: PROCEDURE (): Type;
 
 (** Error Handling **)
@@ -233,14 +236,64 @@ END MarkEnd;
 (** Handle Comments **)
 
 PROCEDURE ClearComments;
-BEGIN doc[0] := 0X; docLen := 0
+BEGIN doc[0] := 0X; docLen := 0; docLine := -1
 END ClearComments;
+
+PROCEDURE RemoveLastComment;
+BEGIN
+  WHILE (docLen # 0) & (doc[docLen] # tab) DO DEC(docLen) END;
+  doc[docLen] := 0X
+END RemoveLastComment;
 
 (** Comments **)
 
-PROCEDURE SaveComment(o: Object);
+PROCEDURE AppendComment(VAR comment: ARRAY OF CHAR);
+VAR L, i, j: INTEGER;
 BEGIN
-  IF doc[0] # 0X THEN Strings.Copy(doc, o.comment); ClearComments END
+  L := 0; WHILE (doc[L] # 0X) & (doc[L] # tab) DO INC(L) END;
+  j := Strings.Length(comment); i := 0;
+  WHILE (i # L) & (j < LEN(comment) - 1) DO
+    comment[j] := doc[i]; INC(i); INC(j)
+  END;
+  comment[j] := 0X;
+  IF doc[L] = 0X THEN doc[0] := 0X; docLen := 0
+  ELSE Strings.Delete(doc, 0, L + 1); DEC(docLen, L)
+  END
+END AppendComment;
+
+PROCEDURE GetLastComment(VAR comment: ARRAY OF CHAR);
+VAR L, i, j: INTEGER;
+BEGIN
+  IF docLen # 0 THEN
+    L := docLen; WHILE (L # -1) & (doc[L] # tab) DO DEC(L) END;
+    Strings.Extract(doc, L + 1, docLen - L - 1, comment)
+  ELSE comment[0] := 0X
+  END
+END GetLastComment;
+
+PROCEDURE SaveAllComments(o: Object);
+VAR i: INTEGER;
+BEGIN Strings.Copy(doc, o.comment); ClearComments;
+  i := 0;
+  WHILE o.comment[i] # 0X DO
+    IF o.comment[i] = tab THEN o.comment[i] := 0AX END;
+    INC(i)
+  END
+END SaveAllComments;
+
+(** Saves first comment from doc (that is before the tab character) to
+    object o if comment exists and if object does not yet have comment and if
+    lastLine is -1 or is equal to the line where the comment starts. lastLine
+    should be the line number of the last syntax symbol of the object, or -1
+    if comment goes before it. *)
+PROCEDURE SaveComment(o: Object; lastLine: INTEGER);
+BEGIN
+  IF (o # NIL) & (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
+    IF o.comment[0] = 0X THEN AppendComment(o.comment)
+    ELSIF docLine = lastLine THEN Strings.Append(0AX, o.comment);
+      AppendComment(o.comment)
+    END
+  END
 END SaveComment;
 
 (** Scanner **)
@@ -315,10 +368,17 @@ END WriteDoc;
 
 PROCEDURE ReadComment(toplevel: BOOLEAN);
 VAR closed, tmp: BOOLEAN;
-BEGIN Read; closed := FALSE; writingDoc := FALSE;
+  x: CHAR;
+  title: BOOLEAN;
+BEGIN
+  IF toplevel & (docLen = 0) THEN docLine := line END;
+  Read; closed := FALSE; writingDoc := FALSE;
   IF c = '*' THEN Read; (* Second star *)
     IF c = ')' THEN Read; closed := TRUE
-    ELSIF toplevel THEN writingDoc := TRUE
+    ELSIF toplevel THEN writingDoc := TRUE;
+      IF docLen # 0 THEN
+        doc[docLen] := tab; INC(docLen)
+      END
     END
   END;
   IF ~closed THEN
@@ -341,9 +401,23 @@ BEGIN Read; closed := FALSE; writingDoc := FALSE;
     IF c = ')' THEN Read END
   END;
   IF writingDoc & (docLen # 0) THEN
+    IF doc[docLen - 1] = '*' THEN (* Title comment *)
+      DEC(docLen); doc[docLen] := 0X; title := TRUE
+    ELSE title := FALSE
+    END;
     REPEAT DEC(docLen) UNTIL (docLen = -1) OR (doc[docLen] > ' ');
-    doc[docLen + 1] := 0X;
-    Out.String('READ "'); Out.String(doc); Out.Char('"'); Out.Ln
+    IF (docLen # -1) & (docLen < LEN(doc) - 2) THEN x := doc[docLen];
+      IF ~title & (x # '!') & (x # ',') & (x # '.') &
+         (x # ':') & (x # ';') & (x # '?') & (x # '*')
+      THEN INC(docLen); doc[docLen] := '.'
+      END
+    END;
+    INC(docLen); doc[docLen] := 0X;
+    IF title THEN
+      IF doc[0] = 0X THEN curTitle := '-'
+      ELSE curTitle[0] := 0X; GetLastComment(curTitle); RemoveLastComment
+      END
+    END
   END
 END ReadComment;
 
@@ -422,12 +496,47 @@ VAR L: List;
 BEGIN NEW(L)
 RETURN L END NewList;
 
+PROCEDURE NewGroup(): List;
+VAR G: Group;
+BEGIN NEW(G); Strings.Copy(curTitle, G.comment)
+RETURN G END NewGroup;
+
 PROCEDURE AddToList(L: List; o: Object);
 BEGIN
   IF L.first = NIL THEN L.first := o ELSE L.last.next := o END;
   WHILE o.next # NIL DO o := o.next END;
   L.last := o
 END AddToList;
+
+(** Removes o from list L. *)
+PROCEDURE RemoveFromList(L: List; o: Object);
+VAR x: Object;
+BEGIN
+  IF L.first = o THEN L.first := L.first.next
+  ELSE x := L.first;
+    WHILE x.next # o DO x := x.next END;
+    x.next := x.next.next
+  END;
+  o.next := NIL
+END RemoveFromList;
+
+(** Moves o from list L such that L.last = o. *)
+PROCEDURE MoveToEndOfList(L: List; o: Object);
+BEGIN IF L.last # o THEN RemoveFromList(L, o); AddToList(L, o) END
+END MoveToEndOfList;
+
+(** If L is empty, creates a group with title = curTitle in it.
+    If L is not empty and last group's title is not curTitle,
+    finds it in L and moves it to the last position.
+    If it is not found, creates a new group in the end of L. *)
+PROCEDURE UpdateCurGroup(L: List);
+VAR x: Object;
+BEGIN x := L.first;
+  WHILE (x # NIL) & (x.comment # curTitle) DO x := x.next END;
+  IF x = NIL THEN x := NewGroup(); AddToList(L, x)
+  ELSE MoveToEndOfList(L, x)
+  END
+END UpdateCurGroup;
 
 (** Printing **)
 
@@ -451,6 +560,9 @@ PROCEDURE PrintList(L: List; indent: INTEGER; inlined: BOOLEAN);
 VAR o: Object;
 BEGIN
   IF (L # NIL) & (L.first # NIL) THEN
+    IF L.comment[0] # 0X THEN
+      Out.String('### '); Out.String(L.comment); Out.Ln
+    END;
     o := L.first;
     WHILE o # NIL DO
       PrintObject(o, indent, FALSE);
@@ -483,6 +595,7 @@ BEGIN
   PrintIndent(indent, inlined);
   Out.String(v.name);
   Out.String(' of '); PrintObject(v.type, indent, TRUE);
+  IF ~inlined & (v.comment[0] # 0X) THEN Out.Ln END;
   PrintComment(v, indent)
 END PrintVar;
 
@@ -523,7 +636,8 @@ BEGIN
   ELSIF T.form = pointerType THEN Out.String('pointer type to ');
     PrintObject(T.base, indent, TRUE)
   ELSE Out.String('?')
-  END
+  END;
+  IF ~inlined THEN Out.Ln; PrintComment(T, indent) END
 END PrintType;
 
 PROCEDURE PrintProcedure(P: Procedure; indent: INTEGER; inlined: BOOLEAN);
@@ -537,7 +651,8 @@ BEGIN
     Out.String(', parameters:'); Out.Ln;
     PrintList(P.params, indent + 1, FALSE)
   ELSE Out.Ln
-  END
+  END;
+  IF ~inlined THEN Out.Ln; PrintComment(P, indent) END
 END PrintProcedure;
 
 PROCEDURE PrintModule(M: Module; indent: INTEGER; inlined: BOOLEAN);
@@ -564,6 +679,7 @@ BEGIN
   ELSIF o IS Type THEN PrintType(o(Type), indent, inlined)
   ELSIF o IS Procedure THEN PrintProcedure(o(Procedure), indent, inlined)
   ELSIF o IS Param THEN PrintParam(o(Param), indent, inlined)
+  ELSIF o IS List THEN PrintList(o(List), indent, inlined)
   ELSE PrintIndent(indent, inlined); Out.String('?')
   END;
   IF ~inlined THEN Out.Ln END
@@ -649,61 +765,79 @@ BEGIN
   s[i] := 0X
 END ParseConstExpr;
 
-PROCEDURE ParseVars(needSemicol: BOOLEAN): List;
+PROCEDURE ParseVars(isVarDecl: BOOLEAN): List;
 VAR first, v: Var;
   L: List;
   x: Object;
-  passed: INTEGER;
+  passed, line2: INTEGER;
   T: Type;
   stop: BOOLEAN;
 BEGIN L := NewList(); stop := FALSE;
   WHILE ~stop & (sym = ident) DO
-    first := NewVar(); GetSym; CheckExportMark(first);
-    AddToList(L, first);
+    IF isVarDecl THEN UpdateCurGroup(L) END;
+    first := NewVar(); SaveAllComments(first); GetSym; CheckExportMark(first);
+    IF isVarDecl THEN AddToList(L.last(List), first)
+    ELSE AddToList(L, first)
+    END;
     WHILE sym = comma DO GetSym;
       IF sym = ident THEN v := NewVar(); GetSym; CheckExportMark(v);
-        AddToList(L, v)
+        IF isVarDecl THEN AddToList(L.last(List), v)
+        ELSE AddToList(L, v)
+        END;
       ELSE MarkExp('variable (field) name')
       END
     END;
     IF sym = colon THEN GetSym ELSE MarkExp(':') END;
-    T := ParseType();
+    T := ParseType(NIL);
     IF first # NIL THEN
       first.type := T; x := first.next;
       WHILE x # NIL DO x(Var).type := T; x := x.next END
     END;
-    IF sym = semicol THEN GetSym
-    ELSIF needSemicol THEN MarkExp(';')
-    ELSE stop := TRUE
+    IF (sym = semicol) OR ~isVarDecl THEN line2 := line;
+      IF sym = semicol THEN GetSym; SaveComment(first, line2)
+      ELSE stop := TRUE; SaveAllComments(first)
+      END;
+      IF first.comment[0] # 0X THEN x := first.next;
+        WHILE x # NIL DO
+          Strings.Copy(first.comment, x.comment); x := x.next
+        END
+      END
+    ELSE MarkExp(';')
     END
   END
 RETURN L END ParseVars;
 
 PROCEDURE ParseConstDecl(M: Module);
 VAR C: Const;
-BEGIN M.consts := NewList();
+  line2: INTEGER;
+BEGIN M.consts := NewList(); curTitle[0] := 0X;
   IF sym = const THEN GetSym;
     WHILE sym = ident DO
-      C := NewConst(); GetSym; CheckExportMark(C);
-      AddToList(M.consts, C);
+      UpdateCurGroup(M.consts);
+      C := NewConst(); SaveComment(C, -1); GetSym; CheckExportMark(C);
+      AddToList(M.consts.last(List), C);
       IF sym = equals THEN GetSym ELSE MarkExp('=') END;
-      ParseConstExpr(C.value);
+      ParseConstExpr(C.value); line2 := line;
       IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
-      SaveComment(C)
+      SaveComment(C, line2)
     END
   END
 END ParseConstDecl;
 
 PROCEDURE ParseTypeDecl(M: Module);
 VAR T: Type;
-BEGIN M.types := NewList();
+  line2: INTEGER;
+BEGIN M.types := NewList(); curTitle := '-';
   IF sym = type THEN GetSym;
     WHILE sym = ident DO
-      T := NewType(namedType); AddToList(M.types, T);
+      UpdateCurGroup(M.types);
+      T := NewType(namedType); SaveAllComments(T);
+      AddToList(M.types.last(List), T);
       Strings.Copy(id, T.name); GetSym; CheckExportMark(T);
       IF sym = equals THEN GetSym ELSE MarkExp('=') END;
-      T.base := ParseType();
+      T.base := ParseType(T); line2 := line;
       IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
+      SaveComment(T, line2)
     END
   END
 END ParseTypeDecl;
@@ -736,24 +870,27 @@ BEGIN ASSERT(sym = array); GetSym;
     ParseConstExpr(T1.len)
   END;
   IF sym = of THEN GetSym ELSE MarkExp('OF') END;
-  T1.base := ParseType()
+  T1.base := ParseType(NIL)
 RETURN T END ParseArrayType;
 
-PROCEDURE ParseRecordType(): Type;
+PROCEDURE ParseRecordType(docObj: Object): Type;
 VAR T: Type;
-BEGIN ASSERT(sym = record); GetSym; T := NewType(recordType);
+  line2: INTEGER;
+BEGIN ASSERT(sym = record); line2 := line; GetSym;
+  T := NewType(recordType);
   IF sym = lparen THEN GetSym; T.base := ParseNamedType();
     IF sym = rparen THEN GetSym ELSE MarkExp(')') END
   END;
+  SaveComment(docObj, line2);
   T.fields := ParseVars(FALSE);
   IF sym = end THEN GetSym ELSE MarkExp('END') END
 RETURN T END ParseRecordType;
 
-PROCEDURE ParsePointerType(): Type;
+PROCEDURE ParsePointerType(docObj: Object): Type;
 VAR T: Type;
 BEGIN ASSERT(sym = pointer); GetSym; T := NewType(pointerType);
   IF sym = to THEN GetSym ELSE MarkExp('TO') END;
-  T.base := ParseType()
+  T.base := ParseType(docObj)
 RETURN T END ParsePointerType;
 
 PROCEDURE ParseFormalParamSection(L: List);
@@ -807,12 +944,12 @@ BEGIN
   END
 RETURN T END ParseParamType0;
 
-PROCEDURE ParseType0(): Type;
+PROCEDURE ParseType0(docObj: Object): Type;
 VAR T: Type;
 BEGIN
   IF sym = array THEN T := ParseArrayType()
-  ELSIF sym = record THEN T := ParseRecordType()
-  ELSIF sym = pointer THEN T := ParsePointerType()
+  ELSIF sym = record THEN T := ParseRecordType(docObj)
+  ELSIF sym = pointer THEN T := ParsePointerType(docObj)
   ELSIF sym = procedure THEN T := ParseProcedureType()
   ELSIF sym = ident THEN T := ParseNamedType()
   ELSE T := NIL; MarkExp('type')
@@ -832,9 +969,11 @@ END ReachEndOf;
 PROCEDURE ParseProcedureDecl(M: Module);
 VAR name: Str;
   P: Procedure;
-BEGIN M.procedures := NewList();
-  WHILE sym = procedure DO GetSym; NEW(P); InitObject(P);
+BEGIN M.procedures := NewList(); curTitle := '-';
+  WHILE sym = procedure DO UpdateCurGroup(M.procedures);
+    GetSym; NEW(P); InitObject(P);
     P.params := NewList(); P.exported := FALSE;
+    AddToList(M.procedures.last(List), P);
     IF (sym = minus) OR (sym = times) OR (sym = arrow) THEN GetSym END;
     
     IF sym = ident THEN Strings.Copy(id, P.name); GetSym
@@ -850,17 +989,17 @@ BEGIN M.procedures := NewList();
       IF sym = colon THEN GetSym; P.returnType := ParseNamedType() END
     END;
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
-    ReachEndOf(P.name);
+    ReachEndOf(P.name); SaveComment(P, -1);
     IF sym = ident THEN GetSym;
       IF sym = semicol THEN GetSym ELSE MarkExp(';') END
     ELSE (* sym = eot *) MarkEnd('Procedure', P.name)
-    END;
-    AddToList(M.procedures, P)
+    END
   END
 END ParseProcedureDecl;
 
 PROCEDURE ParseVarDecl(M: Module);
-BEGIN ASSERT(sym = var); GetSym; M.vars := ParseVars(TRUE)
+BEGIN ASSERT(sym = var); curTitle := '-';
+  GetSym; M.vars := ParseVars(TRUE)
 END ParseVarDecl;
 
 PROCEDURE Declarations(M: Module);
@@ -881,7 +1020,7 @@ PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
 VAR M: Module;
 BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
   R := r; c := 0X; line := 1; col := 0; lastError := -1;
-  Read; ClearComments; GetSym;
+  Read; ClearComments; curTitle := '-'; GetSym;
   IF sym = module THEN GetSym;
     IF sym = lbrak THEN GetSym;
       IF (sym = ident) & (id = 'foreign') THEN M.foreign := TRUE END;
@@ -893,7 +1032,7 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
     END;
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
     IF sym = import THEN ParseImport(M) END;
-    SaveComment(M);
+    SaveAllComments(M);
     Declarations(M);
     IF sym = begin THEN
       REPEAT GetSym UNTIL (sym = eot) OR (sym = end)

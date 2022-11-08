@@ -19,16 +19,18 @@
 
 (** Module Apples helps count apples.
     One can create a variable of type Apples.Apple,
-    call Init and other procedures on it. *)
+    call Init and other procedures on it *)
 MODULE Apples;
 (** Это тестовый модуль. *)
 IMPORT Out, Fruits;
 
 CONST
   (** Общие постоянные **)
-  maxApples*  =  5; (** Maximum amount of apples. Currently unused *)
+
+  maxApples*  =  5; (** Maximum amount of apples*)
   maxSeeds*   = 10; (** Currently not in use *)
-  startApples =  0; (** Start amount of apples. Used in Reset *)
+  (** Start amount of apples. Used in Reset *)
+  startApples =  0;
 
   (** Качество яблока **)
   unknown* = 0; (** Неизвестное качество *)
@@ -36,28 +38,46 @@ CONST
   bad*     = 2; (** Отвратное качество *)
 
 TYPE
-  (** Тип яблоко *)
+
+  LetterA = CHAR;
+  LetterB = CHAR;
+
+  (** ФРУКТЫ **)
+
+  (**Тип яблоко *)
   Apple* = RECORD(Fruits.Fruit) (** Represents an apple with some seeds *)
     seeds*: INTEGER;   (** Amount of seeds in the apple *)
     quality*: INTEGER; (** Качество продукта, см. @Качество яблока *)
     added: BOOLEAN     (** Whether Add was called on this seed after Init *)
   END;
-  
-  INT32* = SYSTEM.INT32;
-  INT64 = LONGINT;
+
+  (** - **)
+  LetterC = CHAR;
+  LetterD = CHAR;
+
+  (** ВСЯКОЕ **)
+
+  INT32* = SYSTEM.INT32; (** Четырёхбайтовик *)
+  INT64 = LONGINT; (** Длинное целое *)
+  (** Просто массив *)
   Array* = POINTER TO ARRAY OF RECORD i: INTEGER END;
+
+  Point = RECORD x, y: REAL (**Координаты!*) END; (** Точка? *)
 
 VAR
   applesCreated*: INTEGER; (** How many apples were created using Init *)
   (** If FALSE, Show shows a welcome message and sets shown to TRUE *)
   shown: BOOLEAN;
   lastAdded*: INTEGER; (** How many seeds were added the last time, or -1 *)
+  (** ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ЗАПИСНЫХ ТИПОВ **)
   R: RECORD
-    t, x: INTEGER;
-    z, y: Array
+    t, x: INTEGER; (** Время в секундах и мс *)
+    z, y: Array    (** Z-буфер, показатель светимости  *)
   END;
+  T: RECORD END;
 
-  (**: PROCEDURE;
+
+  (*: PROCEDURE;
   b*: PROCEDURE(): INTEGER;
   y: ARRAY N, M OF PROCEDURE (VAR n: ARRAY OF BOOLEAN; VAR x, y: INTEGER): REAL;
   p*: POINTER TO Bird;*)
