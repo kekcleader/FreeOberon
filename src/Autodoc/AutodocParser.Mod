@@ -233,9 +233,15 @@ END MarkEnd;
 (** Handle Comments **)
 
 PROCEDURE ClearComments;
-BEGIN
-
+BEGIN doc[0] := 0X; docLen := 0
 END ClearComments;
+
+(** Comments **)
+
+PROCEDURE SaveComment(o: Object);
+BEGIN
+  IF doc[0] # 0X THEN Strings.Copy(doc, o.comment); ClearComments END
+END SaveComment;
 
 (** Scanner **)
 
@@ -299,13 +305,11 @@ END ReadNumber;
 
 PROCEDURE WriteDoc(c: CHAR);
 BEGIN
-  IF writingDoc THEN
-    IF docLen < LEN(doc) - 1 THEN
-      IF (c > ' ') OR (docLen # 0) & (doc[docLen - 1] > ' ') THEN
-        IF c < ' ' THEN c := ' ' END;
-        doc[docLen] := c; INC(docLen)
-      END
-    END
+  IF writingDoc & (docLen < LEN(doc) - 1) &
+     ((c > ' ') OR (docLen # 0) & (doc[docLen - 1] > ' '))
+  THEN
+    IF c < ' ' THEN c := ' ' END;
+    doc[docLen] := c; INC(docLen)
   END
 END WriteDoc;
 
@@ -314,7 +318,7 @@ VAR closed, tmp: BOOLEAN;
 BEGIN Read; closed := FALSE; writingDoc := FALSE;
   IF c = '*' THEN Read; (* Second star *)
     IF c = ')' THEN Read; closed := TRUE
-    ELSIF toplevel THEN writingDoc := TRUE; docLen := 0
+    ELSIF toplevel THEN writingDoc := TRUE
     END
   END;
   IF ~closed THEN
@@ -339,7 +343,7 @@ BEGIN Read; closed := FALSE; writingDoc := FALSE;
   IF writingDoc & (docLen # 0) THEN
     REPEAT DEC(docLen) UNTIL (docLen = -1) OR (doc[docLen] > ' ');
     doc[docLen + 1] := 0X;
-    (*Out.Char('"'); Out.String(doc); Out.Char('"'); Out.Ln*)
+    Out.String('READ "'); Out.String(doc); Out.Char('"'); Out.Ln
   END
 END ReadComment;
 
@@ -434,6 +438,15 @@ BEGIN
   END
 END PrintIndent;
 
+PROCEDURE PrintComment(o: Object; indent: INTEGER);
+BEGIN
+  IF o.comment[0] # 0X THEN
+    PrintIndent(indent, FALSE);
+    Out.String('(* '); Out.String(o.comment);
+    Out.String(' *)'); Out.Ln
+  END
+END PrintComment;
+
 PROCEDURE PrintList(L: List; indent: INTEGER; inlined: BOOLEAN);
 VAR o: Object;
 BEGIN
@@ -451,7 +464,8 @@ PROCEDURE PrintConst(C: Const; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
   PrintIndent(indent, inlined);
   Out.String('Const '); Out.String(C.name);
-  Out.String(' with value '); Out.String(C.value)
+  Out.String(' with value '); Out.String(C.value); Out.Ln;
+  PrintComment(C, indent)
 END PrintConst;
 
 PROCEDURE PrintParam(par: Param; indent: INTEGER; inlined: BOOLEAN);
@@ -468,7 +482,8 @@ PROCEDURE PrintVar(v: Var; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
   PrintIndent(indent, inlined);
   Out.String(v.name);
-  Out.String(' of '); PrintObject(v.type, indent, TRUE)
+  Out.String(' of '); PrintObject(v.type, indent, TRUE);
+  PrintComment(v, indent)
 END PrintVar;
 
 PROCEDURE PrintType(T: Type; indent: INTEGER; inlined: BOOLEAN);
@@ -529,6 +544,7 @@ PROCEDURE PrintModule(M: Module; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
   PrintIndent(indent, inlined);
   Out.String('Module '); Out.String(M.name); Out.Ln;
+  PrintComment(M, indent);
   PrintIndent(indent, FALSE);
   Out.String('Constants:'); Out.Ln; PrintList(M.consts, indent + 1, FALSE);
   PrintIndent(indent, FALSE);
@@ -672,7 +688,8 @@ BEGIN M.consts := NewList();
       AddToList(M.consts, C);
       IF sym = equals THEN GetSym ELSE MarkExp('=') END;
       ParseConstExpr(C.value);
-      IF sym = semicol THEN GetSym ELSE MarkExp(';') END
+      IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
+      SaveComment(C)
     END
   END
 END ParseConstDecl;
@@ -876,6 +893,7 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
     END;
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
     IF sym = import THEN ParseImport(M) END;
+    SaveComment(M);
     Declarations(M);
     IF sym = begin THEN
       REPEAT GetSym UNTIL (sym = eot) OR (sym = end)
