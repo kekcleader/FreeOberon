@@ -1,11 +1,18 @@
 MODULE AutodocHtml;
 IMPORT Texts, Out, Strings, P := AutodocParser;
 
+CONST
+  styleFname = 'style.css';
+
 VAR
   PrintObject: PROCEDURE (o: P.Object; indent: INTEGER; inlined: BOOLEAN);
+
+  T: Texts.Text;
   W: Texts.Writer;
   
   preventSemicol: BOOLEAN;
+
+  inlineStyle: BOOLEAN;
 
 (** Printing **)
 
@@ -44,6 +51,23 @@ BEGIN
     WriteLn('</p>')
   END
 END WriteParagraphs;
+
+PROCEDURE WriteStyle;
+VAR T2: Texts.Text;
+  buf: Texts.Buffer;
+BEGIN
+  NEW(T2); Texts.Open(T2, styleFname);
+  IF T2.len # 0 THEN
+    WriteLn('<style>');
+    Texts.Append(T, W.buf);
+    NEW(buf); Texts.OpenBuf(buf);
+    Texts.Save(T2, 0, T2.len, buf);
+    Texts.Append(T, buf);
+    WriteLn(''); WriteLn('</style>')
+  ELSE Out.String('Could not find stylesheet file "');
+    Out.String(styleFname); Out.String('".'); Out.Ln
+  END
+END WriteStyle;
 
 PROCEDURE OpenGroup(title: ARRAY OF CHAR);
 BEGIN
@@ -229,7 +253,6 @@ BEGIN
   WriteLn('<title>'); Write(modName);
   WriteLn(' Module Reference</title>');
   WriteLn('<meta name="viewport" content="width=device-width,initial-scale=1.0">');
-  WriteLn('<link rel="stylesheet" href="style.css">');
   WriteLn('</head>');
   WriteLn('<body>');
   WriteLn('<header class="header"><div class="inner">');
@@ -245,6 +268,11 @@ BEGIN
   WriteLn('<p>Generated automatically by Free Oberon Autodoc</p>');
  
   WriteLn('</div></footer>');
+
+  IF inlineStyle THEN WriteStyle
+  ELSE WriteLn('<link rel="stylesheet" href="style.css">')
+  END;
+
   WriteLn('</body></html>')
 END Footer;
 
@@ -280,8 +308,11 @@ END PrintObject0;
 
 (** - **)
 
+PROCEDURE SetInlineStyle*(inline: BOOLEAN);
+BEGIN inlineStyle := inline
+END SetInlineStyle;
+
 PROCEDURE Save*(module: P.Module; fname: ARRAY OF CHAR): BOOLEAN;
-VAR T: Texts.Text;
 BEGIN
   NEW(T); Texts.Open(T, ''); Texts.OpenWriter(W);
   preventSemicol := FALSE;
@@ -290,5 +321,6 @@ BEGIN
 RETURN TRUE END Save;
 
 BEGIN
-  PrintObject := PrintObject0
+  PrintObject := PrintObject0;
+  inlineStyle := FALSE
 END AutodocHtml.

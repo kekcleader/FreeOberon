@@ -130,6 +130,8 @@ BEGIN
           Args.Get(i + 1, out);
           INC(i)
         END
+      ELSIF (s = '--inline-style') OR (s = '-i') THEN
+        H.SetInlineStyle(TRUE)
       ELSE
         Strings.Copy(s, fnames[fnameCount]);
         INC(fnameCount)
