@@ -8,18 +8,6 @@ CONST
 TYPE
   Module* = P.Module;
 
-PROCEDURE SaveHtml*(module: Module; fname: ARRAY OF CHAR): BOOLEAN;
-VAR T: Texts.Text;
-  W: Texts.Writer;
-BEGIN
-  NEW(T); Texts.Open(T, '');
-  Texts.OpenWriter(W);
-  Texts.WriteString(W, '<h1>'); Texts.WriteString(W, fname);
-  Texts.WriteString(W, '</h1>'); Texts.WriteLn(W);
-  Texts.Append(T, W.buf);
-  Texts.Close(T, fname);
-RETURN TRUE END SaveHtml;
-
 PROCEDURE OpenFile(fname: ARRAY OF CHAR; VAR r: Files.Rider): BOOLEAN;
 VAR F: Files.File;
 BEGIN F := Files.Old(fname);

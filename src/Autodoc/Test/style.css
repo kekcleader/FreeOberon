@@ -1,0 +1,128 @@
+@font-face {
+  font-family: 'Inconsolata-LGC';
+  src: url(inconsolatalgcbold.ttf);
+}
+
+body, p, h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inconsolata-LGC', monospace, sans-serif;
+  font-size: 14px;
+  background: #FBC5AA;
+  color: #12365D;
+}
+
+a {
+  color: #D95D27;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #FF4D00;
+}
+
+.inner {
+  max-width: 1160px;
+  padding: 0 20px;
+  margin: 0 auto;
+}
+
+.header {
+  padding: 30px 0;
+  background: #12365D;
+  color: #93B2D3;
+}
+
+.header h1 .module-name {
+  color: #FFF;
+}
+
+.header h1 .subtitle {
+  display: block;
+  font-size: 16px;
+  color: #4D89C7;
+}
+
+.footer {
+  padding: 50px 0;
+  background: #2D5E90;
+  color: #FFF;
+}
+
+.footer p {
+  text-align: center;
+}
+
+.main {
+  padding: 20px 0;
+}
+
+.main h2, .main h3, .main h4, .main h5, .main h6 {
+  margin: 1.2em 0 0.5em;
+}
+
+.group {
+
+}
+
+.group-content {
+
+}
+
+.object {
+  background: #FFF;
+  border: 1px solid #808080;
+  padding: 2px;
+  margin: 6px 0;
+  box-shadow: 0 1px 3px rgba(1, 0, 0, 0.1);
+}
+
+.object .def {
+  background: #FFBF44;
+  border: 1px solid #F8BA42;
+  padding: 2px 5px;
+}
+
+.object .name,
+.object .record-base {
+  color: #C91E0C;
+}
+
+.const .value {
+  color: #000;
+}
+
+.comment {
+  padding: 10px 6px;
+  color: #2D5E90;
+}
+
+.comment:empty {
+  display: none;
+}
+
+.record-fields .comment {
+  color: #C91E0C;
+}
+
+.comment .mark {
+  color: #D1702C;
+}
+
+.record-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+}
+
+.record-fields .var {
+}
+
+.record-fields .comment {
+  padding: 0;
+}
+
+.record-field .comment p {
+}

@@ -74,12 +74,12 @@ TYPE
     name*: Str;
     comment*: LongStr;
     exported*: BOOLEAN;
-    next: Object
+    next*: Object
   END;
 
   List* = POINTER TO ListDesc;
   ListDesc* = RECORD(ObjectDesc)
-    first*, last: Object
+    first*, last*: Object
   END;
 
   Group* = POINTER TO GroupDesc;
@@ -631,7 +631,7 @@ BEGIN
       Out.String(') ')
     END;
     IF T.base # NIL THEN
-      Out.String('that returns '); PrintObject(T.base, ident, TRUE)
+      Out.String('that returns '); PrintObject(T.base, indent, TRUE)
     END
   ELSIF T.form = pointerType THEN Out.String('pointer type to ');
     PrintObject(T.base, indent, TRUE)
