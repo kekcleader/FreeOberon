@@ -60,12 +60,25 @@ a:hover {
   padding: 20px 0;
 }
 
-.main h2, .main h3, .main h4, .main h5, .main h6 {
+h2, h3, h4, h5, h6 {
   margin: 1.2em 0 0.5em;
 }
 
-.group {
+.heading {
+  background: #12365D;
+  color: #FFF;
+  margin: 20px -20px 15px;
+  width: max-content;
+  min-width: calc(min(240px, 100%));
+  box-sizing: border-box;
+  padding: 7px 60px 6px 40px;
+  text-transform: uppercase;
+  font-size: 16px;
+}
 
+.group-title {
+  padding: 0 2px;
+  margin: 10px 0;
 }
 
 .group-content {
@@ -88,7 +101,7 @@ a:hover {
 
 .object .name,
 .object .record-base {
-  color: #C91E0C;
+  color: #B91E0C;
 }
 
 .const .value {

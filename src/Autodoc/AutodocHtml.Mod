@@ -7,7 +7,7 @@ CONST
 VAR
   PrintObject: PROCEDURE (o: P.Object; indent: INTEGER; inlined: BOOLEAN);
 
-  T: Texts.Text;
+  TX: Texts.Text;
   W: Texts.Writer;
   
   preventSemicol: BOOLEAN;
@@ -59,10 +59,10 @@ BEGIN
   NEW(T2); Texts.Open(T2, styleFname);
   IF T2.len # 0 THEN
     WriteLn('<style>');
-    Texts.Append(T, W.buf);
+    Texts.Append(TX, W.buf);
     NEW(buf); Texts.OpenBuf(buf);
     Texts.Save(T2, 0, T2.len, buf);
-    Texts.Append(T, buf);
+    Texts.Append(TX, buf);
     WriteLn(''); WriteLn('</style>')
   ELSE Out.String('Could not find stylesheet file "');
     Out.String(styleFname); Out.String('".'); Out.Ln
@@ -72,7 +72,9 @@ END WriteStyle;
 PROCEDURE OpenGroup(title: ARRAY OF CHAR);
 BEGIN
   WriteLn('<article class="group">');
-  WriteLn3('<h3 class="group-title">', title, '</h3>');
+  Write('<h3 class="group-title">');
+  IF title # '-' THEN Write(title) ELSE Write('* * *') END;
+  WriteLn('</h3>');
   WriteLn('<div class="group-content">');
 END OpenGroup;
 
@@ -114,16 +116,21 @@ BEGIN
   WriteLn3('    <span class="value">', C.value, '</span>;');
   WriteLn ('  </div>');
   PrintComment(C, FALSE);
-  WriteLn ('</article>');
+  WriteLn ('</article>')
 END PrintConst;
 
 PROCEDURE PrintParam(par: P.Param; indent: INTEGER; inlined: BOOLEAN);
-BEGIN
-  IF par.passed = P.byVar THEN Out.String('Variable')
-  ELSIF par.passed = P.byValue THEN Out.String('Value')
+VAR tmp: BOOLEAN;
+BEGIN tmp := preventSemicol; preventSemicol := FALSE;
+  Write('<span class="param">');
+  IF par.passed = P.byVar THEN
+    Write('<span class="passed by-var">VAR</span>&nbsp;')
   END;
-  Out.String(' parameter '); Out.String(par.name);
-  Out.String(' of '); PrintObject(par.type, indent, TRUE)
+  Write('<span class="name">'); Write(par.name); Write('</span>');
+  Write(': <span class="type">');
+  PrintObject(par.type, indent, TRUE);
+  IF ~tmp THEN WriteLn(';') END;
+  Write('</span></span></span>')
 END PrintParam;
 
 PROCEDURE PrintVar(v: P.Var; indent: INTEGER; inlined: BOOLEAN);
@@ -226,22 +233,32 @@ BEGIN
 END PrintType2;
 
 PROCEDURE PrintProcedure(p: P.Procedure; indent: INTEGER; inlined: BOOLEAN);
+VAR x: P.Object;
 BEGIN
-  PrintIndent(indent);
-  Out.String('P.Procedure '); Out.String(p.name);
+  WriteLn ('<article class="object procedure">');
+  WriteLn ('  <div class="def">');
+  WriteLn ('    PROCEDURE');
+  Write   ('    <span class="name">'); Write(p.name);
+  Write('</span><span class="params">');
+  x := p.params.first;
+  IF (x # NIL) OR (p.returnType # NIL) THEN Write('(');
+    WHILE x # NIL DO
+      IF x = p.params.last THEN preventSemicol := TRUE END;
+      PrintObject(x, indent + 1, TRUE);
+      x := x.next
+    END;
+    Write(')')
+  END;
   IF p.returnType # NIL THEN
-    Out.String(' returns '); PrintType(p.returnType, indent, TRUE)
+    Write(': '); PrintType(p.returnType, indent, TRUE)
   END;
-  IF p.params.first # NIL THEN
-    Out.String(', parameters:'); Out.Ln;
-    PrintList(p.params, indent + 1, FALSE)
-  ELSE Out.Ln
-  END;
-  IF ~inlined THEN Out.Ln; PrintComment(p, FALSE) END
+  WriteLn(';</span></div>');
+  PrintComment(p, FALSE);
+  WriteLn('</article>')
 END PrintProcedure;
 
 PROCEDURE BigTitle(text: ARRAY OF CHAR);
-BEGIN WriteLn3('<h2>', text, '</h2>')
+BEGIN WriteLn3('<h2 class="heading">', text, '</h2>')
 END BigTitle;
 
 PROCEDURE Header(modName: ARRAY OF CHAR);
@@ -314,10 +331,10 @@ END SetInlineStyle;
 
 PROCEDURE Save*(module: P.Module; fname: ARRAY OF CHAR): BOOLEAN;
 BEGIN
-  NEW(T); Texts.Open(T, ''); Texts.OpenWriter(W);
+  NEW(TX); Texts.Open(TX, ''); Texts.OpenWriter(W);
   preventSemicol := FALSE;
   PrintObject(module, 0, FALSE);
-  Texts.Append(T, W.buf); Texts.Close(T, fname)
+  Texts.Append(TX, W.buf); Texts.Close(TX, fname)
 RETURN TRUE END Save;
 
 BEGIN
