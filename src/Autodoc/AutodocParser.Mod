@@ -515,6 +515,17 @@ VAR G: Group;
 BEGIN NEW(G); Strings.Copy(curTitle, G.comment)
 RETURN G END NewGroup;
 
+(** Returns object with the minimum name from a non-empty list L *)
+PROCEDURE FindMinName(L: List): Object;
+VAR x, min: Object;
+BEGIN
+  min := L.first; x := min.next;
+  WHILE x # NIL DO
+    IF x.name < min.name THEN min := x END;
+    x := x.next
+  END
+RETURN min END FindMinName;
+
 PROCEDURE AddToList(L: List; o: Object);
 BEGIN
   IF L.first = NIL THEN L.first := o ELSE L.last.next := o END;
@@ -837,7 +848,7 @@ RETURN L END ParseVars;
 PROCEDURE ParseConstDecl(M: Module);
 VAR C: Const;
   line2: INTEGER;
-BEGIN M.consts := NewList(); curTitle[0] := 0X;
+BEGIN M.consts := NewList(); curTitle := '-';
   IF sym = const THEN GetSym;
     WHILE sym = ident DO
       UpdateCurGroup(M.consts);
@@ -1043,6 +1054,48 @@ BEGIN
     (sym = end) OR (sym = const) OR (sym = type) OR (sym = var)
 END ParseImport;
 
+PROCEDURE SortGroup(G: Group);
+VAR x: Object;
+  L: List;
+BEGIN
+  IF G.first # NIL THEN L := NewList();
+    WHILE G.first # NIL DO
+      x := FindMinName(G);
+      RemoveFromList(G, x);
+      AddToList(L, x)
+    END;
+    G.first := L.first; G.last := L.last
+  END
+END SortGroup;
+
+PROCEDURE SortGroups(L: List);
+VAR x: Object;
+  common: Group;
+BEGIN
+  IF L.first # NIL THEN
+    common := NIL; x := L.first;
+    WHILE x # NIL DO
+      SortGroup(x(Group));
+      IF x.comment = '-' THEN common := x(Group) END;
+      x := x.next
+    END;
+    IF (common # NIL) & (common # L.first) THEN
+      x := L.first; WHILE x.next # common DO x := x.next END;
+      x.next := common.next;
+      common.next := L.first;
+      L.first := common
+    END
+  END
+END SortGroups;
+
+PROCEDURE SortModule(M: Module);
+BEGIN
+  SortGroups(M.consts);
+  SortGroups(M.vars);
+  SortGroups(M.types);
+  SortGroups(M.procedures)
+END SortModule;
+
 PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
 VAR M: Module;
 BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
@@ -1071,7 +1124,9 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
     END
   ELSE MarkExp('MODULE')
   END;
-  IF lastError # -1 THEN M := NIL; err := 'Error' (*!FIXME*) END
+  IF lastError = -1 THEN SortModule(M)
+  ELSE M := NIL; err := 'Error' (*!FIXME*)
+  END
 RETURN M END ParseModule;
 
 BEGIN curFname[0] := 0X;

@@ -25,19 +25,21 @@ MODULE Apples;
 IMPORT Out, Fruits;
 
 CONST
-  str1* = '';
-  str2* = 'H';
-  str3* = 'Привет   Как  дела?';
   str4* = "В двойных кавычках.";
   str5* = "Кавычки 'в' кавычках.";
+  str1* = '';
+  appleJuice* = 'сок';
+  str2* = 'H';
+  str3* = 'Привет   Как  дела?';
   str6* = 'Кавычки "в двойных" кавычках.';
 
   (** Общие постоянные **)
 
-  maxApples*  =  5; (** Maximum amount of apples*)
-  maxSeeds*   = 10; (** Currently not in use *)
   (** Start amount of apples. Used in Reset *)
   startApples =  0;
+
+  maxApples*  =  5; (** Maximum amount of apples*)
+  maxSeeds*   = 10; (** Currently not in use *)
 
   (** Качество яблока **)
   unknown* = 0; (** Неизвестное качество *)
@@ -75,7 +77,7 @@ TYPE
   P2* = PROCEDURE(); (** Процедура с пустыми скобками *)
   P3* = PROCEDURE(): BOOLEAN; (** Булева процедура без параметров *)
   P4* = PROCEDURE(a, b: INTEGER): BOOLEAN; (** Булева процедура *)
-  P4* = PROCEDURE(x: INTEGER; y: CHAR; z: CHAR); (** Процедура с параметрами *)
+  P5* = PROCEDURE(x: INTEGER; y: CHAR; z: CHAR); (** Процедура с параметрами *)
 
 VAR
   applesCreated*: INTEGER; (** How many apples were created using Init *)

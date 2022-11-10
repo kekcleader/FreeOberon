@@ -94,7 +94,7 @@ PROCEDURE OpenGroup(title: ARRAY OF CHAR);
 BEGIN
   WriteLn('<article class="group">');
   Write('<h3 class="group-title">');
-  IF title # '-' THEN Write(title) ELSE Write('* * *') END;
+  IF title # '-' THEN Write(title) END;
   WriteLn('</h3>');
   WriteLn('<div class="group-content">');
 END OpenGroup;
