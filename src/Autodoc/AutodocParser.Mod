@@ -454,6 +454,20 @@ BEGIN
   IdentifyKeyword
 END ReadIdentOrKeyword;
 
+PROCEDURE ReadString;
+VAR q: CHAR;
+BEGIN q := c; len := 0; Read;
+  WHILE (c >= ' ') & (c # q) DO
+    IF len < LEN(id) - 3 THEN
+      id[len] := c; INC(len)
+    END;
+    Read
+  END;
+  id[len] := 0X;
+  IF c = q THEN Read ELSE Mark('String not terminated') END;
+  sym := string
+END ReadString;
+
 PROCEDURE GetSym;
 VAR z: ARRAY 200 OF CHAR;
 BEGIN
@@ -462,6 +476,7 @@ BEGIN
     WHILE (c # 0X) & (c <= ' ') DO Read END;
     IF IsLetter(c) THEN ReadIdentOrKeyword
     ELSIF IsDec(c) THEN ReadNumber
+    ELSIF (c = '"') OR (c = "'") THEN ReadString
     ELSIF c = '+' THEN Read; sym := plus
     ELSIF c = '-' THEN Read; sym := minus
     ELSIF c = '*' THEN Read; sym := times
@@ -486,7 +501,6 @@ BEGIN
     ELSE Read
     END
   UNTIL sym # null
-  (*;SymToStr(sym, z);Out.String(z);Out.Ln;*)
 END GetSym;
 
 (** List **)
@@ -731,15 +745,28 @@ RETURN v END NewVar;
 
 (** Parser **)
 
+PROCEDURE ConstructString(VAR s: ARRAY OF CHAR);
+VAR i: INTEGER;
+  x: CHAR;
+BEGIN i := 0; x := id[0];
+  WHILE (x # 0X) & (x # "'") DO INC(i); x := id[i] END;
+  IF x # 0X THEN x := '"' ELSE x := "'" END;
+  s[0] := x; i := 0;
+  WHILE id[i] # 0X DO s[i + 1] := id[i]; INC(i) END;
+  s[i + 1] := x; s[i + 2] := 0X 
+END ConstructString;
+
 PROCEDURE ParseConstExpr(VAR s: ARRAY OF CHAR);
 VAR start, end, tmp, i: INTEGER;
   x: CHAR;
 BEGIN
-  IF sym = lparen THEN s := '('; i := 1
-  ELSIF sym = int THEN Int.Str(ival, s); i := Strings.Length(s);
-  ELSIF sym = ident THEN Strings.Copy(id, s); i := Strings.Length(s);
-  ELSE MarkExp('constant expression'); i := 0
+  IF sym = lparen THEN s := '('
+  ELSIF sym = int THEN Int.Str(ival, s)
+  ELSIF sym = ident THEN Strings.Copy(id, s)
+  ELSIF sym = string THEN ConstructString(s)
+  ELSE MarkExp('constant expression'); s[0] := 0X
   END;
+  i := Strings.Length(s);
   IF i # 0 THEN
     start := Files.Pos(R); x := c;
     REPEAT GetSym UNTIL (sym = eot) OR (sym = comma) OR (sym = of) OR

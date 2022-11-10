@@ -67,9 +67,7 @@ BEGIN
   END;
   GetBaseName(in, name);
   Strings.Append(name, out);
-  Strings.Append('.html', out);
-
-  Out.String('out="'); Out.String(out); Out.Char('"'); Out.Ln
+  Strings.Append('.html', out)
 END HandleFileToDir;
 
 PROCEDURE Usage;

@@ -16,6 +16,10 @@ VAR
 
 (** Printing **)
 
+PROCEDURE WriteChar(x: CHAR);
+BEGIN Texts.Write(W, x)
+END WriteChar;
+
 PROCEDURE Write(s: ARRAY OF CHAR);
 BEGIN Texts.WriteString(W, s)
 END Write;
@@ -31,6 +35,23 @@ END WriteLn2;
 PROCEDURE WriteLn3(a, b, c: ARRAY OF CHAR);
 BEGIN Write(a); Write(b); WriteLn(c)
 END WriteLn3;
+
+PROCEDURE WriteExpr(s: ARRAY OF CHAR);
+VAR i: INTEGER;
+  x, q: CHAR;
+  string: BOOLEAN;
+BEGIN string := FALSE; i := 0; x := s[0];
+  WHILE x # 0X DO
+    IF string & (x = q) THEN string := FALSE; WriteChar(x); Write('</i>')
+    ELSIF ~string & ((x = '"') OR (x = "'")) THEN
+      string := TRUE; q := x; Write('<i>'); WriteChar(x)
+    ELSIF (x = ' ') & (i # 0) & (s[i - 1] = ' ') THEN Write('&nbsp;')
+    ELSE WriteChar(x)
+    END;
+    INC(i); x := s[i]
+  END;
+  IF string THEN Write('</i>') END
+END WriteExpr;
 
 PROCEDURE WriteParagraphs(s: ARRAY OF CHAR; marks: BOOLEAN);
 VAR i: INTEGER;
@@ -113,7 +134,7 @@ BEGIN
   WriteLn ('<article class="object const">');
   WriteLn ('  <div class="def">');
   WriteLn3('    <span class="name">', C.name, '</span> =');
-  WriteLn3('    <span class="value">', C.value, '</span>;');
+  Write   ('    <span class="value">'); WriteExpr(C.value); WriteLn('</span>;');
   WriteLn ('  </div>');
   PrintComment(C, FALSE);
   WriteLn ('</article>')
@@ -142,8 +163,8 @@ BEGIN tmp := preventSemicol; preventSemicol := FALSE;
     Write('<span class="name">'); Write(v.name);
     Write('</span>: <span class="type">');
     PrintObject(v.type, indent, TRUE);
-    IF ~tmp THEN Write('; &nbsp;') END;
-    Write('</span></span>');
+    IF ~tmp THEN Write(';') END;
+    Write(' &nbsp;</span></span>');
     PrintComment(v, TRUE);
   ELSE
     WriteLn ('<article class="object var">');
@@ -164,7 +185,7 @@ BEGIN
     IF T.form = P.namedType THEN Write(T.name)
     ELSIF T.form = P.arrayType THEN Write('ARRAY ');
       IF T.len[0] # 0X THEN Write(T.len); Write(' ') END;
-      Write('OF '); PrintObject(T.base, indent + 1, TRUE)
+      Write('OF '); PrintObject(T.base, indent, TRUE)
     ELSIF T.form = P.recordType THEN Write('RECORD');
       IF T.base # NIL THEN Write('(<span class="record-base">');
         Write(T.base.name); Write('</span>)')
@@ -178,6 +199,22 @@ BEGIN
       END;
       IF T.fields.first # NIL THEN WriteLn('</span>') END;
       Write(' END')
+    ELSIF T.form = P.pointerType THEN Write('POINTER TO ');
+      PrintObject(T.base, indent, TRUE)
+    ELSIF T.form = P.procedureType THEN Write('PROCEDURE');
+
+      x := T.fields.first;
+      IF (x # NIL) OR (T.base # NIL) THEN Write(' (');
+        WHILE x # NIL DO
+          IF x = T.fields.last THEN preventSemicol := TRUE END;
+          PrintObject(x, indent, TRUE);
+          x := x.next
+        END;
+        Write(')')
+      END;
+      IF T.base # NIL THEN
+        Write(': '); PrintObject(T.base, indent, TRUE)
+      END
     END
   ELSE
     WriteLn ('<article class="object type">');
@@ -191,47 +228,6 @@ BEGIN
   END
 END PrintType;
 
-PROCEDURE PrintType2(T: P.Type; indent: INTEGER; inlined: BOOLEAN);
-VAR x: P.Object;
-BEGIN
-  PrintIndent(indent);
-  IF T = NIL THEN Out.String('NIL')
-  ELSIF T.form = P.namedType THEN
-    Out.String('type '); Out.String(T.name);
-    IF T.base # NIL THEN
-      Out.String(' is '); PrintType(T.base, indent, TRUE)
-    END
-  ELSIF T.form = P.arrayType THEN
-    IF T.len[0] = 0X THEN Out.String('open ') END;
-    Out.String('array type ');
-    IF T.len[0] # 0X THEN Out.String('with length ');
-      Out.String(T.len); Out.Char(' ')
-    END;
-    Out.String('of '); PrintObject(T.base, indent, TRUE)
-  ELSIF T.form = P.recordType THEN Out.String('record type ');
-    IF T.base # NIL THEN Out.String('that extends ');
-      Out.String(T.base.name); Out.Char(' ')
-    END;
-    IF T.fields.first # NIL THEN Out.String('with fields:'); Out.Ln;
-      PrintList(T.fields, indent + 1, FALSE)
-    ELSE Out.String('with no fields')
-    END
-  ELSIF T.form = P.procedureType THEN Out.String('procedure type ');
-    IF T.fields.first # NIL THEN
-      PrintIndent(indent); Out.Char('(');
-      PrintList(T.fields, indent + 1, TRUE);
-      Out.String(') ')
-    END;
-    IF T.base # NIL THEN
-      Out.String('that returns '); PrintObject(T.base, indent, TRUE)
-    END
-  ELSIF T.form = P.pointerType THEN Out.String('pointer type to ');
-    PrintObject(T.base, indent, TRUE)
-  ELSE Out.String('?')
-  END;
-  IF ~inlined THEN Out.Ln; PrintComment(T, FALSE) END
-END PrintType2;
-
 PROCEDURE PrintProcedure(p: P.Procedure; indent: INTEGER; inlined: BOOLEAN);
 VAR x: P.Object;
 BEGIN
@@ -244,7 +240,7 @@ BEGIN
   IF (x # NIL) OR (p.returnType # NIL) THEN Write('(');
     WHILE x # NIL DO
       IF x = p.params.last THEN preventSemicol := TRUE END;
-      PrintObject(x, indent + 1, TRUE);
+      PrintObject(x, indent, TRUE);
       x := x.next
     END;
     Write(')')
@@ -319,8 +315,7 @@ BEGIN
   ELSIF o IS P.Param THEN PrintParam(o(P.Param), indent, inlined)
   ELSIF o IS P.List THEN PrintList(o(P.List), indent, inlined)
   ELSE Out.String('?')
-  END;
-  IF ~inlined THEN Out.Ln END
+  END
 END PrintObject0;
 
 (** - **)
