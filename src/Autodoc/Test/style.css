@@ -108,6 +108,11 @@ h2, h3, h4, h5, h6 {
   color: #000;
 }
 
+.value i {
+  font-style: normal;
+  color: #277FC0;
+}
+
 .comment {
   padding: 10px 6px;
   color: #2D5E90;
