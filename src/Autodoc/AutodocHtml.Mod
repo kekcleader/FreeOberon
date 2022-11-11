@@ -90,9 +90,11 @@ BEGIN
   END
 END WriteStyle;
 
-PROCEDURE OpenGroup(title: ARRAY OF CHAR);
+PROCEDURE OpenGroup(title: ARRAY OF CHAR; ordinalConsts: BOOLEAN);
 BEGIN
-  WriteLn('<article class="group">');
+  Write('<article class="group');
+  IF ordinalConsts THEN Write(' ordinal') END;
+  WriteLn('">');
   Write('<h3 class="group-title">');
   IF title # '-' THEN Write(title) END;
   WriteLn('</h3>');
@@ -115,19 +117,12 @@ BEGIN
   WriteLn('</section>')
 END PrintComment;
 
-PROCEDURE PrintList(L: P.List; indent: INTEGER; inlined: BOOLEAN);
-VAR o: P.Object;
+PROCEDURE PrintOrdinalConst(C: P.Const);
 BEGIN
-  IF (L # NIL) & (L.first # NIL) THEN
-    IF L.comment[0] # 0X THEN OpenGroup(L.comment) END;
-    o := L.first;
-    WHILE o # NIL DO
-      PrintObject(o, indent, FALSE);
-      o := o.next
-    END;
-    IF L.comment[0] # 0X THEN CloseGroup END
-  END
-END PrintList;
+  WriteLn3('<div class="name">', C.name, '</div>');
+  Write('<div class="value">'); WriteExpr(C.value); WriteLn('</div>');
+  PrintComment(C, FALSE); WriteLn('')
+END PrintOrdinalConst;
 
 PROCEDURE PrintConst(C: P.Const; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
@@ -139,6 +134,24 @@ BEGIN
   PrintComment(C, FALSE);
   WriteLn ('</article>')
 END PrintConst;
+
+PROCEDURE PrintList(L: P.List; indent: INTEGER; inlined: BOOLEAN);
+VAR o: P.Object;
+  ordinalConsts: BOOLEAN;
+BEGIN
+  IF (L # NIL) & (L.first # NIL) THEN
+    ordinalConsts := (L IS P.Group) & L(P.Group).ordinalConsts;
+    IF L.comment[0] # 0X THEN OpenGroup(L.comment, ordinalConsts) END;
+    o := L.first;
+    WHILE o # NIL DO
+      IF ordinalConsts THEN PrintOrdinalConst(o(P.Const))
+      ELSE PrintObject(o, indent, FALSE)
+      END;
+      o := o.next
+    END;
+    IF L.comment[0] # 0X THEN CloseGroup END
+  END
+END PrintList;
 
 PROCEDURE PrintParam(par: P.Param; indent: INTEGER; inlined: BOOLEAN);
 VAR tmp: BOOLEAN;
@@ -202,7 +215,6 @@ BEGIN
     ELSIF T.form = P.pointerType THEN Write('POINTER TO ');
       PrintObject(T.base, indent, TRUE)
     ELSIF T.form = P.procedureType THEN Write('PROCEDURE');
-
       x := T.fields.first;
       IF (x # NIL) OR (T.base # NIL) THEN Write(' (');
         WHILE x # NIL DO

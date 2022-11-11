@@ -83,7 +83,9 @@ TYPE
   END;
 
   Group* = POINTER TO GroupDesc;
-  GroupDesc* = RECORD(ListDesc) END;
+  GroupDesc* = RECORD(ListDesc)
+    ordinalConsts*: BOOLEAN
+  END;
 
   Const* = POINTER TO ConstDesc;
   ConstDesc* = RECORD(ObjectDesc)
@@ -512,7 +514,7 @@ RETURN L END NewList;
 
 PROCEDURE NewGroup(): List;
 VAR G: Group;
-BEGIN NEW(G); Strings.Copy(curTitle, G.comment)
+BEGIN NEW(G); Strings.Copy(curTitle, G.comment); G.ordinalConsts := FALSE
 RETURN G END NewGroup;
 
 (** Returns object with the minimum name from a non-empty list L *)
@@ -525,6 +527,18 @@ BEGIN
     x := x.next
   END
 RETURN min END FindMinName;
+
+(** Returns object with the minimum ordinal value from a non-empty list L *)
+PROCEDURE FindMinIntVal(L: List): Object;
+VAR x, min: Object;
+  val, minVal: INTEGER;
+BEGIN
+  min := L.first; minVal := L.first(Const).intVal; x := min.next;
+  WHILE x # NIL DO val := x(Const).intVal;
+    IF val < minVal THEN min := x; minVal := val END;
+    x := x.next
+  END
+RETURN min END FindMinIntVal;
 
 PROCEDURE AddToList(L: List; o: Object);
 BEGIN
@@ -744,7 +758,8 @@ RETURN par END NewParam;
 
 PROCEDURE NewConst(): Const;
 VAR C: Const;
-BEGIN NEW(C); InitObject(C); Strings.Copy(id, C.name)
+BEGIN NEW(C); InitObject(C); Strings.Copy(id, C.name);
+  C.isOrdinal := FALSE; C.intVal := 0
 RETURN C END NewConst;
 
 (** Var **)
@@ -767,12 +782,13 @@ BEGIN i := 0; x := id[0];
   s[i + 1] := x; s[i + 2] := 0X 
 END ConstructString;
 
-PROCEDURE ParseConstExpr(VAR s: ARRAY OF CHAR);
+PROCEDURE ParseConstExpr(VAR s: ARRAY OF CHAR;
+    VAR isInt: BOOLEAN; VAR intVal: INTEGER);
 VAR start, end, tmp, i: INTEGER;
   x: CHAR;
-BEGIN
+BEGIN isInt := FALSE; intVal := 0;
   IF sym = lparen THEN s := '('
-  ELSIF sym = int THEN Int.Str(ival, s)
+  ELSIF sym = int THEN Int.Str(ival, s); isInt := TRUE; intVal := ival
   ELSIF sym = ident THEN Strings.Copy(id, s)
   ELSIF sym = string THEN ConstructString(s)
   ELSE MarkExp('constant expression'); s[0] := 0X
@@ -845,9 +861,21 @@ BEGIN L := NewList(); stop := FALSE;
   END
 RETURN L END ParseVars;
 
+PROCEDURE CheckOrdinal(C: Const);
+VAR x: CHAR;
+BEGIN
+  IF ~C.isOrdinal THEN x := C.value[0];
+    (* Literal char 'x' or "x" *)
+    IF ((x = '"') OR (x = "'")) & (C.value[1] # 0X) & (C.value[2] = x) THEN
+      C.isOrdinal := TRUE; C.intVal := ORD(C.value[1])
+    END
+  END
+END CheckOrdinal;
+
 PROCEDURE ParseConstDecl(M: Module);
 VAR C: Const;
   line2: INTEGER;
+  isInt: BOOLEAN;
 BEGIN M.consts := NewList(); curTitle := '-';
   IF sym = const THEN GetSym;
     WHILE sym = ident DO
@@ -855,7 +883,8 @@ BEGIN M.consts := NewList(); curTitle := '-';
       C := NewConst(); SaveComment(C, -1); GetSym; CheckExportMark(C);
       AddToList(M.consts.last(List), C);
       IF sym = equals THEN GetSym ELSE MarkExp('=') END;
-      ParseConstExpr(C.value); line2 := line;
+      ParseConstExpr(C.value, C.isOrdinal, C.intVal); CheckOrdinal(C);
+      line2 := line;
       IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
       SaveComment(C, line2)
     END
@@ -898,14 +927,16 @@ RETURN T END ParseNamedType;
 
 PROCEDURE ParseArrayType(): Type;
 VAR T, T1: Type;
+  isInt: BOOLEAN;
+  tmp: INTEGER;
 BEGIN ASSERT(sym = array); GetSym;
   T := NewType(arrayType); T1 := T;
   IF (sym = int) OR (sym = ident) OR (sym = lparen) THEN
-    ParseConstExpr(T.len)
+    ParseConstExpr(T.len, isInt, tmp)
   END;
   WHILE sym = comma DO GetSym;
     T1.base := NewType(arrayType); T1 := T1.base;
-    ParseConstExpr(T1.len)
+    ParseConstExpr(T1.len, isInt, tmp)
   END;
   IF sym = of THEN GetSym ELSE MarkExp('OF') END;
   T1.base := ParseType(NIL)
@@ -1054,13 +1085,31 @@ BEGIN
     (sym = end) OR (sym = const) OR (sym = type) OR (sym = var)
 END ParseImport;
 
+PROCEDURE FindMin(G: Group; ordinal: BOOLEAN): Object;
+VAR x: Object;
+BEGIN
+  IF ordinal THEN x := FindMinIntVal(G) ELSE x := FindMinName(G) END
+RETURN x END FindMin;
+
+PROCEDURE GroupCheckOrdinalConsts(G: Group);
+VAR x: Object;
+BEGIN
+  IF (G.first # NIL) & (G.first IS Const) THEN x := G.first;
+    WHILE (x # NIL) & x(Const).isOrdinal DO x := x.next END;
+    G.ordinalConsts := x = NIL
+  ELSE G.ordinalConsts := FALSE
+  END
+END GroupCheckOrdinalConsts;
+
 PROCEDURE SortGroup(G: Group);
 VAR x: Object;
   L: List;
+  ordinal: BOOLEAN;
 BEGIN
   IF G.first # NIL THEN L := NewList();
+    GroupCheckOrdinalConsts(G);
     WHILE G.first # NIL DO
-      x := FindMinName(G);
+      x := FindMin(G, G.ordinalConsts);
       RemoveFromList(G, x);
       AddToList(L, x)
     END;

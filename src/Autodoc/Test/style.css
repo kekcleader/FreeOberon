@@ -81,8 +81,24 @@ h2, h3, h4, h5, h6 {
   margin: 10px 0;
 }
 
-.group-content {
+.group.ordinal .group-content {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+}
 
+.group.ordinal .name {
+  min-width: 130px;
+  padding: 0 1em 0 0;
+}
+
+.group.ordinal .value {
+  min-width: 30px;
+  padding: 0 1em 0 0;
+}
+
+.group.ordinal .comment {
+  min-width: 30px;
+  padding: 0;
 }
 
 .object {
