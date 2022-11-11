@@ -92,17 +92,29 @@ END WriteStyle;
 
 PROCEDURE OpenGroup(title: ARRAY OF CHAR; ordinalConsts: BOOLEAN);
 BEGIN
-  Write('<article class="group');
-  IF ordinalConsts THEN Write(' ordinal') END;
-  WriteLn('">');
+  WriteLn('<article class="group">');
   Write('<h3 class="group-title">');
   IF title # '-' THEN Write(title) END;
   WriteLn('</h3>');
-  WriteLn('<div class="group-content">');
+  IF ordinalConsts THEN
+    WriteLn('<div class="ordinal-consts">');
+    WriteLn('<table>');
+    WriteLn('<thead><tr>');
+    WriteLn('<th class="name">Name</th>');
+    WriteLn('<th class="value">Value</th>');
+    WriteLn('<th class="desc">Description</th>');
+    WriteLn('</tr></thead><tbody>');
+  ELSE
+    WriteLn('<div class="group-content">')
+  END
 END OpenGroup;
 
-PROCEDURE CloseGroup;
-BEGIN WriteLn('</div>'); WriteLn('</article>')
+PROCEDURE CloseGroup(ordinalConsts: BOOLEAN);
+BEGIN
+  IF ordinalConsts THEN WriteLn('</tbody></table></div>')
+  ELSE WriteLn('</div>')
+  END;
+  WriteLn('</article>')
 END CloseGroup;
 
 PROCEDURE PrintIndent(n: INTEGER);
@@ -119,9 +131,9 @@ END PrintComment;
 
 PROCEDURE PrintOrdinalConst(C: P.Const);
 BEGIN
-  WriteLn3('<div class="name">', C.name, '</div>');
-  Write('<div class="value">'); WriteExpr(C.value); WriteLn('</div>');
-  PrintComment(C, FALSE); WriteLn('')
+  WriteLn3('<tr><td class="name">', C.name, '</td><td class="value">');
+  WriteExpr(C.value); WriteLn('</td><td class="desc">');
+  PrintComment(C, FALSE); WriteLn('</td></tr>')
 END PrintOrdinalConst;
 
 PROCEDURE PrintConst(C: P.Const; indent: INTEGER; inlined: BOOLEAN);
@@ -149,7 +161,7 @@ BEGIN
       END;
       o := o.next
     END;
-    IF L.comment[0] # 0X THEN CloseGroup END
+    IF L.comment[0] # 0X THEN CloseGroup(ordinalConsts) END
   END
 END PrintList;
 

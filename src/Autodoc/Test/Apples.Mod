@@ -39,12 +39,26 @@ CONST
   startApples =  0;
 
   maxApples*  =  5; (** Maximum amount of apples*)
-  maxSeeds*   = 10; (** Currently not in use *)
+  maxSeeds*   = 3; (** Currently not in use *)
 
   (** Качество яблока **)
   good*    = 1; (** Сносное качество *)
   unknown* = 0; (** Неизвестное качество *)
   bad*     = 2; (** Отвратное качество *)
+  
+  (** Литерные коды **)
+  (** Компьютер *)
+  computer*  = 'c';
+  (**Человек*)
+  human*     = 'H';
+  (**    Игрок    *)
+  player*    = 'i'; (** во что-то *)
+  rusLetter* = 'а'; (** Буква русская, а, маленькая! *)
+  engLetter* = 'a';
+  (** Игра       просто игра *)
+  game*      = 'I';
+  tableRow1* = '1';
+  tableRow2* = '2';
 
 TYPE
 
