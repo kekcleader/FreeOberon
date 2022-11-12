@@ -58,12 +58,15 @@ CONST
   pointerType*   = 4;
   procedureType* = 5;
 
-  (** Values of Param.passed *)
+  (** Values of Param.passed **)
   byValue* = 0;
   byVar*   = 1;
 
   (** Comment separator **)
   tab = 9X;
+  
+  (** Parser Settings **)
+  debug* = TRUE;
 
 TYPE
   Str* = ARRAY 256 OF CHAR;
@@ -152,6 +155,13 @@ VAR
   PrintObject: PROCEDURE (o: Object; indent: INTEGER; inlined: BOOLEAN);
   ParseType: PROCEDURE (docObj: Object): Type;
   ParseParamType: PROCEDURE (): Type;
+
+(** Debug **)
+
+PROCEDURE Debug*(s: ARRAY OF CHAR);
+BEGIN
+  IF debug THEN Out.String(s); Out.Ln END
+END Debug;
 
 (** Error Handling **)
 
@@ -283,11 +293,13 @@ BEGIN Strings.Copy(doc, o.comment); ClearComments;
   END
 END SaveAllComments;
 
-(** Saves first comment from doc (that is before the tab character) to
-    object o if comment exists and if object does not yet have comment and if
-    lastLine is -1 or is equal to the line where the comment starts. lastLine
-    should be the line number of the last syntax symbol of the object, or -1
-    if comment goes before it. *)
+(** Stores the first comment from global variable doc in the given object o,
+    but does that only if doc is not empty and if o does not yet have a comment.
+    Also does that anyway if lastLine = -1 or if it is equal to the line where
+    the comment started.
+     The last comment in doc is from start of doc till the first tab character.
+     Parameter lastLine should be equal to the line number of the last syntax
+    symbol of the object, or -1 if comment goes before it. *)
 PROCEDURE SaveComment(o: Object; lastLine: INTEGER);
 BEGIN
   IF (o # NIL) & (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
@@ -326,6 +338,15 @@ BEGIN
   ELSE ASSERT(FALSE)
   END
 RETURN n END FromHex;
+
+PROCEDURE ToHex(n: INTEGER): CHAR;
+VAR x: CHAR;
+BEGIN
+  IF (0 <= n) & (n < 10) THEN x := CHR(ORD('0') + n)
+  ELSIF (10 <= n) & (n < 16) THEN x := CHR(ORD('A') - 10 + n)
+  ELSE ASSERT(FALSE)
+  END
+RETURN x END ToHex;
 
 (** Reads a decimal or hexadecimal number (or a hexadecimal char literal),
     puts it in id, len, ival, sym. *)
@@ -423,7 +444,8 @@ BEGIN
   END
 END ReadComment;
 
-(** Identifies global var id and sets globar var sym. *)
+(** Uses global var id to set global var sym.
+    Identifies such keywords as MODULE and BEGIN. *)
 PROCEDURE IdentifyKeyword;
 BEGIN
   IF    id = 'MODULE'    THEN sym := module
@@ -782,13 +804,23 @@ BEGIN i := 0; x := id[0];
   s[i + 1] := x; s[i + 2] := 0X 
 END ConstructString;
 
+PROCEDURE ConstructChar(VAR s: ARRAY OF CHAR);
+VAR i, n: INTEGER;
+  x: CHAR;
+BEGIN n := ival; i := 0;
+  REPEAT s[i] := ToHex(n MOD 16); n := n DIV 16; INC(i) UNTIL n = 0;
+  s[i] := 'X'; s[i + 1] := 0X; DEC(i);
+  WHILE n < i DO x := s[i]; s[i] := s[n]; s[n] := x; INC(n); DEC(i) END
+END ConstructChar;
+
 PROCEDURE ParseConstExpr(VAR s: ARRAY OF CHAR;
-    VAR isInt: BOOLEAN; VAR intVal: INTEGER);
+    VAR isOrdinal: BOOLEAN; VAR intVal: INTEGER);
 VAR start, end, tmp, i: INTEGER;
   x: CHAR;
-BEGIN isInt := FALSE; intVal := 0;
+BEGIN isOrdinal := FALSE; intVal := 0;
   IF sym = lparen THEN s := '('
-  ELSIF sym = int THEN Int.Str(ival, s); isInt := TRUE; intVal := ival
+  ELSIF sym = int THEN Int.Str(ival, s); isOrdinal := TRUE; intVal := ival
+  ELSIF sym = char THEN ConstructChar(s); isOrdinal := TRUE; intVal := ival
   ELSIF sym = ident THEN Strings.Copy(id, s)
   ELSIF sym = string THEN ConstructString(s)
   ELSE MarkExp('constant expression'); s[0] := 0X
@@ -879,11 +911,14 @@ VAR C: Const;
 BEGIN M.consts := NewList(); curTitle := '-';
   IF sym = const THEN GetSym;
     WHILE sym = ident DO
+      Debug(id);
       UpdateCurGroup(M.consts);
       C := NewConst(); SaveComment(C, -1); GetSym; CheckExportMark(C);
       AddToList(M.consts.last(List), C);
       IF sym = equals THEN GetSym ELSE MarkExp('=') END;
+      Debug('Begin ParseConstExpr');
       ParseConstExpr(C.value, C.isOrdinal, C.intVal); CheckOrdinal(C);
+      Debug('End ParseConstExpr');
       line2 := line;
       IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
       SaveComment(C, line2)
@@ -1073,9 +1108,13 @@ END ParseVarDecl;
 
 PROCEDURE Declarations(M: Module);
 BEGIN
+  Debug('Begin Const Declarations');
   IF sym = const THEN ParseConstDecl(M) END;
+  Debug('Begin Type Declarations');
   IF sym = type THEN ParseTypeDecl(M) END;
+  Debug('Begin Var Declarations');
   IF sym = var THEN ParseVarDecl(M) END;
+  Debug('Begin Procedure Declarations');
   ParseProcedureDecl(M)
 END Declarations;
 
@@ -1150,6 +1189,7 @@ VAR M: Module;
 BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
   R := r; c := 0X; line := 1; col := 0; lastError := -1;
   Read; ClearComments; curTitle := '-'; GetSym;
+  Debug('Begin ParseModule');
   IF sym = module THEN GetSym;
     IF sym = lbrak THEN GetSym;
       IF (sym = ident) & (id = 'foreign') THEN M.foreign := TRUE END;
@@ -1162,7 +1202,9 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
     IF sym = import THEN ParseImport(M) END;
     SaveAllComments(M);
+    Debug('Begin Declarations');
     Declarations(M);
+    Debug('End Declarations');
     IF sym = begin THEN
       REPEAT GetSym UNTIL (sym = eot) OR (sym = end)
     END;
@@ -1175,7 +1217,8 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
   END;
   IF lastError = -1 THEN SortModule(M)
   ELSE M := NIL; err := 'Error' (*!FIXME*)
-  END
+  END;
+  Debug('End ParseModule');
 RETURN M END ParseModule;
 
 BEGIN curFname[0] := 0X;
