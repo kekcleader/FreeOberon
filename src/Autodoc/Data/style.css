@@ -1,6 +1,6 @@
 @font-face {
-  font-family: 'Inconsolata-LGC';
-  src: url(inconsolatalgcbold.ttf);
+  font-family: 'customfont';
+  src: url(font.ttf);
 }
 
 body, p, h1, h2, h3, h4, h5, h6 {
@@ -9,7 +9,7 @@ body, p, h1, h2, h3, h4, h5, h6 {
 }
 
 body {
-  font-family: 'Inconsolata-LGC', monospace, sans-serif;
+  font-family: customfont, monospace, sans-serif;
   font-size: 14px;
   background: #FBC5AA;
   color: #12365D;

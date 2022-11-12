@@ -1,0 +1,17 @@
+0 "Пример сообщения об ошибке"
+
+generatedMsg "Сгенерировано автоматически при помощи системы Фри Оберон Автодок"
+constants "Постоянные"
+types "Типы"
+variables "Переменные"
+procedures "Процедуры"
+
+titleBefore ""
+titleAfter " &mdash; справка к модулю"
+headingBefore "Модуль "
+headingAfter ""
+headingSubtitle "Справочный лист"
+
+tableColName "Имя"
+tableColValue "Значение"
+tableColDesc "Описание"

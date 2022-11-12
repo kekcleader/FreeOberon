@@ -1,0 +1,17 @@
+0 "Error message example"
+
+generatedMsg "Generated automatically by Free Oberon Autodoc"
+constants "Constants"
+types "Types"
+variables "Variables"
+procedures "Procedures"
+
+titleBefore ""
+titleAfter " Module Reference"
+headingBefore "Module "
+headingAfter ""
+headingSubtitle "Reference"
+
+tableColName "Name"
+tableColValue "Value"
+tableColDesc "Description"

@@ -1,8 +1,9 @@
 MODULE AutodocHtml;
-IMPORT Texts, Out, Strings, P := AutodocParser;
+IMPORT Texts, Out, Strings, P := AutodocParser, Env, Lang := SimpleLangs;
 
 CONST
-  styleFname = 'style.css';
+  styleFname = 'Data/style.css';
+  defLang = 'en';
 
 VAR
   PrintObject: PROCEDURE (o: P.Object; indent: INTEGER; inlined: BOOLEAN);
@@ -13,6 +14,31 @@ VAR
   preventSemicol: BOOLEAN;
 
   inlineStyle: BOOLEAN;
+  lang: ARRAY 6 OF CHAR;
+
+(** Language **)
+
+PROCEDURE TryLoadLang(): BOOLEAN;
+VAR ok: BOOLEAN;
+BEGIN ok := FALSE;
+  IF (lang[0] # 0X) & Lang.LangExists(lang) THEN
+    Lang.SetLang(lang); ok := Lang.Done
+  END
+RETURN ok END TryLoadLang;
+
+PROCEDURE LoadLang;
+BEGIN
+  IF ~TryLoadLang() THEN
+    Env.GetLang(lang); lang[2] := 0X;
+    IF ~TryLoadLang() THEN
+      lang := defLang;
+      IF ~TryLoadLang() THEN
+        lang[0] := 0X;
+        Out.String('Could not load language file.'); Out.Ln
+      END
+    END
+  END
+END LoadLang;
 
 (** Printing **)
 
@@ -91,6 +117,7 @@ BEGIN
 END WriteStyle;
 
 PROCEDURE OpenGroup(title: ARRAY OF CHAR; ordinalConsts: BOOLEAN);
+VAR s: ARRAY 256 OF CHAR;
 BEGIN
   WriteLn('<article class="group">');
   Write('<h3 class="group-title">');
@@ -100,9 +127,12 @@ BEGIN
     WriteLn('<div class="ordinal-consts">');
     WriteLn('<table>');
     WriteLn('<thead><tr>');
-    WriteLn('<th class="name">Name</th>');
-    WriteLn('<th class="value">Value</th>');
-    WriteLn('<th class="desc">Description</th>');
+    Write('<th class="name">');
+    Lang.Get('tableColName', s); Write(s); WriteLn('</th>');
+    Write('<th class="value">');
+    Lang.Get('tableColValue', s); Write(s); WriteLn('</th>');
+    Write('<th class="desc">');
+    Lang.Get('tableColDesc', s); Write(s); WriteLn('</th>');
     WriteLn('</tr></thead><tbody>');
   ELSE
     WriteLn('<div class="group-content">')
@@ -282,27 +312,35 @@ BEGIN WriteLn3('<h2 class="heading">', text, '</h2>')
 END BigTitle;
 
 PROCEDURE Header(modName: ARRAY OF CHAR);
+VAR s: ARRAY 256 OF CHAR;
 BEGIN
   WriteLn('<!DOCTYPE html>');
   WriteLn('<html>');
   WriteLn('<head>');
   WriteLn('<meta charset="utf-8">');
-  WriteLn('<title>'); Write(modName);
-  WriteLn(' Module Reference</title>');
+  WriteLn('<title>');
+  Lang.Get('titleBefore', s); Write(s); Write(modName);
+  Lang.Get('titleAfter', s); Write(s);
+  WriteLn('</title>');
   WriteLn('<meta name="viewport" content="width=device-width,initial-scale=1.0">');
   WriteLn('</head>');
   WriteLn('<body>');
   WriteLn('<header class="header"><div class="inner">');
-  Write('<h1>Module <span class="module-name">'); Write(modName);
-  WriteLn('</span> <span class="subtitle">Reference</span></h1>');
+  Write('<h1>'); Lang.Get('headingBefore', s); Write(s);
+  Write('<span class="module-name">'); Write(modName);
+  Lang.Get('headingAfter', s); Write(s);
+  Write('</span> <span class="subtitle">');
+  Lang.Get('headingSubtitle', s); Write(s);
+  WriteLn('</span></h1>');
   WriteLn('</div></header>');
   WriteLn('<main class="main"><div class="inner">');
 END Header;
 
 PROCEDURE Footer;
+VAR s: ARRAY 256 OF CHAR;
 BEGIN
   WriteLn('</div></main><footer class="footer"><div class="inner">');
-  WriteLn('<p>Generated automatically by Free Oberon Autodoc</p>');
+  Write('<p>'); Lang.Get('generatedMsg', s); Write(s); WriteLn('</p>');
  
   WriteLn('</div></footer>');
 
@@ -314,16 +352,17 @@ BEGIN
 END Footer;
 
 PROCEDURE PrintModule(M: P.Module; indent: INTEGER; inlined: BOOLEAN);
+VAR s: ARRAY 64 OF CHAR;
 BEGIN
   Header(M.name);
   PrintComment(M, FALSE);
-  BigTitle('Constants');
+  Lang.Get('constants', s); BigTitle(s);
   PrintList(M.consts, 0, FALSE);
-  BigTitle('Types');
+  Lang.Get('types', s); BigTitle(s);
   PrintList(M.types, 0, FALSE);
-  BigTitle('Variables');
+  Lang.Get('variables', s); BigTitle(s);
   PrintList(M.vars, 0, FALSE);
-  BigTitle('Procedures');
+  Lang.Get('procedures', s); BigTitle(s);
   PrintList(M.procedures, 0, FALSE);
   Footer
 END PrintModule;
@@ -348,9 +387,13 @@ PROCEDURE SetInlineStyle*(inline: BOOLEAN);
 BEGIN inlineStyle := inline
 END SetInlineStyle;
 
+PROCEDURE SetLang*(L: ARRAY OF CHAR);
+BEGIN Strings.Copy(L, lang)
+END SetLang;
+
 PROCEDURE Save*(module: P.Module; fname: ARRAY OF CHAR): BOOLEAN;
 BEGIN
-  NEW(TX); Texts.Open(TX, ''); Texts.OpenWriter(W);
+  LoadLang; NEW(TX); Texts.Open(TX, ''); Texts.OpenWriter(W);
   preventSemicol := FALSE;
   PrintObject(module, 0, FALSE);
   Texts.Append(TX, W.buf); Texts.Close(TX, fname)
@@ -358,5 +401,6 @@ RETURN TRUE END Save;
 
 BEGIN
   PrintObject := PrintObject0;
-  inlineStyle := FALSE
+  inlineStyle := FALSE;
+  lang[0] := 0X
 END AutodocHtml.

@@ -1,5 +1,5 @@
 MODULE AutodocParser;
-IMPORT Files, Texts, Out, Args, Strings, Config, Platform, Int;
+IMPORT Files, Texts, Out, Strings, Platform, Int;
 CONST
   (** Lexer constants **)
   null    = 0;

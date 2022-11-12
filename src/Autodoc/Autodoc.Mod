@@ -1,8 +1,11 @@
 MODULE Autodoc;
-IMPORT Files, Texts, Out, Args, Strings, Config, Platform,
+IMPORT Files, Texts, Out, Args, Strings, Platform,
   P := AutodocParser, H := AutodocHtml;
 
 CONST
+  version = '1.0.0-alpha.1';
+  year = 2022;
+
   delim = Platform.PathDelimiter;
 
 TYPE
@@ -74,12 +77,12 @@ PROCEDURE Usage;
 VAR s: ARRAY 256 OF CHAR;
 BEGIN
   Out.String('Free Oberon AutoDoc tool version ');
-  Out.String(Config.version); Out.Ln;
-  Out.String('Copyright (c) 2022-'); Out.Int(Config.year, 0);
+  Out.String(version); Out.Ln;
+  Out.String('Copyright (c) 2022-'); Out.Int(year, 0);
   Out.String(' by Arthur Yefimov and others.'); Out.Ln;
   Out.String('Usage:'); Out.Ln; Args.Get(0, s);
   Out.String('  '); Out.String(s);
-  Out.String(' { "-o" outputPath | sourceFile}'); Out.Ln; Out.Ln;
+  Out.String(' { "-o" outputPath | "--lang" code | sourceFile}'); Out.Ln; Out.Ln;
   Out.String('outputPath is a file name if a single source file is given.');
   Out.Ln;
   Out.String('outputPath is a directory if many source files are given.');
@@ -88,9 +91,9 @@ BEGIN
   Out.String('  '); Out.String(s);
   Out.String(' -o Apples.Mod'); Out.Ln;
   Out.String('  '); Out.String(s);
-  Out.String(' -o doc.html Apples.Mod'); Out.Ln;
+  Out.String(' -o doc.html --lang ru Apples.Mod'); Out.Ln;
   Out.String('  '); Out.String(s);
-  Out.String(' -o docs Fruits.Mod Apples.Mod'); Out.Ln; Out.Ln
+  Out.String(' -o docs Fruits.Mod Apples.Mod'); Out.Ln
 END Usage;
 
 (** Changes extension of the file to '.html'. Puts result is out. *)
@@ -130,6 +133,8 @@ BEGIN
         END
       ELSIF (s = '--inline-style') OR (s = '-i') THEN
         H.SetInlineStyle(TRUE)
+      ELSIF (s = '--lang') OR (i < Args.Count) THEN
+        INC(i); Args.Get(i, s); H.SetLang(s)
       ELSE
         Strings.Copy(s, fnames[fnameCount]);
         INC(fnameCount)
