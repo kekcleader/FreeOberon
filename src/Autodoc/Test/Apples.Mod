@@ -27,8 +27,10 @@ IMPORT Out, Fruits;
 CONST
   str4* = "В двойных кавычках.";
   str5* = "Кавычки 'в' кавычках.";
-  str1* = '';
-  appleJuice* = 'сок';
+  str1* =  '';
+  appleJuice='сок';
+  appleLen=15;
+  appleLen2=15  ;
   str2* = 'H';
   str3* = 'Привет   Как  дела?';
   str6* = 'Кавычки "в двойных" кавычках.';

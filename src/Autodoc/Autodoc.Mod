@@ -27,24 +27,23 @@ BEGIN
     module := P.ParseModule(r, err);
     IF module # NIL THEN
       IF H.Save(module, out) THEN
-        Out.String('Created "'); Out.String(out);
+        Out.String('## Created "'); Out.String(out);
         Out.String('".'); Out.Ln
       ELSE
-        Out.String('Error saving file "'); Out.String(out);
+        Out.String('## Error saving file "'); Out.String(out);
         Out.String('".'); Out.Ln
       END
     ELSE
-      Out.String('Error parsing file "');
-      Out.String(in); Out.String('": ');
-      Out.String(err); Out.Char('.'); Out.Ln
+      Out.String('## Error parsing file "');
+      Out.String(in); Out.String('".'); Out.Ln
     END
   ELSE
-    Out.String('Error: Could not open file "');
+    Out.String('## Error: Could not open file "');
     Out.String(in); Out.String('".'); Out.Ln
   END
 END HandleFile;
 
-(** Gets file name with out path or extension.
+(** Gets file name without path or extension.
     Example: 'a/b/c.txt' -> 'c' *)
 PROCEDURE GetBaseName(s: ARRAY OF CHAR; VAR name: ARRAY OF CHAR);
 VAR i, j, len: INTEGER;
@@ -52,9 +51,10 @@ BEGIN
   (* len := Length of s *)
   len := 0; WHILE s[len] # 0X DO INC(len) END;
   (* j := position of last '.' in s, or -1 *)
-  j := len; WHILE (j # -1) & (s[j] # '.') DO DEC(j) END;
+  j := len - 1; WHILE (j # -1) & (s[j] # '.') DO DEC(j) END;
   (* i := position of last slash in s, or 0 *)
-  i := len; WHILE (i # 0) & (s[i] # '/') & (s[i] # '\') DO DEC(i) END;
+  i := len; WHILE (i # -1) & (s[i] # '/') & (s[i] # '\') DO DEC(i) END;
+  INC(i);
   IF j < i THEN j := len END;
   Strings.Extract(s, i, j - i, name)
 END GetBaseName;
@@ -69,8 +69,11 @@ BEGIN
     Strings.Append(delim, out)
   END;
   GetBaseName(in, name);
+  (*Out.String(' (name=');Out.String(name);Out.Ln;*)
   Strings.Append(name, out);
-  Strings.Append('.html', out)
+  Strings.Append('.html', out);
+  (*Out.String(in);Out.Ln;  Out.String('   -> ');Out.String(out);Out.Ln;*)
+  HandleFile(in, out)
 END HandleFileToDir;
 
 PROCEDURE Usage;
@@ -127,17 +130,16 @@ BEGIN
     WHILE i <= Args.Count DO
       Args.Get(i, s);
       IF s = '-o' THEN
-        IF i + 1 <= Args.Count THEN
-          Args.Get(i + 1, out);
-          INC(i)
-        END
+        IF i < Args.Count THEN INC(i); Args.Get(i, out) END
       ELSIF (s = '--inline-style') OR (s = '-i') THEN
         H.SetInlineStyle(TRUE)
-      ELSIF (s = '--lang') OR (i < Args.Count) THEN
-        INC(i); Args.Get(i, s); H.SetLang(s)
+      ELSIF s = '--lang' THEN
+        IF i < Args.Count THEN INC(i); Args.Get(i, s); H.SetLang(s) END
       ELSE
-        Strings.Copy(s, fnames[fnameCount]);
-        INC(fnameCount)
+        IF fnameCount < LEN(fnames) THEN
+          Strings.Copy(s, fnames[fnameCount]);
+          INC(fnameCount)
+        END
       END;
       INC(i)
     END;

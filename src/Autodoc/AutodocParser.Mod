@@ -16,14 +16,16 @@ CONST
   const     = 12;
   type      = 13;
   var       = 14;
-  record    = 15;
-  array     = 16;
-  pointer   = 17;
-  to        = 18;
-  of        = 19;
-  procedure = 20;
-  begin     = 21;
-  end       = 22;
+  in        = 15;
+  out       = 16;
+  record    = 17;
+  array     = 18;
+  pointer   = 19;
+  to        = 20;
+  of        = 21;
+  procedure = 22;
+  begin     = 23;
+  end       = 24;
 
   lparen  = 30;
   rparen  = 31;
@@ -66,7 +68,7 @@ CONST
   tab = 9X;
   
   (** Parser Settings **)
-  debug* = TRUE;
+  debug* = FALSE;
 
 TYPE
   Str* = ARRAY 256 OF CHAR;
@@ -137,6 +139,8 @@ VAR
   c: CHAR; (** One step ahead character read from rider R *)
   line, col: INTEGER; (** Position in R *)
   lastError: INTEGER; (** Position in R of last error, or -1 *)
+  constExprBeginPos: INTEGER; (** After '=' or 'ARRAY', see ParseConstExpr *)
+  constExprBeginC: CHAR; (** Value of c the moment constExprBeginPos is set *)
 
   sym: INTEGER; (** One step ahead (syntactic) symbol read *)
 
@@ -195,6 +199,8 @@ BEGIN
   ELSIF sym = const     THEN s := 'CONST'
   ELSIF sym = type      THEN s := 'TYPE'
   ELSIF sym = var       THEN s := 'VAR'
+  ELSIF sym = in        THEN s := 'IN'
+  ELSIF sym = out       THEN s := 'OUT'
   ELSIF sym = record    THEN s := 'RECORD'
   ELSIF sym = array     THEN s := 'ARRAY'
   ELSIF sym = pointer   THEN s := 'POINTER'
@@ -453,6 +459,8 @@ BEGIN
   ELSIF id = 'CONST'     THEN sym := const
   ELSIF id = 'TYPE'      THEN sym := type
   ELSIF id = 'VAR'       THEN sym := var
+  ELSIF id = 'IN'        THEN sym := in
+  ELSIF id = 'OUT'       THEN sym := out
   ELSIF id = 'RECORD'    THEN sym := record
   ELSIF id = 'ARRAY'     THEN sym := array
   ELSIF id = 'POINTER'   THEN sym := pointer
@@ -813,42 +821,38 @@ BEGIN n := ival; i := 0;
   WHILE n < i DO x := s[i]; s[i] := s[n]; s[n] := x; INC(n); DEC(i) END
 END ConstructChar;
 
+(** Reads const expression character by character, beginning with the
+    character at position constExprBeginPos and up to but not including
+    the next ';' comma, 'OF'. If end of text is reached, makes s empty.
+    Puts in s the string that has been read. Sets isOrdinal to TRUE if
+    the value is an integer number or a character literal, FALSE
+    otherwise. If isOrdinal becomes true, then the const value is being
+    cast to int and also stored in intVal. *)
 PROCEDURE ParseConstExpr(VAR s: ARRAY OF CHAR;
     VAR isOrdinal: BOOLEAN; VAR intVal: INTEGER);
-VAR start, end, tmp, i: INTEGER;
-  x: CHAR;
-BEGIN isOrdinal := FALSE; intVal := 0;
-  IF sym = lparen THEN s := '('
-  ELSIF sym = int THEN Int.Str(ival, s); isOrdinal := TRUE; intVal := ival
-  ELSIF sym = char THEN ConstructChar(s); isOrdinal := TRUE; intVal := ival
-  ELSIF sym = ident THEN Strings.Copy(id, s)
-  ELSIF sym = string THEN ConstructString(s)
-  ELSE MarkExp('constant expression'); s[0] := 0X
-  END;
-  i := Strings.Length(s);
-  IF i # 0 THEN
-    start := Files.Pos(R); x := c;
-    REPEAT GetSym UNTIL (sym = eot) OR (sym = comma) OR (sym = of) OR
-                        (sym = semicol);
-    IF sym # eot THEN
-      tmp := Files.Pos(R); end := tmp;
-      IF sym = of THEN DEC(end, 3) ELSE DEC(end, 2) END;
-      IF start < end THEN
-        s[i] := x; INC(i);
-        Files.Set(R, Files.Base(R), start);
-        REPEAT
-          Files.ReadChar(R, x);
-          IF x < ' ' THEN x := ' ' END;
-          IF (i < LEN(s) - 1) & ((x # ' ') OR (s[i - 1] # ' ')) THEN
-            s[i] := x; INC(i)
-          END
-        UNTIL Files.Pos(R) >= end
-      END;
-      Files.Set(R, Files.Base(R), tmp)
-    END
+VAR start, end, i: INTEGER;
+  x, tmpC: CHAR;
+BEGIN isOrdinal := FALSE; intVal := 0; i := 0; x := constExprBeginC;
+  REPEAT end := Files.Pos(R); tmpC := c; GetSym
+  UNTIL (sym = semicol) OR (sym = of) OR (sym = eot) OR (sym = comma);
+  IF sym # eot THEN
+    IF constExprBeginPos < end THEN
+      IF x > ' ' THEN s[i] := x; INC(i) END;
+      Files.Set(R, Files.Base(R), constExprBeginPos);
+      REPEAT
+        Files.ReadChar(R, x);
+        IF x < ' ' THEN x := ' ' END;
+        IF (i < LEN(s) - 1) & ((x # ' ') OR (i # 0) & (s[i - 1] # ' ')) THEN
+          s[i] := x; INC(i)
+        END
+      UNTIL Files.Pos(R) >= end;
+      IF i > 0 THEN DEC(i) END
+    END;
+    Files.Set(R, Files.Base(R), end); c := tmpC; GetSym
   END;
   WHILE (i # 1) & (s[i - 1] <= ' ') DO DEC(i) END;
-  s[i] := 0X
+  s[i] := 0X;
+  IF debug THEN Out.String('['); Out.String(s); Out.String(']'); Out.Ln END
 END ParseConstExpr;
 
 PROCEDURE ParseVars(isVarDecl: BOOLEAN): List;
@@ -915,6 +919,7 @@ BEGIN curTitle := '-';
       UpdateCurGroup(M.consts);
       C := NewConst(); SaveComment(C, -1); GetSym; CheckExportMark(C);
       AddToList(M.consts.last(List), C);
+      constExprBeginPos := Files.Pos(R); constExprBeginC := c;
       IF sym = equals THEN GetSym ELSE MarkExp('=') END;
       Debug('Begin ParseConstExpr');
       ParseConstExpr(C.value, C.isOrdinal, C.intVal); CheckOrdinal(C);
@@ -964,12 +969,14 @@ PROCEDURE ParseArrayType(): Type;
 VAR T, T1: Type;
   isInt: BOOLEAN;
   tmp: INTEGER;
-BEGIN ASSERT(sym = array); GetSym;
+BEGIN ASSERT(sym = array);
+  constExprBeginPos := Files.Pos(R); constExprBeginC := c; GetSym;
   T := NewType(arrayType); T1 := T;
-  IF (sym = int) OR (sym = ident) OR (sym = lparen) THEN
+  IF (sym # of) THEN
     ParseConstExpr(T.len, isInt, tmp)
   END;
-  WHILE sym = comma DO GetSym;
+  WHILE sym = comma DO
+    constExprBeginPos := Files.Pos(R); constExprBeginC := c; GetSym;
     T1.base := NewType(arrayType); T1 := T1.base;
     ParseConstExpr(T1.len, isInt, tmp)
   END;
@@ -1003,7 +1010,9 @@ VAR first, par: Param;
   T: Type;
   passed: INTEGER;
 BEGIN
-  IF sym = var THEN GetSym; passed := byVar ELSE passed := byValue END;
+  IF (sym = var) OR (sym = in) OR (sym = out) THEN GetSym; passed := byVar
+  ELSE passed := byValue
+  END;
 
   IF sym = ident THEN first := NewParam(passed); GetSym;
     AddToList(L, first);

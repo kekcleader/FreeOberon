@@ -206,7 +206,7 @@ BEGIN tmp := preventSemicol; preventSemicol := FALSE;
   Write(': <span class="type">');
   PrintObject(par.type, indent, TRUE);
   IF ~tmp THEN WriteLn(';') END;
-  Write('</span></span></span>')
+  Write('</span></span>')
 END PrintParam;
 
 PROCEDURE PrintVar(v: P.Var; indent: INTEGER; inlined: BOOLEAN);
