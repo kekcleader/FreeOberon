@@ -125,17 +125,20 @@ BEGIN
   IF Args.Count = 0 THEN
     Usage
   ELSE
-    out[0] := 0X;
-    i := 1; fnameCount := 0;
+    out[0] := 0X; i := 1; fnameCount := 0;
     WHILE i <= Args.Count DO
       Args.Get(i, s);
-      IF s = '-o' THEN
+      IF s = '-o' THEN (* Output file or dir *)
         IF i < Args.Count THEN INC(i); Args.Get(i, out) END
+      ELSIF s = '-a' THEN (* All *)
+        P.SetExportedOnly(FALSE)
+      ELSIF s = '--debug' THEN
+        P.SetDebug(TRUE)
       ELSIF (s = '--inline-style') OR (s = '-i') THEN
         H.SetInlineStyle(TRUE)
-      ELSIF s = '--lang' THEN
+      ELSIF s = '--lang' THEN (* Output language *)
         IF i < Args.Count THEN INC(i); Args.Get(i, s); H.SetLang(s) END
-      ELSE
+      ELSE (* On of the file names with Oberon modules *)
         IF fnameCount < LEN(fnames) THEN
           Strings.Copy(s, fnames[fnameCount]);
           INC(fnameCount)
@@ -143,10 +146,10 @@ BEGIN
       END;
       INC(i)
     END;
-    IF fnameCount = 1 THEN
+    IF fnameCount = 1 THEN (* Single file given *)
       IF out[0] = 0X THEN FnameToHtml(fnames[0], out) END;
       HandleFile(fnames[0], out)
-    ELSE
+    ELSE (* Multiple file given, treat "-o" parameter as directory *)
       FOR i := 0 TO fnameCount - 1 DO
         HandleFileToDir(fnames[i], out)
       END

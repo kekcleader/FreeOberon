@@ -8,11 +8,18 @@ body, p, h1, h2, h3, h4, h5, h6 {
   padding: 0;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   font-family: customfont, monospace, sans-serif;
   font-size: 14px;
   background: #FBC5AA;
   color: #12365D;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 a {
@@ -58,6 +65,7 @@ a:hover {
 
 .main {
   padding: 20px 0;
+  flex: 1;
 }
 
 h2, h3, h4, h5, h6 {
@@ -186,14 +194,12 @@ h2, h3, h4, h5, h6 {
   grid-template-columns: auto 1fr;
 }
 
-.record-fields .var {
-}
-
 .record-fields .comment {
   padding: 0;
 }
 
-.record-field .comment p {
+.export {
+  color: #12365D;
 }
 
 @media screen and (max-width: 500px) {

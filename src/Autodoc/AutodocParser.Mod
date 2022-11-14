@@ -66,9 +66,6 @@ CONST
 
   (** Comment separator **)
   tab = 9X;
-  
-  (** Parser Settings **)
-  debug* = FALSE;
 
 TYPE
   Str* = ARRAY 256 OF CHAR;
@@ -127,6 +124,7 @@ TYPE
   Module* = POINTER TO ModuleDesc;
   ModuleDesc* = RECORD(ObjectDesc)
     foreign*: BOOLEAN; (** TRUE if module has a [foreign] mark *)
+    exportedOnly*: BOOLEAN; (** TRUE if only exported objects are included *)
     consts*: List;
     types*: List;
     vars*: List;
@@ -159,6 +157,19 @@ VAR
   PrintObject: PROCEDURE (o: Object; indent: INTEGER; inlined: BOOLEAN);
   ParseType: PROCEDURE (docObj: Object): Type;
   ParseParamType: PROCEDURE (): Type;
+  
+  (** Parsing Parameters **)
+  
+  exportedOnly: BOOLEAN; (** If TRUE, only exported objects are added *)
+  
+  (** Debug **)
+  debug*: BOOLEAN;
+
+(** Parsing Parameters **)
+
+PROCEDURE SetExportedOnly*(yes: BOOLEAN);
+BEGIN exportedOnly := yes
+END SetExportedOnly;
 
 (** Debug **)
 
@@ -166,6 +177,10 @@ PROCEDURE Debug*(s: ARRAY OF CHAR);
 BEGIN
   IF debug THEN Out.String(s); Out.Ln END
 END Debug;
+
+PROCEDURE SetDebug*(yes: BOOLEAN);
+BEGIN debug := yes
+END SetDebug;
 
 (** Error Handling **)
 
@@ -291,11 +306,14 @@ END GetLastComment;
 
 PROCEDURE SaveAllComments(o: Object);
 VAR i: INTEGER;
-BEGIN Strings.Copy(doc, o.comment); ClearComments;
-  i := 0;
-  WHILE o.comment[i] # 0X DO
-    IF o.comment[i] = tab THEN o.comment[i] := 0AX END;
-    INC(i)
+BEGIN
+  IF o # NIL THEN
+    Strings.Copy(doc, o.comment); ClearComments;
+    i := 0;
+    WHILE o.comment[i] # 0X DO
+      IF o.comment[i] = tab THEN o.comment[i] := 0AX END;
+      INC(i)
+    END
   END
 END SaveAllComments;
 
@@ -418,10 +436,10 @@ BEGIN
             tmp := writingDoc;
             ReadComment(FALSE);
             writingDoc := tmp
-          ELSE WriteDoc('(')
+          ELSE WriteDoc('('); Read
           END
-        END;
-        WriteDoc(c); Read
+        ELSE WriteDoc(c); Read
+        END
       END;
       IF c = '*' THEN Read;
         IF c # ')' THEN WriteDoc('*') END
@@ -764,11 +782,26 @@ PROCEDURE InitObject(o: Object);
 BEGIN o.name[0] := 0X; o.comment[0] := 0X; o.next := NIL
 END InitObject;
 
-(** Sets exported field of object and skips the star mark. *)
+(** Sets exported field of object to TRUE or FALSE
+    and skips the star (or minus) mark. *)
 PROCEDURE CheckExportMark(o: Object);
 BEGIN
-  IF sym = times THEN GetSym; o.exported := TRUE ELSE o.exported := FALSE END
+  IF (sym = times) OR (sym = minus) THEN GetSym; o.exported := TRUE
+  ELSE o.exported := FALSE
+  END
 END CheckExportMark;
+
+(** Skips compiler directives such as [notag]
+    after POINTER, ARRAY and RECORD symbols.
+     Does not change o in any way (yet). *)
+PROCEDURE CheckDirective(o: Object);
+BEGIN
+  IF sym = lbrak THEN GetSym;
+    IF (sym = ident) OR (sym = int) THEN GetSym;
+      IF sym = rbrak THEN GetSym END
+    END
+  END
+END CheckDirective;
 
 (** Type **)
 
@@ -861,19 +894,29 @@ VAR first, v: Var;
   x: Object;
   passed, line2: INTEGER;
   T: Type;
-  stop: BOOLEAN;
+  stop, added: BOOLEAN;
 BEGIN L := NewList(); stop := FALSE;
+  Debug('ParseVars begin');
   WHILE ~stop & (sym = ident) DO
+    Debug('ParseVars inside WHILE');
+    Debug(id);
     IF isVarDecl THEN UpdateCurGroup(L) END;
     first := NewVar(); SaveAllComments(first); GetSym; CheckExportMark(first);
-    IF isVarDecl THEN AddToList(L.last(List), first)
-    ELSE AddToList(L, first)
+    IF first.exported OR ~exportedOnly THEN
+      IF isVarDecl THEN AddToList(L.last(List), first)
+      ELSE AddToList(L, first)
+      END;
+      added := TRUE
+    ELSE added := FALSE; first := NIL
     END;
     WHILE sym = comma DO GetSym;
       IF sym = ident THEN v := NewVar(); GetSym; CheckExportMark(v);
-        IF isVarDecl THEN AddToList(L.last(List), v)
-        ELSE AddToList(L, v)
-        END;
+        IF v.exported OR ~exportedOnly THEN
+          IF isVarDecl THEN AddToList(L.last(List), v)
+          ELSE AddToList(L, v)
+          END;
+          IF ~added THEN first := v; added := TRUE END
+        END
       ELSE MarkExp('variable (field) name')
       END
     END;
@@ -887,14 +930,15 @@ BEGIN L := NewList(); stop := FALSE;
       IF sym = semicol THEN GetSym; SaveComment(first, line2)
       ELSE stop := TRUE; SaveAllComments(first)
       END;
-      IF first.comment[0] # 0X THEN x := first.next;
+      IF (first # NIL) & (first.comment[0] # 0X) THEN x := first.next;
         WHILE x # NIL DO
           Strings.Copy(first.comment, x.comment); x := x.next
         END
       END
     ELSE MarkExp(';')
     END
-  END
+  END;
+  Debug('ParseVars end')
 RETURN L END ParseVars;
 
 PROCEDURE CheckOrdinal(C: Const);
@@ -918,7 +962,9 @@ BEGIN curTitle := '-';
       Debug(id);
       UpdateCurGroup(M.consts);
       C := NewConst(); SaveComment(C, -1); GetSym; CheckExportMark(C);
-      AddToList(M.consts.last(List), C);
+      IF C.exported OR ~exportedOnly THEN
+        AddToList(M.consts.last(List), C)
+      END;
       constExprBeginPos := Files.Pos(R); constExprBeginC := c;
       IF sym = equals THEN GetSym ELSE MarkExp('=') END;
       Debug('Begin ParseConstExpr');
@@ -937,14 +983,20 @@ VAR T: Type;
 BEGIN curTitle := '-';
   IF sym = type THEN GetSym;
     WHILE sym = ident DO
+      Debug(id);
       UpdateCurGroup(M.types);
       T := NewType(namedType); SaveAllComments(T);
       AddToList(M.types.last(List), T);
+      Debug('ParseTypeDecl before CheckExportMark');
       Strings.Copy(id, T.name); GetSym; CheckExportMark(T);
+      Debug('ParseTypeDecl after CheckExportMark');
       IF sym = equals THEN GetSym ELSE MarkExp('=') END;
+      Debug('ParseTypeDecl before ParseType');
       T.base := ParseType(T); line2 := line;
+      Debug('ParseTypeDecl after ParseType');
       IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
-      SaveComment(T, line2)
+      SaveComment(T, line2);
+      Debug('ParseTypeDecl end of WHILE iteration')
     END
   END
 END ParseTypeDecl;
@@ -971,7 +1023,7 @@ VAR T, T1: Type;
   tmp: INTEGER;
 BEGIN ASSERT(sym = array);
   constExprBeginPos := Files.Pos(R); constExprBeginC := c; GetSym;
-  T := NewType(arrayType); T1 := T;
+  T := NewType(arrayType); T1 := T; CheckDirective(T);
   IF (sym # of) THEN
     ParseConstExpr(T.len, isInt, tmp)
   END;
@@ -988,18 +1040,21 @@ PROCEDURE ParseRecordType(docObj: Object): Type;
 VAR T: Type;
   line2: INTEGER;
 BEGIN ASSERT(sym = record); line2 := line; GetSym;
-  T := NewType(recordType);
+  Debug('ParseRecordType begin');
+  T := NewType(recordType); CheckDirective(T);
   IF sym = lparen THEN GetSym; T.base := ParseNamedType();
     IF sym = rparen THEN GetSym ELSE MarkExp(')') END
   END;
   SaveComment(docObj, line2);
   T.fields := ParseVars(FALSE);
-  IF sym = end THEN GetSym ELSE MarkExp('END') END
+  IF sym = end THEN GetSym ELSE MarkExp('END') END;
+  Debug('ParseRecordType end')
 RETURN T END ParseRecordType;
 
 PROCEDURE ParsePointerType(docObj: Object): Type;
 VAR T: Type;
-BEGIN ASSERT(sym = pointer); GetSym; T := NewType(pointerType);
+BEGIN ASSERT(sym = pointer); GetSym;
+  T := NewType(pointerType); CheckDirective(T);
   IF sym = to THEN GetSym ELSE MarkExp('TO') END;
   T.base := ParseType(docObj)
 RETURN T END ParsePointerType;
@@ -1082,13 +1137,14 @@ END ReachEndOf;
 PROCEDURE ParseProcedureDecl(M: Module);
 VAR name: Str;
   P: Procedure;
+  forward: BOOLEAN;
 BEGIN curTitle := '-';
   WHILE sym = procedure DO UpdateCurGroup(M.procedures);
-    GetSym; NEW(P); InitObject(P);
+    GetSym; NEW(P); InitObject(P); forward := FALSE;
     P.params := NewList(); P.exported := FALSE;
-    AddToList(M.procedures.last(List), P);
-    IF (sym = minus) OR (sym = times) OR (sym = arrow) THEN GetSym END;
-    
+    IF (sym = minus) OR (sym = arrow) THEN GetSym; forward := TRUE
+    ELSIF sym = times THEN GetSym
+    END;
     IF sym = ident THEN Strings.Copy(id, P.name); GetSym
     ELSE MarkExp('procedure name')
     END;
@@ -1101,11 +1157,15 @@ BEGIN curTitle := '-';
       IF sym = rparen THEN GetSym ELSE MarkExp(')') END;
       IF sym = colon THEN GetSym; P.returnType := ParseNamedType() END
     END;
+    IF sym = string THEN GetSym END; (* Foreign code *)
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
-    ReachEndOf(P.name); SaveComment(P, -1);
-    IF sym = ident THEN GetSym;
-      IF sym = semicol THEN GetSym ELSE MarkExp(';') END
-    ELSE (* sym = eot *) MarkEnd('Procedure', P.name)
+    IF ~forward THEN
+      ReachEndOf(P.name); SaveComment(P, -1);
+      IF sym = ident THEN GetSym;
+        IF sym = semicol THEN GetSym ELSE MarkExp(';') END
+      ELSE (* sym = eot *) MarkEnd('Procedure', P.name)
+      END;
+      IF P.exported OR ~exportedOnly THEN AddToList(M.procedures.last(List), P) END
     END
   END
 END ParseProcedureDecl;
@@ -1199,8 +1259,8 @@ END SortModule;
 PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
 VAR M: Module;
 BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
-  M.consts := NewList(); M.types := NewList();
-  M.vars := NewList(); M.procedures := NewList();
+  M.exportedOnly := exportedOnly; M.consts := NewList();
+  M.types := NewList(); M.vars := NewList(); M.procedures := NewList();
   R := r; c := 0X; line := 1; col := 0; lastError := -1;
   Read; ClearComments; curTitle := '-'; GetSym;
   Debug('Begin ParseModule');
@@ -1237,8 +1297,10 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
   Debug('End ParseModule');
 RETURN M END ParseModule;
 
-BEGIN curFname[0] := 0X;
+BEGIN
   PrintObject := PrintObject0;
   ParseType := ParseType0;
-  ParseParamType := ParseParamType0
+  ParseParamType := ParseParamType0;
+
+  curFname[0] := 0X; debug := FALSE; exportedOnly := TRUE
 END AutodocParser.

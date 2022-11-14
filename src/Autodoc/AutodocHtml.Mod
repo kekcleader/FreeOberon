@@ -13,6 +13,8 @@ VAR
   
   preventSemicol: BOOLEAN;
 
+  (** Render Settings **)
+  showExportMarks: BOOLEAN; (** Value is exactly ~M.exportedOnly *)
   inlineStyle: BOOLEAN;
   lang: ARRAY 6 OF CHAR;
 
@@ -78,6 +80,13 @@ BEGIN string := FALSE; i := 0; x := s[0];
   END;
   IF string THEN Write('</i>') END
 END WriteExpr;
+
+PROCEDURE WriteExport(o: P.Object);
+BEGIN
+  IF showExportMarks & (o # NIL) & o.exported THEN
+    Write('<span class="export">*</span>')
+  END
+END WriteExport;
 
 PROCEDURE WriteParagraphs(s: ARRAY OF CHAR; marks: BOOLEAN);
 VAR i: INTEGER;
@@ -161,7 +170,8 @@ END PrintComment;
 
 PROCEDURE PrintOrdinalConst(C: P.Const);
 BEGIN
-  WriteLn3('<tr><td class="name">', C.name, '</td><td class="value">');
+  Write('<tr><td class="name">'); Write(C.name); WriteExport(C);
+  WriteLn('</td><td class="value">');
   WriteExpr(C.value); WriteLn('</td><td class="desc">');
   PrintComment(C, FALSE); WriteLn('</td></tr>')
 END PrintOrdinalConst;
@@ -170,7 +180,8 @@ PROCEDURE PrintConst(C: P.Const; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
   WriteLn ('<article class="object const">');
   WriteLn ('  <div class="def">');
-  WriteLn3('    <span class="name">', C.name, '</span> =');
+  Write   ('    <span class="name">'); Write(C.name);
+  Write   ('</span>'); WriteExport(C); WriteLn(' =');
   Write   ('    <span class="value">'); WriteExpr(C.value); WriteLn('</span>;');
   WriteLn ('  </div>');
   PrintComment(C, FALSE);
@@ -216,7 +227,7 @@ BEGIN tmp := preventSemicol; preventSemicol := FALSE;
     Write('<span class="var">');
     PrintIndent(indent);
     Write('<span class="name">'); Write(v.name);
-    Write('</span>: <span class="type">');
+    Write('</span>'); WriteExport(v); Write(': <span class="type">');
     PrintObject(v.type, indent, TRUE);
     IF ~tmp THEN Write(';') END;
     Write(' &nbsp;</span></span>');
@@ -224,7 +235,8 @@ BEGIN tmp := preventSemicol; preventSemicol := FALSE;
   ELSE
     WriteLn ('<article class="object var">');
     WriteLn ('  <div class="def">');
-    WriteLn3('    <span class="name">', v.name, '</span>:');
+    Write   ('    <span class="name">'); Write(v.name);
+    WriteExport(v); WriteLn('</span>:');
     WriteLn ('    <span class="type">');
     PrintObject(v.type, indent, TRUE); WriteLn('</span>;');
     WriteLn ('  </div>');
@@ -273,7 +285,8 @@ BEGIN
   ELSE
     WriteLn ('<article class="object type">');
     WriteLn ('  <div class="def">');
-    WriteLn3('    <span class="name">', T.name, '</span> =');
+    Write   ('    <span class="name">'); Write(T.name); Write('</span>');
+    WriteExport(T); WriteLn(' =');
     WriteLn ('    <span class="typedef">');
     PrintObject(T.base, indent, TRUE); WriteLn('</span>;');
     WriteLn ('  </div>');
@@ -289,7 +302,7 @@ BEGIN
   WriteLn ('  <div class="def">');
   WriteLn ('    PROCEDURE');
   Write   ('    <span class="name">'); Write(p.name);
-  Write('</span><span class="params">');
+  Write('</span>'); WriteExport(p); Write('<span class="params">');
   x := p.params.first;
   IF (x # NIL) OR (p.returnType # NIL) THEN Write('(');
     WHILE x # NIL DO
@@ -354,6 +367,7 @@ END Footer;
 PROCEDURE PrintModule(M: P.Module; indent: INTEGER; inlined: BOOLEAN);
 VAR s: ARRAY 64 OF CHAR;
 BEGIN
+  showExportMarks := ~M.exportedOnly;
   Header(M.name);
   PrintComment(M, FALSE);
   Lang.Get('constants', s); BigTitle(s);
