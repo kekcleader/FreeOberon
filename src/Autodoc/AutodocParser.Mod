@@ -908,7 +908,7 @@ PROCEDURE ParseConstDecl(M: Module);
 VAR C: Const;
   line2: INTEGER;
   isInt: BOOLEAN;
-BEGIN M.consts := NewList(); curTitle := '-';
+BEGIN curTitle := '-';
   IF sym = const THEN GetSym;
     WHILE sym = ident DO
       Debug(id);
@@ -929,7 +929,7 @@ END ParseConstDecl;
 PROCEDURE ParseTypeDecl(M: Module);
 VAR T: Type;
   line2: INTEGER;
-BEGIN M.types := NewList(); curTitle := '-';
+BEGIN curTitle := '-';
   IF sym = type THEN GetSym;
     WHILE sym = ident DO
       UpdateCurGroup(M.types);
@@ -1073,7 +1073,7 @@ END ReachEndOf;
 PROCEDURE ParseProcedureDecl(M: Module);
 VAR name: Str;
   P: Procedure;
-BEGIN M.procedures := NewList(); curTitle := '-';
+BEGIN curTitle := '-';
   WHILE sym = procedure DO UpdateCurGroup(M.procedures);
     GetSym; NEW(P); InitObject(P);
     P.params := NewList(); P.exported := FALSE;
@@ -1145,9 +1145,12 @@ VAR x: Object;
   L: List;
   ordinal: BOOLEAN;
 BEGIN
+  Debug('SortGroup begin');
   IF G.first # NIL THEN L := NewList();
     GroupCheckOrdinalConsts(G);
+    Debug('SortGroup before WHILE');
     WHILE G.first # NIL DO
+    Debug('SortGroup WHILE iteration');
       x := FindMin(G, G.ordinalConsts);
       RemoveFromList(G, x);
       AddToList(L, x)
@@ -1159,8 +1162,8 @@ END SortGroup;
 PROCEDURE SortGroups(L: List);
 VAR x: Object;
   common: Group;
-BEGIN
-  IF L.first # NIL THEN
+BEGIN 
+  IF (L # NIL) & (L.first # NIL) THEN
     common := NIL; x := L.first;
     WHILE x # NIL DO
       SortGroup(x(Group));
@@ -1187,6 +1190,8 @@ END SortModule;
 PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
 VAR M: Module;
 BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
+  M.consts := NewList(); M.types := NewList();
+  M.vars := NewList(); M.procedures := NewList();
   R := r; c := 0X; line := 1; col := 0; lastError := -1;
   Read; ClearComments; curTitle := '-'; GetSym;
   Debug('Begin ParseModule');
@@ -1209,12 +1214,14 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
       REPEAT GetSym UNTIL (sym = eot) OR (sym = end)
     END;
     ReachEndOf(M.name);
+    Debug('End of module');
     IF sym = ident THEN GetSym;
       IF sym # period THEN MarkExp('.') END
     ELSE (* sym = eot *) MarkEnd('Module', M.name)
     END
   ELSE MarkExp('MODULE')
   END;
+  Debug('Begin SortModule');
   IF lastError = -1 THEN SortModule(M)
   ELSE M := NIL; err := 'Error' (*!FIXME*)
   END;
