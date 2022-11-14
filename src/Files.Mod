@@ -386,7 +386,7 @@ BEGIN Create(f); error := Platform.Identify(f.fd, identity);
 END GetDate;
 
 PROCEDURE Pos*(VAR r: Rider): INTEGER;
-BEGIN RETURN SHORT(r.org + r.offset)
+BEGIN RETURN r.org + r.offset
 END Pos;
 
 PROCEDURE Set*(VAR r: Rider; f: File; pos: LONGINT);
