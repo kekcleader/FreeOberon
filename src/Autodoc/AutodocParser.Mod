@@ -88,6 +88,9 @@ TYPE
   GroupDesc* = RECORD(ListDesc)
     ordinalConsts*: BOOLEAN
   END;
+  
+  Import* = POINTER TO ImportDesc;
+  ImportDesc* = RECORD(ObjectDesc) END;
 
   Const* = POINTER TO ConstDesc;
   ConstDesc* = RECORD(ObjectDesc)
@@ -125,10 +128,9 @@ TYPE
   ModuleDesc* = RECORD(ObjectDesc)
     foreign*: BOOLEAN; (** TRUE if module has a [foreign] mark *)
     exportedOnly*: BOOLEAN; (** TRUE if only exported objects are included *)
-    consts*: List;
-    types*: List;
-    vars*: List;
-    procedures*: List
+    imports*: List; (** List of imports (no groups) *)
+    consts*, types*, vars*: List; (** List of groups *)
+    procedures*: List (** List of groups *)
   END;
 
 VAR
@@ -803,6 +805,11 @@ BEGIN
   END
 END CheckDirective;
 
+(** Registers the given module name as imported module in global variable M. *)
+PROCEDURE AddImportedModule(name: ARRAY OF CHAR);
+BEGIN
+END AddImportedModule;
+
 (** Type **)
 
 PROCEDURE NewType(form: INTEGER): Type;
@@ -816,6 +823,13 @@ PROCEDURE NewParam(passed: INTEGER): Param;
 VAR par: Param;
 BEGIN NEW(par); InitObject(par); par.passed := passed; Strings.Copy(id, par.name)
 RETURN par END NewParam;
+
+(** Import **)
+
+PROCEDURE NewImport(): Import;
+VAR I: Import;
+BEGIN NEW(I); InitObject(I); Strings.Copy(id, I.name)
+RETURN I END NewImport;
 
 (** Const **)
 
@@ -1008,8 +1022,10 @@ BEGIN
     T := NewType(namedType);
     Strings.Copy(id, T.name);
     GetSym;
-    IF sym = period THEN GetSym; Strings.Append('.', T.name);
-      IF sym = ident THEN Strings.Append(id, T.name); GetSym
+    IF sym = period THEN GetSym;
+      IF sym = ident THEN
+        AddImportedModule(T.name);
+        Strings.Append('.', T.name); Strings.Append(id, T.name); GetSym
       ELSE MarkExp('identifier')
       END
     END
@@ -1188,10 +1204,26 @@ BEGIN
 END Declarations;
 
 PROCEDURE ParseImport(M: Module);
+VAR I: Import;
 BEGIN
-  REPEAT GetSym UNTIL (sym = eot) OR (sym = procedure) OR (sym = begin) OR
-    (sym = end) OR (sym = const) OR (sym = type) OR (sym = var)
+  IF sym = ident THEN
+    I := NewImport(); GetSym;
+    IF sym = becomes THEN GetSym;
+      Strings.Copy(I.name, I.alias);
+      Strings.Copy(id, I.name);
+      GetSym
+    END
+  END (*!TODO*)
 END ParseImport;
+
+PROCEDURE ParseImportList(M: Module);
+BEGIN
+  IF sym = import THEN
+    GetSym; ParseImport(M);
+    WHILE sym = comma DO GetSym; ParseImport(M) END
+    IF sym = semicol THEN GetSym ELSE MarkExp(';') END
+  END
+END ParseImportList;
 
 PROCEDURE FindMin(G: Group; ordinal: BOOLEAN): Object;
 VAR x: Object;
@@ -1274,7 +1306,7 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
     ELSE MarkExp('module name')
     END;
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
-    IF sym = import THEN ParseImport(M) END;
+    ParseImportList(M);
     SaveAllComments(M);
     Debug('Begin Declarations');
     Declarations(M);
