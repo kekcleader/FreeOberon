@@ -1,6 +1,7 @@
 0 "Error message example"
 
 generatedMsg "Generated automatically by Free Oberon Autodoc"
+import "Imports"
 constants "Constants"
 types "Types"
 variables "Variables"

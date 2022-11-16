@@ -11,7 +11,7 @@ VAR
   TX: Texts.Text;
   W: Texts.Writer;
   
-  preventSemicol: BOOLEAN;
+  isLastItem: BOOLEAN;
 
   (** Render Settings **)
   showExportMarks: BOOLEAN; (** Value is exactly ~M.exportedOnly *)
@@ -168,6 +168,17 @@ BEGIN
   WriteLn('</section>')
 END PrintComment;
 
+PROCEDURE PrintImport(I: P.Import; indent: INTEGER; inlined: BOOLEAN);
+VAR tmp: BOOLEAN;
+BEGIN tmp := isLastItem; isLastItem := FALSE;
+  Write('<span class="import">');
+  IF I.name # I.alias THEN
+    Write('<span class="alias">'); Write(I.alias); Write('</span> := ')
+  END;
+  Write('<span class="name">'); Write(I.name); Write('</span>');
+  IF ~tmp THEN WriteLn(', ') END
+END PrintImport;
+
 PROCEDURE PrintOrdinalConst(C: P.Const);
 BEGIN
   Write('<tr><td class="name">'); Write(C.name); WriteExport(C);
@@ -198,7 +209,9 @@ BEGIN
     o := L.first;
     WHILE o # NIL DO
       IF ordinalConsts THEN PrintOrdinalConst(o(P.Const))
-      ELSE PrintObject(o, indent, FALSE)
+      ELSE
+        IF o = L.last THEN isLastItem := TRUE END;
+        PrintObject(o, indent, FALSE)
       END;
       o := o.next
     END;
@@ -208,7 +221,7 @@ END PrintList;
 
 PROCEDURE PrintParam(par: P.Param; indent: INTEGER; inlined: BOOLEAN);
 VAR tmp: BOOLEAN;
-BEGIN tmp := preventSemicol; preventSemicol := FALSE;
+BEGIN tmp := isLastItem; isLastItem := FALSE;
   Write('<span class="param">');
   IF par.passed = P.byVar THEN
     Write('<span class="passed by-var">VAR</span>&nbsp;')
@@ -222,7 +235,7 @@ END PrintParam;
 
 PROCEDURE PrintVar(v: P.Var; indent: INTEGER; inlined: BOOLEAN);
 VAR tmp: BOOLEAN;
-BEGIN tmp := preventSemicol; preventSemicol := FALSE;
+BEGIN tmp := isLastItem; isLastItem := FALSE;
   IF inlined THEN
     Write('<span class="var">');
     PrintIndent(indent);
@@ -260,7 +273,7 @@ BEGIN
       x := T.fields.first;
       IF x # NIL THEN WriteLn('<span class="record-fields">') END;
       WHILE x # NIL DO
-        IF x = T.fields.last THEN preventSemicol := TRUE END;
+        IF x = T.fields.last THEN isLastItem := TRUE END;
         PrintObject(x, indent + 1, TRUE);
         x := x.next
       END;
@@ -272,7 +285,7 @@ BEGIN
       x := T.fields.first;
       IF (x # NIL) OR (T.base # NIL) THEN Write(' (');
         WHILE x # NIL DO
-          IF x = T.fields.last THEN preventSemicol := TRUE END;
+          IF x = T.fields.last THEN isLastItem := TRUE END;
           PrintObject(x, indent, TRUE);
           x := x.next
         END;
@@ -306,7 +319,7 @@ BEGIN
   x := p.params.first;
   IF (x # NIL) OR (p.returnType # NIL) THEN Write('(');
     WHILE x # NIL DO
-      IF x = p.params.last THEN preventSemicol := TRUE END;
+      IF x = p.params.last THEN isLastItem := TRUE END;
       PrintObject(x, indent, TRUE);
       x := x.next
     END;
@@ -370,6 +383,10 @@ BEGIN
   showExportMarks := ~M.exportedOnly;
   Header(M.name);
   PrintComment(M, FALSE);
+  IF M.imports.first # NIL THEN
+    Lang.Get('import', s); BigTitle(s);
+    PrintList(M.imports, 0, FALSE)
+  END;
   Lang.Get('constants', s); BigTitle(s);
   PrintList(M.consts, 0, FALSE);
   Lang.Get('types', s); BigTitle(s);
@@ -385,9 +402,10 @@ PROCEDURE PrintObject0(o: P.Object; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
   IF o = NIL THEN WriteLn('NIL')
   ELSIF o IS P.Module THEN PrintModule(o(P.Module), indent, inlined)
-  ELSIF o IS P.Var THEN PrintVar(o(P.Var), indent, inlined)
+  ELSIF o IS P.Import THEN PrintImport(o(P.Import), indent, inlined)
   ELSIF o IS P.Const THEN PrintConst(o(P.Const), indent, inlined)
   ELSIF o IS P.Type THEN PrintType(o(P.Type), indent, inlined)
+  ELSIF o IS P.Var THEN PrintVar(o(P.Var), indent, inlined)
   ELSIF o IS P.Procedure THEN PrintProcedure(o(P.Procedure), indent, inlined)
   ELSIF o IS P.Param THEN PrintParam(o(P.Param), indent, inlined)
   ELSIF o IS P.List THEN PrintList(o(P.List), indent, inlined)
@@ -408,7 +426,7 @@ END SetLang;
 PROCEDURE Save*(module: P.Module; fname: ARRAY OF CHAR): BOOLEAN;
 BEGIN
   LoadLang; NEW(TX); Texts.Open(TX, ''); Texts.OpenWriter(W);
-  preventSemicol := FALSE;
+  isLastItem := FALSE;
   PrintObject(module, 0, FALSE);
   Texts.Append(TX, W.buf); Texts.Close(TX, fname)
 RETURN TRUE END Save;

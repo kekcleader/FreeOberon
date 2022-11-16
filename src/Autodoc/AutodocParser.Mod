@@ -90,7 +90,9 @@ TYPE
   END;
   
   Import* = POINTER TO ImportDesc;
-  ImportDesc* = RECORD(ObjectDesc) END;
+  ImportDesc* = RECORD(ObjectDesc)
+    alias*: Str
+  END;
 
   Const* = POINTER TO ConstDesc;
   ConstDesc* = RECORD(ObjectDesc)
@@ -134,6 +136,7 @@ TYPE
   END;
 
 VAR
+  curModule: Module; (** Currently generated module data structure *)
   curFname: Str; (** Set by SetFname and used in Mark for error output *)
   R: Files.Rider; (** Rider of the currently parsed module *)
   c: CHAR; (** One step ahead character read from rider R *)
@@ -141,6 +144,7 @@ VAR
   lastError: INTEGER; (** Position in R of last error, or -1 *)
   constExprBeginPos: INTEGER; (** After '=' or 'ARRAY', see ParseConstExpr *)
   constExprBeginC: CHAR; (** Value of c the moment constExprBeginPos is set *)
+  objectIsExported: BOOLEAN; (** The parsed variable/field/param is exported *)
 
   sym: INTEGER; (** One step ahead (syntactic) symbol read *)
 
@@ -163,6 +167,7 @@ VAR
   (** Parsing Parameters **)
   
   exportedOnly: BOOLEAN; (** If TRUE, only exported objects are added *)
+  keepAliases: BOOLEAN; (** If FALSE, change alias to real module names *)
   
   (** Debug **)
   debug*: BOOLEAN;
@@ -172,6 +177,10 @@ VAR
 PROCEDURE SetExportedOnly*(yes: BOOLEAN);
 BEGIN exportedOnly := yes
 END SetExportedOnly;
+
+PROCEDURE SetKeepAliases*(yes: BOOLEAN);
+BEGIN keepAliases := yes
+END SetKeepAliases;
 
 (** Debug **)
 
@@ -191,6 +200,7 @@ PROCEDURE SetFname*(fname: ARRAY OF CHAR);
 BEGIN curFname := fname
 END SetFname;
 
+(** Show error s *)
 PROCEDURE Mark(s: ARRAY OF CHAR);
 VAR pos: INTEGER;
 BEGIN
@@ -203,6 +213,13 @@ BEGIN
   lastError := pos
 END Mark;
 
+(** Show error consisting of a + b + c *)
+PROCEDURE Mark3(a, b, c: ARRAY OF CHAR);
+VAR s: ARRAY 1024 OF CHAR;
+BEGIN s := a; Strings.Append(b, s); Strings.Append(c, s); Mark(s)
+END Mark3;
+
+(** Put textual representation of sym in s *)
 PROCEDURE SymToStr(sym: INTEGER; VAR s: ARRAY OF CHAR);
 BEGIN
   IF    sym = null      THEN s := 'nothing'
@@ -252,15 +269,16 @@ BEGIN
   END
 END SymToStr;
 
+(** Show error that something is expected, but something else found. *)
 PROCEDURE MarkExp(name: ARRAY OF CHAR);
 VAR s, word: ARRAY 256 OF CHAR;
 BEGIN
   s := name; Strings.Append(' expected, but ', s);
   SymToStr(sym, word); Strings.Append(word, s);
-  Strings.Append(' found', s);
-  Mark(s)
+  Strings.Append(' found', s); Mark(s)
 END MarkExp;
 
+(** Show error that a module or a procedure was not closed *)
 PROCEDURE MarkEnd(title, name: ARRAY OF CHAR);
 VAR s, word: ARRAY 256 OF CHAR;
 BEGIN
@@ -270,10 +288,12 @@ END MarkEnd;
 
 (** Handle Comments **)
 
+(** Remove all comments from doc *)
 PROCEDURE ClearComments;
 BEGIN doc[0] := 0X; docLen := 0; docLine := -1
 END ClearComments;
 
+(** If doc is not empty, remove the first comment (until the 1st tab or 0X) *)
 PROCEDURE RemoveLastComment;
 BEGIN
   WHILE (docLen # 0) & (doc[docLen] # tab) DO DEC(docLen) END;
@@ -282,6 +302,7 @@ END RemoveLastComment;
 
 (** Comments **)
 
+(** Append a comment to the end of doc (tab is separator) *)
 PROCEDURE AppendComment(VAR comment: ARRAY OF CHAR);
 VAR L, i, j: INTEGER;
 BEGIN
@@ -296,6 +317,7 @@ BEGIN
   END
 END AppendComment;
 
+(** Get text of the last comment *)
 PROCEDURE GetLastComment(VAR comment: ARRAY OF CHAR);
 VAR L, i, j: INTEGER;
 BEGIN
@@ -306,6 +328,7 @@ BEGIN
   END
 END GetLastComment;
 
+(** Join all comments and attach them to o *)
 PROCEDURE SaveAllComments(o: Object);
 VAR i: INTEGER;
 BEGIN
@@ -338,6 +361,7 @@ END SaveComment;
 
 (** Scanner **)
 
+(** Text Driver *)
 PROCEDURE Read;
 BEGIN
   IF c = 0AX THEN INC(line); col := 0 END;
@@ -405,6 +429,7 @@ BEGIN
   END
 END ReadNumber;
 
+(** Attach a character to the end of comment in global varaible doc *)
 PROCEDURE WriteDoc(c: CHAR);
 BEGIN
   IF writingDoc & (docLen < LEN(doc) - 1) &
@@ -415,6 +440,7 @@ BEGIN
   END
 END WriteDoc;
 
+(** Recursive procedure to read (potentially nested) comments *)
 PROCEDURE ReadComment(toplevel: BOOLEAN);
 VAR closed, tmp: BOOLEAN;
   x: CHAR;
@@ -781,7 +807,7 @@ END Print;
 (** Object **)
 
 PROCEDURE InitObject(o: Object);
-BEGIN o.name[0] := 0X; o.comment[0] := 0X; o.next := NIL
+BEGIN o.name[0] := 0X; o.comment[0] := 0X; o.next := NIL; o.exported := FALSE
 END InitObject;
 
 (** Sets exported field of object to TRUE or FALSE
@@ -790,7 +816,8 @@ PROCEDURE CheckExportMark(o: Object);
 BEGIN
   IF (sym = times) OR (sym = minus) THEN GetSym; o.exported := TRUE
   ELSE o.exported := FALSE
-  END
+  END;
+  objectIsExported := o.exported
 END CheckExportMark;
 
 (** Skips compiler directives such as [notag]
@@ -805,10 +832,21 @@ BEGIN
   END
 END CheckDirective;
 
-(** Registers the given module name as imported module in global variable M. *)
-PROCEDURE AddImportedModule(name: ARRAY OF CHAR);
+(** Finds import with the given alias in curModule. If parameter exported
+    is TRUE, marks the import object as exported. Depending on keepAliases,
+    on may replace value of VAR-parameter name from with the real name of
+    the imported module. *)
+PROCEDURE CheckImportedModule(VAR name: ARRAY OF CHAR; exported: BOOLEAN);
+VAR x: Object;
 BEGIN
-END AddImportedModule;
+  x := curModule.imports.first;
+  WHILE (x # NIL) & (x(Import).alias # name) DO x := x.next END;
+  IF x # NIL THEN
+    IF exported THEN x.exported := TRUE END;
+    IF ~keepAliases THEN Strings.Copy(x.name, name) END
+  ELSE Mark3('Module "', name, '" not imported.')
+  END
+END CheckImportedModule;
 
 (** Type **)
 
@@ -1000,17 +1038,14 @@ BEGIN curTitle := '-';
       Debug(id);
       UpdateCurGroup(M.types);
       T := NewType(namedType); SaveAllComments(T);
-      AddToList(M.types.last(List), T);
-      Debug('ParseTypeDecl before CheckExportMark');
       Strings.Copy(id, T.name); GetSym; CheckExportMark(T);
-      Debug('ParseTypeDecl after CheckExportMark');
       IF sym = equals THEN GetSym ELSE MarkExp('=') END;
-      Debug('ParseTypeDecl before ParseType');
       T.base := ParseType(T); line2 := line;
-      Debug('ParseTypeDecl after ParseType');
       IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
-      SaveComment(T, line2);
-      Debug('ParseTypeDecl end of WHILE iteration')
+      IF ~exportedOnly OR T.exported THEN
+        AddToList(M.types.last(List), T)
+      END;
+      SaveComment(T, line2)
     END
   END
 END ParseTypeDecl;
@@ -1020,11 +1055,10 @@ VAR T: Type;
 BEGIN
   IF sym = ident THEN
     T := NewType(namedType);
-    Strings.Copy(id, T.name);
-    GetSym;
+    Strings.Copy(id, T.name); GetSym;
     IF sym = period THEN GetSym;
       IF sym = ident THEN
-        AddImportedModule(T.name);
+        CheckImportedModule(T.name, objectIsExported);
         Strings.Append('.', T.name); Strings.Append(id, T.name); GetSym
       ELSE MarkExp('identifier')
       END
@@ -1208,22 +1242,34 @@ VAR I: Import;
 BEGIN
   IF sym = ident THEN
     I := NewImport(); GetSym;
+    Strings.Copy(I.name, I.alias);
     IF sym = becomes THEN GetSym;
-      Strings.Copy(I.name, I.alias);
-      Strings.Copy(id, I.name);
-      GetSym
-    END
-  END (*!TODO*)
+      Strings.Copy(id, I.name); GetSym
+    END;
+    AddToList(M.imports, I)
+  END
 END ParseImport;
 
 PROCEDURE ParseImportList(M: Module);
 BEGIN
   IF sym = import THEN
     GetSym; ParseImport(M);
-    WHILE sym = comma DO GetSym; ParseImport(M) END
+    WHILE sym = comma DO GetSym; ParseImport(M) END;
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END
   END
 END ParseImportList;
+
+PROCEDURE CleanImportList(M: Module);
+VAR x, next: Object;
+BEGIN
+  x := M.imports.first;
+  WHILE x # NIL DO next := x.next;
+    IF ~x.exported THEN RemoveFromList(M.imports, x)
+    ELSIF ~keepAliases THEN Strings.Copy(x.name, x(Import).alias)
+    END;
+    x := next
+  END
+END CleanImportList;
 
 PROCEDURE FindMin(G: Group; ordinal: BOOLEAN): Object;
 VAR x: Object;
@@ -1290,10 +1336,12 @@ END SortModule;
 
 PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
 VAR M: Module;
-BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
-  M.exportedOnly := exportedOnly; M.consts := NewList();
+BEGIN NEW(M); InitObject(M); curModule := M;
+  M.foreign := FALSE; M.exportedOnly := exportedOnly;
+  M.imports := NewList(); M.consts := NewList();
   M.types := NewList(); M.vars := NewList(); M.procedures := NewList();
   R := r; c := 0X; line := 1; col := 0; lastError := -1;
+  objectIsExported := FALSE;
   Read; ClearComments; curTitle := '-'; GetSym;
   Debug('Begin ParseModule');
   IF sym = module THEN GetSym;
@@ -1322,6 +1370,7 @@ BEGIN NEW(M); InitObject(M); M.foreign := FALSE;
     END
   ELSE MarkExp('MODULE')
   END;
+  IF exportedOnly THEN CleanImportList(M) END;
   Debug('Begin SortModule');
   IF lastError = -1 THEN SortModule(M)
   ELSE M := NIL; err := 'Error' (*!FIXME*)
@@ -1334,5 +1383,6 @@ BEGIN
   ParseType := ParseType0;
   ParseParamType := ParseParamType0;
 
-  curFname[0] := 0X; debug := FALSE; exportedOnly := TRUE
+  curFname[0] := 0X; debug := FALSE;
+  exportedOnly := TRUE; keepAliases := FALSE
 END AutodocParser.

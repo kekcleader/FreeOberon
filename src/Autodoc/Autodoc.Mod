@@ -85,10 +85,14 @@ BEGIN
   Out.String(' by Arthur Yefimov and others.'); Out.Ln;
   Out.String('Usage:'); Out.Ln; Args.Get(0, s);
   Out.String('  '); Out.String(s);
-  Out.String(' { "-o" outputPath | "--lang" code | sourceFile}'); Out.Ln; Out.Ln;
+  Out.String(' { "-o" outputPath | "--lang" code | "-a" | "-k" | sourceFile}');
+  Out.Ln; Out.Ln;
   Out.String('outputPath is a file name if a single source file is given.');
   Out.Ln;
   Out.String('outputPath is a directory if many source files are given.');
+  Out.Ln;
+  Out.String('-a ...... get All objects, not only exported'); Out.Ln;
+  Out.String('-k ...... Keep module aliases');
   Out.Ln; Out.Ln;
   Out.String('Examples:'); Out.Ln;
   Out.String('  '); Out.String(s);
@@ -132,6 +136,8 @@ BEGIN
         IF i < Args.Count THEN INC(i); Args.Get(i, out) END
       ELSIF s = '-a' THEN (* All *)
         P.SetExportedOnly(FALSE)
+      ELSIF s = '-k' THEN (* Keep module aliases *)
+        P.SetKeepAliases(TRUE)
       ELSIF s = '--debug' THEN
         P.SetDebug(TRUE)
       ELSIF (s = '--inline-style') OR (s = '-i') THEN

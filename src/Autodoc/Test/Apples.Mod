@@ -22,7 +22,7 @@
     call Init and other procedures on it *)
 MODULE Apples;
 (** Это тестовый модуль. *)
-IMPORT Out, Fruits;
+IMPORT Out, F := Files, SYSTEM, Fruits;
 
 CONST
   str4* = "В двойных кавычках.";
@@ -64,6 +64,8 @@ CONST
 
 TYPE
 
+  FL = F.File;
+
   LetterA = CHAR;
   LetterB = CHAR;
 
@@ -77,7 +79,7 @@ TYPE
   END;
 
   (** - **)
-  LetterC = CHAR;
+  LetterC* = CHAR;
   LetterD = CHAR;
 
   (** ВСЯКОЕ **)
@@ -101,7 +103,7 @@ VAR
   shown: BOOLEAN;
   lastAdded*: INTEGER; (** How many seeds were added the last time, or -1 *)
   (** ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ЗАПИСНЫХ ТИПОВ **)
-  R: RECORD
+  R*: RECORD(F.Rider)
     t, x: INTEGER; (** Время в секундах и мс *)
     z, y: Array    (** Z-буфер, показатель светимости  *)
   END;
