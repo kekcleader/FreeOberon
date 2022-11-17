@@ -140,8 +140,10 @@ BEGIN
         P.SetKeepAliases(TRUE)
       ELSIF s = '--debug' THEN
         P.SetDebug(TRUE)
-      ELSIF (s = '--inline-style') OR (s = '-i') THEN
-        H.SetInlineStyle(TRUE)
+      ELSIF (s = '--include-style') OR (s = '-i') THEN
+        H.SetIncludeStyle(TRUE)
+      ELSIF s = '--pal' THEN
+        IF i < Args.Count THEN INC(i); Args.Get(i, s); H.SetPalette(s) END
       ELSIF s = '--lang' THEN (* Output language *)
         IF i < Args.Count THEN INC(i); Args.Get(i, s); H.SetLang(s) END
       ELSE (* On of the file names with Oberon modules *)

@@ -379,7 +379,8 @@ PROCEDURE IsHex(x: CHAR): BOOLEAN;
 RETURN IsDec(x) OR ('a' <= x) & (x <= 'f') OR ('A' <= x) & (x <= 'F')
 END IsHex;
 
-PROCEDURE FromHex(x: CHAR): INTEGER;
+(** Also used in AutodocHtml.PrintColorValue *)
+PROCEDURE FromHex*(x: CHAR): INTEGER;
 VAR n: INTEGER;
 BEGIN
   IF ('A' <= x) & (x <= 'F') THEN n := 10 - ORD('A') + ORD(x)

@@ -4,6 +4,26 @@ IMPORT Texts, Out, Strings, P := AutodocParser, Env, Lang := SimpleLangs;
 CONST
   styleFname = 'Data/style.css';
   defLang = 'en';
+  defPal = 'default';
+
+  (** Color Array Indices
+       Every const is a background color and
+      every (const + 1) is a foreground color **)
+  main      =  0; (** Main backgrund color and main foreground color *)
+  head      =  2; (** Header/footer color *)
+  head2     =  4; (** Header secondary text color (bg also used as fg) *)
+  tab       =  6; (** Main table color *)
+  tabRow    =  8; (** Highlighted rows (or columns) *)
+  tabHead   = 10; (** Table header color *)
+  title     = 12; (** Group title color **)
+  high      = 14; (** bg - highlighted text color, fg - string text color *)
+  box       = 16; (** bg - group title shadow, fg - table border color *)
+  comment   = 18; (** bg - comment parenthesis, fg - comment text color *)
+  nofcolors = 20; (** Number of colors. Last color is high + 1 = 15 *)
+
+TYPE
+  Color = ARRAY 10 OF CHAR; (** Example: 'FF000080' (HEX RGBA) *)
+  Palette = ARRAY nofcolors OF Color;
 
 VAR
   PrintObject: PROCEDURE (o: P.Object; indent: INTEGER; inlined: BOOLEAN);
@@ -15,8 +35,11 @@ VAR
 
   (** Render Settings **)
   showExportMarks: BOOLEAN; (** Value is exactly ~M.exportedOnly *)
-  inlineStyle: BOOLEAN;
+  includeStyle: BOOLEAN;
   lang: ARRAY 6 OF CHAR;
+
+  palette: Palette; (** Current palette, is set by SetColors *)
+  curColor: INTEGER; (** Current color for palette, used by SetColors *)
 
 (** Language **)
 
@@ -42,7 +65,11 @@ BEGIN
   END
 END LoadLang;
 
-(** Printing **)
+(** Text Output Routines **)
+
+PROCEDURE WriteInt(i: INTEGER);
+BEGIN Texts.WriteInt(W, i, 0)
+END WriteInt;
 
 PROCEDURE WriteChar(x: CHAR);
 BEGIN Texts.Write(W, x)
@@ -124,6 +151,8 @@ BEGIN
     Out.String(styleFname); Out.String('".'); Out.Ln
   END
 END WriteStyle;
+
+(** HTML Printing Procedures **)
 
 PROCEDURE OpenGroup(title: ARRAY OF CHAR; ordinalConsts: BOOLEAN);
 VAR s: ARRAY 256 OF CHAR;
@@ -362,6 +391,52 @@ BEGIN
   WriteLn('<main class="main"><div class="inner">');
 END Header;
 
+PROCEDURE PrintColorValue(s: ARRAY OF CHAR);
+VAR i: INTEGER;
+  PROCEDURE Q(s: ARRAY OF CHAR; i: INTEGER): INTEGER;
+  RETURN P.FromHex(s[i]) * 16 + P.FromHex(s[i + 1]) END Q;
+BEGIN
+  IF Strings.Length(s) = 8 THEN Write('rgba(');
+    FOR i := 0 TO 4 BY 2 DO WriteInt(Q(s, i)); Write(', ') END;
+    i := Q(s, 6) * 100 DIV 256;
+    IF i = 255 THEN Write('1.0')
+    ELSE Write('0.'); WriteInt(i DIV 10 MOD 10); WriteInt(i MOD 10)
+    END;
+    Write(')')
+  ELSE Write('#'); Write(s)
+  END
+END PrintColorValue;
+
+PROCEDURE PrintColor(i: INTEGER; var, fgOrBg: ARRAY OF CHAR);
+BEGIN
+  Write('  --'); Write(var); Write('-'); Write(fgOrBg);
+  Write(': '); PrintColorValue(palette[i]); WriteLn(';')
+END PrintColor;
+
+PROCEDURE PrintColors(i: INTEGER; var: ARRAY OF CHAR);
+BEGIN PrintColor(i, var, 'bg');
+  PrintColor(i + 1, var, 'fg')
+END PrintColors;
+
+PROCEDURE PrintPalette;
+VAR i: INTEGER;
+BEGIN
+  WriteLn('<style> /* Palette */');
+  WriteLn(':root {');
+  PrintColors(main,    'main');
+  PrintColors(head,    'head');
+  PrintColors(head2,   'head2');
+  PrintColors(tab,     'tab');
+  PrintColors(tabRow,  'tab-row');
+  PrintColors(tabHead, 'tab-head');
+  PrintColors(title,   'title');
+  PrintColors(high,    'high');
+  PrintColors(box,     'box');
+  PrintColors(comment, 'comment');
+  WriteLn('}');
+  WriteLn('</style>')
+END PrintPalette;
+
 PROCEDURE Footer;
 VAR s: ARRAY 256 OF CHAR;
 BEGIN
@@ -370,9 +445,10 @@ BEGIN
  
   WriteLn('</div></footer>');
 
-  IF inlineStyle THEN WriteStyle
+  IF includeStyle THEN WriteStyle
   ELSE WriteLn('<link rel="stylesheet" href="style.css">')
   END;
+  PrintPalette;
 
   WriteLn('</body></html>')
 END Footer;
@@ -413,18 +489,61 @@ BEGIN
   END
 END PrintObject0;
 
-(** - **)
+(** Generator Settings **)
 
-PROCEDURE SetInlineStyle*(inline: BOOLEAN);
-BEGIN inlineStyle := inline
-END SetInlineStyle;
+PROCEDURE SetIncludeStyle*(inline: BOOLEAN);
+BEGIN includeStyle := inline
+END SetIncludeStyle;
 
 PROCEDURE SetLang*(L: ARRAY OF CHAR);
 BEGIN Strings.Copy(L, lang)
 END SetLang;
 
+(** Palette **)
+
+(** Used by SetPalette *)
+PROCEDURE ClearColors;
+BEGIN curColor := 0
+END ClearColors;
+
+(** Used by SetPalette. First must call ClearColors, then one or more calls
+    to SetColors is possible *)
+PROCEDURE SetColors(s: ARRAY OF CHAR);
+VAR i, begin: INTEGER;
+BEGIN
+  i := 0;
+  WHILE s[i] # 0X DO
+    WHILE (s[i] # 0X) & (s[i] < '0') DO INC(i) END; (* Skip separators *)
+    begin := i;
+    WHILE s[i] >= '0' DO INC(i) END; (* Stop on 0X, ' ', or ',' *)
+    Strings.Extract(s, begin, i - begin, palette[curColor]);
+    INC(curColor)
+  END
+END SetColors;
+
+PROCEDURE SetPalette*(pal: ARRAY OF CHAR);
+BEGIN ClearColors;
+  IF pal = defPal THEN
+    SetColors('FBC5AA-12365D,12365D-FFF,93B2D3-3D74AC,FFF-000');
+    SetColors('FFBF44-B91E0C,B91E0C-FFF,12365D-FFF,D95D27-277FC0');
+    SetColors('00006434-808080,D1702C-2D5E90')
+  ELSIF pal = 'horror' THEN
+    SetColors('AFF-00C,C00-FE0,FA0-FCC,0C0-0F0,00F-0FF');
+    SetColors('606-F8F,0CC-066,833-0F0,0000FFC0-F00,F88-88F')
+  ELSIF pal = 'bw' THEN
+    SetColors('FFF-000,FFF-000,000-000,FFF-000,FFF-000');
+    SetColors('FFF-000,000-FFF,000-000,FFF-FFF,888-000')
+  ELSE Out.String('Palette "'); Out.String(pal);
+    Out.String('" does not exist.'); Out.Ln;
+    SetPalette(defPal)
+  END
+END SetPalette;
+
+(** Main procedure **)
+
 PROCEDURE Save*(module: P.Module; fname: ARRAY OF CHAR): BOOLEAN;
 BEGIN
+  IF palette[0] = 0X THEN SetPalette(defPal) END;
   LoadLang; NEW(TX); Texts.Open(TX, ''); Texts.OpenWriter(W);
   isLastItem := FALSE;
   PrintObject(module, 0, FALSE);
@@ -433,6 +552,6 @@ RETURN TRUE END Save;
 
 BEGIN
   PrintObject := PrintObject0;
-  inlineStyle := FALSE;
-  lang[0] := 0X
+  includeStyle := FALSE;
+  lang[0] := 0X; palette[0] := 0X
 END AutodocHtml.
