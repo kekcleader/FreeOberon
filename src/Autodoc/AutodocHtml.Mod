@@ -199,14 +199,14 @@ BEGIN
 END PrintComment;
 
 PROCEDURE PrintImport(I: P.Import; indent: INTEGER; inlined: BOOLEAN);
-VAR tmp: BOOLEAN;
-BEGIN tmp := isLastListItem; isLastListItem := FALSE;
+BEGIN
   Write('<span class="import">');
   IF I.name # I.alias THEN
     Write('<span class="alias">'); Write(I.alias); Write('</span> := ')
   END;
-  Write('<span class="name">'); Write(I.name); Write('</span>');
-  IF ~tmp THEN WriteLn(', ') END
+  Write('<span class="name">'); Write(I.name); Write('</span></span>');
+  IF ~isLastListItem THEN WriteLn(', ') END;
+  isLastListItem := FALSE
 END PrintImport;
 
 PROCEDURE PrintOrdinalConst(C: P.Const);

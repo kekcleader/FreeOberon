@@ -628,10 +628,12 @@ END AddToList;
 PROCEDURE RemoveFromList(L: List; o: Object);
 VAR x: Object;
 BEGIN
-  IF L.first = o THEN L.first := L.first.next
+  IF L.first = o THEN L.first := L.first.next;
+    IF L.first = NIL THEN L.last := NIL END
   ELSE x := L.first;
     WHILE x.next # o DO x := x.next END;
-    x.next := x.next.next
+    x.next := x.next.next;
+    IF x.next = NIL THEN L.last := x END
   END;
   o.next := NIL
 END RemoveFromList;

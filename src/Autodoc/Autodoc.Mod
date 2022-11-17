@@ -89,10 +89,12 @@ BEGIN
   Out.Ln; Out.Ln;
   Out.String('outputPath is a file name if a single source file is given.');
   Out.Ln;
-  Out.String('outputPath is a directory if many source files are given.');
+  Out.String('outputPath is a directory if many source files are given or if');
   Out.Ln;
-  Out.String('-a ...... get All objects, not only exported'); Out.Ln;
-  Out.String('-k ...... Keep module aliases');
+  Out.String('           there is a slash in the end of outputPath.');
+  Out.Ln;
+  Out.String('-a ....... get All objects, not only exported'); Out.Ln;
+  Out.String('-k ....... Keep module aliases');
   Out.Ln; Out.Ln;
   Out.String('Examples:'); Out.Ln;
   Out.String('  '); Out.String(s);
@@ -100,7 +102,7 @@ BEGIN
   Out.String('  '); Out.String(s);
   Out.String(' -o doc.html --lang ru Apples.Mod'); Out.Ln;
   Out.String('  '); Out.String(s);
-  Out.String(' -o docs Fruits.Mod Apples.Mod'); Out.Ln
+  Out.String(' -o docs/ Fruits.Mod Apples.Mod'); Out.Ln
 END Usage;
 
 (** Changes extension of the file to '.html'. Puts result is out. *)
@@ -121,7 +123,7 @@ BEGIN
 END FnameToHtml;
 
 PROCEDURE Do;
-VAR i: INTEGER;
+VAR i, len: INTEGER;
   out, s: ARRAY 256 OF CHAR;
   fnames: ARRAY 64, 256 OF CHAR;
   fnameCount: INTEGER;
@@ -154,13 +156,16 @@ BEGIN
       END;
       INC(i)
     END;
-    IF fnameCount = 1 THEN (* Single file given *)
-      IF out[0] = 0X THEN FnameToHtml(fnames[0], out) END;
-      HandleFile(fnames[0], out)
-    ELSE (* Multiple file given, treat "-o" parameter as directory *)
+    len := Strings.Length(out);
+    IF (fnameCount > 1) OR
+       (len # 0) & ((out[len - 1] = '/') OR (out[len - 1] = '\'))
+    THEN (* treat "-o" parameter as directory *)
       FOR i := 0 TO fnameCount - 1 DO
         HandleFileToDir(fnames[i], out)
       END
+    ELSE (* Single file given and "-o" is a file name *)
+      IF out[0] = 0X THEN FnameToHtml(fnames[0], out) END;
+      HandleFile(fnames[0], out)
     END
   END
 END Do;
