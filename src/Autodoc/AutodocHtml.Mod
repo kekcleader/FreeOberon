@@ -32,6 +32,7 @@ VAR
   W: Texts.Writer;
   
   isLastItem: BOOLEAN;
+  isLastListItem: BOOLEAN;
 
   (** Render Settings **)
   showExportMarks: BOOLEAN; (** Value is exactly ~M.exportedOnly *)
@@ -199,7 +200,7 @@ END PrintComment;
 
 PROCEDURE PrintImport(I: P.Import; indent: INTEGER; inlined: BOOLEAN);
 VAR tmp: BOOLEAN;
-BEGIN tmp := isLastItem; isLastItem := FALSE;
+BEGIN tmp := isLastListItem; isLastListItem := FALSE;
   Write('<span class="import">');
   IF I.name # I.alias THEN
     Write('<span class="alias">'); Write(I.alias); Write('</span> := ')
@@ -239,7 +240,7 @@ BEGIN
     WHILE o # NIL DO
       IF ordinalConsts THEN PrintOrdinalConst(o(P.Const))
       ELSE
-        IF o = L.last THEN isLastItem := TRUE END;
+        IF o = L.last THEN isLastListItem := TRUE END;
         PrintObject(o, indent, FALSE)
       END;
       o := o.next
@@ -526,7 +527,7 @@ BEGIN ClearColors;
   IF pal = defPal THEN
     SetColors('FBC5AA-12365D,12365D-FFF,93B2D3-3D74AC,FFF-000');
     SetColors('FFBF44-B91E0C,B91E0C-FFF,12365D-FFF,D95D27-277FC0');
-    SetColors('00006434-808080,D1702C-2D5E90')
+    SetColors('00000024-808080,D1702C-2D5E90')
   ELSIF pal = 'horror' THEN
     SetColors('AFF-00C,C00-FE0,FA0-FCC,0C0-0F0,00F-0FF');
     SetColors('606-F8F,0CC-066,833-0F0,0000FFC0-F00,F88-88F')
@@ -545,7 +546,7 @@ PROCEDURE Save*(module: P.Module; fname: ARRAY OF CHAR): BOOLEAN;
 BEGIN
   IF palette[0] = 0X THEN SetPalette(defPal) END;
   LoadLang; NEW(TX); Texts.Open(TX, ''); Texts.OpenWriter(W);
-  isLastItem := FALSE;
+  isLastItem := FALSE; isLastListItem := FALSE;
   PrintObject(module, 0, FALSE);
   Texts.Append(TX, W.buf); Texts.Close(TX, fname)
 RETURN TRUE END Save;
