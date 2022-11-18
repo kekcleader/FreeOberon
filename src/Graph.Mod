@@ -4,7 +4,7 @@ IMPORT Out, Al := Allegro5, Utf8, Files, Dir, Strings, SYSTEM;
 CONST
   fontPlanes = 4; (*!TODO*)
 
-  (* Settings set members *)
+  (** Settings set members **)
   manual*      = 0;
   fullscreen*  = 1;
   window*      = 2;
@@ -20,7 +20,7 @@ CONST
   nobuffer*    = 12;
   topleft*     = 13;
 
-  (* Event.type possible values *)
+  (** Event.type possible values **)
   noEvent      = 0;
   quit*        = 1;
   timer*       = 2;
@@ -36,16 +36,16 @@ CONST
 
   eventUserResize = 2005;
 
-  (* Window.zoom possible values *)
-  noZoom   = 0; (* The screen is not zoomed *)
-  intZoom  = 1; (* The zoom value is an integer: 2x, 3x etc. *)
-  realZoom = 2; (* The zoom value is not an integer, i.e. 2.5x *)
+  (** Window.zoom possible values **)
+  noZoom   = 0; (** The screen is not zoomed *)
+  intZoom  = 1; (** The zoom value is an integer: 2x, 3x etc. *)
+  realZoom = 2; (** The zoom value is not an integer, i.e. 2.5x *)
 
-  (* Flip flags for DrawFlip, DrawEx etc. *)
+  (** Flip flags for DrawFlip, DrawEx etc. **)
   flipHor*  = 0;
   flipVert* = 1;
 
-  (* Key Codes *)
+  (** Key Codes **)
   kA*          = 1;
   kB*          = 2;
   kC*          = 3;
@@ -165,7 +165,7 @@ CONST
 
   kMax*        = 226;
 
-  (* Modifiers Set *)
+  (** Modifiers Set **)
   mShift*      = 0;
   mCtrl*       = 1;
   mAlt*        = 2;
@@ -196,7 +196,7 @@ TYPE
   Timer* = POINTER TO TimerDesc;
   TimerDesc* = RECORD
     tmr: Al.Timer;
-    next: Timer (* See timerList below *)
+    next: Timer (** See timerList below *)
   END;
 
   Bitmap* = POINTER TO BitmapDesc;
@@ -206,31 +206,31 @@ TYPE
   END;
 
   Window* = POINTER TO WindowDesc;
-  WindowDesc* = RECORD(BitmapDesc)
-    display: Al.Display;
-    winW, winH: INTEGER; (* Window size in real pixels *)
-    initX, initY: INTEGER; (* Window position upon its creation *)
-    initW, initH: INTEGER; (* Window size upon its creation *)
-    fsW, fsH: INTEGER; (* Window size upon its creation *)
-    wantZoom: REAL; (* Window zoom upon its creation *)
-    lastX, lastY: INTEGER; (* Last mouse position in virtual pixels *)
-    lastW, lastH: INTEGER; (* Last stepped size in virtual pixels *)
-    zoom: INTEGER; (* See constants above; based on this rzoom/izoom is used *)
-    izoom: INTEGER; (* Window.izoom is used if Window.zoom = intZoom  *)
-    rzoom: REAL;    (* Window.rzoom is used if Window.zoom = realZoom *)
-    scaleOn: BOOLEAN; (* If TRUE, scaleX and scaleY are used *)
-    scaleX, scaleY: REAL; (* Deforms pixels on Flip, but zoom is for drawing *)
+  WindowDesc* = RECORD(BitmapDesc) (** This is a window. *)
+    display: Al.Display; (** Allegro Display *)
+    winW, winH: INTEGER; (** Window size in real pixels *)
+    initX*, initY: INTEGER; (** Window position upon its creation *)
+    initW, initH: INTEGER; (** Window size upon its creation *)
+    fsW, fsH*: INTEGER; (** Window size upon its creation *)
+    wantZoom: REAL; (** Window zoom upon its creation *)
+    lastX, lastY: INTEGER; (** Last mouse position in virtual pixels *)
+    lastW, lastH: INTEGER; (** Last stepped size in virtual pixels *)
+    zoom: INTEGER; (** See constants above; based on this rzoom/izoom is used *)
+    izoom: INTEGER; (** Window.izoom is used if Window.zoom = intZoom  *)
+    rzoom: REAL;    (** Window.rzoom is used if Window.zoom = realZoom *)
+    scaleOn: BOOLEAN; (** If TRUE, scaleX and scaleY are used *)
+    scaleX, scaleY: REAL; (** Deforms pixels on Flip, but zoom is for drawing *)
     sizeStepX, sizeStepY: INTEGER;
-    flipX, flipY, flipW, flipH: REAL; (* Where to flip the window bitmap to *)
-    iFlipX, iFlipY: INTEGER; (* Same as flipX, flipY, which are always whole *)
+    flipX, flipY, flipW, flipH: REAL; (** Where to flip the window bitmap to *)
+    iFlipX, iFlipY: INTEGER; (** Same as flipX, flipY, which are always whole *)
     options: SET;
-    pressedButtons: SET; (* Mouse buttons that are currenty being pressed *)
+    pressedButtons: SET; (** Mouse buttons that are currenty being pressed *)
     title: ARRAY 256 OF CHAR;
-    resized: BOOLEAN; (* TRUE if fullscreen mode has been toggled for window *)
+    resized: BOOLEAN; (** TRUE if fullscreen mode has been toggled for window *)
     showMouse: BOOLEAN;
     icons: ARRAY 64 OF Al.Bitmap;
     noficons: INTEGER;
-    next: Window (* See windowList below *)
+    next: Window (** See windowList below *)
   END;
 
   Event* = RECORD
@@ -239,11 +239,11 @@ TYPE
     x*, y*, z*, w*, h*: INTEGER;
     dx*, dy*, dz*, dw*: INTEGER;
     button*: INTEGER;
-    buttons*: SET; (* What mouse buttons are pressed *)
-    count*: LONGINT; (* Timer counter *)
-    key*: INTEGER; (* Physical key code *)
-    ch*: CHAR; (* Typed character for event.type = char *)
-    mod*: SET; (* Key modifiers *)
+    buttons*: SET; (** What mouse buttons are pressed *)
+    count*: LONGINT; (** Timer counter *)
+    key*: INTEGER; (** Physical key code *)
+    ch*: CHAR; (** Typed character for event.type = char *)
+    mod*: SET; (** Key modifiers *)
     repeat*: BOOLEAN;
     window*: Window;
     timer*: Timer;
@@ -278,12 +278,12 @@ TYPE
 VAR
   Done*: BOOLEAN;
 
-  settings: SET; (* See list of constants Settings above *)
-  wantW, wantH: INTEGER; (* Assigned in procedure Settings *)
-  wantZoom: REAL; (* Assigned in procedure SetZoom *)
-  wantSizeStepX, wantSizeStepY: INTEGER; (* Assigned in SetSizeStep *)
-  wantScaleX, wantScaleY: REAL; (* Assigned in procedure SetScale *)
-  wantTitle: ARRAY 256 OF CHAR; (* Assigned in procedure SetTitle *)
+  settings: SET; (** See list of constants Settings above *)
+  wantW, wantH: INTEGER; (** Assigned in procedure Settings *)
+  wantZoom: REAL; (** Assigned in procedure SetZoom *)
+  wantSizeStepX, wantSizeStepY: INTEGER; (** Assigned in SetSizeStep *)
+  wantScaleX, wantScaleY: REAL; (** Assigned in procedure SetScale *)
+  wantTitle: ARRAY 256 OF CHAR; (** Assigned in procedure SetTitle *)
   queue: Al.EventQueue;
   userEventSource: Al.EventSource;
   windowList: Window;
@@ -292,8 +292,8 @@ VAR
   target: Bitmap;
   black: Color;
 
-  charRead: CHAR; (* For KeyPressed and ReadKey *)
-  specialChar: BOOLEAN; (* For charRead *)
+  charRead: CHAR; (** For KeyPressed and ReadKey *)
+  specialChar: BOOLEAN; (** For charRead *)
 
 PROCEDURE Error(s: ARRAY OF CHAR);
 BEGIN Out.String(s); Out.Ln
@@ -1415,7 +1415,7 @@ BEGIN f := LoadFontInfo(fname);
   IF f # NIL THEN LoadFontBitmap(f) END
 RETURN f END LoadFont;
 
-(* Clipboard *)
+(** Clipboard **)
 
 PROCEDURE GetClipboardText*(win: Window; VAR s: ARRAY OF CHAR);
 TYPE P = POINTER [1] TO ARRAY 5000 OF SHORTCHAR;
@@ -1437,7 +1437,7 @@ END GetClipboardText;
 PROCEDURE Time*(): REAL;
 RETURN Al.get_time() END Time;
 
-(* Window Icons *)
+(** Window Icons **)
 
 PROCEDURE SetWindowIconsEx*(win: Window; icons: ARRAY OF Bitmap;
     from, len: INTEGER);
@@ -1462,7 +1462,7 @@ BEGIN
   Al.set_display_icon(win.display, icon.bmp)
 END SetWindowIcon;
 
-(* Init *)
+(** Init **)
 
 PROCEDURE InitScreen(): BOOLEAN;
 VAR opt: SET;

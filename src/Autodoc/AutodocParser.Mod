@@ -339,6 +339,7 @@ BEGIN
       IF o.comment[i] = tab THEN o.comment[i] := 0AX END;
       INC(i)
     END
+  ELSE ClearComments
   END
 END SaveAllComments;
 
@@ -351,8 +352,9 @@ END SaveAllComments;
     symbol of the object, or -1 if comment goes before it. *)
 PROCEDURE SaveComment(o: Object; lastLine: INTEGER);
 BEGIN
-  IF (o # NIL) & (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
-    IF o.comment[0] = 0X THEN AppendComment(o.comment)
+  IF (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
+    IF o = NIL THEN ClearComments (* RemoveLastComment ? *)
+    ELSIF o.comment[0] = 0X THEN AppendComment(o.comment)
     ELSIF docLine = lastLine THEN Strings.Append(0AX, o.comment);
       AppendComment(o.comment)
     END
@@ -996,13 +998,40 @@ BEGIN L := NewList(); stop := FALSE;
   Debug('ParseVars end')
 RETURN L END ParseVars;
 
+(** Sets C.isOrdinal to TRUE if C.value is a single character literal in
+    the form of 'x', "x" or 4AX or if C.value is an integer (dec, hex). *)
 PROCEDURE CheckOrdinal(C: Const);
 VAR x: CHAR;
+
+  PROCEDURE IsInt(s: ARRAY OF CHAR; VAR val: INTEGER): BOOLEAN;
+  VAR i, start: INTEGER;
+    minus, ok: BOOLEAN;
+    end: CHAR;
+  BEGIN val := 0; start := 0; minus := FALSE; ok := TRUE;
+    IF s[0] = '-' THEN minus := TRUE; start := 1
+    ELSIF s[0] = '+' THEN start := 1
+    END;
+    i := start;
+    WHILE IsHex(s[i]) DO INC(i) END; end := s[i];
+    IF ((end = 'X') OR (end = 'H')) & (s[i + 1] = 0X) THEN i := 0;
+      WHILE s[i] # end DO val := val * 16 + FromHex(s[i]); INC(i) END
+    ELSIF s[i] = 0X THEN i := 0;
+      WHILE s[i] # end DO val := val * 10 + ORD(s[i]) - ORD('0'); INC(i) END
+    ELSE ok := FALSE
+    END;
+    IF minus THEN val := -val END
+  RETURN ok & (s[0] # 0X) END IsInt;
+
 BEGIN
+  Out.String('CHECK ORDINAL [');
+  Out.String(C.value);
+  Out.String(']');
+  Out.Ln;
   IF ~C.isOrdinal THEN x := C.value[0];
     (* Literal char 'x' or "x" *)
     IF ((x = '"') OR (x = "'")) & (C.value[1] # 0X) & (C.value[2] = x) THEN
       C.isOrdinal := TRUE; C.intVal := ORD(C.value[1])
+    ELSIF IsInt(C.value, C.intVal) THEN C.isOrdinal := TRUE
     END
   END
 END CheckOrdinal;
