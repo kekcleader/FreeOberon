@@ -6,16 +6,16 @@ CONST
   defLang = 'en';
   defPal = 'default';
 
-  (** Color Array Indices
-       Every const is a background color and
-      every (const + 1) is a foreground color **)
+  (** Color Array Indices **)
+  (* Every const is a background color and
+     every (const + 1) is a foreground color *)
   main      =  0; (** Main backgrund color and main foreground color *)
   head      =  2; (** Header/footer color *)
   head2     =  4; (** Header secondary text color (bg also used as fg) *)
   tab       =  6; (** Main table color *)
   tabRow    =  8; (** Highlighted rows (or columns) *)
   tabHead   = 10; (** Table header color *)
-  title     = 12; (** Group title color **)
+  title     = 12; (** Group title color *)
   high      = 14; (** bg - highlighted text color, fg - string text color *)
   box       = 16; (** bg - group title shadow, fg - table border color *)
   comment   = 18; (** bg - comment parenthesis, fg - comment text color *)
@@ -166,6 +166,11 @@ BEGIN
     IF marks THEN Write('<span class="mark">(*</span> ') END;
     WHILE c # 0X DO
       IF c = 0AX THEN WriteLn(''); WriteLn('</p>'); WriteLn('<p>')
+      ELSIF c = '<' THEN Texts.WriteString(W, '&lt;')
+      ELSIF c = '>' THEN Texts.WriteString(W, '&gt;')
+      ELSIF c = '&' THEN Texts.WriteString(W, '&amp;')
+      ELSIF c = '"' THEN Texts.WriteString(W, '&quot;')
+      ELSIF c = "'" THEN Texts.WriteString(W, '&#39;')
       ELSIF (c = '-') & (s[i + 1] = '-') THEN
         Texts.WriteString(W, '&mdash;'); INC(i)
       ELSE Texts.Write(W, c)
@@ -531,32 +536,26 @@ BEGIN
   WriteLn('</body></html>')
 END Footer;
 
+PROCEDURE PrintSection(L: P.List; name: ARRAY OF CHAR);
+VAR s: ARRAY 64 OF CHAR;
+BEGIN
+  IF (L # NIL) & (L.first # NIL) &
+     (~(L.first IS P.Group) OR (L.first(P.Group).first # NIL))
+  THEN Lang.Get(name, s); BigTitle(s); PrintList(L, 0, FALSE)
+  END
+END PrintSection;
+
 PROCEDURE PrintModule(M: P.Module; indent: INTEGER; inlined: BOOLEAN);
 VAR s: ARRAY 64 OF CHAR;
 BEGIN
   showExportMarks := ~M.exportedOnly;
   Header(M.name);
   PrintComment(M, FALSE);
-  IF M.imports.first # NIL THEN
-    Lang.Get('import', s); BigTitle(s);
-    PrintList(M.imports, 0, FALSE)
-  END;
-  IF M.consts.first # NIL THEN
-    Lang.Get('constants', s); BigTitle(s);
-    PrintList(M.consts, 0, FALSE)
-  END;
-  IF M.types.first # NIL THEN
-    Lang.Get('types', s); BigTitle(s);
-    PrintList(M.types, 0, FALSE)
-  END;
-  IF M.vars.first # NIL THEN
-    Lang.Get('variables', s); BigTitle(s);
-    PrintList(M.vars, 0, FALSE)
-  END;
-  IF M.procedures.first # NIL THEN
-    Lang.Get('procedures', s); BigTitle(s);
-    PrintList(M.procedures, 0, FALSE)
-  END;
+  PrintSection(M.imports, 'import');
+  PrintSection(M.consts, 'const');
+  PrintSection(M.types, 'types');
+  PrintSection(M.vars, 'variables');
+  PrintSection(M.procedures, 'procedures');
   Footer
 END PrintModule;
 

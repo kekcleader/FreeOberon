@@ -87,11 +87,9 @@ BEGIN
   Out.String('  '); Out.String(s);
   Out.String(' { "-o" outputPath | "--lang" code | otherParam | sourceFile}');
   Out.Ln; Out.Ln;
-  Out.String('outputPath is a file name if a single source file is given.');
+  Out.String('outputPath may be a file name or a directory. It must be');
   Out.Ln;
-  Out.String('outputPath is a directory if many source files are given or if');
-  Out.Ln;
-  Out.String('           there is a slash in the end of outputPath.');
+  Out.String('           a directory if several source files are given.');
   Out.Ln;
   Out.String('Other parameters:'); Out.Ln;
   Out.String('-a ....... Get all objects, not only exported'); Out.Ln;
@@ -103,6 +101,7 @@ BEGIN
   Out.String('           Put extension in the end to change it: Program/.cp');
   Out.Ln;
   Out.String('--pal <pal> ..... Supply a named palette.'); Out.Ln;
+  Out.String('  <pal> is one of: default, bw, horror'); Out.Ln;
   Out.String('--debug ......... Produce debug output in console.'); Out.Ln;
   Out.Ln; Out.Ln;
   Out.String('Examples:'); Out.Ln;
@@ -211,7 +210,8 @@ BEGIN
     END;
     len := Strings.Length(out);
     IF (fnameCount > 1) OR
-       (len # 0) & ((out[len - 1] = '/') OR (out[len - 1] = '\'))
+       (len # 0) & ((out[len - 1] = '/') OR (out[len - 1] = '\')) OR
+       Dir.IsDir(out)
     THEN (* treat "-o" parameter as directory *)
       FOR i := 0 TO fnameCount - 1 DO
         HandleFileToDir(fnames[i], out)
