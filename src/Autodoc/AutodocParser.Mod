@@ -467,7 +467,7 @@ BEGIN
             tmp := writingDoc;
             ReadComment(FALSE);
             writingDoc := tmp
-          ELSE WriteDoc('('); Read
+          ELSE WriteDoc('(')
           END
         ELSE WriteDoc(c); Read
         END
@@ -1023,10 +1023,6 @@ VAR x: CHAR;
   RETURN ok & (s[0] # 0X) END IsInt;
 
 BEGIN
-  Out.String('CHECK ORDINAL [');
-  Out.String(C.value);
-  Out.String(']');
-  Out.Ln;
   IF ~C.isOrdinal THEN x := C.value[0];
     (* Literal char 'x' or "x" *)
     IF ((x = '"') OR (x = "'")) & (C.value[1] # 0X) & (C.value[2] = x) THEN
