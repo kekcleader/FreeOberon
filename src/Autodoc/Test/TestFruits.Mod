@@ -4,6 +4,8 @@ VAR F: Fruits.Fruit;
   s: Fruits.Name;
   L: Fruits.List;
   pmsg: Fruits.PrintMsg;
+  o: Oranges.Orange;
+  b: B.Banana;
 BEGIN
   L := Fruits.NewList();
 

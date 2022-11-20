@@ -1,9 +1,10 @@
-/FreeOberon
 /FreeOberon.exe
-/fob
+/FreeOberon
 /fob.exe
-Autodoc
+/fob
 Autodoc.exe
+Autodoc
+!Autodoc/
 _Build
 /src/Makefile
 /src/*.o
@@ -18,6 +19,7 @@ _Build
 !/Data/bin/mingw32/libexec/gcc/i686-w64-mingw32/6.2.0/*.dll
 .*.swp
 *.dll
+*.html
 
 /src/GTest
 /src/TTest

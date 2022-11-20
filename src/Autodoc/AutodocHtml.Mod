@@ -36,11 +36,51 @@ VAR
 
   (** Render Settings **)
   showExportMarks: BOOLEAN; (** Value is exactly ~M.exportedOnly *)
-  includeStyle: BOOLEAN;
+  externalStyle: BOOLEAN; (** If TRUE, do not put CSS code right in HTML *)
   lang: ARRAY 6 OF CHAR;
 
   palette: Palette; (** Current palette, is set by SetColors *)
   curColor: INTEGER; (** Current color for palette, used by SetColors *)
+
+(** Link Module List **)
+
+  (** Module names of modules to which <a href> will work *)
+  linkMods: ARRAY 256 OF ARRAY 64 OF CHAR;
+  linkModCount: INTEGER; (** Actual length of linkMods array *)
+
+(** Link Module List **)
+
+PROCEDURE AddLinkMod*(name: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN
+  IF P.debug THEN P.Debug('Adding link module name:'); P.Debug(name) END;
+  i := 0; (* Search for duplicate *)
+  WHILE (i # linkModCount) & (linkMods[i] # name) DO INC(i) END;
+  IF i = linkModCount THEN
+    IF linkModCount < LEN(linkMods) THEN
+      Strings.Copy(name, linkMods[linkModCount]); INC(linkModCount)
+    ELSE Out.String('Too many link module names.'); Out.Ln
+    END
+  END
+END AddLinkMod;
+
+(** Calls AddLinkMod, but removes the last period and everyting after it,
+    also removing the last '/' or '\' and everything before it. *)
+PROCEDURE AddLinkModExt*(name: ARRAY OF CHAR);
+VAR s: ARRAY 256 OF CHAR;
+  i, j: INTEGER;
+BEGIN i := Strings.Length(name);
+  REPEAT DEC(i) UNTIL (i = -1) OR (name[i] = '.');
+  IF i # -1 THEN j := i;
+    REPEAT DEC(j) UNTIL (j = -1) OR (name[j] = '/') OR (name[j] = '\');
+    Strings.Extract(name, j + 1, i - j - 1, s); AddLinkMod(s)
+  ELSE AddLinkMod(name)
+  END
+END AddLinkModExt;
+
+PROCEDURE ClearLinkMods*;
+BEGIN linkModCount := 0;
+END ClearLinkMods;
 
 (** Language **)
 
@@ -126,6 +166,8 @@ BEGIN
     IF marks THEN Write('<span class="mark">(*</span> ') END;
     WHILE c # 0X DO
       IF c = 0AX THEN WriteLn(''); WriteLn('</p>'); WriteLn('<p>')
+      ELSIF (c = '-') & (s[i + 1] = '-') THEN
+        Texts.WriteString(W, '&mdash;'); INC(i)
       ELSE Texts.Write(W, c)
       END;
       INC(i); c := s[i]
@@ -193,13 +235,22 @@ RETURN P.IsLetter(c) OR P.IsDec(c) END IsAlphanum;
 PROCEDURE PrintLink(s: ARRAY OF CHAR);
 VAR i, j, k: INTEGER;
   written: BOOLEAN;
+
+  (** First i characters of s is a module name that exists in linkMods *)
+  PROCEDURE P(s: ARRAY OF CHAR; len: INTEGER): BOOLEAN;
+  VAR i: INTEGER;
+    z: ARRAY 256 OF CHAR;
+  BEGIN Strings.Extract(s, 0, len, z); i := 0;
+    WHILE (i # linkModCount) & (linkMods[i] # z) DO INC(i) END
+  RETURN i # linkModCount END P;
+
 BEGIN written := FALSE;
   (* Find first '.', put in i *)
   i := 0; WHILE IsAlphanum(s[i]) DO INC(i) END;
   IF s[i] = '.' THEN (* First '.' found *)
     (* Find second '.', put in j *)
     j := i + 1; WHILE IsAlphanum(s[j]) DO INC(j) END;
-    IF s[j] = 0X THEN (* Second '.' not found, all is alphanum *)
+    IF (s[j] = 0X) & P(s, i) THEN (* No second '.', all is alphanum *)
       Write('<a href="');
       FOR k := 0 TO i - 1 DO WriteChar(s[k]) END;
       Write('.html#');
@@ -472,7 +523,7 @@ BEGIN
  
   WriteLn('</div></footer>');
 
-  IF includeStyle THEN WriteStyle
+  IF ~externalStyle THEN WriteStyle
   ELSE WriteLn('<link rel="stylesheet" href="style.css">')
   END;
   PrintPalette;
@@ -490,14 +541,22 @@ BEGIN
     Lang.Get('import', s); BigTitle(s);
     PrintList(M.imports, 0, FALSE)
   END;
-  Lang.Get('constants', s); BigTitle(s);
-  PrintList(M.consts, 0, FALSE);
-  Lang.Get('types', s); BigTitle(s);
-  PrintList(M.types, 0, FALSE);
-  Lang.Get('variables', s); BigTitle(s);
-  PrintList(M.vars, 0, FALSE);
-  Lang.Get('procedures', s); BigTitle(s);
-  PrintList(M.procedures, 0, FALSE);
+  IF M.consts.first # NIL THEN
+    Lang.Get('constants', s); BigTitle(s);
+    PrintList(M.consts, 0, FALSE)
+  END;
+  IF M.types.first # NIL THEN
+    Lang.Get('types', s); BigTitle(s);
+    PrintList(M.types, 0, FALSE)
+  END;
+  IF M.vars.first # NIL THEN
+    Lang.Get('variables', s); BigTitle(s);
+    PrintList(M.vars, 0, FALSE)
+  END;
+  IF M.procedures.first # NIL THEN
+    Lang.Get('procedures', s); BigTitle(s);
+    PrintList(M.procedures, 0, FALSE)
+  END;
   Footer
 END PrintModule;
 
@@ -518,9 +577,9 @@ END PrintObject0;
 
 (** Generator Settings **)
 
-PROCEDURE SetIncludeStyle*(inline: BOOLEAN);
-BEGIN includeStyle := inline
-END SetIncludeStyle;
+PROCEDURE SetExternalStyle*(yes: BOOLEAN);
+BEGIN externalStyle := yes
+END SetExternalStyle;
 
 PROCEDURE SetLang*(L: ARRAY OF CHAR);
 BEGIN Strings.Copy(L, lang)
@@ -552,7 +611,7 @@ PROCEDURE SetPalette*(pal: ARRAY OF CHAR);
 BEGIN ClearColors;
   IF pal = defPal THEN
     SetColors('FBC5AA-12365D,12365D-FFF,93B2D3-3D74AC,FFF-000');
-    SetColors('FFBF44-B91E0C,B91E0C-FFF,12365D-FFF,D95D27-277FC0');
+    SetColors('FFBF44-B91E0C,B91E0C-FFF,12365D-FFF,872D0C-277FC0');
     SetColors('00000024-808080,D1702C-2D5E90')
   ELSIF pal = 'horror' THEN
     SetColors('AFF-00C,C00-FE0,FA0-FCC,0C0-0F0,00F-0FF');
@@ -579,6 +638,6 @@ RETURN TRUE END Save;
 
 BEGIN
   PrintObject := PrintObject0;
-  includeStyle := FALSE;
+  externalStyle := FALSE;
   lang[0] := 0X; palette[0] := 0X
 END AutodocHtml.

@@ -22,16 +22,17 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
+  cursor: default;
 }
 
 a {
-  color: #D95D27;
+  color: #872D0C;
   color: var(--high-bg);
   text-decoration: none;
 }
 
 a:hover {
-  color: #FF4D00;
+  color: #FF0000;
 }
 
 .inner {

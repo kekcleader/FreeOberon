@@ -1,5 +1,5 @@
 MODULE Autodoc;
-IMPORT Files, Texts, Out, Args, Strings, Platform,
+IMPORT Files, Texts, Out, Args, Strings, Platform, Dir,
   P := AutodocParser, H := AutodocHtml;
 
 CONST
@@ -122,6 +122,46 @@ BEGIN
   END
 END FnameToHtml;
 
+(** Returns TRUE if s ends with with. *)
+PROCEDURE EndsWith(s, with: ARRAY OF CHAR): BOOLEAN;
+VAR i, j: INTEGER;
+BEGIN
+  i := 0; WHILE s[i] # 0X DO INC(i) END;
+  j := 0; WHILE with[j] # 0X DO INC(j) END;
+  IF i >= j THEN
+    REPEAT DEC(i); DEC(j) UNTIL (j = -1) OR (s[i] # with[j])
+  END
+RETURN j = -1 END EndsWith;
+
+(** s can be in form of 'Dir', 'Dir/' or 'Dir/*.cp' *)
+PROCEDURE ParseLinkDir(s: ARRAY OF CHAR);
+VAR r: Dir.Rec;
+  z: ARRAY 256 OF CHAR; (* Copy of s *)
+  ext: ARRAY 32 OF CHAR; (* Custom file extension, i.e. '.Mod' *)
+  extLen, i: INTEGER;
+  ok: BOOLEAN;
+BEGIN Strings.Copy(s, z); ok := TRUE; ext := '.Mod';
+  i := 0; WHILE (z[i] # 0X) & ~((z[i] = '/') & (z[i + 1] = '.')) DO INC(i) END;
+  IF z[i] # 0X THEN
+    IF z[i + 2] # 0X THEN
+      Strings.Extract(z, i + 1, LEN(ext), ext);
+      z[i] := 0X
+    END
+  END;
+  extLen := Strings.Length(ext);
+  IF Dir.IsDir(z) THEN
+    Dir.First(r, z);
+    WHILE ~r.eod DO
+      IF (r.name[0] # '.') & EndsWith(r.name, ext) THEN
+        Strings.Copy(r.name, z);
+        z[Strings.Length(z) - extLen] := 0X;
+        H.AddLinkMod(z)
+      END;
+      Dir.Next(r)
+    END
+  END
+END ParseLinkDir;
+
 PROCEDURE Do;
 VAR i, len: INTEGER;
   out, s: ARRAY 256 OF CHAR;
@@ -132,18 +172,21 @@ BEGIN
     Usage
   ELSE
     out[0] := 0X; i := 1; fnameCount := 0;
+    H.ClearLinkMods;
     WHILE i <= Args.Count DO
       Args.Get(i, s);
       IF s = '-o' THEN (* Output file or dir *)
         IF i < Args.Count THEN INC(i); Args.Get(i, out) END
+      ELSIF s = '-L' THEN (* Link directory *)
+        IF i < Args.Count THEN INC(i); Args.Get(i, s); ParseLinkDir(s) END
       ELSIF s = '-a' THEN (* All *)
         P.SetExportedOnly(FALSE)
       ELSIF s = '-k' THEN (* Keep module aliases *)
         P.SetKeepAliases(TRUE)
       ELSIF s = '--debug' THEN
         P.SetDebug(TRUE)
-      ELSIF (s = '--include-style') OR (s = '-i') THEN
-        H.SetIncludeStyle(TRUE)
+      ELSIF (s = '--external-style') OR (s = '-e') THEN
+        H.SetExternalStyle(TRUE)
       ELSIF s = '--pal' THEN
         IF i < Args.Count THEN INC(i); Args.Get(i, s); H.SetPalette(s) END
       ELSIF s = '--lang' THEN (* Output language *)
@@ -151,6 +194,7 @@ BEGIN
       ELSE (* On of the file names with Oberon modules *)
         IF fnameCount < LEN(fnames) THEN
           Strings.Copy(s, fnames[fnameCount]);
+          H.AddLinkModExt(s);
           INC(fnameCount)
         END
       END;
