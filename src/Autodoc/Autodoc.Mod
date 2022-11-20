@@ -85,7 +85,7 @@ BEGIN
   Out.String(' by Arthur Yefimov and others.'); Out.Ln;
   Out.String('Usage:'); Out.Ln; Args.Get(0, s);
   Out.String('  '); Out.String(s);
-  Out.String(' { "-o" outputPath | "--lang" code | "-a" | "-k" | sourceFile}');
+  Out.String(' { "-o" outputPath | "--lang" code | otherParam | sourceFile}');
   Out.Ln; Out.Ln;
   Out.String('outputPath is a file name if a single source file is given.');
   Out.Ln;
@@ -93,8 +93,17 @@ BEGIN
   Out.Ln;
   Out.String('           there is a slash in the end of outputPath.');
   Out.Ln;
-  Out.String('-a ....... get All objects, not only exported'); Out.Ln;
-  Out.String('-k ....... Keep module aliases');
+  Out.String('Other parameters:'); Out.Ln;
+  Out.String('-a ....... Get all objects, not only exported'); Out.Ln;
+  Out.String('-k ....... Keep module import aliases'); Out.Ln;
+  Out.String('--external-style   or'); Out.Ln;
+  Out.String('-e ....... Do not put CSS in HTML, link with style.css'); Out.Ln;
+  Out.String('-L ....... Add a directory with modules to link to in HTML.');
+  Out.Ln;
+  Out.String('           Put extension in the end to change it: Program/.cp');
+  Out.Ln;
+  Out.String('--pal <pal> ..... Supply a named palette.'); Out.Ln;
+  Out.String('--debug ......... Produce debug output in console.'); Out.Ln;
   Out.Ln; Out.Ln;
   Out.String('Examples:'); Out.Ln;
   Out.String('  '); Out.String(s);
