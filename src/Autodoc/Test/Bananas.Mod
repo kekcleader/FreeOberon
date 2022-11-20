@@ -26,7 +26,7 @@ BEGIN
 END GetNameHandler;
 
 (** Обработчик сообщений. Обрабатывает некоторые сообщения,
-    остальныче передаёт в Fruits.FruitHandler.
+    остальные передаёт в Fruits.FruitHandler.
     
     Вызывается процедурой Fruits.Handle через f.do(f, ...) *)
 PROCEDURE BananaHandler*(f: Fr.Fruit; VAR msg: Fr.Message);

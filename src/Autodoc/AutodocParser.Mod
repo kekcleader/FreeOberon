@@ -370,11 +370,11 @@ BEGIN
   IF ~R.eof THEN Files.ReadChar(R, c); INC(col) ELSE c := 0X END
 END Read;
 
-PROCEDURE IsLetter(x: CHAR): BOOLEAN;
+PROCEDURE IsLetter*(x: CHAR): BOOLEAN;
 RETURN ('a' <= x) & (x <= 'z') OR ('A' <= x) & (x <= 'Z') OR (x = '_')
 END IsLetter;
 
-PROCEDURE IsDec(x: CHAR): BOOLEAN;
+PROCEDURE IsDec*(x: CHAR): BOOLEAN;
 RETURN ('0' <= x) & (x <= '9') END IsDec;
 
 PROCEDURE IsHex(x: CHAR): BOOLEAN;

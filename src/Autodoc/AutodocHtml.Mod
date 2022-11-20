@@ -186,6 +186,30 @@ BEGIN
   WriteLn('</article>')
 END CloseGroup;
 
+PROCEDURE IsAlphanum(c: CHAR): BOOLEAN;
+RETURN P.IsLetter(c) OR P.IsDec(c) END IsAlphanum;
+
+(** Write s, but maybe add <a href> to another module *)
+PROCEDURE PrintLink(s: ARRAY OF CHAR);
+VAR i, j, k: INTEGER;
+  written: BOOLEAN;
+BEGIN written := FALSE;
+  (* Find first '.', put in i *)
+  i := 0; WHILE IsAlphanum(s[i]) DO INC(i) END;
+  IF s[i] = '.' THEN (* First '.' found *)
+    (* Find second '.', put in j *)
+    j := i + 1; WHILE IsAlphanum(s[j]) DO INC(j) END;
+    IF s[j] = 0X THEN (* Second '.' not found, all is alphanum *)
+      Write('<a href="');
+      FOR k := 0 TO i - 1 DO WriteChar(s[k]) END;
+      Write('.html#');
+      FOR k := i + 1 TO j - 1 DO WriteChar(s[k]) END;
+      Write('">'); Write(s); Write('</a>'); written := TRUE
+    END
+  END;
+  IF ~written THEN Write(s) END
+END PrintLink;
+
 PROCEDURE PrintIndent(n: INTEGER);
 BEGIN
   WHILE n > 0 DO Write('&nbsp; '); DEC(n) END
@@ -219,11 +243,11 @@ END PrintOrdinalConst;
 
 PROCEDURE PrintConst(C: P.Const; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
-  WriteLn ('<article class="object const">');
+  Write   ('<article class="object const" id="'); Write(C.name); WriteLn('">');
   WriteLn ('  <div class="def">');
   Write   ('    <span class="name">'); Write(C.name);
   Write   ('</span>'); WriteExport(C); WriteLn(' =');
-  Write   ('    <span class="value">'); WriteExpr(C.value); WriteLn('</span>;');
+  Write('    <span class="value">'); WriteExpr(C.value); WriteLn('</span>;');
   WriteLn ('  </div>');
   PrintComment(C, FALSE);
   WriteLn ('</article>')
@@ -234,7 +258,8 @@ VAR o: P.Object;
   ordinalConsts: BOOLEAN;
 BEGIN
   IF (L # NIL) & (L.first # NIL) THEN
-    ordinalConsts := (L IS P.Group) & L(P.Group).ordinalConsts;
+    ordinalConsts := (L IS P.Group) & L(P.Group).ordinalConsts &
+                     (L.first # L.last);
     IF L.comment[0] # 0X THEN OpenGroup(L.comment, ordinalConsts) END;
     o := L.first;
     WHILE o # NIL DO
@@ -276,7 +301,7 @@ BEGIN tmp := isLastItem; isLastItem := FALSE;
     Write(' &nbsp;</span></span>');
     PrintComment(v, TRUE);
   ELSE
-    WriteLn ('<article class="object var">');
+    Write   ('<article class="object var" id="'); Write(v.name); WriteLn('">');
     WriteLn ('  <div class="def">');
     Write   ('    <span class="name">'); Write(v.name);
     WriteExport(v); WriteLn('</span>:');
@@ -292,13 +317,13 @@ PROCEDURE PrintType(T: P.Type; indent: INTEGER; inlined: BOOLEAN);
 VAR x: P.Object;
 BEGIN
   IF inlined THEN
-    IF T.form = P.namedType THEN Write(T.name)
+    IF T.form = P.namedType THEN PrintLink(T.name)
     ELSIF T.form = P.arrayType THEN Write('ARRAY ');
       IF T.len[0] # 0X THEN Write(T.len); Write(' ') END;
       Write('OF '); PrintObject(T.base, indent, TRUE)
     ELSIF T.form = P.recordType THEN Write('RECORD');
       IF T.base # NIL THEN Write('(<span class="record-base">');
-        Write(T.base.name); Write('</span>)')
+        PrintLink(T.base.name); Write('</span>)')
       END;
       x := T.fields.first;
       IF x # NIL THEN WriteLn('<span class="record-fields">') END;
@@ -326,7 +351,7 @@ BEGIN
       END
     END
   ELSE
-    WriteLn ('<article class="object type">');
+    Write('<article class="object type" id="'); Write(T.name); WriteLn('">');
     WriteLn ('  <div class="def">');
     Write   ('    <span class="name">'); Write(T.name); Write('</span>');
     WriteExport(T); WriteLn(' =');
@@ -341,7 +366,8 @@ END PrintType;
 PROCEDURE PrintProcedure(p: P.Procedure; indent: INTEGER; inlined: BOOLEAN);
 VAR x: P.Object;
 BEGIN
-  WriteLn ('<article class="object procedure">');
+  Write   ('<article class="object procedure" id="');
+  Write(p.name); WriteLn('">');
   WriteLn ('  <div class="def">');
   WriteLn ('    PROCEDURE');
   Write   ('    <span class="name">'); Write(p.name);
