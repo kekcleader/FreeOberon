@@ -158,7 +158,10 @@ VAR
   doc: LongStr; (** Currently saved documentation comment *)
   docLen: INTEGER; (** Actual length of doc *)
   docLine: INTEGER; (** Line where the last doc-comment started *)
-  curTitle: Str; (** Title of the current group of comments *)
+  (** Title of the current group of comments.
+      A special value of '-' means an empty title. Assigned by ReadComment.
+      Used by NewGroup and UpdateCurGroup. Reset by Parse* procedures. *)
+  curTitle: Str;
   
   PrintObject: PROCEDURE (o: Object; indent: INTEGER; inlined: BOOLEAN);
   ParseType: PROCEDURE (docObj: Object): Type;
@@ -290,15 +293,13 @@ END MarkEnd;
 
 (** Remove all comments from doc *)
 PROCEDURE ClearComments;
-BEGIN doc[0] := 0X; docLen := 0; docLine := -1
-END ClearComments;
-
-(** If doc is not empty, remove the first comment (until the 1st tab or 0X) *)
-PROCEDURE RemoveLastComment;
 BEGIN
-  WHILE (docLen # 0) & (doc[docLen] # tab) DO DEC(docLen) END;
-  doc[docLen] := 0X
-END RemoveLastComment;
+  Out.String('Clear Comments'); Out.Ln;
+  Out.String('doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
+
+  doc[0] := 0X; docLen := 0; docLine := -1
+END ClearComments;
 
 (** Comments **)
 
@@ -317,13 +318,26 @@ BEGIN
   END
 END AppendComment;
 
-(** Get text of the last comment *)
+(** If doc is not empty, remove the first comment (until the 1st tab or 0X) *)
+PROCEDURE RemoveLastComment;
+BEGIN
+  WHILE (docLen # 0) & (doc[docLen] # tab) DO DEC(docLen) END;
+  doc[docLen] := 0X
+END RemoveLastComment;
+
+(** Get text of the last comment, but only before the first 0AX in it *)
 PROCEDURE GetLastComment(VAR comment: ARRAY OF CHAR);
 VAR L, i, j: INTEGER;
 BEGIN
+  Out.String('Get Last Comment'); Out.Ln;
+  Out.String('doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
+
   IF docLen # 0 THEN
     L := docLen; WHILE (L # -1) & (doc[L] # tab) DO DEC(L) END;
-    Strings.Extract(doc, L + 1, docLen - L - 1, comment)
+    i := L; REPEAT INC(i) UNTIL (doc[i] = 0X) OR (doc[i] = '|');
+    Strings.Extract(doc, L + 1, i - L - 1, comment);
+    Strings.Delete(doc, L + 1, i - L)
   ELSE comment[0] := 0X
   END
 END GetLastComment;
@@ -332,6 +346,10 @@ END GetLastComment;
 PROCEDURE SaveAllComments(o: Object);
 VAR i: INTEGER;
 BEGIN
+  Out.String('Save All Comments'); Out.Ln;
+  Out.String('doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
+
   IF o # NIL THEN
     Strings.Copy(doc, o.comment); ClearComments;
     i := 0;
@@ -344,16 +362,20 @@ BEGIN
 END SaveAllComments;
 
 (** Stores the first comment from global variable doc in the given object o,
-    but does that only if doc is not empty and if o does not yet have a comment.
-    Also does that anyway if lastLine = -1 or if it is equal to the line where
-    the comment started.
-     The last comment in doc is from start of doc till the first tab character.
+    but does that only if doc is not empty and if o does not yet have a
+    comment. Also does that anyway if lastLine = -1 or if it is equal to the
+    line where the comment started.
+     The first comment in doc spans from 0 till the first tab or 0X character.
      Parameter lastLine should be equal to the line number of the last syntax
-    symbol of the object, or -1 if comment goes before it. *)
+    symbol of the object, or -1 if attempting to save a pre-comment. *)
 PROCEDURE SaveComment(o: Object; lastLine: INTEGER);
 BEGIN
+  Out.String('Save Comment'); Out.Ln;
+  Out.String('doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
+
   IF (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
-    IF o = NIL THEN ClearComments (* RemoveLastComment ? *)
+    IF o = NIL THEN (*ClearComments*) (*!FIXME RemoveLastComment ? *)
     ELSIF o.comment[0] = 0X THEN AppendComment(o.comment)
     ELSIF docLine = lastLine THEN Strings.Append(0AX, o.comment);
       AppendComment(o.comment)
@@ -493,7 +515,7 @@ BEGIN
     INC(docLen); doc[docLen] := 0X;
     IF title THEN
       IF doc[0] = 0X THEN curTitle := '-'
-      ELSE curTitle[0] := 0X; GetLastComment(curTitle); RemoveLastComment
+      ELSE curTitle[0] := 0X; GetLastComment(curTitle)
       END
     END
   END
@@ -570,6 +592,11 @@ BEGIN
       IF c = '.' THEN Read; sym := upto ELSE sym := period END
     ELSIF c = '(' THEN Read;
       IF c = '*' THEN ReadComment(TRUE) ELSE sym := lparen END
+
+      ;Out.String('====After Read Comment'); Out.Ln;
+      Out.String('    doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+      Out.String('    ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
+
     ELSIF c = ')' THEN Read; sym := rparen
     ELSIF c = '[' THEN Read; sym := lbrak
     ELSIF c = ']' THEN Read; sym := rbrak
@@ -593,7 +620,16 @@ RETURN L END NewList;
 
 PROCEDURE NewGroup(): List;
 VAR G: Group;
-BEGIN NEW(G); Strings.Copy(curTitle, G.comment); G.ordinalConsts := FALSE
+  i: INTEGER;
+BEGIN NEW(G); G.comment[0] := 0X; G.ordinalConsts := FALSE;
+  i := 0; WHILE (curTitle[i] # 0X) & (curTitle[i] # '|') DO INC(i) END;
+  IF curTitle[i] # 0X THEN
+    Strings.Extract(curTitle, 0, i, G.name);
+    Strings.Extract(curTitle, i + 1, LEN(G.comment), G.comment)
+  ELSE
+    Strings.Copy(curTitle, G.name);
+    G.comment[0] := 0X
+  END
 RETURN G END NewGroup;
 
 (** Returns object with the minimum name from a non-empty list L *)
@@ -646,13 +682,19 @@ BEGIN IF L.last # o THEN RemoveFromList(L, o); AddToList(L, o) END
 END MoveToEndOfList;
 
 (** If L is empty, creates a group with title = curTitle in it.
-    If L is not empty and last group's title is not curTitle,
+     If L is not empty and last group's title is not curTitle,
     finds it in L and moves it to the last position.
-    If it is not found, creates a new group in the end of L. *)
+     If it is not found, creates a new group in the end of L with
+    title = curTitle. *)
 PROCEDURE UpdateCurGroup(L: List);
 VAR x: Object;
 BEGIN x := L.first;
-  WHILE (x # NIL) & (x.comment # curTitle) DO x := x.next END;
+
+  Out.String('Update Cur Group'); Out.Ln;
+  Out.String('doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
+
+  WHILE (x # NIL) & (x.name # curTitle) DO x := x.next END;
   IF x = NIL THEN x := NewGroup(); AddToList(L, x)
   ELSE MoveToEndOfList(L, x)
   END
@@ -1308,7 +1350,7 @@ RETURN x END FindMin;
 PROCEDURE GroupCheckOrdinalConsts(G: Group);
 VAR x: Object;
 BEGIN
-  IF (G.first # NIL) & (G.first IS Const) THEN x := G.first;
+  IF (G.name[0] # 0X) & (G.first # NIL) & (G.first IS Const) THEN x := G.first;
     WHILE (x # NIL) & x(Const).isOrdinal DO x := x.next END;
     G.ordinalConsts := x = NIL
   ELSE G.ordinalConsts := FALSE
@@ -1320,12 +1362,9 @@ VAR x: Object;
   L: List;
   ordinal: BOOLEAN;
 BEGIN
-  Debug('SortGroup begin');
   IF G.first # NIL THEN L := NewList();
     GroupCheckOrdinalConsts(G);
-    Debug('SortGroup before WHILE');
     WHILE G.first # NIL DO
-    Debug('SortGroup WHILE iteration');
       x := FindMin(G, G.ordinalConsts);
       RemoveFromList(G, x);
       AddToList(L, x)
@@ -1342,7 +1381,7 @@ BEGIN
     common := NIL; x := L.first;
     WHILE x # NIL DO
       SortGroup(x(Group));
-      IF x.comment = '-' THEN common := x(Group) END;
+      IF x.name = '-' THEN common := x(Group) END;
       x := x.next
     END;
     IF (common # NIL) & (common # L.first) THEN

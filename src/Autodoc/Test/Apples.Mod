@@ -38,9 +38,9 @@ CONST
   (** Общие постоянные **)
 
   (** Start amount of apples. Used in Reset *)
-  startApples =  0;
+  startApples = 0;
 
-  maxApples*  =  5; (** Maximum amount of apples*)
+  maxApples*  = 5; (** Maximum amount of apples*)
   maxSeeds*   = 3; (** Currently not in use *)
 
   (** Качество яблока **)

@@ -2,13 +2,13 @@ MODULE AutodocHtml;
 IMPORT Texts, Out, Strings, P := AutodocParser, Env, Lang := SimpleLangs;
 
 CONST
-  styleFname = 'Data/style.css';
-  defLang = 'en';
-  defPal = 'default';
+  styleFname = 'Data/style.css'; (** Where to take stylesheet from *)
+  defLang = 'en'; (** Default language code. Lang files are in Data/Lang/ *)
+  defPal = 'default'; (** Default palette name. *)
 
   (** Color Array Indices **)
-  (* Every const is a background color and
-     every (const + 1) is a foreground color *)
+  (** Every const is a background color and
+      every (const + 1) is a foreground color *)
   main      =  0; (** Main backgrund color and main foreground color *)
   head      =  2; (** Header/footer color *)
   head2     =  4; (** Header secondary text color (bg also used as fg) *)
@@ -28,9 +28,12 @@ TYPE
 VAR
   PrintObject: PROCEDURE (o: P.Object; indent: INTEGER; inlined: BOOLEAN);
 
-  TX: Texts.Text;
-  W: Texts.Writer;
-  
+  (** HTML File Output
+      |
+      This is to output HTML **)
+  TX: Texts.Text; (** Text object of generated HTML file *)
+  W: Texts.Writer; (** Writer on TX *)
+
   isLastItem: BOOLEAN;
   isLastListItem: BOOLEAN;
 
@@ -202,13 +205,21 @@ END WriteStyle;
 
 (** HTML Printing Procedures **)
 
-PROCEDURE OpenGroup(title: ARRAY OF CHAR; ordinalConsts: BOOLEAN);
+PROCEDURE PrintComment(o: P.Object; marks: BOOLEAN);
+BEGIN
+  Write('<section class="comment">');
+  WriteParagraphs(o.comment, marks);
+  WriteLn('</section>')
+END PrintComment;
+
+PROCEDURE OpenGroup(G: P.Group; ordinalConsts: BOOLEAN);
 VAR s: ARRAY 256 OF CHAR;
 BEGIN
   WriteLn('<article class="group">');
   Write('<h3 class="group-title">');
-  IF title # '-' THEN Write(title) END;
+  IF G.name # '-' THEN Write(G.name) END;
   WriteLn('</h3>');
+  PrintComment(G, FALSE);
   IF ordinalConsts THEN
     WriteLn('<div class="ordinal-consts">');
     WriteLn('<table>');
@@ -271,13 +282,6 @@ BEGIN
   WHILE n > 0 DO Write('&nbsp; '); DEC(n) END
 END PrintIndent;
 
-PROCEDURE PrintComment(o: P.Object; marks: BOOLEAN);
-BEGIN
-  Write('<section class="comment">');
-  WriteParagraphs(o.comment, marks);
-  WriteLn('</section>')
-END PrintComment;
-
 PROCEDURE PrintImport(I: P.Import; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
   Write('<span class="import">');
@@ -316,7 +320,9 @@ BEGIN
   IF (L # NIL) & (L.first # NIL) THEN
     ordinalConsts := (L IS P.Group) & L(P.Group).ordinalConsts &
                      (L.first # L.last);
-    IF L.comment[0] # 0X THEN OpenGroup(L.comment, ordinalConsts) END;
+    IF (L IS P.Group) & (L.name[0] # 0X) THEN
+      OpenGroup(L(P.Group), ordinalConsts)
+    END;
     o := L.first;
     WHILE o # NIL DO
       IF ordinalConsts THEN PrintOrdinalConst(o(P.Const))
@@ -326,7 +332,9 @@ BEGIN
       END;
       o := o.next
     END;
-    IF L.comment[0] # 0X THEN CloseGroup(ordinalConsts) END
+    IF (L IS P.Group) & (L.name[0] # 0X) THEN
+      CloseGroup(ordinalConsts)
+    END
   END
 END PrintList;
 
@@ -552,7 +560,7 @@ BEGIN
   Header(M.name);
   PrintComment(M, FALSE);
   PrintSection(M.imports, 'import');
-  PrintSection(M.consts, 'const');
+  PrintSection(M.consts, 'constants');
   PrintSection(M.types, 'types');
   PrintSection(M.vars, 'variables');
   PrintSection(M.procedures, 'procedures');
