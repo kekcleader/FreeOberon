@@ -52,7 +52,6 @@ CONST
   eot     = 70;
 
   (** Forms of Types **)
-
   undefType*     = 0;
   namedType*     = 1;
   recordType*    = 2;
@@ -62,10 +61,11 @@ CONST
 
   (** Values of Param.passed **)
   byValue* = 0;
-  byVar*   = 1;
+  byVar*   = 1; (** When a formal parameter has VAR, IN or OUT before it *)
 
-  (** Comment separator **)
-  tab = 9X;
+  (** Comment separators **)
+  tab  = 9X;  (** Separates two special comments *)
+  vtab = 0BX; (** Separates two comments that related to different objects *)
 
 TYPE
   Str* = ARRAY 256 OF CHAR;
@@ -174,6 +174,20 @@ VAR
   
   (** Debug **)
   debug*: BOOLEAN;
+
+PROCEDURE OutDoc;
+VAR i: INTEGER;
+BEGIN
+  Out.String('[');Out.Int(docLen, 0);Out.String(']');
+  i := 0;
+  WHILE i # docLen DO
+    IF doc[i] = tab THEN Out.String('[tab]')
+    ELSIF doc[i] = vtab THEN Out.String('[vtab]')
+    ELSE Out.Char(doc[i])
+    END;
+    INC(i)
+  END
+END OutDoc;
 
 (** Parsing Parameters **)
 
@@ -295,7 +309,7 @@ END MarkEnd;
 PROCEDURE ClearComments;
 BEGIN
   Out.String('Clear Comments'); Out.Ln;
-  Out.String('doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
   Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 
   doc[0] := 0X; docLen := 0; docLine := -1
@@ -303,7 +317,11 @@ END ClearComments;
 
 (** Comments **)
 
-(** Append a comment to the end of doc (tab is separator) *)
+(** Append a comment from doc (tab is separator) *)
+
+(** Append the first comment from global variable doc to the the given string.
+     If vertical tab exists in doc, the first comment spans from doc[0] till
+    the first vertical tab, otherwise till the first tab or 0X character. *)
 PROCEDURE AppendComment(VAR comment: ARRAY OF CHAR);
 VAR L, i, j: INTEGER;
 BEGIN
@@ -313,8 +331,8 @@ BEGIN
     comment[j] := doc[i]; INC(i); INC(j)
   END;
   comment[j] := 0X;
-  IF doc[L] = 0X THEN doc[0] := 0X; docLen := 0
-  ELSE Strings.Delete(doc, 0, L + 1); DEC(docLen, L)
+  IF doc[L] = 0X THEN ClearComments
+  ELSE Strings.Delete(doc, 0, L + 1); DEC(docLen, L + 1)
   END
 END AppendComment;
 
@@ -325,21 +343,27 @@ BEGIN
   doc[docLen] := 0X
 END RemoveLastComment;
 
-(** Get text of the last comment, but only before the first 0AX in it *)
+(** Put text of the last comment in var-par comment, remove it from doc.
+    If so, put in its place in doc the character vtab instead of tab. *)
 PROCEDURE GetLastComment(VAR comment: ARRAY OF CHAR);
 VAR L, i, j: INTEGER;
 BEGIN
-  Out.String('Get Last Comment'); Out.Ln;
-  Out.String('doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('Get Last Comment BEGIN'); Out.Ln;
+  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
   Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 
-  IF docLen # 0 THEN
-    L := docLen; WHILE (L # -1) & (doc[L] # tab) DO DEC(L) END;
-    i := L; REPEAT INC(i) UNTIL (doc[i] = 0X) OR (doc[i] = '|');
-    Strings.Extract(doc, L + 1, i - L - 1, comment);
-    Strings.Delete(doc, L + 1, i - L)
+  IF docLen # 0 THEN L := docLen;
+    WHILE (L # -1) & (doc[L] # tab) & (doc[L] # vtab) DO DEC(L) END;
+    Strings.Extract(doc, L + 1, docLen - L - 1, comment);
+    IF L # -1 THEN doc[L] := vtab; doc[L + 1] := 0X; docLen := L + 1
+    ELSE ClearComments
+    END
   ELSE comment[0] := 0X
   END
+
+  ;Out.String('Get Last Comment END'); Out.Ln;
+  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 END GetLastComment;
 
 (** Join all comments and attach them to o *)
@@ -347,7 +371,7 @@ PROCEDURE SaveAllComments(o: Object);
 VAR i: INTEGER;
 BEGIN
   Out.String('Save All Comments'); Out.Ln;
-  Out.String('doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
   Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 
   IF o # NIL THEN
@@ -362,21 +386,19 @@ BEGIN
 END SaveAllComments;
 
 (** Stores the first comment from global variable doc in the given object o,
-    but does that only if doc is not empty and if o does not yet have a
-    comment. Also does that anyway if lastLine = -1 or if it is equal to the
-    line where the comment started.
-     The first comment in doc spans from 0 till the first tab or 0X character.
-     Parameter lastLine should be equal to the line number of the last syntax
-    symbol of the object, or -1 if attempting to save a pre-comment. *)
+    but does that only if o does not yet have a comment or if lastLine = -1 or
+    if lastLine is equal to the line where the comment started (= docLine).
+     Parameter lastLine should be equal to the line number of the last symbol
+    of the declaration (the semicolon), or -1 when saving a pre-comment.
+     See AppendComment for more info on what "the first comment" means. *)
 PROCEDURE SaveComment(o: Object; lastLine: INTEGER);
 BEGIN
   Out.String('Save Comment'); Out.Ln;
-  Out.String('doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
   Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 
-  IF (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
-    IF o = NIL THEN (*ClearComments*) (*!FIXME RemoveLastComment ? *)
-    ELSIF o.comment[0] = 0X THEN AppendComment(o.comment)
+  IF (o # NIL) & (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
+    IF o.comment[0] = 0X THEN AppendComment(o.comment)
     ELSIF docLine = lastLine THEN Strings.Append(0AX, o.comment);
       AppendComment(o.comment)
     END
@@ -514,6 +536,7 @@ BEGIN
     END;
     INC(docLen); doc[docLen] := 0X;
     IF title THEN
+      Out.Ln;Out.String('TITLE------------------------');Out.Ln;;;
       IF doc[0] = 0X THEN curTitle := '-'
       ELSE curTitle[0] := 0X; GetLastComment(curTitle)
       END
@@ -594,7 +617,7 @@ BEGIN
       IF c = '*' THEN ReadComment(TRUE) ELSE sym := lparen END
 
       ;Out.String('====After Read Comment'); Out.Ln;
-      Out.String('    doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+      Out.String('    doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
       Out.String('    ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 
     ELSIF c = ')' THEN Read; sym := rparen
@@ -685,18 +708,43 @@ END MoveToEndOfList;
      If L is not empty and last group's title is not curTitle,
     finds it in L and moves it to the last position.
      If it is not found, creates a new group in the end of L with
-    title = curTitle. *)
+    title = curTitle.
+     If a group is created or moved, saves comments in the group. If there is
+    more then one comment, leaves the last one in doc. If there is a single
+    comment (no tabs in doc), does not touch it in case its closing star
+    is on the same line or exactly one line above the current line. *)
 PROCEDURE UpdateCurGroup(L: List);
 VAR x: Object;
-BEGIN x := L.first;
+  save: BOOLEAN;
+  i: INTEGER;
+BEGIN x := L.first; save := TRUE;
 
   Out.String('Update Cur Group'); Out.Ln;
-  Out.String('doc="'); Out.String(doc); Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
   Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 
   WHILE (x # NIL) & (x.name # curTitle) DO x := x.next END;
   IF x = NIL THEN x := NewGroup(); AddToList(L, x)
-  ELSE MoveToEndOfList(L, x)
+    ;Out.String('GROUP NOT FOUND '); Out.String(curTitle);Out.Ln;
+  ELSIF x.next # NIL THEN MoveToEndOfList(L, x)
+    ;Out.String('MOVE TO END OF LIST'); Out.Ln;
+  ELSE save := FALSE
+  END;
+
+  IF save & (docLen # 0) THEN
+    Out.String('[[[[[SAVE COMMENT]]]]]'); Out.Int(docLen, 10); Out.Ln;
+    i := docLen - 1;
+    WHILE (i # -1) & (doc[i] # tab) DO DEC(i) END;
+    IF i # -1 THEN (* More than one comment - leave the last *)
+      Out.String('  More than one'); Out.Ln;
+      doc[i] := 0X; Strings.Append(doc, x.comment); doc[i] := tab;
+      Strings.Delete(doc, 0, i + 1); DEC(docLen, i + 1)
+    ELSIF line - docLine(*!FIXME docEndLine?*) > 1 THEN (* Single comment *)
+      Out.String('  Exactly one - taking it'); Out.Ln;
+      Strings.Append(doc, x.comment); ClearComments
+    ELSE
+      Out.String('  Exactly one - leaving it'); Out.Ln;
+    END
   END
 END UpdateCurGroup;
 
@@ -1083,7 +1131,12 @@ BEGIN curTitle := '-';
     WHILE sym = ident DO
       Debug(id);
       UpdateCurGroup(M.consts);
-      C := NewConst(); SaveComment(C, -1); GetSym; CheckExportMark(C);
+      C := NewConst();
+
+      (* Сохранить все комментарии *)
+      SaveComment(C, -1);
+
+      GetSym; CheckExportMark(C);
       IF C.exported OR ~exportedOnly THEN
         AddToList(M.consts.last(List), C)
       END;
@@ -1094,6 +1147,9 @@ BEGIN curTitle := '-';
       Debug('End ParseConstExpr');
       line2 := line;
       IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
+
+      (* СОХРАНИТЬ ВСЕ КОММЕНТАРИИ ДО [ВЕРТ.ТАБА, если он есть, иначе до ТАБА],
+         ЕСЛИ (line2 совпадает) ИЛИ (у C нет комментария) *)
       SaveComment(C, line2)
     END
   END
