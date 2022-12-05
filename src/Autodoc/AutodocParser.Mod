@@ -317,15 +317,16 @@ END ClearComments;
 
 (** Comments **)
 
-(** Append a comment from doc (tab is separator) *)
-
 (** Append the first comment from global variable doc to the the given string.
      If vertical tab exists in doc, the first comment spans from doc[0] till
     the first vertical tab, otherwise till the first tab or 0X character. *)
 PROCEDURE AppendComment(VAR comment: ARRAY OF CHAR);
 VAR L, i, j: INTEGER;
 BEGIN
-  L := 0; WHILE (doc[L] # 0X) & (doc[L] # tab) DO INC(L) END;
+  L := 0; WHILE (doc[L] # 0X) & (doc[L] # vtab) DO INC(L) END;
+  IF doc[L] = 0X THEN (** Vertical tab not found, find first tab *)
+    L := 0; WHILE (doc[L] # 0X) & (doc[L] # tab) DO INC(L) END
+  END;
   j := Strings.Length(comment); i := 0;
   WHILE (i # L) & (j < LEN(comment) - 1) DO
     comment[j] := doc[i]; INC(i); INC(j)
@@ -336,15 +337,8 @@ BEGIN
   END
 END AppendComment;
 
-(** If doc is not empty, remove the first comment (until the 1st tab or 0X) *)
-PROCEDURE RemoveLastComment;
-BEGIN
-  WHILE (docLen # 0) & (doc[docLen] # tab) DO DEC(docLen) END;
-  doc[docLen] := 0X
-END RemoveLastComment;
-
-(** Put text of the last comment in var-par comment, remove it from doc.
-    If so, put in its place in doc the character vtab instead of tab. *)
+(** Put text of the last comment to varpar comment, remove it from doc,
+    put in its place in doc the character vtab instead of tab. *)
 PROCEDURE GetLastComment(VAR comment: ARRAY OF CHAR);
 VAR L, i, j: INTEGER;
 BEGIN
@@ -355,7 +349,8 @@ BEGIN
   IF docLen # 0 THEN L := docLen;
     WHILE (L # -1) & (doc[L] # tab) & (doc[L] # vtab) DO DEC(L) END;
     Strings.Extract(doc, L + 1, docLen - L - 1, comment);
-    IF L # -1 THEN doc[L] := vtab; doc[L + 1] := 0X; docLen := L + 1
+    WHILE (L # -1) & ((doc[L] = tab) OR (doc[L] = vtab)) DO DEC(L) END;
+    IF L # -1 THEN doc[L + 1] := vtab; doc[L + 2] := 0X; docLen := L + 2
     ELSE ClearComments
     END
   ELSE comment[0] := 0X
@@ -378,7 +373,7 @@ BEGIN
     Strings.Copy(doc, o.comment); ClearComments;
     i := 0;
     WHILE o.comment[i] # 0X DO
-      IF o.comment[i] = tab THEN o.comment[i] := 0AX END;
+      IF o.comment[i] < ' ' THEN o.comment[i] := 0AX END;
       INC(i)
     END
   ELSE ClearComments
@@ -393,7 +388,7 @@ END SaveAllComments;
      See AppendComment for more info on what "the first comment" means. *)
 PROCEDURE SaveComment(o: Object; lastLine: INTEGER);
 BEGIN
-  Out.String('Save Comment'); Out.Ln;
+  Out.String('Save Comment BEGIN'); Out.Ln;
   Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
   Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 
@@ -403,6 +398,10 @@ BEGIN
       AppendComment(o.comment)
     END
   END
+
+  ;Out.String('Save Comment END'); Out.Ln;
+  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
+  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 END SaveComment;
 
 (** Scanner **)
@@ -498,7 +497,7 @@ BEGIN
   IF c = '*' THEN Read; (* Second star *)
     IF c = ')' THEN Read; closed := TRUE
     ELSIF toplevel THEN writingDoc := TRUE;
-      IF docLen # 0 THEN
+      IF (docLen # 0) & (doc[docLen - 1] # tab) & (doc[docLen - 1] # vtab) THEN
         doc[docLen] := tab; INC(docLen)
       END
     END
@@ -704,6 +703,18 @@ PROCEDURE MoveToEndOfList(L: List; o: Object);
 BEGIN IF L.last # o THEN RemoveFromList(L, o); AddToList(L, o) END
 END MoveToEndOfList;
 
+(** Append s to dst, replacing tabs with 0AX *)
+PROCEDURE JoinAndAppend(s: ARRAY OF CHAR; VAR dst: ARRAY OF CHAR);
+VAR i, j: INTEGER;
+BEGIN
+  i := 0; j := Strings.Length(dst);
+  WHILE (s[i] # 0X) & (j < LEN(dst) - 1) DO
+    IF s[i] < ' ' THEN dst[j] := 0AX ELSE dst[j] := s[i] END;
+    INC(i); INC(j)
+  END;
+  dst[j] := 0X
+END JoinAndAppend;
+
 (** If L is empty, creates a group with title = curTitle in it.
      If L is not empty and last group's title is not curTitle,
     finds it in L and moves it to the last position.
@@ -737,11 +748,11 @@ BEGIN x := L.first; save := TRUE;
     WHILE (i # -1) & (doc[i] # tab) DO DEC(i) END;
     IF i # -1 THEN (* More than one comment - leave the last *)
       Out.String('  More than one'); Out.Ln;
-      doc[i] := 0X; Strings.Append(doc, x.comment); doc[i] := tab;
+      doc[i] := 0X; JoinAndAppend(doc, x.comment); doc[i] := tab;
       Strings.Delete(doc, 0, i + 1); DEC(docLen, i + 1)
     ELSIF line - docLine(*!FIXME docEndLine?*) > 1 THEN (* Single comment *)
       Out.String('  Exactly one - taking it'); Out.Ln;
-      Strings.Append(doc, x.comment); ClearComments
+      JoinAndAppend(doc, x.comment); ClearComments
     ELSE
       Out.String('  Exactly one - leaving it'); Out.Ln;
     END
@@ -1316,8 +1327,8 @@ VAR name: Str;
   forward: BOOLEAN;
 BEGIN curTitle := '-';
   WHILE sym = procedure DO UpdateCurGroup(M.procedures);
-    GetSym; NEW(P); InitObject(P); forward := FALSE;
-    P.params := NewList(); P.exported := FALSE;
+    NEW(P); InitObject(P); SaveComment(P, -1); GetSym;
+    forward := FALSE; P.params := NewList(); P.exported := FALSE;
     IF (sym = minus) OR (sym = arrow) THEN GetSym; forward := TRUE
     ELSIF sym = times THEN GetSym
     END;
