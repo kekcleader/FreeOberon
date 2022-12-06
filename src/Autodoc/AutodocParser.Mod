@@ -157,11 +157,13 @@ VAR
   writingDoc: BOOLEAN; (** TRUE when inside a doc comment *)
   doc: LongStr; (** Currently saved documentation comment *)
   docLen: INTEGER; (** Actual length of doc *)
-  docLine: INTEGER; (** Line where the last doc-comment started *)
+  docLine: INTEGER; (** Line where the first doc-comment in doc started *)
+  docEndLine: INTEGER; (** Line where the last doc-comment in doc ended *)
   (** Title of the current group of comments.
       A special value of '-' means an empty title. Assigned by ReadComment.
       Used by NewGroup and UpdateCurGroup. Reset by Parse* procedures. *)
   curTitle: Str;
+  titleNotUsed: BOOLEAN; (** To clear curTitle between decl sections *)
   
   PrintObject: PROCEDURE (o: Object; indent: INTEGER; inlined: BOOLEAN);
   ParseType: PROCEDURE (docObj: Object): Type;
@@ -175,6 +177,7 @@ VAR
   (** Debug **)
   debug*: BOOLEAN;
 
+(*
 PROCEDURE OutDoc;
 VAR i: INTEGER;
 BEGIN
@@ -188,6 +191,7 @@ BEGIN
     INC(i)
   END
 END OutDoc;
+*)
 
 (** Parsing Parameters **)
 
@@ -307,12 +311,7 @@ END MarkEnd;
 
 (** Remove all comments from doc *)
 PROCEDURE ClearComments;
-BEGIN
-  Out.String('Clear Comments'); Out.Ln;
-  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
-  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
-
-  doc[0] := 0X; docLen := 0; docLine := -1
+BEGIN doc[0] := 0X; docLen := 0; docLine := -1; docEndLine := -1
 END ClearComments;
 
 (** Comments **)
@@ -342,10 +341,6 @@ END AppendComment;
 PROCEDURE GetLastComment(VAR comment: ARRAY OF CHAR);
 VAR L, i, j: INTEGER;
 BEGIN
-  Out.String('Get Last Comment BEGIN'); Out.Ln;
-  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
-  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
-
   IF docLen # 0 THEN L := docLen;
     WHILE (L # -1) & (doc[L] # tab) & (doc[L] # vtab) DO DEC(L) END;
     Strings.Extract(doc, L + 1, docLen - L - 1, comment);
@@ -355,20 +350,12 @@ BEGIN
     END
   ELSE comment[0] := 0X
   END
-
-  ;Out.String('Get Last Comment END'); Out.Ln;
-  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
-  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 END GetLastComment;
 
 (** Join all comments and attach them to o *)
 PROCEDURE SaveAllComments(o: Object);
 VAR i: INTEGER;
 BEGIN
-  Out.String('Save All Comments'); Out.Ln;
-  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
-  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
-
   IF o # NIL THEN
     Strings.Copy(doc, o.comment); ClearComments;
     i := 0;
@@ -388,20 +375,12 @@ END SaveAllComments;
      See AppendComment for more info on what "the first comment" means. *)
 PROCEDURE SaveComment(o: Object; lastLine: INTEGER);
 BEGIN
-  Out.String('Save Comment BEGIN'); Out.Ln;
-  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
-  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
-
   IF (o # NIL) & (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
     IF o.comment[0] = 0X THEN AppendComment(o.comment)
     ELSIF docLine = lastLine THEN Strings.Append(0AX, o.comment);
       AppendComment(o.comment)
     END
   END
-
-  ;Out.String('Save Comment END'); Out.Ln;
-  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
-  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
 END SaveComment;
 
 (** Scanner **)
@@ -519,6 +498,7 @@ BEGIN
         IF c # ')' THEN WriteDoc('*') END
       END
     UNTIL (c = 0X) OR (c = ')');
+    IF toplevel THEN docEndLine := line END;
     IF c = ')' THEN Read END
   END;
   IF writingDoc & (docLen # 0) THEN
@@ -535,7 +515,7 @@ BEGIN
     END;
     INC(docLen); doc[docLen] := 0X;
     IF title THEN
-      Out.Ln;Out.String('TITLE------------------------');Out.Ln;;;
+      titleNotUsed := TRUE;
       IF doc[0] = 0X THEN curTitle := '-'
       ELSE curTitle[0] := 0X; GetLastComment(curTitle)
       END
@@ -614,11 +594,6 @@ BEGIN
       IF c = '.' THEN Read; sym := upto ELSE sym := period END
     ELSIF c = '(' THEN Read;
       IF c = '*' THEN ReadComment(TRUE) ELSE sym := lparen END
-
-      ;Out.String('====After Read Comment'); Out.Ln;
-      Out.String('    doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
-      Out.String('    ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
-
     ELSIF c = ')' THEN Read; sym := rparen
     ELSIF c = '[' THEN Read; sym := lbrak
     ELSIF c = ']' THEN Read; sym := rbrak
@@ -729,32 +704,21 @@ VAR x: Object;
   save: BOOLEAN;
   i: INTEGER;
 BEGIN x := L.first; save := TRUE;
-
-  Out.String('Update Cur Group'); Out.Ln;
-  Out.String('doc="'); OutDoc; Out.String('"'); Out.Ln;(*!FIXME*)
-  Out.String('ttl="'); Out.String(curTitle); Out.String('"'); Out.Ln; Out.Ln;
-
   WHILE (x # NIL) & (x.name # curTitle) DO x := x.next END;
   IF x = NIL THEN x := NewGroup(); AddToList(L, x)
-    ;Out.String('GROUP NOT FOUND '); Out.String(curTitle);Out.Ln;
   ELSIF x.next # NIL THEN MoveToEndOfList(L, x)
-    ;Out.String('MOVE TO END OF LIST'); Out.Ln;
   ELSE save := FALSE
   END;
+  titleNotUsed := FALSE;
 
   IF save & (docLen # 0) THEN
-    Out.String('[[[[[SAVE COMMENT]]]]]'); Out.Int(docLen, 10); Out.Ln;
     i := docLen - 1;
     WHILE (i # -1) & (doc[i] # tab) DO DEC(i) END;
     IF i # -1 THEN (* More than one comment - leave the last *)
-      Out.String('  More than one'); Out.Ln;
       doc[i] := 0X; JoinAndAppend(doc, x.comment); doc[i] := tab;
       Strings.Delete(doc, 0, i + 1); DEC(docLen, i + 1)
-    ELSIF line - docLine(*!FIXME docEndLine?*) > 1 THEN (* Single comment *)
-      Out.String('  Exactly one - taking it'); Out.Ln;
+    ELSIF line - docEndLine > 1 THEN (* Single comment *)
       JoinAndAppend(doc, x.comment); ClearComments
-    ELSE
-      Out.String('  Exactly one - leaving it'); Out.Ln;
     END
   END
 END UpdateCurGroup;
@@ -1042,8 +1006,7 @@ BEGIN isOrdinal := FALSE; intVal := 0; i := 0; x := constExprBeginC;
     Files.Set(R, Files.Base(R), end); c := tmpC; GetSym
   END;
   WHILE (i # 1) & (s[i - 1] <= ' ') DO DEC(i) END;
-  s[i] := 0X;
-  IF debug THEN Out.String('['); Out.String(s); Out.String(']'); Out.Ln END
+  s[i] := 0X
 END ParseConstExpr;
 
 PROCEDURE ParseVars(isVarDecl: BOOLEAN): List;
@@ -1054,10 +1017,7 @@ VAR first, v: Var;
   T: Type;
   stop, added: BOOLEAN;
 BEGIN L := NewList(); stop := FALSE;
-  Debug('ParseVars begin');
-  WHILE ~stop & (sym = ident) DO
-    Debug('ParseVars inside WHILE');
-    Debug(id);
+  WHILE ~stop & (sym = ident) DO Debug(id);
     IF isVarDecl THEN UpdateCurGroup(L) END;
     first := NewVar(); SaveAllComments(first); GetSym; CheckExportMark(first);
     IF first.exported OR ~exportedOnly THEN
@@ -1096,7 +1056,6 @@ BEGIN L := NewList(); stop := FALSE;
     ELSE MarkExp(';')
     END
   END;
-  Debug('ParseVars end')
 RETURN L END ParseVars;
 
 (** Sets C.isOrdinal to TRUE if C.value is a single character literal in
@@ -1139,8 +1098,7 @@ VAR C: Const;
   isInt: BOOLEAN;
 BEGIN curTitle := '-';
   IF sym = const THEN GetSym;
-    WHILE sym = ident DO
-      Debug(id);
+    WHILE sym = ident DO Debug(id);
       UpdateCurGroup(M.consts);
       C := NewConst();
 
@@ -1153,9 +1111,7 @@ BEGIN curTitle := '-';
       END;
       constExprBeginPos := Files.Pos(R); constExprBeginC := c;
       IF sym = equals THEN GetSym ELSE MarkExp('=') END;
-      Debug('Begin ParseConstExpr');
       ParseConstExpr(C.value, C.isOrdinal, C.intVal); CheckOrdinal(C);
-      Debug('End ParseConstExpr');
       line2 := line;
       IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
 
@@ -1169,10 +1125,9 @@ END ParseConstDecl;
 PROCEDURE ParseTypeDecl(M: Module);
 VAR T: Type;
   line2: INTEGER;
-BEGIN curTitle := '-';
+BEGIN
   IF sym = type THEN GetSym;
-    WHILE sym = ident DO
-      Debug(id);
+    WHILE sym = ident DO Debug(id);
       UpdateCurGroup(M.types);
       T := NewType(namedType); SaveAllComments(T);
       Strings.Copy(id, T.name); GetSym; CheckExportMark(T);
@@ -1227,15 +1182,13 @@ PROCEDURE ParseRecordType(docObj: Object): Type;
 VAR T: Type;
   line2: INTEGER;
 BEGIN ASSERT(sym = record); line2 := line; GetSym;
-  Debug('ParseRecordType begin');
   T := NewType(recordType); CheckDirective(T);
   IF sym = lparen THEN GetSym; T.base := ParseNamedType();
     IF sym = rparen THEN GetSym ELSE MarkExp(')') END
   END;
   SaveComment(docObj, line2);
   T.fields := ParseVars(FALSE);
-  IF sym = end THEN GetSym ELSE MarkExp('END') END;
-  Debug('ParseRecordType end')
+  IF sym = end THEN GetSym ELSE MarkExp('END') END
 RETURN T END ParseRecordType;
 
 PROCEDURE ParsePointerType(docObj: Object): Type;
@@ -1325,7 +1278,8 @@ PROCEDURE ParseProcedureDecl(M: Module);
 VAR name: Str;
   P: Procedure;
   forward: BOOLEAN;
-BEGIN curTitle := '-';
+BEGIN
+  IF ~titleNotUsed THEN curTitle := '-' END;
   WHILE sym = procedure DO UpdateCurGroup(M.procedures);
     NEW(P); InitObject(P); SaveComment(P, -1); GetSym;
     forward := FALSE; P.params := NewList(); P.exported := FALSE;
@@ -1364,13 +1318,10 @@ END ParseVarDecl;
 
 PROCEDURE Declarations(M: Module);
 BEGIN
-  Debug('Begin Const Declarations');
+  titleNotUsed := TRUE;
   IF sym = const THEN ParseConstDecl(M) END;
-  Debug('Begin Type Declarations');
   IF sym = type THEN ParseTypeDecl(M) END;
-  Debug('Begin Var Declarations');
   IF sym = var THEN ParseVarDecl(M) END;
-  Debug('Begin Procedure Declarations');
   ParseProcedureDecl(M)
 END Declarations;
 
@@ -1477,7 +1428,6 @@ BEGIN NEW(M); InitObject(M); curModule := M;
   R := r; c := 0X; line := 1; col := 0; lastError := -1;
   objectIsExported := FALSE;
   Read; ClearComments; curTitle := '-'; GetSym;
-  Debug('Begin ParseModule');
   IF sym = module THEN GetSym;
     IF sym = lbrak THEN GetSym;
       IF (sym = ident) & (id = 'foreign') THEN M.foreign := TRUE END;
@@ -1490,14 +1440,11 @@ BEGIN NEW(M); InitObject(M); curModule := M;
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
     ParseImportList(M);
     SaveAllComments(M);
-    Debug('Begin Declarations');
     Declarations(M);
-    Debug('End Declarations');
     IF sym = begin THEN
       REPEAT GetSym UNTIL (sym = eot) OR (sym = end)
     END;
     ReachEndOf(M.name);
-    Debug('End of module');
     IF sym = ident THEN GetSym;
       IF sym # period THEN MarkExp('.') END
     ELSE (* sym = eot *) MarkEnd('Module', M.name)
@@ -1505,11 +1452,9 @@ BEGIN NEW(M); InitObject(M); curModule := M;
   ELSE MarkExp('MODULE')
   END;
   IF exportedOnly THEN CleanImportList(M) END;
-  Debug('Begin SortModule');
   IF lastError = -1 THEN SortModule(M)
   ELSE M := NIL; err := 'Error' (*!FIXME*)
-  END;
-  Debug('End ParseModule');
+  END
 RETURN M END ParseModule;
 
 BEGIN
