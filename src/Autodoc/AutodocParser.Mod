@@ -157,6 +157,7 @@ VAR
   writingDoc: BOOLEAN; (** TRUE when inside a doc comment *)
   doc: LongStr; (** Currently saved documentation comment *)
   docLen: INTEGER; (** Actual length of doc *)
+  docCol: INTEGER; (** Column of the 1st char of the 1st doc-comment in doc *)
   docLine: INTEGER; (** Line where the first doc-comment in doc started *)
   docEndLine: INTEGER; (** Line where the last doc-comment in doc ended *)
   (** Title of the current group of comments.
@@ -389,7 +390,10 @@ END SaveComment;
 PROCEDURE Read;
 BEGIN
   IF c = 0AX THEN INC(line); col := 0 END;
-  IF ~R.eof THEN Files.ReadChar(R, c); INC(col) ELSE c := 0X END
+  IF ~R.eof THEN Files.ReadChar(R, c); INC(col)
+    (*;Out.String('READ "'); Out.Char(c); Out.String('", col = ');
+    Out.Int(col, 0); Out.Ln*)
+  ELSE c := 0X END
 END Read;
 
 PROCEDURE IsLetter*(x: CHAR): BOOLEAN;
@@ -465,7 +469,10 @@ BEGIN
   END
 END WriteDoc;
 
-(** Recursive procedure to read (potentially nested) comments *)
+(** Recursive procedure to read (potentially nested) comments.
+     toplevel is TRUE only for the top-level comments, only the top-level
+    comments that are opened with two stars are being saved in doc.
+    The procedure is called at '*' that comes after '(' *)
 PROCEDURE ReadComment(toplevel: BOOLEAN);
 VAR closed, tmp: BOOLEAN;
   x: CHAR;
@@ -482,6 +489,9 @@ BEGIN
     END
   END;
   IF ~closed THEN
+    WHILE (c # 0X) & (c = ' ') DO Read END;
+    docCol := col;
+    Out.Char(c); Out.String('  DOC COL = '); Out.Int(docCol, 0); Out.Ln;;;;;;
     REPEAT
       WHILE (c # 0X) & (c # '*') DO
         IF c = '(' THEN Read;
@@ -978,17 +988,19 @@ END ConstructChar;
 
 (** Reads const expression character by character, beginning with the
     character at position constExprBeginPos and up to but not including
-    the next ';' comma, 'OF'. If end of text is reached, makes s empty.
+    the next ';', comma or 'OF'. If end of text is reached, makes s empty.
     Puts in s the string that has been read. Sets isOrdinal to TRUE if
-    the value is an integer number or a character literal, FALSE
-    otherwise. If isOrdinal becomes true, then the const value is being
-    cast to int and also stored in intVal. *)
+    the value is an integer number or a character literal, sets it to FALSE
+    otherwise. If isOrdinal becomes TRUE, then the copy of the const value is
+    cast to integer and stored in intVal. *)
 PROCEDURE ParseConstExpr(VAR s: ARRAY OF CHAR;
     VAR isOrdinal: BOOLEAN; VAR intVal: INTEGER);
 VAR start, end, i: INTEGER;
   x, tmpC: CHAR;
 BEGIN isOrdinal := FALSE; intVal := 0; i := 0; x := constExprBeginC;
   REPEAT end := Files.Pos(R); tmpC := c; GetSym
+    (* ;Out.String('REPEAT end='); Out.Int(end, 0);Out.String('  tmpC='); Out.Char(tmpC); Out.Ln;
+    Out.String('......----............');Out.Ln;*)
   UNTIL (sym = semicol) OR (sym = of) OR (sym = eot) OR (sym = comma);
   IF sym # eot THEN
     IF constExprBeginPos < end THEN
@@ -1003,7 +1015,11 @@ BEGIN isOrdinal := FALSE; intVal := 0; i := 0; x := constExprBeginC;
       UNTIL Files.Pos(R) >= end;
       IF i > 0 THEN DEC(i) END
     END;
-    Files.Set(R, Files.Base(R), end); c := tmpC; GetSym
+    (*Out.String('SETTING R to '); Out.Int(end, 0); Out.Char(tmpC); Out.Ln;
+    Out.String('..............................==.............');Out.Ln;*)
+    Files.Set(R, Files.Base(R), end); c := tmpC;
+    IF col # 0 THEN DEC(col) END;
+    GetSym
   END;
   WHILE (i # 1) & (s[i - 1] <= ' ') DO DEC(i) END;
   s[i] := 0X

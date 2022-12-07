@@ -1,5 +1,13 @@
 MODULE A;
-(** A module *)
+(** A module
+     Recursive procedure to read (potentially nested) comments.
+     toplevel is TRUE only for the top-level comments, only the top-level
+    comments that are opened with two stars are being saved in doc.
+
+    i and j are placed like so:
+        [HELLO WORLD0]    <-- 0 is a 0X
+         ^i         ^j
+    Then i and j are moved right and left respectively. *)
 IMPORT Out;
 
 CONST
@@ -8,7 +16,7 @@ CONST
   (** Числа от 0 до 2 *)
   (** Треугольник *)
   triangle* = 0;
-  box*      = 1; (** Квадрат *)
+  box*      = 35 + 27; (** Квадрат *)
   (** Круг *)
   circle*   = 2;
   conus*    = 3; (** Конус *)
