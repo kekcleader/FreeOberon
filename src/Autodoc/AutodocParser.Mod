@@ -157,7 +157,7 @@ VAR
   writingDoc: BOOLEAN; (** TRUE when inside a doc comment *)
   doc: LongStr; (** Currently saved documentation comment *)
   docLen: INTEGER; (** Actual length of doc *)
-  docCol: INTEGER; (** Column of the 1st char of the 1st doc-comment in doc *)
+  docCol: INTEGER; (** Column of the 1st non-space of 1st doc-comment in doc *)
   docLine: INTEGER; (** Line where the first doc-comment in doc started *)
   docEndLine: INTEGER; (** Line where the last doc-comment in doc ended *)
   (** Title of the current group of comments.
