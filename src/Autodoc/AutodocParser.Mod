@@ -520,8 +520,8 @@ BEGIN
       ELSE
         IF docNewLine THEN
           IF (col = docCol) OR (col = 0) THEN
-            IF pre THEN DocTrimRight; AppendDocChar(0AX)
-            ELSE EndPre; AppendDocChar(' ')
+            IF pre THEN DocTrimRight; EndPre; AppendDocChar(0AX)
+            ELSE AppendDocChar(' ')
             END
           ELSIF col = docCol + 1 THEN EndPre; AppendDocChar(0AX)
           ELSE DocTrimRight; AppendDocChar(0AX); BeginPre;

@@ -162,27 +162,42 @@ END WriteExport;
 PROCEDURE WriteParagraphs(s: ARRAY OF CHAR; marks: BOOLEAN);
 VAR i: INTEGER;
   c: CHAR;
+  closed, pre: BOOLEAN;
 BEGIN
-  i := 0; c := s[0];
+  i := 0; c := s[0]; pre := FALSE;
   IF c # 0X THEN
-    WriteLn('<p>');
+    WriteLn('<p>'); closed := FALSE;
     IF marks THEN Write('<span class="mark">(*</span> ') END;
     WHILE c # 0X DO
-      IF c = 0AX THEN WriteLn(''); WriteLn('</p>'); WriteLn('<p>')
-      ELSIF c = '<' THEN Texts.WriteString(W, '&lt;')
-      ELSIF c = '>' THEN Texts.WriteString(W, '&gt;')
-      ELSIF c = '&' THEN Texts.WriteString(W, '&amp;')
-      ELSIF c = '"' THEN Texts.WriteString(W, '&quot;')
-      ELSIF c = "'" THEN Texts.WriteString(W, '&#39;')
-      ELSIF (c = '-') & (s[i + 1] = '-') THEN
-        Texts.WriteString(W, '&mdash;'); INC(i)
-      ELSE Texts.Write(W, c)
+      IF c = 0AX THEN WriteLn('');
+        IF ~pre THEN WriteLn('</p>'); closed := TRUE END
+      ELSIF (c = '`') & (i < LEN(s) - 4) &
+            (s[i + 1] = '`') & (s[i + 2] = '`') & (pre OR (s[i + 3] = 0AX))
+      THEN
+        IF pre THEN WriteLn('</pre>'); closed := TRUE; pre := FALSE
+        ELSE
+          IF ~closed THEN WriteLn('</p>') END;
+          WriteLn('<pre>'); closed := FALSE; pre := TRUE
+        END;
+        INC(i, 3);
+        IF s[i - 1] = 0AX THEN INC(i) END
+      ELSE
+        IF closed THEN WriteLn('<p>'); closed := FALSE END;
+        IF c = '<' THEN Texts.WriteString(W, '&lt;')
+        ELSIF c = '>' THEN Texts.WriteString(W, '&gt;')
+        ELSIF c = '&' THEN Texts.WriteString(W, '&amp;')
+        ELSIF c = '"' THEN Texts.WriteString(W, '&quot;')
+        ELSIF c = "'" THEN Texts.WriteString(W, '&#39;')
+        ELSIF ~pre & (c = '-') & (s[i + 1] = '-') THEN
+          Texts.WriteString(W, '&mdash;'); INC(i)
+        ELSE Texts.Write(W, c)
+        END
       END;
       INC(i); c := s[i]
     END;
-    WriteLn('');
+    IF ~closed THEN WriteLn('') END;
     IF marks THEN Write(' <span class="mark">*)</span>') END;
-    WriteLn('</p>')
+    IF ~closed THEN WriteLn('</p>') END
   END
 END WriteParagraphs;
 

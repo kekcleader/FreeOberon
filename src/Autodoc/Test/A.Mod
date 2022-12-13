@@ -7,7 +7,15 @@ MODULE A;
     i and j are placed like so:
         [HELLO WORLD0]    <-- 0 is a 0X
          ^i         ^j
-    Then i and j are moved right and left respectively. *)
+    Then i and j are moved right and left respectively.
+     Ещё немного
+    такого же:
+      А Б В Г Д Е Ё
+        ^   ^   ^
+      ^   ^   ^   ^
+         птички
+
+  *)
 IMPORT Out;
 
 CONST
