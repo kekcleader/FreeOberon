@@ -180,22 +180,6 @@ VAR
   (** Debug **)
   debug*: BOOLEAN;
 
-(*
-PROCEDURE OutDoc;
-VAR i: INTEGER;
-BEGIN
-  Out.String('[');Out.Int(docLen, 0);Out.String(']');
-  i := 0;
-  WHILE i # docLen DO
-    IF doc[i] = tab THEN Out.String('[tab]')
-    ELSIF doc[i] = vtab THEN Out.String('[vtab]')
-    ELSE Out.Char(doc[i])
-    END;
-    INC(i)
-  END
-END OutDoc;
-*)
-
 (** Parsing Parameters **)
 
 PROCEDURE SetExportedOnly*(yes: BOOLEAN);
@@ -392,10 +376,7 @@ END SaveComment;
 PROCEDURE Read;
 BEGIN
   IF c = 0AX THEN INC(line); col := 0 END;
-  IF ~R.eof THEN Files.ReadChar(R, c); INC(col)
-    (*;Out.String('READ "'); Out.Char(c); Out.String('", col = ');
-    Out.Int(col, 0); Out.Ln*)
-  ELSE c := 0X END
+  IF ~R.eof THEN Files.ReadChar(R, c); INC(col) ELSE c := 0X END
 END Read;
 
 PROCEDURE IsLetter*(x: CHAR): BOOLEAN;
@@ -558,7 +539,6 @@ BEGIN
   IF ~closed THEN
     WHILE (c # 0X) & (c = ' ') DO Read END;
     docCol := col;
-    Out.Char(c); Out.String('  DOC COL = '); Out.Int(docCol, 0); Out.Ln;;;;;;
     REPEAT
       WHILE (c # 0X) & (c # '*') DO
         IF c = '(' THEN Read;
@@ -651,21 +631,6 @@ BEGIN q := c; len := 0; Read;
   sym := string
 END ReadString;
 
-PROCEDURE DOC;
-VAR i: INTEGER;
-BEGIN
-  Out.String('DOC = "');
-  i := 0;
-  WHILE doc[i] # 0X DO
-    IF doc[i] = 0AX THEN Out.String('[A]')
-    ELSIF doc[i] < ' ' THEN Out.Char('[');Out.Hex(ORD(doc[i]), 0);Out.Char(']')
-    ELSE Out.Char(doc[i])
-    END;
-    INC(i)
-  END;
-  Out.Char('"'); Out.Ln
-END DOC;
-
 PROCEDURE GetSym;
 VAR z: ARRAY 200 OF CHAR;
 BEGIN
@@ -686,7 +651,7 @@ BEGIN
     ELSIF c = '.' THEN Read;
       IF c = '.' THEN Read; sym := upto ELSE sym := period END
     ELSIF c = '(' THEN Read;
-      IF c = '*' THEN ReadComment(TRUE) ;DOC ELSE sym := lparen END
+      IF c = '*' THEN ReadComment(TRUE) ELSE sym := lparen END
     ELSIF c = ')' THEN Read; sym := rparen
     ELSIF c = '[' THEN Read; sym := lbrak
     ELSIF c = ']' THEN Read; sym := rbrak
@@ -1082,8 +1047,6 @@ VAR start, end, i: INTEGER;
   x, tmpC: CHAR;
 BEGIN isOrdinal := FALSE; intVal := 0; i := 0; x := constExprBeginC;
   REPEAT end := Files.Pos(R); tmpC := c; GetSym
-    (* ;Out.String('REPEAT end='); Out.Int(end, 0);Out.String('  tmpC='); Out.Char(tmpC); Out.Ln;
-    Out.String('......----............');Out.Ln;*)
   UNTIL (sym = semicol) OR (sym = of) OR (sym = eot) OR (sym = comma);
   IF sym # eot THEN
     IF constExprBeginPos < end THEN
@@ -1098,8 +1061,6 @@ BEGIN isOrdinal := FALSE; intVal := 0; i := 0; x := constExprBeginC;
       UNTIL Files.Pos(R) >= end;
       IF i > 0 THEN DEC(i) END
     END;
-    (*Out.String('SETTING R to '); Out.Int(end, 0); Out.Char(tmpC); Out.Ln;
-    Out.String('..............................==.............');Out.Ln;*)
     Files.Set(R, Files.Base(R), end); c := tmpC;
     IF col # 0 THEN DEC(col) END;
     GetSym
