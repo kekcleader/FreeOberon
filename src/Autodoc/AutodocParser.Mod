@@ -155,11 +155,13 @@ VAR
   ival: INTEGER;
 
   writingDoc: BOOLEAN; (** TRUE when inside a doc comment *)
+  docNewLine: BOOLEAN; (** 0AX reached and no non-spaces after it yet *)
   doc: LongStr; (** Currently saved documentation comment *)
   docLen: INTEGER; (** Actual length of doc *)
-  docCol: INTEGER; (** Column of the 1st non-space of 1st doc-comment in doc *)
+  docCol: INTEGER; (** Column of 1st non-space of 1st comment in doc, or -1 *)
   docLine: INTEGER; (** Line where the first doc-comment in doc started *)
   docEndLine: INTEGER; (** Line where the last doc-comment in doc ended *)
+  pre: BOOLEAN; (** TRUE when the current comment line is pre-formatted *)
   (** Title of the current group of comments.
       A special value of '-' means an empty title. Assigned by ReadComment.
       Used by NewGroup and UpdateCurGroup. Reset by Parse* procedures. *)
@@ -458,14 +460,78 @@ BEGIN
   END
 END ReadNumber;
 
+(** Добавляет литеру в конец doc по следующей схеме:
+     (был - что там на конце сейчас, доб - что добавляем, рез - результат)
+
+      был   доб  рез
+      ' '   ' '  ничего/замена
+      ' '   0AX  замена
+      0AX   ' '  ничего
+      0AX   0AX  ничего/замена       *)
+PROCEDURE AppendDocChar(x: CHAR);
+VAR p: CHAR;
+BEGIN
+  IF pre & (x = ' ') THEN doc[docLen] := x; INC(docLen)
+  ELSIF docLen # 0 THEN p := doc[docLen - 1];
+    IF p > ' ' THEN doc[docLen] := x; INC(docLen)
+    ELSIF (p # x) & (x = 0AX) THEN doc[docLen - 1] := x
+    END
+  END
+END AppendDocChar;
+
+PROCEDURE DocTrimRight;
+BEGIN
+  WHILE (docLen # 0) & (doc[docLen - 1] = ' ') DO DEC(docLen) END
+END DocTrimRight;
+
+PROCEDURE BeginPre;
+BEGIN
+  IF ~pre THEN
+    IF docLen < LEN(doc) - 11 THEN
+      doc[docLen] := '`'; INC(docLen); doc[docLen] := '`'; INC(docLen);
+      doc[docLen] := '`'; INC(docLen); doc[docLen] := 0AX; INC(docLen)
+    END;
+    pre := TRUE
+  END
+END BeginPre;
+
+PROCEDURE EndPre;
+BEGIN
+  IF pre THEN
+    IF docLen < LEN(doc) - 4 THEN
+      doc[docLen] := 0AX; INC(docLen); doc[docLen] := '`'; INC(docLen);
+      doc[docLen] := '`'; INC(docLen); doc[docLen] := '`'; INC(docLen)
+    END;
+    pre := FALSE
+  END
+END EndPre;
+
 (** Attach a character to the end of comment in global varaible doc *)
 PROCEDURE WriteDoc(c: CHAR);
+VAR i: INTEGER;
 BEGIN
-  IF writingDoc & (docLen < LEN(doc) - 1) &
-     ((c > ' ') OR (docLen # 0) & (doc[docLen - 1] > ' '))
-  THEN
-    IF c < ' ' THEN c := ' ' END;
-    doc[docLen] := c; INC(docLen)
+  IF writingDoc & (docLen < LEN(doc) - 1) THEN
+    IF c = 0AX THEN
+      IF ~docNewLine THEN docNewLine := TRUE
+      ELSE AppendDocChar(0AX)
+      END
+    ELSE
+      IF c <= ' ' THEN AppendDocChar(' ')
+      ELSE
+        IF docNewLine THEN
+          IF (col = docCol) OR (col = 0) THEN
+            IF pre THEN DocTrimRight; AppendDocChar(0AX)
+            ELSE EndPre; AppendDocChar(' ')
+            END
+          ELSIF col = docCol + 1 THEN EndPre; AppendDocChar(0AX)
+          ELSE DocTrimRight; AppendDocChar(0AX); BeginPre;
+            FOR i := 1 TO col - docCol DO AppendDocChar(' ') END
+          END;
+          docNewLine := FALSE
+        END;
+        doc[docLen] := c; INC(docLen)
+      END
+    END
   END
 END WriteDoc;
 
@@ -480,6 +546,7 @@ VAR closed, tmp: BOOLEAN;
 BEGIN
   IF toplevel & (docLen = 0) THEN docLine := line END;
   Read; closed := FALSE; writingDoc := FALSE;
+  docNewLine := FALSE; docCol := -1; pre := FALSE;
   IF c = '*' THEN Read; (* Second star *)
     IF c = ')' THEN Read; closed := TRUE
     ELSIF toplevel THEN writingDoc := TRUE;
@@ -530,7 +597,8 @@ BEGIN
       ELSE curTitle[0] := 0X; GetLastComment(curTitle)
       END
     END
-  END
+  END;
+  IF pre & writingDoc THEN EndPre END
 END ReadComment;
 
 (** Uses global var id to set global var sym.
@@ -583,6 +651,21 @@ BEGIN q := c; len := 0; Read;
   sym := string
 END ReadString;
 
+PROCEDURE DOC;
+VAR i: INTEGER;
+BEGIN
+  Out.String('DOC = "');
+  i := 0;
+  WHILE doc[i] # 0X DO
+    IF doc[i] = 0AX THEN Out.String('[A]')
+    ELSIF doc[i] < ' ' THEN Out.Char('[');Out.Hex(ORD(doc[i]), 0);Out.Char(']')
+    ELSE Out.Char(doc[i])
+    END;
+    INC(i)
+  END;
+  Out.Char('"'); Out.Ln
+END DOC;
+
 PROCEDURE GetSym;
 VAR z: ARRAY 200 OF CHAR;
 BEGIN
@@ -603,7 +686,7 @@ BEGIN
     ELSIF c = '.' THEN Read;
       IF c = '.' THEN Read; sym := upto ELSE sym := period END
     ELSIF c = '(' THEN Read;
-      IF c = '*' THEN ReadComment(TRUE) ELSE sym := lparen END
+      IF c = '*' THEN ReadComment(TRUE) ;DOC ELSE sym := lparen END
     ELSIF c = ')' THEN Read; sym := rparen
     ELSIF c = '[' THEN Read; sym := lbrak
     ELSIF c = ']' THEN Read; sym := rbrak
