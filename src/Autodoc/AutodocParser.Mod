@@ -1308,6 +1308,7 @@ VAR T: Type;
 BEGIN
   IF sym = array THEN T := ParseArrayType()
   ELSIF sym = ident THEN T := ParseNamedType()
+  ELSIF sym = procedure THEN T := ParseProcedureType()
   ELSE T := NIL; MarkExp('type')
   END
 RETURN T END ParseParamType0;

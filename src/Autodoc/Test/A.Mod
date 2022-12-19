@@ -52,4 +52,9 @@ BEGIN END P;
 PROCEDURE F*(): INTEGER;
 RETURN 5 END F;
 
+PROCEDURE Q*(a: INTEGER; b: PROCEDURE(x, y: INTEGER): REAL; c: CHAR);
+(** Процедура принимает число, процедуру и литеру *)
+BEGIN
+END Q;
+
 END A.
