@@ -11,6 +11,10 @@ CONST
 TYPE
   Module* = P.Module;
 
+VAR
+  indexTitle: ARRAY 256 OF CHAR;
+  indexComment: P.LongStr;
+
 PROCEDURE OpenFile(fname: ARRAY OF CHAR; VAR r: Files.Rider): BOOLEAN;
 VAR F: Files.File;
 BEGIN F := Files.Old(fname);
@@ -25,6 +29,10 @@ BEGIN
   IF OpenFile(in, r) THEN
     P.SetFname(in);
     module := P.ParseModule(r, err);
+    IF indexTitle[0] = 0X THEN Strings.Copy(module.name, indexTitle) END;
+    IF indexComment[0] = 0X THEN
+      Strings.Copy(module.comment, indexComment)
+    END;
     IF module # NIL THEN
       IF H.Save(module, out) THEN
         Out.String('## Created "'); Out.String(out);
@@ -69,10 +77,8 @@ BEGIN
     Strings.Append(delim, out)
   END;
   GetBaseName(in, name);
-  (*Out.String(' (name=');Out.String(name);Out.Ln;*)
   Strings.Append(name, out);
   Strings.Append('.html', out);
-  (*Out.String(in);Out.Ln;  Out.String('   -> ');Out.String(out);Out.Ln;*)
   HandleFile(in, out)
 END HandleFileToDir;
 
@@ -170,17 +176,38 @@ BEGIN Strings.Copy(s, z); ok := TRUE; ext := '.Mod';
   END
 END ParseLinkDir;
 
+PROCEDURE CreateIndex*(title, comment, out: ARRAY OF CHAR): BOOLEAN;
+VAR len: INTEGER;
+  s: ARRAY 4096 OF CHAR;
+  ok: BOOLEAN;
+BEGIN
+  Strings.Copy(out, s);
+  len := Strings.Length(s);
+  IF (len # 0) & (s[len - 1] # '/') & (s[len - 1] # '\') THEN
+    Strings.Append(delim, s)
+  END;
+  Strings.Append('index.html', s);
+
+  IF H.CreateIndex(title, comment, s) THEN
+    ok := TRUE;
+    Out.String('## Created "'); Out.String(s); Out.String('".'); Out.Ln
+  ELSE ok := FALSE
+  END
+RETURN ok END CreateIndex;
+
 PROCEDURE Do;
 VAR i, len: INTEGER;
   out, s: ARRAY 256 OF CHAR;
   fnames: ARRAY 64, 256 OF CHAR;
   fnameCount: INTEGER;
+  createIndex: BOOLEAN;
 BEGIN
   IF Args.Count = 0 THEN
     Usage
   ELSE
     out[0] := 0X; i := 1; fnameCount := 0;
-    H.ClearLinkMods;
+    indexTitle[0] := 0X; indexComment[0] := 0X;
+    H.ClearLinkMods; createIndex := TRUE;
     WHILE i <= Args.Count DO
       Args.Get(i, s);
       IF s = '-o' THEN (* Output file or dir *)
@@ -195,26 +222,34 @@ BEGIN
         P.SetDebug(TRUE)
       ELSIF (s = '--external-style') OR (s = '-e') THEN
         H.SetExternalStyle(TRUE)
+      ELSIF (s = '--no-index') OR (s = '-n') THEN
+        createIndex := FALSE
+      ELSIF (s = '--title') OR (s = '-t') THEN
+        IF i < Args.Count THEN INC(i); Args.Get(i, indexTitle); END
       ELSIF s = '--pal' THEN
         IF i < Args.Count THEN INC(i); Args.Get(i, s); H.SetPalette(s) END
       ELSIF s = '--lang' THEN (* Output language *)
         IF i < Args.Count THEN INC(i); Args.Get(i, s); H.SetLang(s) END
-      ELSE (* On of the file names with Oberon modules *)
+      ELSE (* One of the Oberon module file names *)
         IF fnameCount < LEN(fnames) THEN
-          Strings.Copy(s, fnames[fnameCount]);
-          H.AddLinkModExt(s);
-          INC(fnameCount)
+          Strings.Copy(s, fnames[fnameCount]); INC(fnameCount);
+          H.AddLinkModExt(s)
         END
       END;
       INC(i)
     END;
     len := Strings.Length(out);
-    IF (fnameCount > 1) OR
-       (len # 0) & ((out[len - 1] = '/') OR (out[len - 1] = '\')) OR
-       Dir.IsDir(out)
+    IF fnameCount = 0 THEN
+      Out.String('No files supplied.'); Out.Ln
+    ELSIF (fnameCount > 1) OR
+          (len # 0) & ((out[len - 1] = '/') OR (out[len - 1] = '\')) OR
+          Dir.IsDir(out)
     THEN (* treat "-o" parameter as directory *)
       FOR i := 0 TO fnameCount - 1 DO
         HandleFileToDir(fnames[i], out)
+      END;
+      IF createIndex & ~CreateIndex(indexTitle, indexComment, out) THEN
+        Out.String('Could not create an index file.'); Out.Ln
       END
     ELSE (* Single file given and "-o" is a file name *)
       IF out[0] = 0X THEN FnameToHtml(fnames[0], out) END;

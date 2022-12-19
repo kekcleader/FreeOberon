@@ -220,12 +220,28 @@ END WriteStyle;
 
 (** HTML Printing Procedures **)
 
-PROCEDURE PrintComment(o: P.Object; marks: BOOLEAN);
+PROCEDURE PrintComment(comment: P.LongStr; marks: BOOLEAN);
 BEGIN
   Write('<section class="comment">');
-  WriteParagraphs(o.comment, marks);
+  WriteParagraphs(comment, marks);
   WriteLn('</section>')
 END PrintComment;
+
+PROCEDURE PrintModIndex(showIndex: BOOLEAN);
+VAR i: INTEGER;
+  s: ARRAY 64 OF CHAR;
+BEGIN
+  WriteLn('<ul class="modules-index">');
+  IF showIndex THEN
+    Write('<li><a href="index.html">');
+    Lang.Get('indexLink', s); Write(s); WriteLn('</a></li>')
+  END;
+  FOR i := 0 TO linkModCount - 1 DO
+    Write('<li><a href="'); Write(linkMods[i]); Write('.html">');
+    Write(linkMods[i]); WriteLn('</a></li>')
+  END;
+  WriteLn('</ul>')
+END PrintModIndex;
 
 PROCEDURE OpenGroup(G: P.Group; ordinalConsts: BOOLEAN);
 VAR s: ARRAY 256 OF CHAR;
@@ -234,7 +250,7 @@ BEGIN
   Write('<h3 class="group-title">');
   IF G.name # '-' THEN Write(G.name) END;
   WriteLn('</h3>');
-  PrintComment(G, FALSE);
+  PrintComment(G.comment, FALSE);
   IF ordinalConsts THEN
     WriteLn('<div class="ordinal-consts">');
     WriteLn('<table>');
@@ -262,26 +278,25 @@ END CloseGroup;
 PROCEDURE IsAlphanum(c: CHAR): BOOLEAN;
 RETURN P.IsLetter(c) OR P.IsDec(c) END IsAlphanum;
 
+(** First i characters of s is a module name that exists in linkMods *)
+PROCEDURE IsLinkedMod(s: ARRAY OF CHAR; len: INTEGER): BOOLEAN;
+VAR i: INTEGER;
+z: ARRAY 256 OF CHAR;
+BEGIN Strings.Extract(s, 0, len, z); i := 0;
+WHILE (i # linkModCount) & (linkMods[i] # z) DO INC(i) END
+RETURN i # linkModCount END IsLinkedMod;
+
 (** Write s, but maybe add <a href> to another module *)
 PROCEDURE PrintLink(s: ARRAY OF CHAR);
 VAR i, j, k: INTEGER;
   written: BOOLEAN;
-
-  (** First i characters of s is a module name that exists in linkMods *)
-  PROCEDURE P(s: ARRAY OF CHAR; len: INTEGER): BOOLEAN;
-  VAR i: INTEGER;
-    z: ARRAY 256 OF CHAR;
-  BEGIN Strings.Extract(s, 0, len, z); i := 0;
-    WHILE (i # linkModCount) & (linkMods[i] # z) DO INC(i) END
-  RETURN i # linkModCount END P;
-
 BEGIN written := FALSE;
   (* Find first '.', put in i *)
   i := 0; WHILE IsAlphanum(s[i]) DO INC(i) END;
   IF s[i] = '.' THEN (* First '.' found *)
     (* Find second '.', put in j *)
     j := i + 1; WHILE IsAlphanum(s[j]) DO INC(j) END;
-    IF (s[j] = 0X) & P(s, i) THEN (* No second '.', all is alphanum *)
+    IF (s[j] = 0X) & IsLinkedMod(s, i) THEN (* No second '.', all is alphanum *)
       Write('<a href="');
       FOR k := 0 TO i - 1 DO WriteChar(s[k]) END;
       Write('.html#');
@@ -291,6 +306,17 @@ BEGIN written := FALSE;
   END;
   IF ~written THEN Write(s) END
 END PrintLink;
+
+(** Prints a href to a module name. *)
+PROCEDURE PrintModLink(s: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN
+  i := 0; WHILE IsAlphanum(s[i]) DO INC(i) END;
+  IF (s[i] = 0X) & IsLinkedMod(s, i) THEN
+    Write('<a href="'); Write(s); Write('.html">'); Write(s); Write('</a>')
+  ELSE Write(s)
+  END
+END PrintModLink;
 
 PROCEDURE PrintIndent(n: INTEGER);
 BEGIN
@@ -303,7 +329,7 @@ BEGIN
   IF I.name # I.alias THEN
     Write('<span class="alias">'); Write(I.alias); Write('</span> := ')
   END;
-  Write('<span class="name">'); Write(I.name); Write('</span></span>');
+  Write('<span class="name">'); PrintModLink(I.name); Write('</span></span>');
   IF ~isLastListItem THEN WriteLn(', ') END;
   isLastListItem := FALSE
 END PrintImport;
@@ -313,7 +339,7 @@ BEGIN
   Write('<tr><td class="name">'); Write(C.name); WriteExport(C);
   WriteLn('</td><td class="value">');
   WriteExpr(C.value); WriteLn('</td><td class="desc">');
-  PrintComment(C, FALSE); WriteLn('</td></tr>')
+  PrintComment(C.comment, FALSE); WriteLn('</td></tr>')
 END PrintOrdinalConst;
 
 PROCEDURE PrintConst(C: P.Const; indent: INTEGER; inlined: BOOLEAN);
@@ -324,7 +350,7 @@ BEGIN
   Write   ('</span>'); WriteExport(C); WriteLn(' =');
   Write('    <span class="value">'); WriteExpr(C.value); WriteLn('</span>;');
   WriteLn ('  </div>');
-  PrintComment(C, FALSE);
+  PrintComment(C.comment, FALSE);
   WriteLn ('</article>')
 END PrintConst;
 
@@ -378,7 +404,7 @@ BEGIN tmp := isLastItem; isLastItem := FALSE;
     PrintObject(v.type, indent, TRUE);
     IF ~tmp THEN Write(';') END;
     Write(' &nbsp;</span></span>');
-    PrintComment(v, TRUE);
+    PrintComment(v.comment, TRUE);
   ELSE
     Write   ('<article class="object var" id="'); Write(v.name); WriteLn('">');
     WriteLn ('  <div class="def">');
@@ -387,7 +413,7 @@ BEGIN tmp := isLastItem; isLastItem := FALSE;
     WriteLn ('    <span class="type">');
     PrintObject(v.type, indent, TRUE); WriteLn('</span>;');
     WriteLn ('  </div>');
-    PrintComment(v, FALSE);
+    PrintComment(v.comment, FALSE);
     WriteLn ('</article>')
   END
 END PrintVar;
@@ -437,7 +463,7 @@ BEGIN
     WriteLn ('    <span class="typedef">');
     PrintObject(T.base, indent, TRUE); WriteLn('</span>;');
     WriteLn ('  </div>');
-    PrintComment(T, FALSE);
+    PrintComment(T.comment, FALSE);
     WriteLn ('</article>');
   END
 END PrintType;
@@ -464,7 +490,7 @@ BEGIN
     Write(': '); PrintType(p.returnType, indent, TRUE)
   END;
   WriteLn(';</span></div>');
-  PrintComment(p, FALSE);
+  PrintComment(p.comment, FALSE);
   WriteLn('</article>')
 END PrintProcedure;
 
@@ -472,7 +498,14 @@ PROCEDURE BigTitle(text: ARRAY OF CHAR);
 BEGIN WriteLn3('<h2 class="heading">', text, '</h2>')
 END BigTitle;
 
-PROCEDURE Header(modName: ARRAY OF CHAR);
+PROCEDURE PrintModMenu(showIndex: BOOLEAN);
+BEGIN
+  WriteLn('<nav class="module-menu">');
+  PrintModIndex(showIndex);
+  WriteLn('</nav>')
+END PrintModMenu;
+
+PROCEDURE Header(modName: ARRAY OF CHAR; index: BOOLEAN);
 VAR s: ARRAY 256 OF CHAR;
 BEGIN
   WriteLn('<!DOCTYPE html>');
@@ -480,21 +513,34 @@ BEGIN
   WriteLn('<head>');
   WriteLn('<meta charset="utf-8">');
   WriteLn('<title>');
-  Lang.Get('titleBefore', s); Write(s); Write(modName);
-  Lang.Get('titleAfter', s); Write(s);
+  IF index THEN
+    Lang.Get('indexTitleBefore', s); Write(s); Write(modName);
+    Lang.Get('indexTitleAfter', s); Write(s)
+  ELSE
+    Lang.Get('titleBefore', s); Write(s); Write(modName);
+    Lang.Get('titleAfter', s); Write(s)
+  END;
   WriteLn('</title>');
-  WriteLn('<meta name="viewport" content="width=device-width,initial-scale=1.0">');
+  Write  ('<meta name="viewport" content="');
+  WriteLn('width=device-width,initial-scale=1.0">');
   WriteLn('</head>');
-  WriteLn('<body>');
+  IF index THEN WriteLn('<body class="index">') ELSE WriteLn('<body>') END;
   WriteLn('<header class="header"><div class="inner">');
-  Write('<h1>'); Lang.Get('headingBefore', s); Write(s);
+
+  Write('<h1>');
+  IF ~index THEN Lang.Get('headingBefore', s); Write(s) END;
   Write('<span class="module-name">'); Write(modName);
-  Lang.Get('headingAfter', s); Write(s);
+  IF ~index THEN Lang.Get('headingAfter', s); Write(s) END;
   Write('</span> <span class="subtitle">');
-  Lang.Get('headingSubtitle', s); Write(s);
+
+  IF index THEN Lang.Get('indexHeadingSubtitle', s); Write(s)
+  ELSE Lang.Get('headingSubtitle', s); Write(s)
+  END;
+
   WriteLn('</span></h1>');
+  IF ~index THEN PrintModMenu(TRUE) END;
   WriteLn('</div></header>');
-  WriteLn('<main class="main"><div class="inner">');
+  WriteLn('<main class="main"><div class="inner">')
 END Header;
 
 PROCEDURE PrintColorValue(s: ARRAY OF CHAR);
@@ -572,8 +618,8 @@ PROCEDURE PrintModule(M: P.Module; indent: INTEGER; inlined: BOOLEAN);
 VAR s: ARRAY 64 OF CHAR;
 BEGIN
   showExportMarks := ~M.exportedOnly;
-  Header(M.name);
-  PrintComment(M, FALSE);
+  Header(M.name, FALSE);
+  PrintComment(M.comment, FALSE);
   PrintSection(M.imports, 'import');
   PrintSection(M.consts, 'constants');
   PrintSection(M.types, 'types');
@@ -647,8 +693,7 @@ BEGIN ClearColors;
   END
 END SetPalette;
 
-(** Main procedure **)
-
+(** Main procedure *)
 PROCEDURE Save*(module: P.Module; fname: ARRAY OF CHAR): BOOLEAN;
 BEGIN
   IF palette[0] = 0X THEN SetPalette(defPal) END;
@@ -657,6 +702,26 @@ BEGIN
   PrintObject(module, 0, FALSE);
   Texts.Append(TX, W.buf); Texts.Close(TX, fname)
 RETURN TRUE END Save;
+
+PROCEDURE CreateIndex*(title, comment, fname: ARRAY OF CHAR): BOOLEAN;
+VAR s: ARRAY 256 OF CHAR;
+BEGIN
+  NEW(TX); Texts.Open(TX, ''); Texts.OpenWriter(W);
+  Header(title, TRUE);
+
+  Write('<h2>');
+  Lang.Get('indexHeading', s); Write(s);
+  WriteLn('</h2>');
+  PrintModIndex(FALSE);
+
+  Write('<h2>');
+  Lang.Get('overview', s); Write(s);
+  WriteLn('</h2>');
+  PrintComment(comment, FALSE);
+
+  Footer;
+  Texts.Append(TX, W.buf); Texts.Close(TX, fname)
+RETURN TRUE END CreateIndex;
 
 BEGIN
   PrintObject := PrintObject0;
