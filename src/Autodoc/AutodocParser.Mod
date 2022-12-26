@@ -1338,13 +1338,13 @@ END ReachEndOf;
 PROCEDURE ParseProcedureDecl(M: Module);
 VAR name: Str;
   P: Procedure;
-  forward: BOOLEAN;
+  forward, foreign: BOOLEAN;
 BEGIN
   IF ~titleNotUsed THEN curTitle := '-' END;
   WHILE sym = procedure DO UpdateCurGroup(M.procedures);
-    NEW(P); InitObject(P); SaveComment(P, -1); GetSym;
+    NEW(P); InitObject(P); SaveComment(P, -1); GetSym; foreign := FALSE;
     forward := FALSE; P.params := NewList(); P.exported := FALSE;
-    IF (sym = minus) OR (sym = arrow) THEN GetSym; forward := TRUE
+    IF (sym = minus) OR (sym = arrow) THEN GetSym; forward := TRUE;
     ELSIF sym = times THEN GetSym
     END;
     IF sym = ident THEN Strings.Copy(id, P.name); GetSym
@@ -1352,6 +1352,11 @@ BEGIN
     END;
     IF (sym = minus) OR (sym = arrow) THEN GetSym END;
     IF sym = times THEN GetSym; P.exported := TRUE END;
+    IF sym = lbrak THEN GetSym; (* Foreign name *)
+      foreign := TRUE;
+      IF sym = string THEN GetSym ELSE MarkExp('foreign name of procedure') END;
+      IF sym = rbrak THEN GetSym ELSE MarkExp(']') END
+    END;
     IF sym = lparen THEN GetSym;
       IF sym # rparen THEN ParseFormalParamSection(P.params);
         WHILE sym = semicol DO GetSym; ParseFormalParamSection(P.params) END
@@ -1361,7 +1366,7 @@ BEGIN
     END;
     IF sym = string THEN GetSym END; (* Foreign code *)
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
-    IF ~forward THEN
+    IF ~forward & ~foreign THEN
       ReachEndOf(P.name); SaveComment(P, -1);
       IF sym = ident THEN GetSym;
         IF sym = semicol THEN GetSym ELSE MarkExp(';') END
