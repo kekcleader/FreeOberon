@@ -37,7 +37,7 @@ VAR
   sysModules: Module;
   target: ARRAY 64 OF CHAR; (* 'LINUX' or 'WIN32' *)
   wrongLinkTarget: BOOLEAN; (* TRUE if target was given and does not match *)
-  findLinkInfo: Module; (* If not NIL, special comments will be saved here *)
+  findLinkInfo: Module; (* If not NIL, "%LINK" comments will be saved here *)
   workDir: ARRAY 256 OF CHAR; (* Directory of main file of compiled program *)
 
 PROCEDURE IsSysModule(IN name: ARRAY OF CHAR): BOOLEAN;
@@ -257,7 +257,7 @@ BEGIN ok := TRUE;
       END
     END;
     IF Config.debug THEN
-      Out.String('Running command "');Out.String(cmd); Out.Char('"'); Out.Ln
+      Out.String('Running command "'); Out.String(cmd); Out.Char('"'); Out.Ln
     END;
     Utf8.Encode(cmd, q);
 
@@ -397,40 +397,51 @@ BEGIN
   END
 END ReadLinkString;
 
-PROCEDURE ReadLinkInfo(VAR R: Files.Rider; VAR ch: CHAR);
-VAR s: ARRAY 40960 OF CHAR;
-  last: CHAR;
-  i: INTEGER;
-BEGIN
-  i := 0; last := ch;
-  WHILE ~R.eof & (ch # '%') & ~((last = '*') & (ch = ')')) DO
-    IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
-    last := ch; Files.ReadChar(R, ch)
-  END;
-  IF (i # 0) & (s[i - 1] = '*') THEN DEC(i) END;
-  s[i] := 0X; i := 0;
-  ReadLinkTarget(s, i);
-  ReadLinkString(s, i)
-END ReadLinkInfo;
-
-PROCEDURE SkipComment(VAR R: Files.Rider; VAR ch: CHAR);
-VAR last: CHAR;
-BEGIN last := ch; Files.ReadChar(R, ch);
-  WHILE ~R.eof & ~((last = '*') & (ch = ')')) DO
-    IF (last = '(') & (ch = '*') THEN SkipComment(R, ch)
-    ELSIF (ch = '%') & (findLinkInfo # NIL) THEN
-      Files.ReadChar(R, ch); ReadLinkInfo(R, ch)
-    ELSE last := ch; Files.ReadChar(R, ch)
-    END
-  END;
-  IF ~R.eof THEN Files.ReadChar(R, ch) END;
-  WHILE ~R.eof & (ch <= ' ') DO Files.ReadChar(R, ch) END
-END SkipComment;
-
 PROCEDURE ReadCh(VAR R: Files.Rider; VAR ch: CHAR; VAR line, col: INTEGER);
 BEGIN Files.ReadChar(R, ch);
   IF ch = 0AX THEN INC(line); col := 1 ELSE INC(col) END
 END ReadCh;
+
+PROCEDURE ReadLinkInfo(VAR R: Files.Rider; VAR ch: CHAR;
+    VAR line, col: INTEGER);
+VAR s: ARRAY 40960 OF CHAR;
+  last: CHAR;
+  i: INTEGER;
+BEGIN
+  IF ch = 'L' THEN ReadCh(R, ch, line, col);
+    IF ch = 'I' THEN ReadCh(R, ch, line, col);
+      IF ch = 'B' THEN ReadCh(R, ch, line, col);
+        IF ch = 'S' THEN ReadCh(R, ch, line, col);
+          s := 'LIBS'; i := 4; last := 'S';
+          WHILE ~R.eof & (ch # '%') & ~((last = '*') & (ch = ')')) DO
+            IF i < LEN(s) - 1 THEN s[i] := ch; INC(i) END;
+            last := ch; ReadCh(R, ch, line, col)
+          END;
+          IF (i # 0) & (s[i - 1] = '*') THEN DEC(i) END;
+          s[i] := 0X; i := 0;
+          ReadLinkTarget(s, i);
+          ReadLinkString(s, i)
+        END
+      END
+    END
+  END
+END ReadLinkInfo;
+
+PROCEDURE SkipComment(VAR R: Files.Rider; VAR ch: CHAR;
+    VAR line, col: INTEGER);
+VAR last: CHAR;
+BEGIN
+  last := ch; ReadCh(R, ch, line, col);
+  WHILE ~R.eof & ~((last = '*') & (ch = ')')) DO
+    IF (last = '(') & (ch = '*') THEN SkipComment(R, ch, line, col)
+    ELSIF (ch = '%') & (findLinkInfo # NIL) THEN
+      ReadCh(R, ch, line, col); ReadLinkInfo(R, ch, line, col)
+    ELSE last := ch; ReadCh(R, ch, line, col)
+    END
+  END;
+  IF ~R.eof THEN ReadCh(R, ch, line, col) END;
+  WHILE ~R.eof & (ch <= ' ') DO ReadCh(R, ch, line, col) END
+END SkipComment;
 
 PROCEDURE GetSym(VAR R: Files.Rider; VAR ch: CHAR; VAR s: ARRAY OF CHAR;
     VAR line, col: INTEGER);
@@ -441,9 +452,10 @@ BEGIN
   IF ~R.eof THEN
     WHILE ch = '(' DO
       ReadCh(R, ch, line, col);
-      IF ch = '*' THEN ReadCh(R, ch, line, col); SkipComment(R, ch)
+      IF ch = '*' THEN ReadCh(R, ch, line, col); SkipComment(R, ch, line, col)
       ELSE s[i] := ch; INC(i)
-      END
+      END;
+      WHILE ~R.eof & (ch <= ' ') DO ReadCh(R, ch, line, col) END
     END;
     IF ('A' <= CAP(ch)) & (CAP(ch) <= 'Z') OR (ch = '_') THEN
       WHILE ~R.eof &
