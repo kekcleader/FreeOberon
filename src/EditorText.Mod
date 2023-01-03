@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT Config, Files, Strings, Out, Utf8;
+IMPORT Config, Func, Files, Strings, Out, Utf8;
 
 CONST
   lineLen = 256;
@@ -377,7 +377,7 @@ VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
   L: Line;
 BEGIN success := FALSE;
-  Config.FixFname(fname);
+  Func.FixFname(fname);
   f := Files.New(fname);
   IF f # NIL THEN (*!FIXME error checking is wrong *)
     Files.Set(r, f, 0);
@@ -417,7 +417,7 @@ VAR f: Files.File; r: Files.Rider;
   lf, crlf: INTEGER; (* Count of CR and CRLF line endings *)
 BEGIN success := FALSE; lf := 0; crlf := 0;
   IF fname[0] # 0X THEN
-    Config.FixFname(fname);
+    Func.FixFname(fname);
     f := Files.Old(fname);
     IF f # NIL THEN
       Files.Set(r, f, 0);

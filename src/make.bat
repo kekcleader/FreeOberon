@@ -14,7 +14,9 @@ SET AR=ar
 SET CCFULL=%CC% -O3 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Lib\Obj
 
 ECHO ON
-%OFR% -C Config.Mod
+%OFR% -Cw Config.Mod
+@IF ERRORLEVEL 1 GOTO ERR
+%OFR% -7w Func.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cw Utf8.Mod
 @IF ERRORLEVEL 1 GOTO ERR
@@ -108,7 +110,7 @@ windres resources.rc resources.o
 
 %CCFULL% -o ..\%PROG1%.exe resources.o ^
   Graph.c TermBox.c ^
-  Config.c Debug.c term\term_win32.c ^
+  Config.c Func.c Debug.c term\term_win32.c ^
   Term.c OV.c FoStrings.c EditorText.c Editor.c Builder.c ^
   FreeOberon.c ^
   ..\Data\bin\FreeOberon.a ^
@@ -122,7 +124,7 @@ windres resources.rc resources.o
 %CCFULL% -o ..\%PROG2%.exe ^
   FoStrings.c Builder.c ^
   Term.c term/term_win32.c ^
-  Config.c Debug.c Fob.c ^
+  Config.c Func.c Debug.c Fob.c ^
   ..\Data\bin\FreeOberon.a ^
   %OFRDIR%\Lib\Ofront.a ^
   -I..\Data\bin\mingw32\include ^

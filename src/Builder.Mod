@@ -16,8 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT Term, FoStrings, Files, Utf8, Config, Strings, Int, Out, Debug,
-  Env, Dir, Kernel;
+IMPORT Term, FoStrings, Files, Utf8, Config, Func, Strings,
+  Int, Out, Debug, Env, Dir, Kernel;
 
 TYPE
   Module* = POINTER TO ModuleDesc;
@@ -234,7 +234,7 @@ BEGIN ok := TRUE;
   END;
 
   IF ok THEN
-    s := fname$; Config.FixFname(s); Strings.Append(s, cmd);
+    s := fname$; Func.FixFname(s); Strings.Append(s, cmd);
 
     IF main THEN Strings.Append(' -m', cmd)
     ELSIF link & (list # NIL) THEN

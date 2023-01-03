@@ -16,6 +16,8 @@ CCFULL="$CC -O0 -fno-exceptions -I $OFRDIR/../../Mod/Lib -I $OFRDIR/Lib/Obj"
 
 $OFR -Cw Config.Mod &&
 
+$OFR -Cw Func.Mod &&
+
 $OFR -Cw Utf8.Mod &&
 
 $OFR -Cw Strings.Mod &&
@@ -109,7 +111,7 @@ $AR -crs ../Data/bin/libFreeOberon.a \
 $CCFULL -o ../$PROG1 \
   Graph.c TermBox.c \
   Term.c term/term_linux.c \
-  Config.c Debug.c OV.c FoStrings.c EditorText.c Editor.c Builder.c \
+  Config.c Func.c Debug.c OV.c FoStrings.c EditorText.c Editor.c Builder.c \
   FreeOberon.c \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a \
@@ -122,6 +124,6 @@ $CCFULL -o ../$PROG1 \
 $CCFULL -o ../$PROG2 \
   FoStrings.c Builder.c \
   Term.c term/term_linux.c \
-  Config.c Debug.c Fob.c \
+  Config.c Func.c Debug.c Fob.c \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a
