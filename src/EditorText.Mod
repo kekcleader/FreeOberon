@@ -372,23 +372,12 @@ BEGIN
   Files.WriteChar(r, 0AX)
 END WriteLn;
 
-PROCEDURE FixFname(VAR fname: ARRAY OF CHAR);
-VAR i: INTEGER;
-BEGIN
-  IF Config.isWindows THEN i := 0;
-    WHILE fname[i] # 0X DO
-      IF fname[i] = '/' THEN fname[i] := '\' END;
-      INC(i)
-    END
-  END
-END FixFname;
-
 PROCEDURE (t: Text) SaveToFile*(fname: ARRAY OF CHAR): BOOLEAN, NEW;
 VAR f: Files.File; r: Files.Rider;
   success: BOOLEAN;
   L: Line;
 BEGIN success := FALSE;
-  FixFname(fname);
+  Config.FixFname(fname);
   f := Files.New(fname);
   IF f # NIL THEN (*!FIXME error checking is wrong *)
     Files.Set(r, f, 0);
@@ -428,7 +417,7 @@ VAR f: Files.File; r: Files.Rider;
   lf, crlf: INTEGER; (* Count of CR and CRLF line endings *)
 BEGIN success := FALSE; lf := 0; crlf := 0;
   IF fname[0] # 0X THEN
-    FixFname(fname);
+    Config.FixFname(fname);
     f := Files.Old(fname);
     IF f # NIL THEN
       Files.Set(r, f, 0);

@@ -310,10 +310,10 @@ BEGIN f := files;
   RETURN NIL
 END CacheEntry;
 
-PROCEDURE Old*(IN name: ARRAY OF CHAR): File;
+PROCEDURE Old*(name: ARRAY OF CHAR): File;
 VAR f: File;
   fd: Platform.FileHandle;
-  pos: INTEGER;
+  i, pos: INTEGER;
   done: BOOLEAN;
   dir, path: ARRAY 256 OF CHAR;
   error: Platform.ErrorCode;
@@ -322,6 +322,14 @@ VAR f: File;
   n: INT64;
 BEGIN
   IF name # '' THEN
+    (* Replace all / with \ if required *)
+    IF Platform.PathDelimiter = '\' THEN i := 0;
+      WHILE (i # LEN(name)) & (name[i] # 0X) DO
+        IF name[i] = '/' THEN name[i] := '\' END;
+        INC(i)
+      END
+    END;
+
     IF HasDir(name) THEN dir := ''; path := name$
     ELSE pos := 0; ScanPath(pos, dir);
       MakeFileName(dir, name, path); ScanPath(pos, dir)
