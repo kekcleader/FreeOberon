@@ -4,7 +4,7 @@ CONST
   isWindows* = Platform.Windows;
   pathDelimiter* = Platform.PathDelimiter;
   stdPath* = 'Programs/';
-  startInFullscreen* = FALSE; (** Should Free Oberon start in full screen *)
+  startInFullscreen* = TRUE; (** TRUE if Free Oberon should start in full screen *)
 
   version* = '1.1.0-alpha.7';
   year* = 2023;
