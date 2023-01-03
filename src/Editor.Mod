@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT OV, T := TermBox, Text := EditorText, Config,
+IMPORT OV, T := TermBox, Text := EditorText, Config, Debug,
   Int, Strings, FoStrings, StrList, Dir, Out;
 CONST
   dotChar = 0B7X; (* To higlight spaces *)
@@ -159,16 +159,22 @@ PROCEDURE FileDialogOkClick*(c: OV.Control);
 VAR w: FileDialog;
   s, full: ARRAY 256 OF CHAR;
   i, L: INTEGER;
-BEGIN w := c.parent(FileDialog); s := w.edtFilename.caption$;
+  ok: BOOLEAN;
+BEGIN ok := FALSE; w := c.parent(FileDialog); s := w.edtFilename.caption$;
   (* Replace all \ with / and set L to length of s *)
   L := 0; WHILE s[L] # 0X DO IF s[L] = '\' THEN s[L] := '/' END; INC(L) END;
+  Debug.StrVal('FileDialogOkClick s = ', s);
   IF L = 0 THEN
     IF w.colFiles.onChange # NIL THEN w.colFiles.onChange(w.colFiles) END
   ELSE
     IF (s[L - 1] = '/') OR (s[0] = '/') THEN
       IF s[L - 1] # '/' THEN s[L] := '/'; INC(L); s[L] := 0X END;
       FileDialogApplyDir(w, s); FileDialogUpdateFileList(w)
+    ELSIF (('A' <= s[0]) & (s[0] <= 'Z') OR ('a' <= s[0]) & (s[0] <= 'z')) &
+    	  (s[1] = ':') & (s[2] = '/')
+    THEN full := s$; ok := TRUE
     ELSE full := w.path$;
+      Debug.StrVal('FileDialogOkClick full = ', full);
       WHILE (s[0] = '.') & (s[1] = '.') & (s[2] = '/') &
             ~((full[1] = ':') & (full[2] = '/') & (full[3] = 0X))
       DO Strings.Delete(s, 0, 3); i := Strings.Length(full) - 2;
@@ -181,10 +187,13 @@ BEGIN w := c.parent(FileDialog); s := w.edtFilename.caption$;
           Strings.Delete(full, 0, Strings.Length(w.home));
           Strings.Insert(Config.stdPath, 0, full)
         END;
-        OV.CloseCurWindow(c);
-        IF w.onFileOk # NIL THEN w.onFileOk(c, full) END
+	ok := TRUE
       END
     END
+  END;
+  IF ok THEN
+    OV.CloseCurWindow(c);
+    IF w.onFileOk # NIL THEN w.onFileOk(c, full) END
   END
 END FileDialogOkClick;
 

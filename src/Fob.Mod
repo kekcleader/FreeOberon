@@ -60,6 +60,7 @@ BEGIN i := 1; lang := 'en';
   WHILE i <= Args.Count DO
     Args.Get(i, s);
     IF s = '--lang' THEN Args.Get(i + 1, lang); INC(i)
+    ELSIF s = '--debug' THEN Config.SetDebug(TRUE)
     ELSE Strings.Copy(s, mainFname)
     END;
     INC(i)

@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT Term, FoStrings, Files, Utf8, Config, Strings, Int, Out,
+IMPORT Term, FoStrings, Files, Utf8, Config, Strings, Int, Out, Debug,
   Env, Dir, Kernel;
 
 TYPE
@@ -32,7 +32,7 @@ TYPE
 
 VAR
   sysModules: StrList;
-  workDir: ARRAY 256 OF CHAR; (* Directory of main file of compiled program *)
+  workDir*: ARRAY 1024 OF CHAR; (* Directory of main file of compiled program *)
 
 PROCEDURE IsSysModule(IN name: ARRAY OF CHAR): BOOLEAN;
 VAR p: StrList;
@@ -206,8 +206,7 @@ BEGIN ok := TRUE;
   END;
 
   IF ok THEN
-    s := fname$;
-    Strings.Append(s, cmd);
+    s := fname$; Config.FixFname(s); Strings.Append(s, cmd);
 
     IF main THEN Strings.Append(' -m', cmd)
     ELSIF link & (list # NIL) THEN
@@ -221,6 +220,11 @@ BEGIN ok := TRUE;
       END
     END;
     Utf8.Encode(cmd, q);
+
+    IF Config.debug THEN
+      Out.String('Term.RunProcess "'); Out.String(cmd); Out.Char('"'); Out.Ln
+    END;
+
     success := (Term.RunProcess(q, buf, bufLen, len, err) # 0) & (err = 0);
     IF ~success & (onError # NIL) THEN
       z := ''; line := 0; col := 0;
@@ -400,6 +404,7 @@ BEGIN res := 401; NEW(top); top.next := NIL; p := top;
           END
         END
       END
+    ELSE Debug.StrVal('GetImportedModules: First symbol is: ', s)
     END
   END ;
 RETURN top.next END GetImportedModules;
@@ -443,6 +448,9 @@ BEGIN L := NIL; res := 0(*OK*);
     NEW(p); p.s := modname$; p.fname := fname$; p.next := NIL;
     AddUniqueToList(p, L)
   END ;
+  Debug.String('UsedModuleList modname="'); Debug.String(modname);
+  Debug.String('", fname="'); Debug.String(fname);
+  Debug.String('", res = '); Debug.Int(res); Debug.Ln ;
 RETURN L END UsedModuleList;
 
 PROCEDURE ImportsGraph*(p: StrList): BOOLEAN;

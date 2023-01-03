@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT T := TermBox, Files, Args, Utf8, Builder, Env,
+IMPORT T := TermBox, Files, Args, Utf8, Builder, Env, Debug,
        OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
 CONST
   (* Direction of Selection *)
@@ -412,6 +412,7 @@ END OpenFileOkClick;
 PROCEDURE DoSaveFile(c: OV.Control; fname: ARRAY OF CHAR);
 VAR w: OV.Window; e: Editor.Editor;
 BEGIN
+  Debug.StrVal('DoSaveFile fname = ', fname);
   IF fname[0] # 0X THEN w := c.app.windows;
     IF (w # NIL) & (w IS Editor.Editor) THEN e := w(Editor.Editor);
       IF e.text.SaveToFile(fname) THEN
@@ -517,10 +518,14 @@ BEGIN w := c.app.windows;
     IF Editor.TextChanged(w(Editor.Editor)) THEN FileSave(c) END;
     IF w(Editor.Editor).fname[0] # 0X THEN
       mainFname := w(Editor.Editor).fname$;
+      Debug.StrVal('File name of main module: ', mainFname);
       Builder.SetWorkDir(mainFname);
+      Debug.StrVal('Work directory: ', Builder.workDir);
       Builder.GetModuleName(mainFname, modname);
+      Debug.StrVal('Module name: ', modname);
       modules := Builder.UsedModuleList(modname, mainFname,
         errFname, errLine, errCol, res);
+      Debug.IntVal('Result of UserModuleList: ', res);
       IF res = 0 THEN
         graph := Builder.ImportsGraph(modules);
         IF Builder.CompileAll(modules, graph, exename,
@@ -531,7 +536,7 @@ BEGIN w := c.app.windows;
         FocusOrOpenFile(errFname);
         e := app.windows(Editor.Editor);
         e.text.MoveToLineCol(errLine, errCol, e.h - 2);
-        FoStrings.MakeErrorStr(401(*file contains wrong module name*), s);
+        FoStrings.MakeErrorStr(res, s);
         ShowError(s)
       END
     END
@@ -923,15 +928,15 @@ PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR w, h: INTEGER;
     VAR lang: ARRAY OF CHAR; VAR fnames: Fnames);
 VAR i, nofnames: INTEGER;
   s: ARRAY 2048 OF CHAR;
-BEGIN fs := TRUE; sw := FALSE; i := 1; nofnames := 0; w := defW; h := defH;
-  lang := '';
+BEGIN fs := Config.startInFullscreen; sw := FALSE; i := 1;
+  nofnames := 0; w := defW; h := defH; lang := '';
   WHILE i <= Args.Count DO Args.Get(i, s);
     IF s = '--window' THEN fs := FALSE
+    ELSIF s = '--fullscreen' THEN fs := TRUE
     ELSIF s = '--software' THEN sw := TRUE
+    ELSIF s = '--debug' THEN Config.SetDebug(TRUE)
     ELSIF s = '--size' THEN
-      IF i # Args.Count THEN
-        INC(i); Args.Get(i, s); ParseSize(s, w, h)
-      END
+      IF i # Args.Count THEN INC(i); Args.Get(i, s); ParseSize(s, w, h) END
     ELSIF s = '--lang' THEN
       IF i # Args.Count THEN
         INC(i); Args.Get(i, lang);
