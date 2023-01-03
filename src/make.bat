@@ -3,7 +3,7 @@ SET PROG1=FreeOberon
 SET PROG2=fob
 SET OFRDIR=..\Data\bin\OfrontPlus\Target\Win32
 SET GCCDIR=C:\prg\mingw32\bin
-SET GCCDIR=..\Data\bin\mingw32\bin
+REM SET GCCDIR=..\Data\bin\mingw32\bin
 SET PATH=%GCCDIR%;%OFRDIR%;%PATH%
 SET OBERON=.;%OFRDIR%\Lib\Sym
 
@@ -27,6 +27,8 @@ ECHO ON
 %OFR% -Cw In.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cw Out.Mod
+@IF ERRORLEVEL 1 GOTO ERR
+%OFR% -7w Debug.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w Args.Mod
 @IF ERRORLEVEL 1 GOTO ERR
@@ -106,7 +108,7 @@ windres resources.rc resources.o
 
 %CCFULL% -o ..\%PROG1%.exe resources.o ^
   Graph.c TermBox.c ^
-  Config.c term\term_win32.c ^
+  Config.c Debug.c term\term_win32.c ^
   Term.c OV.c FoStrings.c EditorText.c Editor.c Builder.c ^
   FreeOberon.c ^
   ..\Data\bin\FreeOberon.a ^
@@ -120,7 +122,7 @@ windres resources.rc resources.o
 %CCFULL% -o ..\%PROG2%.exe ^
   FoStrings.c Builder.c ^
   Term.c term/term_win32.c ^
-  Config.c Fob.c ^
+  Config.c Debug.c Fob.c ^
   ..\Data\bin\FreeOberon.a ^
   %OFRDIR%\Lib\Ofront.a ^
   -I..\Data\bin\mingw32\include ^

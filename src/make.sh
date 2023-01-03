@@ -28,6 +28,8 @@ $OFR -Cw In.Mod &&
 
 $OFR -Cw Out.Mod &&
 
+$OFR -7w Debug.Mod &&
+
 $OFR -7w Args.Mod &&
 
 $OFR -7w Env.Mod &&
@@ -107,7 +109,7 @@ $AR -crs ../Data/bin/libFreeOberon.a \
 $CCFULL -o ../$PROG1 \
   Graph.c TermBox.c \
   Term.c term/term_linux.c \
-  Config.c OV.c FoStrings.c EditorText.c Editor.c Builder.c \
+  Config.c Debug.c OV.c FoStrings.c EditorText.c Editor.c Builder.c \
   FreeOberon.c \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a \
@@ -120,6 +122,6 @@ $CCFULL -o ../$PROG1 \
 $CCFULL -o ../$PROG2 \
   FoStrings.c Builder.c \
   Term.c term/term_linux.c \
-  Config.c Fob.c \
+  Config.c Debug.c Fob.c \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a

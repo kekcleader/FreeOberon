@@ -24,5 +24,7 @@ cd src
 cd ..
 
 echo "======================="
-echo "Done."
-echo "If everything went ok, you can now run: ./FreeOberon"
+echo "Done. Hopefully you can now run: ./FreeOberon"
+echo "Add this line to a file named ~/.bashrc"
+echo "to be able to use 'fob' as a command:"
+echo "export PATH=$PWD:\$PATH"
