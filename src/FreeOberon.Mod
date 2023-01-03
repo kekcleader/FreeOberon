@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT T := TermBox, Files, Args, Utf8, Builder, Env, Debug,
+IMPORT T := TermBox, Files, Args, Utf8, Builder, Env, Debug, Graph,
        OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
 CONST
   (* Direction of Selection *)
@@ -650,6 +650,16 @@ BEGIN E := app.windows;
   END
 END CascadeWindows;
 
+PROCEDURE EditPasteClipboard*(c: OV.Control);
+VAR e: Editor.Editor;
+  s: ARRAY 50000 OF CHAR;
+BEGIN
+  IF (c.app.windows # NIL) & (c.app.windows IS Editor.Editor) THEN
+    T.GetClipboardText(s);
+    Editor.PasteText(app, s)
+  END
+END EditPasteClipboard;
+
 PROCEDURE InitIDE;
 VAR w: OV.Window;
   m, m2: OV.Menu;
@@ -692,6 +702,8 @@ BEGIN
   OV.Add(m, OV.NewMenu(s, 'Ctrl+C', OV.hCtrlC, Editor.EditCopy));
   FoStrings.Get('menuPaste', s);
   OV.Add(m, OV.NewMenu(s, 'Ctrl+V', OV.hCtrlV, Editor.EditPaste));
+  FoStrings.Get('menuPasteClipboard', s);
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+Shift+V', OV.hCtrlShiftV, EditPasteClipboard));
   FoStrings.Get('menuClear', s);
   OV.Add(m, OV.NewMenu(s, 'Ctrl+Del', OV.hCtrlDel, Editor.EditClear));
   FoStrings.Get('menuSelectAll', s);

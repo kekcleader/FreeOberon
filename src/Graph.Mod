@@ -1418,7 +1418,7 @@ RETURN f END LoadFont;
 (** Clipboard **)
 
 PROCEDURE GetClipboardText*(win: Window; VAR s: ARRAY OF CHAR);
-TYPE P = POINTER [1] TO ARRAY 5000 OF SHORTCHAR;
+TYPE P = POINTER [1] TO ARRAY 50000 OF SHORTCHAR;
 VAR a: Al.ADRINT;
   p: P;
   q: ARRAY 20 OF SHORTCHAR;
@@ -1427,7 +1427,7 @@ BEGIN
   (*IF a = 0 THEN a := Al.get_clipboard_text(win.display) END; (*Allegro bug*)*)
   (*Out.String('PASTE DEBUG. a = ');Out.Int(a, 0);Out.Ln;*)
   IF a # 0 THEN p := SYSTEM.VAL(P, a); Utf8.Decode(p^, s);
-    Al.free_with_context(a, 27, 'Graph.Mod', 'GetClipboardText')
+    Al.free_with_context(a, 1430, 'Graph.Mod', 'GetClipboardText')
     (*;Utf8.Encode('Привет', q);
     ;IF Al.set_clipboard_text(win.display, SYSTEM.VAL(Al.ADRINT, SYSTEM.ADR(q))) THEN END*)
   ELSE s[0] := 0X

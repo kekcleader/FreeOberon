@@ -955,18 +955,22 @@ BEGIN e := c.app.windows;
   END
 END EditClear;
 
-PROCEDURE EditPaste*(c: OV.Control);
+PROCEDURE PasteText*(app: OV.App; s: ARRAY OF CHAR);
 VAR e: Editor;
 BEGIN
-  IF (c.app.windows # NIL) & (c.app.windows IS Editor) & (clipboard[0] # 0X)
-  THEN e := c.app.windows(Editor);
+  IF (app.windows # NIL) & (app.windows IS Editor) & (s[0] # 0X) THEN
+    e := app.windows(Editor);
     e.text.DeleteSelection;
-    e.text.Insert(clipboard, FALSE);
+    e.text.Insert(s, FALSE);
     IF e.text.y >= e.text.scrY + e.h - 2 THEN
       MoveScreen(e, e.text.y - e.h + 3 - e.text.scrY)
     END;
     PrintText(e)
   END
+END PasteText;
+
+PROCEDURE EditPaste*(c: OV.Control);
+BEGIN PasteText(c.app, clipboard) 
 END EditPaste;
 
 PROCEDURE EditSelectAll*(c: OV.Control);
