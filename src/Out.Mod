@@ -1,26 +1,19 @@
 MODULE Out;
 
-IMPORT SYSTEM, Platform, Heap, U := Utf8, Reals;
+IMPORT SYSTEM, Platform, U := Utf8, Reals;
 
 TYPE
   SHORTINT = SYSTEM.INT16; INTEGER = SYSTEM.INT32; HUGEINT = SYSTEM.INT64;
   REAL = SYSTEM.REAL32; LONGREAL = SYSTEM.REAL64; CHAR = SYSTEM.CHAR16;
 
 VAR
-  IsConsole-: BOOLEAN;
-
   buf: ARRAY 128 OF CHAR;
   in: INTEGER;
 
 PROCEDURE Flush*;
 VAR error: Platform.ErrorCode;
-  s: ARRAY 1024 OF SHORTCHAR;
-  len: INTEGER;
 BEGIN
-  IF in > 0 THEN
-    U.EncodeEx(buf, in, s, len);
-    error := Platform.Write(Platform.StdOut, SYSTEM.ADR(s), len)
-  END;
+  IF in > 0 THEN error := Platform.WriteW(buf, in) END;
   in := 0
 END Flush;
 
@@ -40,19 +33,16 @@ VAR n: INTEGER;
 BEGIN n := 0; WHILE (n < LEN(s)) & (s[n] # 0X) DO INC(n) END; RETURN n
 END Length;
 
-PROCEDURE String*(IN str: ARRAY OF CHAR);
+PROCEDURE String*(IN s: ARRAY OF CHAR);
 VAR l: INTEGER; error: Platform.ErrorCode;
-  s: ARRAY 1024 OF SHORTCHAR;
-  len: INTEGER;
 BEGIN
-  l := Length(str);
+  l := Length(s);
   IF in + l > LEN(buf) THEN Flush END;
   IF l >= LEN(buf) THEN
     (* Doesn't fit buf or no sence. Bypass buffering. *)
-    U.EncodeEx(str, l, s, len);
-    error := Platform.Write(Platform.StdOut, SYSTEM.ADR(s), len)
+    error := Platform.WriteW(s, l)
   ELSE
-    SYSTEM.MOVE(SYSTEM.ADR(str), SYSTEM.ADR(buf[in]), l * 2); INC(in, l)
+    SYSTEM.MOVE(SYSTEM.ADR(s), SYSTEM.ADR(buf[in]), l * 2); INC(in, l)
   END
 END String;
 
@@ -129,6 +119,5 @@ BEGIN Reals.LongStrFix(x, n, k, s); String(s)
 END LongRealFix;
 
 BEGIN
-  IsConsole := Platform.IsConsole(Platform.StdOut);
   in := 0
 END Out.
