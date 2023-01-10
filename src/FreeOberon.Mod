@@ -650,12 +650,30 @@ BEGIN E := app.windows;
   END
 END CascadeWindows;
 
+PROCEDURE FixClipboardText(VAR s: ARRAY OF CHAR);
+CONST CR = 0DX; LF = 0AX;
+VAR i, j: INTEGER;
+BEGIN
+  i := 0; WHILE (i # LEN(s)) & (s[i] # 0X) & (s[i] # CR) DO INC(i) END;
+  j := i;
+  WHILE (i # LEN(s)) & (s[i] # 0X) DO
+    IF s[i] = CR THEN INC(i);
+      IF i # LEN(s) THEN
+        IF s[i] # LF THEN s[j] := LF; INC(j) END
+      END
+    ELSE s[j] := s[i]; INC(i); INC(j)
+    END
+  END;
+  s[j] := 0X
+END FixClipboardText;
+
 PROCEDURE EditPasteClipboard*(c: OV.Control);
 VAR e: Editor.Editor;
   s: ARRAY 50000 OF CHAR;
 BEGIN
   IF (c.app.windows # NIL) & (c.app.windows IS Editor.Editor) THEN
     T.GetClipboardText(s);
+    FixClipboardText(s);
     Editor.PasteText(app, s)
   END
 END EditPasteClipboard;
