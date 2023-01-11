@@ -70,7 +70,8 @@ BEGIN
     FOR i := L.len TO pos + 1 BY -1 DO L.s[i] := L.s[i - 1] END;
     L.s[pos] := ch;
     IF L.len = LEN(L.s) - 1 THEN L.s[L.len] := 0X
-    ELSE INC(L.len); L.s[L.len] := 0X END
+    ELSE INC(L.len); L.s[L.len] := 0X
+    END
   END
 END InsertChar;
 
@@ -305,6 +306,7 @@ BEGIN x := t.x; IF autoIndent THEN t.MaybeRemoveIndent END;
         L.s[i + spaces] := t.cur.s[i + t.x]
       END
     END;
+    Out.String('t.x=');Out.Int(t.x,0);Out.Ln;
     L.len := t.cur.len + spaces - t.x; t.cur.s[t.x] := 0X; t.cur.len := t.x;
     IF t.cur.next # NIL THEN t.cur.next.prev := L END;
     L.next := t.cur.next; L.prev := t.cur; t.cur.next := L;
@@ -315,8 +317,13 @@ BEGIN x := t.x; IF autoIndent THEN t.MaybeRemoveIndent END;
 END HandleEnter;
 
 PROCEDURE (t: Text) InsertChar*(ch: CHAR), NEW;
-BEGIN t.newLineCreated := FALSE;
-  t.cur.InsertChar(ch, t.x); INC(t.x); t.changed := TRUE
+VAR tmp: INTEGER;
+BEGIN
+  t.newLineCreated := FALSE;
+  tmp := t.cur.len;
+  t.cur.InsertChar(ch, t.x);
+  IF t.cur.len # tmp THEN INC(t.x) END;
+  t.changed := TRUE
 END InsertChar;
 
 PROCEDURE (t: Text) Insert*(s: ARRAY OF CHAR; autoIndent: BOOLEAN), NEW;
