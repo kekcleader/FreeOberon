@@ -4,7 +4,7 @@ IMPORT Files, Texts, Out, Args, Strings, Platform, Dir,
 
 CONST
   version = '1.0.0-alpha.1';
-  year = 2022;
+  year = 2023;
 
   delim = Platform.PathDelimiter;
 
