@@ -79,7 +79,7 @@ Fob — это консольный компилятор языка Оберон
 
 Можно писать программы, состоящие из нескольких модулей. Откройте главный модуль и нажмите `F9`. Free Oberon автоматически скомпилирует и скомпонует их в правильном порядке.
 
-Если вы компилируете программу, файл главного модуля которой не находится непосредственно в подкаталоге `Programs` или `Programs/Examples`, то скомпилированный исполнимый файл будет находится рядом с ним, а не в подкаталоге `bin`.
+Если вы компилируете программу, файл главного модуля которой не находится непосредственно в подкаталоге `Programs`, то скомпилированный исполнимый файл будет находится рядом с ним, а не в подкаталоге `_Build`.
 
 Если в одном из модулей программы будет найдена ошибка, соответствующий файл откроется, место и характер ошибки будут указаны. Чтобы перекомпилировать, снова перейдите к окну главного модуля и нажмите `F9`.
 
@@ -149,7 +149,7 @@ The source code files of your programs are saved in the `Programs` subdirectory,
 
 You can write programs consisting of several modules. Open the main module and press `F9`. Free Oberon automatically compiles and links them in the correct order.
 
-If you compile a program whose main module file is not directly in the `Programs` or `Programs/Examples` subdirectory, the compiled executable will be located next to it and not in the `bin` subdirectory.
+If you compile a program whose main module file is not directly in the `Programs` subdirectory, the compiled executable will be located next to it and not in the `_Build` subdirectory.
 
 If an error occurres during the compilation of one of the modules, the corresponding file will be open and error position and message will be indicated. To recompile, go to the main module window again and press `F9`.
 
