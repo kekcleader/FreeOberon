@@ -1,6 +1,6 @@
 # How to build a new version of Free Oberon for Linux
 
-The commands are for Debian / Ubuntu.
+The commands are for Debian/Ubuntu OS.
 
 ## Option 1. Download the archive and run the installer
 
@@ -18,7 +18,7 @@ su
 
 ## Option 2. Build Free Oberon manually
 
-1. Install Git, Gcc and Allegro5:
+1. Install Git, GCC and Allegro5:
 ```
 apt-get install -y liballegro5-dev git gcc
 ```
@@ -60,4 +60,4 @@ This is done from the directory where the executable file `FreeOberon` is locate
 ./FreeOberon
 ```
 
-Document updated January 27, 2022.
+Document updated on January 11, 2023.

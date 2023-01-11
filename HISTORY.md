@@ -1,8 +1,10 @@
-## 1.1.0-alpha.7 - 2023-01-09
+## 1.1.0-alpha.7 - 2023-01-11
 
 * Debug output and "--debug" key
 * Unicode support in modules In and Out on Windows
 * Automatic linking of external libraries
+* OS clipboard integration
+* Fix paste of large text
 * Fix compilation outside FreeOberon directory on Windows
 * Fix parser in project builder
 
