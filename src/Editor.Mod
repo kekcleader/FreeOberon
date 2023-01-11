@@ -75,7 +75,7 @@ TYPE
   END;
 
 VAR
-  clipboard: ARRAY 16000 OF CHAR;
+  clipboard: ARRAY 50000 OF CHAR;
   editorMethod-: OV.ControlMethod;
   fileDialogMethod-: OV.ControlMethod;
   searchDialogMethod-: OV.ControlMethod;

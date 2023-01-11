@@ -801,10 +801,8 @@ BEGIN
   IF b # NIL THEN G.SetWindowIcon(screen, b) END
 END InitIcon;
 
-PROCEDURE GetClipboardText*(VAR s: ARRAY OF CHAR);
-BEGIN
-  IF screen # NIL THEN G.GetClipboardText(screen, s) ELSE s[0] := 0X END
-END GetClipboardText;
+PROCEDURE GetWindow*(): G.Window;
+RETURN screen END GetWindow;
 
 PROCEDURE InitScreen;
 VAR W, H, dw, dh: INTEGER;

@@ -1,5 +1,5 @@
 MODULE Graph;
-IMPORT Out, Al := Allegro5, Utf8, Files, Dir, Strings, SYSTEM;
+IMPORT Out, Al := Allegro5, Utf8, Files, Dir, Strings, SYSTEM, Platform;
 
 CONST
   fontPlanes = 4; (*!TODO*)
@@ -1419,20 +1419,32 @@ RETURN f END LoadFont;
 
 PROCEDURE GetClipboardText*(win: Window; VAR s: ARRAY OF CHAR);
 TYPE P = POINTER [1] TO ARRAY 50000 OF SHORTCHAR;
-VAR a: Al.ADRINT;
-  p: P;
-  q: ARRAY 20 OF SHORTCHAR;
+VAR a: Al.ADRINT; p: P;
+  i: INTEGER;
 BEGIN
   a := Al.get_clipboard_text(win.display);
-  (*IF a = 0 THEN a := Al.get_clipboard_text(win.display) END; (*Allegro bug*)*)
-  (*Out.String('PASTE DEBUG. a = ');Out.Int(a, 0);Out.Ln;*)
+  IF ~Platform.Windows THEN (* Workaround for an Allegro bug on X11 *)
+    FOR i := 1 TO 2 DO (* Maybe "TO 1" is enough *)
+      Al.free_with_context(a, 1429, 'Graph.Mod', 'GetClipboardText');
+      a := Al.get_clipboard_text(win.display)
+    END
+  END;
   IF a # 0 THEN p := SYSTEM.VAL(P, a); Utf8.Decode(p^, s);
-    Al.free_with_context(a, 1430, 'Graph.Mod', 'GetClipboardText')
-    (*;Utf8.Encode('Привет', q);
-    ;IF Al.set_clipboard_text(win.display, SYSTEM.VAL(Al.ADRINT, SYSTEM.ADR(q))) THEN END*)
+    Al.free_with_context(a, 1434, 'Graph.Mod', 'GetClipboardText')
   ELSE s[0] := 0X
   END
 END GetClipboardText;
+
+PROCEDURE SetClipboardText*(win: Window; s: ARRAY OF CHAR);
+TYPE P = POINTER [1] TO ARRAY 50000 OF SHORTCHAR;
+VAR q: ARRAY 200000 OF SHORTCHAR;
+BEGIN
+  Utf8.Encode(s, q);
+  IF Al.set_clipboard_text(win.display, SYSTEM.VAL(Al.ADRINT, SYSTEM.ADR(q)))
+  THEN END
+END SetClipboardText;
+
+(** Time **)
 
 PROCEDURE Time*(): REAL;
 RETURN Al.get_time() END Time;

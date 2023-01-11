@@ -672,11 +672,28 @@ VAR e: Editor.Editor;
   s: ARRAY 50000 OF CHAR;
 BEGIN
   IF (c.app.windows # NIL) & (c.app.windows IS Editor.Editor) THEN
-    T.GetClipboardText(s);
+    Graph.GetClipboardText(T.GetWindow(), s);
     FixClipboardText(s);
     Editor.PasteText(app, s)
   END
 END EditPasteClipboard;
+
+PROCEDURE EditCopyClipboard*(c: OV.Control);
+VAR s: ARRAY 50000 OF CHAR;
+BEGIN
+  IF (c.app.windows # NIL) & (c.app.windows IS Editor.Editor) THEN
+    c.app.windows(Editor.Editor).text.CopySelection(s);
+    Graph.SetClipboardText(T.GetWindow(), s)
+  END
+END EditCopyClipboard;
+
+PROCEDURE EditCutClipboard*(c: OV.Control);
+BEGIN
+  IF (c.app.windows # NIL) & (c.app.windows IS Editor.Editor) THEN
+    EditCopyClipboard(c);
+    Editor.EditClear(c.app.windows(Editor.Editor))
+  END
+END EditCutClipboard;
 
 PROCEDURE InitIDE;
 VAR w: OV.Window;
@@ -715,19 +732,24 @@ BEGIN
   OV.Add(m, m2);
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuCut', s);
-  OV.Add(m, OV.NewMenu(s, 'Ctrl+X', OV.hCtrlX, Editor.EditCut));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+X', OV.hCtrlX, EditCutClipboard));
   FoStrings.Get('menuCopy', s);
-  OV.Add(m, OV.NewMenu(s, 'Ctrl+C', OV.hCtrlC, Editor.EditCopy));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+C', OV.hCtrlC, EditCopyClipboard));
   FoStrings.Get('menuPaste', s);
-  OV.Add(m, OV.NewMenu(s, 'Ctrl+V', OV.hCtrlV, Editor.EditPaste));
-  FoStrings.Get('menuPasteClipboard', s);
-  OV.Add(m, OV.NewMenu(s, 'Ctrl+Shift+V', OV.hCtrlShiftV, EditPasteClipboard));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+V', OV.hCtrlV, EditPasteClipboard));
   FoStrings.Get('menuClear', s);
   OV.Add(m, OV.NewMenu(s, 'Ctrl+Del', OV.hCtrlDel, Editor.EditClear));
   FoStrings.Get('menuSelectAll', s);
   OV.Add(m, OV.NewMenu(s, 'Ctrl+A', OV.hCtrlA, Editor.EditSelectAll));
   FoStrings.Get('menuUnselect', s);
   OV.Add(m, OV.NewMenu(s, '', 0, Editor.EditUnselect));
+  OV.Add(m, OV.NewMenu('-', '', 0, NIL));
+  FoStrings.Get('menuCutInternal', s);
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+Shift+X', OV.hCtrlShiftX, Editor.EditCut));
+  FoStrings.Get('menuCopyInternal', s);
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+Shift+C', OV.hCtrlShiftC, Editor.EditCopy));
+  FoStrings.Get('menuPasteInternal', s);
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+Shift+V', OV.hCtrlShiftV, Editor.EditPaste));
   OV.AddMenu(app, m);
   FoStrings.Get('menuSearch', s);
   m := OV.NewMenu(s, '', 0, NIL);
