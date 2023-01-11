@@ -464,7 +464,7 @@ BEGIN scaled := FALSE;
       IF wasTarget THEN Target(NIL) END
     ELSE opt := {Al.convertBitmap};
       IF smooth IN W.options THEN
-      	opt := opt + {Al.minLinear, Al.magLinear}
+        opt := opt + {Al.minLinear, Al.magLinear}
       END;
       Al.set_new_bitmap_flags(opt);
       W.bmp := Al.create_bitmap(w, h);
@@ -932,6 +932,8 @@ BEGIN isCurTarget := target = W;
     W.winW := Al.get_display_width(W.display);
     W.winH := Al.get_display_height(W.display);
     W.w := w; W.h := h;
+    ApplySizeStep(W, w, h);
+    W.lastW := W.w; W.lastH := W.h;
     ResetWindowBitmap(W);
     Al.register_event_source(queue, Al.get_display_event_source(W.display));
     IF isCurTarget THEN Target(W) END;

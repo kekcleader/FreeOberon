@@ -681,6 +681,7 @@ TYPE
     cur*: Control;
     dragged*: Control;
     dragX*, dragY*: INTEGER;
+    onResize: PROCEDURE (w, h: INTEGER);
     lastMouseDownTime*: INTEGER;
     quit*: BOOLEAN;
     needRedraw*: BOOLEAN;
@@ -2279,6 +2280,7 @@ BEGIN app.windows := NIL;
   app.statusbar := NewMenu('ROOT', '', 0, NIL); app.statusbar.app := app;
   app.statusText[0] := 0X;
   app.dragged := NIL; app.dragX := 0; app.dragY := 0;
+  app.onResize := NIL;
   app.cur := NIL;
   app.lastMouseDownTime := 0;
   app.quit := FALSE;
@@ -2291,6 +2293,10 @@ PROCEDURE NewApp*(): App;
 VAR a: App;
 BEGIN NEW(a); InitApp(a); RETURN a
 END NewApp;
+
+PROCEDURE SetOnResize*(a: App; p: PROCEDURE (w, h: INTEGER));
+BEGIN a.onResize := p
+END SetOnResize;
 
 PROCEDURE RefreshAppMenu*(menu: Menu);
 VAR p, br: Control;
@@ -2506,7 +2512,8 @@ END OnMouse;
 
 PROCEDURE OnResize(app: App; E: T.Event);
 BEGIN
-  app.needRedraw := TRUE
+  app.needRedraw := TRUE;
+  IF app.onResize # NIL THEN app.onResize(E.w, E.h) END
 END OnResize;
 
 PROCEDURE RunApp*(app: App);

@@ -70,6 +70,8 @@ VAR
   terminalNeedRedraw: BOOLEAN; (* Used when a compiled program is running *)
   terminalMouseShown: BOOLEAN; (* Same *)
 
+  lastW, lastH: INTEGER; (* Last screen size *)
+
 (* Language Dialog *)
 
 PROCEDURE LanguageButtonClick*(c: OV.Control);
@@ -695,12 +697,27 @@ BEGIN
   END
 END EditCutClipboard;
 
+PROCEDURE OnResize(w, h: INTEGER);
+VAR o, br: OV.Window;
+BEGIN
+  o := app.windows; br := o;
+  REPEAT
+    IF (o.w = lastW) & (o.h = lastH - 2) & (o.x = 0) & (o.y = 1) THEN
+      o.x := 0; o.y := 1; o.w := w; o.h := h - 2
+    END;
+    o := o.next(OV.Window)
+  UNTIL o = br;
+  lastW := w; lastH := h
+END OnResize;
+
 PROCEDURE InitIDE;
 VAR w: OV.Window;
   m, m2: OV.Menu;
   s, q: FoStrings.String;
 BEGIN
   app := OV.NewApp();
+  T.Size(lastW, lastH);
+  OV.SetOnResize(app, OnResize);
   FileNew(app.menu);
 
   FoStrings.Get('menuFile', s);
