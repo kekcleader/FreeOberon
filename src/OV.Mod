@@ -1857,7 +1857,7 @@ BEGIN C := c(ColumnList); INC(x, C.x); INC(y, C.y);
       ELSE fg := 14
       END
     END;
-    T.Print(x2, y2, x2 + colw - 1, s, fg, bg);
+    T.Print(x2, y2, colw - 1, s, fg, bg);
     IF y2 < y + C.h - 2 THEN INC(y2) ELSE y2 := y; INC(x2, colw + 1) END;
     StrList.Next(C.items, s); INC(i)
   END;
