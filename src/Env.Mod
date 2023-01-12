@@ -1,5 +1,5 @@
 MODULE Env;
-IMPORT CmdArgs, Args, Platform, Utf8, SYSTEM;
+IMPORT CmdArgs, Args, Platform, Utf8, Strings, SYSTEM, Out;
 TYPE SHORTCHAR = Utf8.SHORTCHAR;
 
 VAR count: INTEGER;
@@ -76,9 +76,21 @@ PROCEDURE RemoveDoubleSlashes(VAR s: ARRAY OF CHAR);
 BEGIN (*!TODO*)
 END RemoveDoubleSlashes;
 
-(** Example: './' -> ''. *)
+(** Leaves '/' in the end. Example: './' -> ''. *)
 PROCEDURE RemoveDotDirs(VAR s: ARRAY OF CHAR);
-BEGIN (*!TODO*)
+VAR i: INTEGER;
+BEGIN
+  i := 0;
+  WHILE s[i] # 0X DO
+    WHILE (s[i] # 0X) & (s[i] # '.') DO INC(i) END;
+    IF s[i] # 0X THEN (* Found a dot *)
+      IF (s[i + 1] = '/') & ((i = 0) OR (s[i - 1] = '/')) THEN
+        Strings.Delete(s, i, 2)
+      ELSE INC(i)
+      END
+    END
+  END;
+  IF (i > 1) & (s[i - 2] = '/') & (s[i - 1] = '.') THEN s[i - 1] := 0X END
 END RemoveDotDirs;
 
 (** Example: 'dir/..' -> ''. *)

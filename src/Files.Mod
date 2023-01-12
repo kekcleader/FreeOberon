@@ -288,7 +288,7 @@ PROCEDURE HasDir(IN name: ARRAY OF CHAR): BOOLEAN;
 VAR i: INTEGER; ch: CHAR;
 BEGIN i := 0; ch := name[0];
   WHILE (ch # 0X) & (ch # PathDelimiter) DO INC(i); ch := name[i] END ;
-RETURN ch = PathDelimiter END HasDir;
+RETURN ch # 0X END HasDir;
 
 PROCEDURE CacheEntry(identity: Platform.FileIdentity): File;
 VAR f: File; i: INTEGER; error: Platform.ErrorCode; n: INT64;
@@ -323,7 +323,7 @@ VAR f: File;
 BEGIN
   IF name # '' THEN
     (* Replace all / with \ if required *)
-    IF Platform.PathDelimiter = '\' THEN i := 0;
+    IF PathDelimiter = '\' THEN i := 0;
       WHILE (i # LEN(name)) & (name[i] # 0X) DO
         IF name[i] = '/' THEN name[i] := '\' END;
         INC(i)

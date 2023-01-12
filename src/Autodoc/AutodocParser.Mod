@@ -1265,7 +1265,11 @@ VAR first, par: Param;
   T: Type;
   passed: INTEGER;
 BEGIN
-  IF (sym = var) OR (sym = in) OR (sym = out) THEN GetSym; passed := byVar
+  IF (sym = var) OR (sym = in) OR (sym = out) THEN GetSym; passed := byVar;
+    IF sym = lbrak THEN GetSym;
+      IF (sym = ident) OR (sym = int) THEN GetSym ELSE MarkExp('hint') END;
+      IF sym = rbrak THEN GetSym ELSE MarkExp(']') END
+    END
   ELSE passed := byValue
   END;
 

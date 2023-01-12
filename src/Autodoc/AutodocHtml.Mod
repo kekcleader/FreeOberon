@@ -204,8 +204,11 @@ END WriteParagraphs;
 PROCEDURE WriteStyle;
 VAR T2: Texts.Text;
   buf: Texts.Buffer;
+  path: ARRAY 1024 OF CHAR;
 BEGIN
-  NEW(T2); Texts.Open(T2, styleFname);
+  Env.GetAppDir(path);
+  Strings.Append(styleFname, path);
+  NEW(T2); Texts.Open(T2, path);
   IF T2.len # 0 THEN
     WriteLn('<style>');
     Texts.Append(TX, W.buf);
@@ -214,7 +217,7 @@ BEGIN
     Texts.Append(TX, buf);
     WriteLn(''); WriteLn('</style>')
   ELSE Out.String('Could not find stylesheet file "');
-    Out.String(styleFname); Out.String('".'); Out.Ln
+    Out.String(path); Out.String('".'); Out.Ln
   END
 END WriteStyle;
 
