@@ -1,14 +1,20 @@
 MODULE Env;
+(** OS environment variables *)
 IMPORT CmdArgs, Args, Platform, Utf8, Strings, SYSTEM, Out;
 TYPE SHORTCHAR = Utf8.SHORTCHAR;
 
 VAR count: INTEGER;
 
+(** Return the number of environment variables.
+     If Count() returns N, then you can call Get(x) with 0 <= x < N. *)
 PROCEDURE Count*(): INTEGER;
 BEGIN
   IF count = -1 THEN count := CmdArgs.EnvCount() END
 RETURN count END Count;
 
+(** Puts in `s` the `n`th environment variable as a string containing a key,
+    equal sign and possibly a value (i.e. 'PATH=/usr/bin').
+     `n` must be in range 0 <= x < N, where N is the result of Count() *)
 PROCEDURE Get*(n: INTEGER; VAR s: ARRAY OF CHAR);
 VAR q: ARRAY 10240 OF SHORTCHAR;
 BEGIN
@@ -18,6 +24,8 @@ BEGIN
   END
 END Get;
 
+(** Puts in `val` the value of the environment variable with the given `name`.
+     If there is no such variable, puts an empty string in val. *)
 PROCEDURE GetByName*(name: ARRAY OF CHAR; VAR val: ARRAY OF CHAR);
 VAR q: ARRAY 10240 OF SHORTCHAR;
   z: ARRAY 1024 OF SHORTCHAR;
@@ -146,6 +154,10 @@ BEGIN
   END
 END GetAppDirUnix;
 
+(** Returns a full path to the application directory. That is the directory
+    where the executable file of the currently running program resides.
+     It might not be logically possible to determine application directory
+    in some cases on Linux/Unix systems. *)
 PROCEDURE GetAppDir*(VAR s: ARRAY OF CHAR);
 VAR z: ARRAY 1024 OF SHORTCHAR;
 BEGIN
@@ -154,6 +166,8 @@ BEGIN
   END
 END GetAppDir;
 
+(** Puts in `s` the language of the user interface (the OS) as lower case
+    2-character strings. For example: 'en', 'ru'. *)
 PROCEDURE GetLang*(VAR s: ARRAY OF CHAR);
 VAR z: ARRAY 256 OF SHORTCHAR;
 BEGIN Platform.GetLang(z); Utf8.Decode(z, s)

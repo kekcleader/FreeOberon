@@ -1,4 +1,5 @@
-MODULE Dir; (*This is Oberon-07 style file*)
+MODULE Dir;
+(** This module includes procedures to read directory contents. *)
 IMPORT SYSTEM, Platform, Out, Utf8;
 
 TYPE
@@ -9,11 +10,13 @@ TYPE
   PString = POINTER [notag] TO ARRAY [notag] OF SHORTCHAR;
   INT32 = SYSTEM.INT32;
 
+  (** Directory rider record. Holds data of a single file or directory
+      entry while reading contents of a directory. *)
   Rec* = RECORD
-    eod*: BOOLEAN; (* End of directory *)
-    isDir*: BOOLEAN; (* TRUE if current entry is a directory *)
-    res*: INTEGER; (* 0 means no error *)
-    name*: ARRAY 512 OF CHAR;
+    eod*: BOOLEAN; (** TRUE if end of directory is reached *)
+    isDir*: BOOLEAN; (** TRUE if current entry is a directory *)
+    res*: INTEGER; (** Result. 0 means no error *)
+    name*: ARRAY 512 OF CHAR; (** File or directory name *)
     path: ARRAY 1024 OF CHAR;
     pathlen: INTEGER;
     dir: DIR
@@ -31,20 +34,24 @@ PROCEDURE -typeDir "DT_DIR";
 PROCEDURE -typeReg "DT_REG";
 PROCEDURE -typeLink "DT_LNK";
 
+(** Close a directory.
+     MUST BE CALLED to avoid leaking C directory streams.
+     !TODO add this to finalization *)
 PROCEDURE Close*(VAR r: Rec);
-(* Stop enumerating files. MUST BE CALLED to avoid leaking C directory streams *)
 BEGIN
   IF r.dir # 0 THEN closedir(r.dir); r.dir := 0 END
-  (*!TODO add this to finalization *)
 END Close;
 
-PROCEDURE CopyToArray*(src: PString; VAR dst: ARRAY OF SHORTCHAR);
+PROCEDURE CopyToArray(src: PString; VAR dst: ARRAY OF SHORTCHAR);
 VAR i: INTEGER;
 BEGIN i := 0;
   WHILE (i # LEN(dst) - 1) & (src[i] # 0X) DO dst[i] := src[i]; INC(i) END;
   dst[i] := 0X
 END CopyToArray;
 
+(** Reads the next directory entry after the one refered by `r`.
+     First call `First(r, path)` with the same `r` and a path to a directory.
+    Then use `r.eod` and `Next(r)` to iterate all of the entries. *)
 PROCEDURE Next*(VAR r: Rec);
 VAR ent: DIRENT;
   i, j: INTEGER;
@@ -81,6 +88,11 @@ BEGIN
   END
 END Next;
 
+(** Initiates reading the directory with the given path.
+     After the call to First the directory entry rider `r` holds data
+    about the first entry of the directory at `path`. Check if `r.res = 0`
+    to make sure `First` was successful. Use `Next` with the same `r` and
+    used check `r.eod` to see when it is time to stop reading the directory. *)
 PROCEDURE First*(VAR r: Rec; path: ARRAY OF CHAR);
 VAR i: INTEGER;
   s: ARRAY 2048 OF SHORTCHAR;
@@ -97,6 +109,7 @@ BEGIN r.isDir := FALSE; r.name[0] := 0X;
   END
 END First;
 
+(** Start reading directory contents from the beginning. *)
 PROCEDURE Rewind*(VAR r: Rec);
 BEGIN
   IF r.dir # 0 THEN rewinddir(r.dir); r.res := 0; r.eod := FALSE; Next(r)
@@ -104,16 +117,19 @@ BEGIN
   END
 END Rewind;
 
+(** Returns TRUE if the file with the given name exists. *)
 PROCEDURE FileExists*(name: ARRAY OF CHAR): BOOLEAN;
 VAR s: ARRAY 2048 OF SYSTEM.CHAR8;
 BEGIN Utf8.Encode(name, s)
 RETURN Platform.FileExists(s) END FileExists;
 
+(** Returns TRUE if the given file name refers to a directory. *)
 PROCEDURE IsDir*(name: ARRAY OF CHAR): BOOLEAN;
 VAR s: ARRAY 2048 OF SYSTEM.CHAR8;
 BEGIN Utf8.Encode(name, s)
 RETURN (name[0] = 0X) OR Platform.DirExists(s) END IsDir;
 
+(** Returns a full path to the current working directory. *)
 PROCEDURE GetCwd*(VAR dir: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN i := 0;

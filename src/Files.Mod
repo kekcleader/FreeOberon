@@ -1,13 +1,13 @@
 MODULE Files;
-(** Standard data type input-output
+(** Standard data type input-output from/to a storage media.
 
-    Little Endian,
-    SInt: 2 bytes, Int: 4 bytes, LInt: 8 bytes
-    ORD({0}) = 1,
-    FALSE = 0, TRUE = 1
-    IEEE Real Format,
-    Null-terminated strings,
-    compact numbers according to M. Odersky *)
+      Little Endian,
+      SInt: 2 bytes, Int: 4 bytes, LInt: 8 bytes
+      ORD({0}) = 1,
+      FALSE = 0, TRUE = 1
+      IEEE Real Format,
+      Null-terminated strings,
+      compact numbers according to M. Odersky *)
 
 IMPORT SYSTEM, Platform, Heap, Strings, Out, Utf8;
 
@@ -28,13 +28,13 @@ CONST
                  just write directly to final register name *)
 
 TYPE
-  SBYTE* = BYTE;
-  BYTE* = UBYTE;
-  INT64 = LONGINT;
+  SBYTE* = BYTE; (** Signed 8-bit integer, -128..127 *)
+  BYTE* = UBYTE; (** Unsigned 8-bit integer, 0..255 *)
+  INT64 = LONGINT; (** Signed 64-bit integer *)
   LONGINT = INTEGER; (* For larger version of Files, i.e. Files64 *)
 
   FileName = ARRAY 256 OF CHAR;
-  File* = POINTER TO FileDesc;
+  File* = POINTER TO FileDesc; (** A file object *)
   Buffer = POINTER TO BufDesc;
 
   FileDesc = RECORD
@@ -56,9 +56,12 @@ TYPE
     data: ARRAY BufSize OF SBYTE
   END;
 
+  (** Rider on a file. Used to read or write data from/to a file.
+      Can be set in a arbitrary place in a file. Automatically moves forward
+      in a file every time it is used for reading or writing *)
   Rider* = RECORD
-    res*: INTEGER; (* Residue (byte count not read) at eof of ReadBytes *)
-    eof*: BOOLEAN;
+    res*: INTEGER; (** Residue (byte count not read) at eof of ReadBytes *)
+    eof*: BOOLEAN; (** TRUE when end of file is reached. Check after Read... *)
     justSet: BOOLEAN; (* TRUE after Set(r, F, n>0) for UTF-8 error handling *)
     buf: Buffer;
     org: LONGINT; (* File offset of block containing current position *)
@@ -235,6 +238,8 @@ BEGIN
   f.fd := Platform.InvalidHandleValue(); f.state := create; DEC(Heap.FileCount)
 END CloseOSFile;
 
+(** Flush the contents of the file to storage media.
+    The file can still be used after a call to Close *)
 PROCEDURE Close*(f: File);
 VAR i: INTEGER;
 BEGIN
@@ -244,9 +249,13 @@ BEGIN
   END
 END Close;
 
+(** Returns the length of the given file in bytes *)
 PROCEDURE Length*(f: File): LONGINT;
 BEGIN RETURN f.len END Length;
 
+(** Creates and returns a file object with the given file name.
+    This procedure is used to create new files or rewrite old files, but
+    `New` does not delete or rewrite the file if it existed *)
 PROCEDURE New*(IN name: ARRAY OF CHAR): File;
 VAR f: File;
 BEGIN
@@ -256,9 +265,9 @@ BEGIN
 RETURN f END New;
 
 PROCEDURE ScanPath(VAR pos: INTEGER; VAR dir: ARRAY OF CHAR);
-(* Extract next individual directory from searchpath starting at pos,
-   updating pos and returning dir.
-   Supports ~, ~user and blanks inside path *)
+(** Extract next individual directory from searchpath starting at pos,
+    updating pos and returning dir.
+    Supports ~, ~user and blanks inside path *)
 VAR i: INTEGER; ch: CHAR;
 BEGIN
   i := 0;
@@ -310,6 +319,10 @@ BEGIN f := files;
   RETURN NIL
 END CacheEntry;
 
+(** Opens a file with the given file name if it exists. Returns the object
+    representing the file. If the file does not exist, returns NIL.
+     If you write to a file opened with Old, the changes will be stored
+    in the storage medium only after a call to Register or Close. *)
 PROCEDURE Old*(name: ARRAY OF CHAR): File;
 VAR f: File;
   fd: Platform.FileHandle;
@@ -368,6 +381,7 @@ BEGIN
   END
 END Old;
 
+(** Frees the sectors used by the file object *)
 PROCEDURE Purge*(f: File);
 VAR i: INTEGER;
   identity: Platform.FileIdentity;
@@ -386,6 +400,10 @@ BEGIN i := 0;
   Platform.SetMTime(f.identity, identity)
 END Purge;
 
+(** Puts in `t` and `d` the time and date of the file in a special bit format:
+      d = YYYYYYYMMMMDDDDD  Y-year  M-month   D-day
+      t = HHHHmmmmmmSSSSSS  H-hour  m-minute  S-second
+    The year bits hold the two last digits of the year *)
 PROCEDURE GetDate*(f: File; VAR t, d: INTEGER);
 VAR identity: Platform.FileIdentity;
   error: Platform.ErrorCode;
@@ -393,10 +411,19 @@ BEGIN Create(f); error := Platform.Identify(f.fd, identity);
   Platform.MTimeAsClock(identity, t, d)
 END GetDate;
 
+(** Returns position of rider `r` in the file.
+     Note that the position is measured in bytes (not UTF-8 characters).
+    Position 0 means the position exactly before the very first byte of the
+    file. Position Length() points at exactly after the last byte. *)
 PROCEDURE Pos*(VAR r: Rider): INTEGER;
 BEGIN RETURN r.org + r.offset
 END Pos;
 
+(** Sets rider `r` at position `pos` of the file `f`.
+     Use this procedure after successfully opening a file with Old or New.
+     Note that the position is measured in bytes (not UTF-8 characters).
+    Position 0 means the position exactly before the very first byte of the
+    file. Position Length() points at exactly after the last byte. *)
 PROCEDURE Set*(VAR r: Rider; f: File; pos: LONGINT);
 VAR org: LONGINT;
   offset, i, n: INTEGER;
@@ -437,6 +464,8 @@ BEGIN
   r.justSet := pos > 0
 END Set;
 
+(** Reads one byte from a file and puts it in `x`.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE Read*(VAR r: Rider; VAR x: BYTE);
 VAR offset: INTEGER; buf: Buffer;
 BEGIN
@@ -453,6 +482,9 @@ BEGIN
   END
 END Read;
 
+(** Reads several bytes from a file and puts it in `x`. Puts the number of
+    bytes read in `n`.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadBytes*(VAR r: Rider; VAR x: ARRAY OF BYTE; n: INTEGER);
 VAR xpos, min, restInBuf, offset: INTEGER; buf: Buffer;
 BEGIN
@@ -472,10 +504,16 @@ BEGIN
   r.res := 0; r.eof := FALSE
 END ReadBytes;
 
+(** Reads one byte from a file and puts it in `x` as a short (ASCII) character.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadShortChar*(VAR r: Rider; VAR x: SHORTCHAR);
 BEGIN Read(r, SYSTEM.VAL(BYTE, x))
 END ReadShortChar;
 
+(** Reads up to four bytes (but at least one byte) from a file, interprets
+    them as a UTF-8-encoded character and puts the decoded character in `x`
+    (as a 2-byte UCS-2 character.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadChar*(VAR r: Rider; VAR x: CHAR);
 VAR b: BYTE; y: INTEGER;
 BEGIN Read(r, b); y := b;
@@ -497,10 +535,14 @@ BEGIN Read(r, b); y := b;
   x := CHR(y); r.justSet := FALSE
 END ReadChar;
 
+(** Returns a file object that was connected to rider `r` with Set. *)
 PROCEDURE Base*(VAR r: Rider): File;
 BEGIN RETURN r.buf.f
 END Base;
 
+(** Writes `x` as one byte to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE Write*(VAR r: Rider; x: BYTE);
 VAR buf: Buffer; offset: INTEGER;
 BEGIN
@@ -517,6 +559,9 @@ BEGIN
   r.offset := offset + 1; r.res := 0
 END Write;
 
+(** Writes `n` bytes from array `x` to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteBytes*(VAR r: Rider; IN x: ARRAY OF BYTE; n: INTEGER);
 VAR xpos, min, restInBuf, offset: INTEGER; buf: Buffer;
 BEGIN
@@ -537,10 +582,15 @@ BEGIN
   r.res := 0
 END WriteBytes;
 
+(** Truncates a file at position `pos`.
+    The file length will be equal to `pos`. *)
 PROCEDURE Truncate*(F: File; pos: INTEGER);
 BEGIN F.len := pos (*!FIXME*)
 END Truncate;
 
+(** Deletes (deregisters) a file with the given name from the storage media.
+     Sets `res` to 0 on success, 1 on error.
+     IMPORTANT! It uses SearchPath to find the specified file. *)
 PROCEDURE Delete*(IN name: ARRAY OF CHAR; VAR res: INTEGER);
 VAR pos: INTEGER;
   dir, path: ARRAY 2048 OF CHAR;
@@ -563,6 +613,10 @@ BEGIN
   END
 END Delete;
 
+(** Renames a file with the name `old` to `new`.
+     Sets `res` to 0 on success, something else on error.
+     `res = 2` means old file not found.
+     IMPORTANT! It uses SearchPath to find the specified file. *)
 PROCEDURE Rename*(IN old, new: ARRAY OF CHAR; VAR res: INTEGER);
 VAR n: INTEGER;
   fdold, fdnew: Platform.FileHandle;
@@ -615,6 +669,9 @@ BEGIN
   END
 END Rename;
 
+(** Registers and saves a file on the storage media.
+     Call Register when you are finished writing a file.
+    Register can be called several times and anywhere in between. *)
 PROCEDURE Register*(f: File);
 VAR errcode: INTEGER;
   q: ARRAY 2048 OF SHORTCHAR;
@@ -638,6 +695,8 @@ BEGIN
   END
 END Register;
 
+(** Sets current working directory to `path`.
+     Sets `res` to 0 on success, something else on failure. *)
 PROCEDURE ChangeDirectory*(IN path: ARRAY OF CHAR; VAR res: INTEGER);
 VAR q: ARRAY 2048 OF SHORTCHAR;
 BEGIN Utf8.Encode(path, q); res := Platform.ChDir(q)
@@ -652,16 +711,23 @@ BEGIN
   END
 END FlipBytes;
 
+(** Reads one byte from a file and puts it in `x` as a BOOLEAN value,
+    where byte value of 0 means FALSE, other values mean TRUE.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadBool*(VAR R: Rider; VAR x: BOOLEAN);
 BEGIN Read(R, SYSTEM.VAL(BYTE, x))
 END ReadBool;
 
+(** Reads two bytes from a file and puts them in `x` as a SHORTINT.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadSInt*(VAR R: Rider; VAR x: SHORTINT);
 VAR b: ARRAY 2 OF SHORTCHAR;
 BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 2), 2);
   x := SHORT(ORD(b[0]) + ORD(b[1])*256)
 END ReadSInt;
 
+(** Reads four bytes from a file and puts them in `x` as an INTEGER.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadInt*(VAR R: Rider; VAR x: INTEGER);
 VAR b: ARRAY 4 OF SHORTCHAR;
 BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4);
@@ -669,6 +735,8 @@ BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4);
     ORD(b[3]) * 1000000H
 END ReadInt;
 
+(** Reads eight bytes from a file and puts them in `x` as a LONGINT.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadLInt*(VAR R: Rider; VAR x: INT64);
 VAR b: ARRAY 8 OF SHORTCHAR; n: INTEGER; s: INT64;
 BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 8), 8);
@@ -676,6 +744,8 @@ BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 8), 8);
   FOR n := 1 TO 7 DO INC(x, ORD(b[n]) * s); s := s * 100H END
 END ReadLInt;
 
+(** Reads four bytes from a file and puts it in `x` as a SET.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadSet*(VAR R: Rider; VAR x: SET);
 VAR b: ARRAY 4 OF SHORTCHAR;
 BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4);
@@ -683,30 +753,41 @@ BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4);
     ORD(b[2]) * 10000H + ORD(b[3]) * 1000000H)
 END ReadSet;
 
+(** Reads four bytes from a file and puts it in `x` as REAL.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadReal*(VAR R: Rider; VAR x: SHORTREAL);
 VAR b: ARRAY 4 OF BYTE;
 BEGIN ReadBytes(R, b, 4);
   FlipBytes(b, SYSTEM.THISARR(SYSTEM.ADR(x), 4))
 END ReadReal;
 
+(** Reads eight bytes from a file and puts it in `x` as LONGREAL.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadLReal*(VAR R: Rider; VAR x: REAL);
 VAR b: ARRAY 8 OF BYTE;
 BEGIN ReadBytes(R, b, 8);
   FlipBytes(b, SYSTEM.THISARR(SYSTEM.ADR(x), 8))
 END ReadLReal;
 
+(** Reads bytes from a file until the first zero byte, puts all in `x`.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadShortString*(VAR R: Rider; VAR x: ARRAY OF SHORTCHAR);
 VAR i: INTEGER; ch: SHORTCHAR;
 BEGIN i := 0; (*!FIXME code from scratch*)
   REPEAT ReadShortChar(R, ch); x[i] := ch; INC(i) UNTIL ch = 0X
 END ReadShortString;
 
+(** Reads a file character by character until the first 0X, puts all in `x`.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadString*(VAR R: Rider; VAR x: ARRAY OF CHAR);
 VAR i: INTEGER; ch: CHAR;
 BEGIN i := 0; (*!FIXME code from scratch*)
   REPEAT ReadChar(R, ch); x[i] := ch; INC(i) UNTIL ch = 0X
 END ReadString;
 
+(** Reads bytes from a file until the first 0X, 0AX or 0DX byte,
+    puts all in `x`.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadLine*(VAR R: Rider; VAR x: ARRAY OF SHORTCHAR);
 VAR i: INTEGER; ch: SHORTCHAR; b: BOOLEAN;
 BEGIN i := 0; b := FALSE;
@@ -718,6 +799,9 @@ BEGIN i := 0; b := FALSE;
   UNTIL b
 END ReadLine;
 
+(** Reads one or more bytes from a file to decode a compact number
+    (according to M. Odersky), puts the number read in `x`.
+     The rider `r` must have been set to a file using Set. *)
 PROCEDURE ReadNum*(VAR R: Rider; VAR x: INTEGER);
 VAR n: INTEGER; b: BYTE;
 BEGIN n := 0; x := 0; Read(R, b);
@@ -727,14 +811,23 @@ BEGIN n := 0; x := 0; Read(R, b);
   INC(x, ASH(LONG(b) MOD 64 - LONG(b) DIV 64 * 64, n))
 END ReadNum;
 
+(** Writes BOOLEAN `x` as one byte to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteBool*(VAR R: Rider; x: BOOLEAN);
 BEGIN Write(R, SYSTEM.VAL(BYTE, x))
 END WriteBool;
 
+(** Writes short character `x` as one byte to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteShortChar*(VAR R: Rider; x: SHORTCHAR);
 BEGIN Write(R, SYSTEM.VAL(BYTE, x))
 END WriteShortChar;
 
+(** Writes character `x` as UTF-8 to a file (1 to 4 bytes).
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteChar*(VAR R: Rider; c: CHAR);
 VAR i, L: INTEGER;
   q: ARRAY 5 OF SHORTCHAR;
@@ -743,12 +836,18 @@ BEGIN
   WHILE i # L DO Write(R, SYSTEM.VAL(BYTE, q[i])); INC(i) END
 END WriteChar;
 
+(** Writes SHORTINT `x` as two bytes to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteSInt*(VAR R: Rider; x: SHORTINT);
 VAR b: ARRAY 2 OF SHORTCHAR;
 BEGIN b[0] := SHORT(CHR(x)); b[1] := SHORT(CHR(x DIV 256));
   WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 2), 2)
 END WriteSInt;
 
+(** Writes INTEGER `x` as four bytes to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteInt*(VAR R: Rider; x: INTEGER);
 VAR b: ARRAY 4 OF SHORTCHAR;
 BEGIN b[0] := SHORT(CHR(x)); b[1] := SHORT(CHR(x DIV 100H));
@@ -756,6 +855,9 @@ BEGIN b[0] := SHORT(CHR(x)); b[1] := SHORT(CHR(x DIV 100H));
   WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4)
 END WriteInt;
 
+(** Writes LONGINT `x` as eight bytes to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteLInt*(VAR R: Rider; x: INT64);
 VAR b: ARRAY 8 OF SHORTCHAR; n: INTEGER; s: INT64;
 BEGIN b[0] := SHORT(CHR(x)); s := 100H;
@@ -763,6 +865,9 @@ BEGIN b[0] := SHORT(CHR(x)); s := 100H;
   WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 8), 8)
 END WriteLInt;
 
+(** Writes SET `x` as four bytes to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteSet*(VAR R: Rider; x: SET);
 VAR b: ARRAY 4 OF SHORTCHAR; i: INTEGER;
 BEGIN i := SYSTEM.VAL(INTEGER, x);
@@ -771,30 +876,46 @@ BEGIN i := SYSTEM.VAL(INTEGER, x);
   WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4)
 END WriteSet;
 
+(** Writes REAL `x` as four bytes to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteReal*(VAR R: Rider; x: SHORTREAL);
 VAR b: ARRAY 4 OF BYTE;
 BEGIN FlipBytes(SYSTEM.THISARR(SYSTEM.ADR(x), 4), b);
   WriteBytes(R, b, 4)
 END WriteReal;
 
+(** Writes LONGREAL `x` as eight bytes to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteLReal*(VAR R: Rider; x: REAL);
 VAR b: ARRAY 8 OF BYTE;
 BEGIN FlipBytes(SYSTEM.THISARR(SYSTEM.ADR(x), 8), b);
   WriteBytes(R, b, 8)
 END WriteLReal;
 
-PROCEDURE WriteShortString*(VAR R: Rider; IN s: ARRAY OF SHORTCHAR);
+(** Writes string `x` consising of a 1-byte characters to a file.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
+PROCEDURE WriteShortString*(VAR R: Rider; IN x: ARRAY OF SHORTCHAR);
 VAR i: INTEGER;
-BEGIN i := 0; WHILE s[i] # 0X DO INC(i) END;
-  WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(s), LEN(s)), i + 1)
+BEGIN i := 0; WHILE x[i] # 0X DO INC(i) END;
+  WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(x), LEN(x)), i + 1)
 END WriteShortString;
 
-PROCEDURE WriteString*(VAR R: Rider; IN s: ARRAY OF CHAR);
+(** Writes string `x` to a file in UTF-8 format.
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
+PROCEDURE WriteString*(VAR R: Rider; IN x: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN i := -1;
-  REPEAT INC(i); WriteChar(R, s[i]) UNTIL (i = LEN(s)) OR (s[i] = 0X)
+  REPEAT INC(i); WriteChar(R, x[i]) UNTIL (i = LEN(x)) OR (x[i] = 0X)
 END WriteString;
 
+(** Writes INTEGER `x` as one or more bytes to a file in a compact number
+    format (according to M. Odersky).
+     The rider `r` must have been set to a file using Set.
+     The file is not immediately written on a storage media. *)
 PROCEDURE WriteNum*(VAR R: Rider; x: INTEGER);
 BEGIN
   WHILE (x < - 64) OR (x > 63) DO
@@ -803,6 +924,7 @@ BEGIN
   Write(R, SYSTEM.VAL(BYTE, x MOD 128))
 END WriteNum;
 
+(** Puts in `name` the naem of the file `f`. *)
 PROCEDURE GetName*(f: File; VAR name: ARRAY OF CHAR);
 BEGIN name := f.workName$
 END GetName;
@@ -820,6 +942,7 @@ BEGIN f := SYSTEM.VAL(File, o);
   END
 END Finalize;
 
+(** Sets a search path for Old, New, Delete, Rename etc. *)
 PROCEDURE SetSearchPath*(IN path: ARRAY OF CHAR);
 BEGIN SearchPath := path$
 END SetSearchPath;
