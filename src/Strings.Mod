@@ -2,22 +2,22 @@ MODULE Strings;
 (** Strings provides a set of operations on strings (i.e., on string
     constants and character arrays, both of which contain the character
     0X as a terminator).
-
-    All positions in strings start at 0. *)
+     All positions in strings start at 0. *)
 IMPORT Reals, SYSTEM;
 
 TYPE
   REAL = SYSTEM.REAL32;
   LONGREAL = SYSTEM.REAL64;
 
-(** Returns the number of characters in s up to and excluding the first 0X. *)
+(** Returns the number of characters in `s`
+    up to and excluding the first 0X *)
 PROCEDURE Length*(IN s: ARRAY OF CHAR): INTEGER;
 VAR i: INTEGER;
 BEGIN i := 0; WHILE (i < LEN(s)) & (s[i] # 0X) DO INC(i) END ;
 RETURN i END Length;
 
-(** Appends string s to the end of string dst.
-     Has the same effect as Insert(s, Length(s), dst). *)
+(** Appends string `s` to the end of string `dst`.
+     Has the same effect as Insert(s, Length(s), dst) *)
 PROCEDURE Append*(IN s: ARRAY OF CHAR; VAR dst: ARRAY OF CHAR);
 VAR n1, n2, i: INTEGER;
 BEGIN
@@ -28,13 +28,10 @@ BEGIN
   END
 END Append;
 
-(** Inserts the string src into the string dst at position pos
-    (0 <= pos <= Length(dst)).*)(**
-
+(** Inserts the string `src` into the string `dst` at position `pos`
+    (0 <= pos <= Length(dst))
      If pos >= Length(dst), src is appended to dst.
-*)(**
      If the size of dst is not large enough to hold the result of the
-*)(**
     operation, the result is truncated so that dst is always terminated
     with a 0X. *)
 PROCEDURE Insert*(IN src: ARRAY OF CHAR; pos: INTEGER; VAR dst: ARRAY OF CHAR);
@@ -60,7 +57,7 @@ BEGIN
   IF j >= len THEN dst[len - 1] := 0X END
 END Insert;
 
-(** Deletes n characters from s starting at position pos
+(** Deletes `n` characters from `s` starting at position `pos`
     (0 <= pos < Length(s)).
      If n > Length(s) - pos, the new length of s is pos. *)
 PROCEDURE Delete*(VAR s: ARRAY OF CHAR; pos, n: INTEGER);
@@ -76,7 +73,7 @@ BEGIN
 END Delete;
 
 (** Has the same effect as Delete(dst, pos, Length(src)) followed by an
-    Insert(src, pos, dst). *)
+    Insert(src, pos, dst) *)
 PROCEDURE Replace*(IN src: ARRAY OF CHAR;
     pos: INTEGER; VAR dst: ARRAY OF CHAR);
 BEGIN
@@ -84,8 +81,8 @@ BEGIN
   Insert(src, pos, dst)
 END Replace;
 
-(** Extracts a substring dst with n characters from position pos
-    (0 <= pos < Length(src)) in src.
+(** Extracts a substring `dst` with `n` characters from position `pos`
+    (0 <= pos < Length(src)) in `src`.
      If n > Length(src) - pos, dst is only the part of src from pos to
     Length(src) - 1.
      If the size of dst is not large enough to hold the result of the
@@ -106,7 +103,7 @@ BEGIN len := Length(src);
   END
 END Extract;
 
-(** Copies src to dst. If there is no space, truncates it with 0X.
+(** Copies `src` to `dst`. If there is no space, truncates it with 0X.
      Has the same effect as Extract(src, 0, LEN(dst), dst) *)
 PROCEDURE Copy*(IN src: ARRAY OF CHAR; VAR dst: ARRAY OF CHAR);
 VAR i, len: INTEGER;
@@ -119,8 +116,8 @@ BEGIN
   dst[i] := 0X
 END Copy;
 
-(** Returns the position of the first occurrence of pat in s after
-    position pos (inclusive).
+(** Returns the position of the first occurrence of `pat` in `s` after
+    position `pos` (inclusive).
      If pat is not found, -1 is returned. *)
 PROCEDURE Pos*(IN pattern, s: ARRAY OF CHAR; pos: INTEGER): INTEGER;
 VAR n1, n2, i, j: INTEGER;
@@ -138,7 +135,8 @@ BEGIN
   RETURN -1
 END Pos;
 
-(** Replaces each lower case latin letter in s by its upper case equivalent. *)
+(** Replaces each lower case latin letter
+    in `s` by its upper case equivalent. *)
 PROCEDURE Cap*(VAR s: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN

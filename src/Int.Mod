@@ -1,6 +1,8 @@
 MODULE Int;
+(** Module for INTEGER conversion from and to a string *)
 IMPORT Strings;
 
+(** Converts integer `n` to string `s` *)
 PROCEDURE Str*(n: INTEGER; VAR s: ARRAY OF CHAR);
 VAR i, j: INTEGER; tmp: CHAR; neg: BOOLEAN;
 BEGIN
@@ -21,6 +23,9 @@ BEGIN
   END
 END Str;
 
+(** Returns the contents of string `s` converted to an integer. Sets `ok` to
+    TRUE if `s` contains a valid representation of an integer number,
+    otherwise sets `ok` to FALSE and returns 0 *)
 PROCEDURE ValEx*(IN s: ARRAY OF CHAR; VAR ok: BOOLEAN): INTEGER;
 VAR i, n: INTEGER;
   c: CHAR;
@@ -31,19 +36,24 @@ BEGIN n := 0; c := s[0]; ok := FALSE;
     n := n * 10 + ORD(c) - ORD('0');
     INC(i); c := s[i]
   END;
-  IF s[i] # 0X THEN ok := FALSE END;
-  IF neg THEN n := -n END ;
+  IF s[i] # 0X THEN ok := FALSE; n := 0 ELSIF neg THEN n := -n END ;
 RETURN n END ValEx;
 
+(** Returns the contents of string `s` converted to an integer. If `s`
+    does not contain a valid representation of an integer number, returns 0 *)
 PROCEDURE Val*(IN s: ARRAY OF CHAR): INTEGER;
 VAR ok: BOOLEAN;
 BEGIN RETURN ValEx(s, ok) END Val;
 
+(** Inserts a textual representation of integer `n` in position `pos` of
+    string `s` *)
 PROCEDURE Insert*(n: INTEGER; pos: INTEGER; VAR s: ARRAY OF CHAR);
 VAR sn: ARRAY 30 OF CHAR;
 BEGIN Str(n, sn); Strings.Insert(sn, pos, s)
 END Insert;
 
+(** Appends a textual representation of integer `n` to the end of
+    the string `s` *)
 PROCEDURE Append*(n: INTEGER; VAR s: ARRAY OF CHAR);
 VAR sn: ARRAY 30 OF CHAR;
 BEGIN Str(n, sn); Strings.Append(sn, s)

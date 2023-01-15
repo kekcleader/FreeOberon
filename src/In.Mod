@@ -1,4 +1,17 @@
 MODULE In;
+(** Module In provides a set of basic routines for formatted input of
+    characters, character sequences, numbers, and names. It assumes a standard
+    input stream with a current position that can be reset to the beginning of
+    the stream (but may not always do so on Linux/Unix or Windows).
+
+    Module In as in Oakwood Guidlines for  Oberon-2 Compiler Developers, 1995.
+     With the following changes:
+     LongInt, Int, Int16 also read minus signs first.
+     Char reads a 2-byte character. On Linux it decodes input as UTF-8.
+    On Windows it uses ReadConsoleW WinAPI call if console is attached,
+    otherwise uses ReadFile and decodes input as UTF-8.
+     Open may not rewind.
+    Extra procedures: Line, HugeInt, Int16. *)
 
 (*!FIXME From the Oakwood guidlines:
   An unsuccessful input operation sets Done to FALSE;
@@ -11,20 +24,33 @@ CONST
   ready   = 1; (* readState when nextch is defined and contains next character on current line. *)
   eof     = 2; (* readState when at end of file. *)
 
-  (* Codepages, values of cp *)
+  (** Codepages, values of cp **)
   singleByte = 1;
   utf8       = 2; (*!TODO also add UTF16 *)
 
 TYPE
   SBYTE = BYTE;
-  BYTE* = UBYTE;
+  BYTE* = UBYTE; (** 8-bit unsigned integer, 0..255 *)
 
 VAR
+  (** TRUE after every Open, FALSE after the first error.
+       Done indicates the success of an input operation. If Done is TRUE after
+      an input operation, the operation was successful and its result is
+      valid. An unsuccessful input operation sets Done to FALSE; it remains
+      FALSE until the next call to Open. In particular, Done is set to FALSE
+      if an attempt is made to read beyond the end of the input stream. *)
   Done-: BOOLEAN;
-  nextch: CHAR; (* Maintains 1 character read ahaead except at end of line. *)
-  readState: INTEGER;
-  cp: INTEGER; (* Input Code Page *)
 
+  nextch: CHAR; (** Maintains 1 character read ahaead except at end of line *)
+  readState: INTEGER;
+  cp: INTEGER; (** Input Code Page *)
+
+(** Initialization **)
+
+(** Open (re)sets the current position to the beginning of the input stream.
+    Done indicates if the operation was successful.
+     Note that on Windows or Linux/Unix rewind may not be possible, also on
+    these OS Open is not strictly required before any other operation. *)
 PROCEDURE Open*;
 VAR error: Platform.ErrorCode;
 BEGIN
@@ -35,6 +61,12 @@ BEGIN
   readState := pending;
   Done := error = 0
 END Open;
+
+(** Input operations **)
+
+(** The following operations require Done = TRUE and guarantee (Done = TRUE
+    and the result is valid) or (Done = FALSE). All operations except Char
+    skip leading blanks, tabs or end-of-line characters. *)
 
 PROCEDURE GetByte(): INTEGER;
 VAR error: Platform.ErrorCode; x, n: INTEGER;
@@ -57,6 +89,7 @@ BEGIN
   END ;
 RETURN ok END GetChar;
 
+(** Puts in `x` the byte at the current position *)
 PROCEDURE Byte*(VAR x: BYTE);
 BEGIN x := SYSTEM.VAL(BYTE, SHORT(SHORT(GetByte())))
 END Byte;
@@ -94,6 +127,9 @@ BEGIN StartRead;
   WHILE (readState = ready) & (nextch <= ' ') DO ReadChar END
 END StartAndSkip;
 
+(** Puts in `ch` the character at the current position. May read 1 to 4 bytes
+    if decoding from UTF-8 (on Linux/Unix and on Windows if input
+    is redirected). *)
 PROCEDURE Char*(VAR ch: CHAR);
 BEGIN StartRead;
   IF readState = ready THEN ch := nextch;
@@ -102,6 +138,8 @@ BEGIN StartRead;
   END
 END Char;
 
+(** Returns 64-bit integer at the current position according to the format:
+     IntConst = [-] (digit {digit} | digit {hexDigit} "H"). *)
 PROCEDURE HugeInt*(VAR h: LONGINT);
 VAR ok, neg, hex, endofnum: BOOLEAN;
   decacc, hexacc, digit: LONGINT;
@@ -143,20 +181,24 @@ BEGIN StartAndSkip;
   IF ~ok THEN Done := FALSE END
 END HugeInt;
 
+(** Returns 16-bit integer in the same way as HugeInt does *)
 PROCEDURE Int16*(VAR i: SHORTINT);
 VAR h: LONGINT;
 BEGIN HugeInt(h); i := SHORT(SHORT(h)) (*!FIXME check range, update Done*)
 END Int16;
 
+(** Returns 32-bit integer in the same way as HugeInt does *)
 PROCEDURE Int*(VAR i: INTEGER); (*32-bit INTEGER alias*)
 VAR h: LONGINT;
 BEGIN HugeInt(h); i := SHORT(h) (*!FIXME check range, update Done*)
 END Int;
 
+(** Alias for Int. Does the same thing *)
 PROCEDURE LongInt*(VAR i: INTEGER);
 BEGIN Int(i)
 END LongInt;
 
+(** Read a line of UTF-8-encoded characters until CR, LF or end of file *)
 PROCEDURE Line*(VAR line: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN StartRead; i := 0;
@@ -170,49 +212,62 @@ BEGIN StartRead; i := 0;
   IF (readState = ready) & (nextch = 0AX) THEN readState := pending END
 END Line;
 
-(** Skip whitespaces, read characters until a whitespace, skip whitespaces
-    until a new line character. *)
+(** Read a word and put it in `s`.
+     Skip whitespaces, read UTF-8-encoded characters until the next whitespace
+    and put the read word in `s`, then skip whitespaces until the next
+    non-whitespace or a new line character. Skip the new line character *)
 PROCEDURE Word*(VAR s: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN StartRead; i := 0;
   IF readState # ready THEN Done := FALSE END;
-  WHILE (readState = ready) & (nextch > ' ') & (i < LEN(s) - 1) DO
-    s[i] := nextch; INC(i); ReadChar
+  WHILE (readState = ready) & (nextch > ' ') DO
+    IF i < LEN(s) - 1 THEN s[i] := nextch; INC(i) ELSE Done := FALSE END;
+    ReadChar
   END;
   s[i] := 0X;
   WHILE (readState = ready) & (nextch <= ' ') & (nextch # 0AX) DO ReadChar END;
   IF (readState = ready) & (nextch = 0AX) THEN readState := pending END
 END Word;
 
+(** Read a string literal and put it in `s`.
+     A string literal is a quoted sequence of characters that may include
+    spaces but not other whitespaces (tabs, new lines etc.). The quotes can
+    be single or double quotes. The string must begin and end with the same
+    quotation marks. *)
 PROCEDURE String*(VAR s: ARRAY OF CHAR);
 VAR i: INTEGER;
+  q: CHAR; (* ' or " *)
 BEGIN StartAndSkip; i := 0;
-  IF (readState = ready) & (nextch = '"') THEN
-    ReadChar;
-    WHILE (readState = ready) & (i < LEN(s) - 1) &
-        (nextch >= ' ') & (nextch # '"') DO
-      s[i] := nextch; ReadChar; INC(i)
+  IF (readState = ready) & ((nextch = '"') OR (nextch = "'")) THEN
+    q := nextch; ReadChar;
+    WHILE (readState = ready) & (nextch >= ' ') & (nextch # q) DO
+      IF i < LEN(s) - 1 THEN s[i] := nextch; INC(i) ELSE Done := FALSE END;
+      ReadChar
+    END;
+    IF (readState = ready) & (nextch = q) THEN ReadChar
+    ELSE Done := FALSE
     END
   END;
-  IF (readState = ready) & (i < LEN(s) - 1) & (nextch = '"') THEN
-    ReadChar; s[i] := 0X
-  ELSE s[0] := 0X; Done := FALSE
-  END
+  s[i] := 0X
 END String;
 
-(** Read a file name *)
-PROCEDURE Name*(VAR name: ARRAY OF CHAR);
+(** Reads the name `s` at the current position according to the file name
+    format of the operating system (e.g. "lib/My.Mod" under Unix).
+    Skips the 0AX in the end (if any). *)
+PROCEDURE Name*(VAR s: ARRAY OF CHAR);
 VAR c: CHAR;
   i: INTEGER;
 BEGIN i := 0; Char(c);
   WHILE c > ' ' DO
-    IF i < LEN(name) - 1 THEN name[i] := c; INC(i) ELSE Done := FALSE END;
+    IF i < LEN(s) - 1 THEN s[i] := c; INC(i) ELSE Done := FALSE END;
     Char(c)
   END;
-  name[i] := 0X;
+  s[i] := 0X;
   IF c = 0AX THEN Char(c) END
 END Name;
 
+(** Reads and puts in `x` a 32-bit real number (REAL) in format:
+      ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]]. *)
 PROCEDURE Real*(VAR x: SHORTREAL);
 VAR s: ARRAY 16 OF CHAR;
 BEGIN StartAndSkip; Word(s);
@@ -220,6 +275,8 @@ BEGIN StartAndSkip; Word(s);
   IF ~Reals.Done THEN Done := FALSE END
 END Real;
 
+(** Reads and puts in `x` a 64-bit real number (LONGREAL) in format:
+      ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]]. *)
 PROCEDURE LongReal*(VAR x: REAL);
 VAR s: ARRAY 16 OF CHAR;
 BEGIN StartAndSkip; Word(s);

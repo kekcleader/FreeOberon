@@ -1,5 +1,5 @@
 MODULE Reals;
-
+(** Module for REAL and LONGREAL conversion from and to a string *)
 IMPORT SYSTEM;
 
 TYPE
@@ -23,6 +23,7 @@ BEGIN r := 1.0E0; power := 1.0E1;
   RETURN r
 END Ten;
 
+(** Returns a long real number converted from string `s` *)
 PROCEDURE LongVal*(IN s: ARRAY OF CHAR): LONGREAL;
 VAR p, e: INTEGER; y, g: LONGREAL; neg, negE: BOOLEAN;
 BEGIN Done := FALSE;
@@ -62,14 +63,12 @@ BEGIN Done := FALSE;
   END ;
 RETURN y END LongVal;
 
+(** Returns a real number converted from string `s` *)
 PROCEDURE Val*(IN s: ARRAY OF CHAR): REAL;
 VAR y: LONGREAL;
 BEGIN
   RETURN SHORT(LongVal(s))
 END Val;
-
-(****)
-
 
 PROCEDURE digit(n: HUGEINT; VAR s: ARRAY OF CHAR; VAR i: INTEGER);
 BEGIN
@@ -192,10 +191,14 @@ BEGIN si := 0; Done := TRUE;
   s[si] := 0X
 END RealP;
 
+(** Converts real number `x` to string `s`.
+     `n` means the minimum number of charactes (`s` prepended with spaces). *)
 PROCEDURE Str*(x: REAL; n: INTEGER; VAR s: ARRAY OF CHAR);
 BEGIN RealP(x, n, FALSE, s)
 END Str;
 
+(** Converts long real number `x` to string `s`.
+     `n` means the minimum number of charactes (`s` prepended with spaces). *)
 PROCEDURE LongStr*(x: LONGREAL; n: INTEGER; VAR s: ARRAY OF CHAR);
 BEGIN RealP(x, n, TRUE, s)
 END LongStr;
@@ -242,6 +245,9 @@ BEGIN SYSTEM.GET(SYSTEM.ADR(x), i);
   RETURN SHORT(ASH(i, -52) MOD 800H)
 END LongExpo;
 
+(** Converts real number `x` to string `s`.
+     `n` means the minimum number of charactes (`s` prepended with spaces).
+     `k` means the number of digits after a decimal point *)
 PROCEDURE StrFix*(x: REAL; n, k: INTEGER; VAR s: ARRAY OF CHAR);
 CONST maxD = 9;
 VAR e, si, i, minus, p, N: INTEGER; x0: REAL;
@@ -301,6 +307,9 @@ BEGIN Done := TRUE; si := 0; e := Expo(x);
   s[si] := 0X
 END StrFix;
 
+(** Converts long real number `x` to string `s`.
+     `n` means the minimum number of charactes (`s` prepended with spaces).
+     `k` means the number of digits after a decimal point *)
 PROCEDURE LongStrFix*(x: LONGREAL; n, k: INTEGER; VAR s: ARRAY OF CHAR);
 CONST maxD = 20;
 VAR e, si, i, minus, p, N: INTEGER; x0: LONGREAL;

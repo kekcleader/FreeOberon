@@ -1,17 +1,20 @@
 MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 18.11.2014 / 10.1.2019 / AE 05.02.2022*)
+(** Module for reading and writing text files *)
 IMPORT Files, IntToStr := Int, Platform, SYSTEM;
 
 CONST
-  (* Scanner class values *)
-  Inval*  = 0; (* Invalid symbol *)
-  Name*   = 1; (* Name (identifier) s (length len) *)
-  String* = 2; (* Literal string s (length len) *)
-  Int*    = 3; (* Integer i (decimal or hexadecimal) *)
-  Real*   = 4; (* Real number x *)
-  Char*   = 6; (* Special character c *)
+  (** Scanner.class values **)
+  Inval*  = 0; (** Invalid symbol *)
+  Name*   = 1; (** Name (identifier) s (length len) *)
+  String* = 2; (** Literal string s (length len) *)
+  Int*    = 3; (** Integer i (decimal or hexadecimal) *)
+  Real*   = 4; (** Real number x *)
+  Char*   = 6; (** Special character c *)
 
-  replace* = 0; insert* = 1; delete* = 2; unmark* = 3; (* Op-codes *)
+  (** Op-codes **)
+  replace* = 0; insert* = 1; delete* = 2; unmark* = 3;
 
+  (** - **)
   CR = 0DX; LF = 0AX;
   isWindows = Platform.Windows;
 
@@ -24,43 +27,54 @@ TYPE
     prev, next: Piece
   END;
 
+  (** Text object *)
   Text* = POINTER TO TextDesc;
   TextDesc* = RECORD
-    len*: INTEGER;
-    changed*: BOOLEAN;
+    len*: INTEGER; (** Length of the text file in bytes (not characters!)  *)
+    changed*: BOOLEAN; (** TRUE if the text has been changed *)
     trailer: Piece;
-    pce: Piece;  (* Cache *)
-    org: INTEGER (* Cache *)
+    pce: Piece;  (** Cache *)
+    org: INTEGER (** Cache *)
   END;
 
+  (** A rider on a text object to read it one character at a time *)
   Reader* = RECORD
-    eot*: BOOLEAN;
-    col*: INTEGER;
+    eot*: BOOLEAN; (** TRUE if end of text has been reached *)
+    col*: INTEGER; (** Color. Not used *)
     ref: Piece;
     org: INTEGER;
     off: INTEGER;
     rider: Files.Rider
   END;
 
+  (** A rider on a text object to read and parse (scan) it in small pieces *)
   Scanner* = RECORD(Reader)
-    nextCh*: CHAR;
-    line*, class*: INTEGER;
-    i*: INTEGER;
-    x*: REAL;
-    c*: CHAR;
-    len*: INTEGER;
-    s*: ARRAY 1900 OF CHAR
+    nextCh*: CHAR; (** A read-ahead character value *)
+    line*: INTEGER; (** Current line number *)
+    class*: INTEGER; (** One of the scanner class constants (see above) *)
+    i*: INTEGER; (** If class = Int, i = the value of the scanned integer *)
+    x*: REAL; (** If class = Real, x = the value of the scanned real number *)
+    c*: CHAR; (** If class = Char, c = the value of the scanned character *)
+    len*: INTEGER; (** If class = String, len holds the string length *)
+    s*: ARRAY 1900 OF CHAR (** If class = String, s holds the string *)
   END;
 
+  (** Buffer of a piece of text
+       The idea is to write a piece of text first into a Buffer, and
+      thereafter insert or append it to a Text. This is done for reasons of
+      efficiency, because the possibly needed rendering of the text, for
+      example on a display, can be done once upon insertion of the buffered
+      piece of text rather than after generating each character *)
   Buffer* = POINTER TO BufDesc;
   BufDesc* = RECORD
     len*: INTEGER;
     header, last: Piece
   END;
 
+  (** An obeject that is used to write a piece of text in a Buffer *)
   Writer* = RECORD
-    buf*: Buffer;
-    col: INTEGER; (* Color !FIXME CURRENTLY NOT USED *)
+    buf*: Buffer; (** The Writer's internal buffer *)
+    col*: INTEGER; (** Color. Not used *)
     rider: Files.Rider
   END;
 
@@ -73,6 +87,7 @@ VAR Q: Piece;
 BEGIN NEW(Q); Q.f := TrailerFile; Q.off := -1; Q.len := 1; Q.col := -1
 RETURN Q END Trailer;
 
+(** Loads text `T` from file via rider `r` attached to the file *)
 PROCEDURE Load*(VAR R: Files.Rider; T: Text);
 VAR Q, q: Piece;
   f: Files.File;
@@ -85,6 +100,9 @@ BEGIN f := Files.Base(R); Q := Trailer();
   T.trailer := Q; T.len := q.len
 END Load;
 
+(** Initialize Text `T`.
+     If `name` is non-empty, open file with name `name` and load it in `T`.
+     If `name` is an empty string, create a new empty Text *)
 PROCEDURE Open*(T: Text; name: ARRAY OF CHAR);
 VAR f: Files.File; R: Files.Rider; Q, q: Piece;
   len: INTEGER;
@@ -101,6 +119,7 @@ BEGIN f := Files.Old(name);
   T.changed := FALSE; T.org := -1; T.pce := T.trailer (* Init cache *)
 END Open;
 
+(** Write text `T` into a file via rider `r` attached to the file *)
 PROCEDURE Store*(VAR W: Files.Rider; T: Text);
 VAR p: Piece;
   R: Files.Rider;
@@ -115,6 +134,7 @@ BEGIN p := T.trailer.next;
   T.changed := FALSE
 END Store;
 
+(** Store text `T` on a storage medium as a file with the given `name` *)
 PROCEDURE Close*(T: Text; name: ARRAY OF CHAR);
 VAR f: Files.File; w: Files.Rider;
 BEGIN f := Files.New(name); Files.Set(w, f, 0);
@@ -123,6 +143,7 @@ END Close;
 
 (* -------------------- Editing ----------------------- *)
 
+(** Initialize buffer `B` as an empty buffer *)
 PROCEDURE OpenBuf*(B: Buffer);
 BEGIN NEW(B.header); (* Null piece *)
   B.last := B.header; B.len := 0
@@ -156,6 +177,8 @@ BEGIN
   END
 END SplitPiece;
 
+(** Saves piece of text `T` from `beg` (inclusive) to `end` (exclusive) to
+    buffer `B`. The previous content of `B` is deleted *)
 PROCEDURE Save*(T: Text; beg, end: INTEGER; B: Buffer);
 VAR p, q, qb, qe: Piece; org: INTEGER;
 BEGIN
@@ -174,6 +197,8 @@ BEGIN
   B.len := B.len + (end - beg)
 END Save;
 
+(** Copies the contents of the source buffer `SB` to the
+    destination buffer `DB` *)
 PROCEDURE Copy*(SB, DB: Buffer);
 VAR Q, q, p: Piece;
 BEGIN p := SB.header; Q := DB.last;
@@ -183,6 +208,7 @@ BEGIN p := SB.header; Q := DB.last;
   DB.last := Q; DB.len := DB.len + SB.len
 END Copy;
 
+(** Inserts the contents of buffer `B` into text `T` at position `pos` *)
 PROCEDURE Insert*(T: Text; pos: INTEGER; B: Buffer);
 VAR pl, pr, p, qb, qe: Piece; org, end: INTEGER;
 BEGIN
@@ -201,10 +227,14 @@ BEGIN
   T.changed := TRUE
 END Insert;
 
+(** Appends the contents of buffer `B` into the end of text `T` *)
 PROCEDURE Append*(T: Text; B: Buffer);
 BEGIN Insert(T, T.len, B)
 END Append;
 
+(** Copies a piece of text `T` from position `beg` (inclusive) to
+    position `end` (exclusive) to buffer `B` and deletes this piece
+    from text `T`. The previous content of `B` is deleted *)
 PROCEDURE Delete*(T: Text; beg, end: INTEGER; B: Buffer);
 VAR pb, pe, pbr, per: Piece; orgb, orge: INTEGER;
 BEGIN
@@ -222,6 +252,8 @@ BEGIN
   T.changed := TRUE
 END Delete;
 
+(** Changes the color of the piece of `T` at [bef; end) to `col`.
+     Does not work *)
 PROCEDURE ChangeColor*(T: Text; beg, end: INTEGER; col: INTEGER); (*!FIXME does nothing*)
 VAR pb, pe, p: Piece; org: INTEGER;
 BEGIN
@@ -232,6 +264,7 @@ BEGIN
   T.changed := TRUE
 END ChangeColor;
 
+(** Puts in `col` the color of a character in `T` at position `pos` *)
 PROCEDURE GetColor*(T: Text; pos: INTEGER; VAR col: INTEGER);
 VAR p: Piece; org: INTEGER;
 BEGIN FindPiece(T, pos, org, p); col := p.col
@@ -239,6 +272,7 @@ END GetColor;
 
 (* ------------------ Access: Readers ------------------------- *)
 
+(** Initializes Reader `R` by setting it to position `pos` of text `T` *)
 PROCEDURE OpenReader*(VAR R: Reader; T: Text; pos: INTEGER);
 VAR p: Piece; org: INTEGER;
 BEGIN FindPiece(T, pos, org, p);
@@ -246,6 +280,9 @@ BEGIN FindPiece(T, pos, org, p);
   Files.Set(R.rider, p.f, p.off + R.off); R.eot := FALSE
 END OpenReader;
 
+(** Reads a character fro the text attached the reader `R` and puts it in `ch`.
+    Reader `R` is advanced (moved forward) by 1-4 bytes, because the
+    encoding is UTF-8. *)
 PROCEDURE Read*(VAR R: Reader; VAR ch: CHAR);
 BEGIN Files.ReadChar(R.rider, ch);
   R.col := R.ref.col;
@@ -257,11 +294,13 @@ BEGIN Files.ReadChar(R.rider, ch);
   END
 END Read;
 
+(** Returns the current position of `R` in bytes (not characters!) *)
 PROCEDURE Pos*(VAR R: Reader): INTEGER;
 RETURN R.org + R.off END Pos;  
 
 (* ------------------ Access: Scanners (NW) ------------------------- *)
 
+(** Initializes Scanner `S` by setting it to position `pos` of text `T` *)
 PROCEDURE OpenScanner*(VAR S: Scanner; T: Text; pos: INTEGER);
 BEGIN OpenReader(S, T, pos); S.line := 0; S.nextCh := ' '
 END OpenScanner;
@@ -279,6 +318,18 @@ BEGIN t := 1.0; p := 10.0; (* Compute 10^n *)
   END
 RETURN t END Ten;
 
+(** Scans the text attached to `S` and reads whatever is in the text. Stores
+    the scanned value in `S`. S.class is set to one of the possbile constants
+    (see above).
+     The options are: an integer (Int), a real value (Real), a string in
+    quotes (String), a sequence of non-space characters (Name), a single
+    (otherwise unrecognized) character (Char) or an invalid value (Inval, also
+    means end of text).
+     The integer result is stored in S.i, real -- in S.x, character -- in S.c,
+    string -- in S.s (the string) and S.len (the length of the string).
+     The line number in S.line is the line number of the next character that
+    is always held in a S.nextCh.
+     Call OpenScanner, then Scan, then check the value of S.class *)
 PROCEDURE Scan*(VAR S: Scanner);
 CONST maxExp = 38; maxM = 16777216; (* 2^24 *)
 VAR ch, quot: CHAR;
@@ -357,15 +408,19 @@ END Scan;
 
 (* --------------- Access: Writers (NW) ------------------ *)
 
+(** Initializes Writer `W` by setting it to position `pos` of text `T` *)
 PROCEDURE OpenWriter*(VAR W: Writer);
 BEGIN NEW(W.buf); OpenBuf(W.buf); W.col := 0;
   Files.Set(W.rider, Files.New(''), 0)
 END OpenWriter;
 
+(** Sets the color of the Writer.
+     Does not work *)
 PROCEDURE SetColor*(VAR W: Writer; col: INTEGER);
 BEGIN W.col := col
 END SetColor;
 
+(** Writes character `ch` into the internal buffer of Writer `W` *)
 PROCEDURE Write*(VAR W: Writer; ch: CHAR);
 VAR p: Piece;
 BEGIN
@@ -380,16 +435,22 @@ BEGIN
   INC(W.buf.last.len); INC(W.buf.len)
 END Write;
 
+(** Writes next line character (or CRLF pair on Windows) into the internal
+    buffer of Writer `W` *)
 PROCEDURE WriteLn*(VAR W: Writer);
 BEGIN IF isWindows THEN Write(W, CR) END; Write(W, LF)
 END WriteLn;
 
+(** Writes string `s` into the internal buffer of Writer `W` *)
 PROCEDURE WriteString*(VAR W: Writer; s: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN i := 0;
   WHILE s[i] # 0X DO Write(W, s[i]); INC(i) END
 END WriteString;
 
+(** Writes integer `x` into the internal buffer of Writer `W`.
+     `n` means the minimum number of characters to write
+    (the number gets prefixed with spaces) *)
 PROCEDURE WriteInt*(VAR W: Writer; x, n: INTEGER);
 VAR i: INTEGER; x0: INTEGER;
   a: ARRAY 10 OF CHAR;
@@ -405,6 +466,8 @@ BEGIN
   END
 END WriteInt;
 
+(** Writes `x` as a hexadecimal integer into the internal
+    buffer of Writer `W`. *)
 PROCEDURE WriteHex*(VAR W: Writer; x: INTEGER);
 VAR i: INTEGER; y: INTEGER;
   a: ARRAY 10 OF CHAR;
@@ -416,6 +479,9 @@ BEGIN i := 0; Write(W, ' ');
   REPEAT DEC(i); Write(W, a[i]) UNTIL i = 0
 END WriteHex;
 
+(** Writes real number `x` into the internal buffer of Writer `W`.
+     `n` means the minimum number of characters to write
+    (the number gets prefixed with spaces) *)
 PROCEDURE WriteReal*(VAR W: Writer; x: REAL; n: INTEGER);
 VAR e, i, k, m: INTEGER;
   d: ARRAY 16 OF CHAR;
@@ -446,6 +512,10 @@ BEGIN e := ASR(SYSTEM.VAL(INTEGER, x), 23) MOD 100H; (* Binary exponent *)
   END
 END WriteReal;
 
+(** Writes real number `x` into the internal buffer of Writer `W`.
+     `n` means the minimum number of characters to write
+    (the number gets prefixed with spaces)
+     `k` means the number of digits after a decimal point *)
 PROCEDURE WriteRealFix*(VAR W: Writer; x: REAL; n, k: INTEGER);
 VAR i, m: INTEGER; neg: BOOLEAN;
   d: ARRAY 12 OF CHAR;

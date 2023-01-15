@@ -1,4 +1,5 @@
 MODULE TermBox;
+(** Termbox is a module for creating cross-platform text-based interfaces *)
 IMPORT G := Graph, Strings, Int, Out, Platform, Kernel;
 
 CONST
@@ -11,29 +12,30 @@ CONST
   stdW = 80;
   stdH = 25;
 
-  (* Settings set members *)
-  fullscreen*  = 1;
-  window*      = 2;
-  exact*       = 3;
-  sharp*       = 4;
-  software*    = 5;
-  noMouse*     = 6;
-  center*      = 7;
-  resizable*   = 8;
-  maximized*   = 9;
-  minimized*   = 10;
-  frameless*   = 11;
+  (** Flags for procedure Settings **)
+  (** The flags only work if TermBox works via module Graph *)
+  fullscreen*  =  1; (** Run in fullscreen if possible *)
+  window*      =  2; (** Run in window if possible *)
+  exact*       =  3; (** Use the exact given pixel size *)
+  sharp*       =  4; (** Use integer multitudes of hardware pixels *)
+  software*    =  5; (** Render graphics in software *)
+  noMouse*     =  6; (** Hide mouse pointer *)
+  center*      =  7; (** Center the window *)
+  resizable*   =  8; (** Make window resizable *)
+  maximized*   =  9; (** Maximize window on startup *)
+  minimized*   = 10; (** Minimize window on startup *)
+  frameless*   = 11; (** Hide window frames *)
 
-  (* Event.type possible values *)
-  noEvent* = 0;
-  quit*    = 1;
-  key*     = 2;
-  mouse*   = 3;
-  resize*  = 11;
-  timer*   = 14;
-  error*   = 15;
+  (** Event.type possible values **)
+  noEvent* =  0; (** No event occurred (used only internally) *)
+  quit*    =  1; (** User closed the window (works only if Graph is used) *)
+  key*     =  2; (** Key press *)
+  mouse*   =  3; (** Mouse button click, release or drag *)
+  resize*  = 11; (** Terminal window changed its size *)
+  timer*   = 14; (** Tick of the TermBox timer *)
+  error*   = 15; (** Error event *)
 
-  (* Key Codes *)
+  (** Key Codes **)
   kA*          = 1;
   kB*          = 2;
   kC*          = 3;
@@ -151,22 +153,24 @@ CONST
   kNumLock*    = 225;
   kCapsLock*   = 226;
 
-  kMax*        = 226;
+  kMax*        = 226; (** Maximum key code *)
 
-  (* Modifiers Set *)
-  mShift*      = 0;
-  mCtrl*       = 1;
-  mAlt*        = 2;
-  mLwin*       = 3;
-  mRwin*       = 4;
-  mMenu*       = 5;
-  mAltGr*      = 6;
-  mCommand*    = 7;
-  mScrolllock* = 8;
-  mNumlock*    = 9;
-  mCapslock*   = 10;
+  (** Key Modifiers Set - Event.mod **)
+  (** The set of modifier keys such as Alt or Ctrl *)
+  mShift*      =  0; (** SHIFT *)
+  mCtrl*       =  1; (** CTRL *)
+  mAlt*        =  2; (** ALT *)
+  mLwin*       =  3; (** Left Windows Key *)
+  mRwin*       =  4; (** Right Windows Key *)
+  mMenu*       =  5; (** Menu Key *)
+  mAltGr*      =  6; (** ALT-Graph (Right ALT) *)
+  mCommand*    =  7; (** Command key (on Mac) *)
+  mScrolllock* =  8; (** Scroll Lock *)
+  mNumlock*    =  9; (** Num Lock *)
+  mCapslock*   = 10; (** Caps Lock *)
 
-  (* Characters *)
+  (** Characters **)
+  (** Useful constants for pseudo-graphical box drawing *)
   lineHor*         = 2500X;
   lineVert*        = 2502X;
 
@@ -235,32 +239,32 @@ CONST
   rightHalfBlock* = 2590X;
 
 TYPE
-  Event* = RECORD
-    type*: INTEGER;
-    x*, y*: INTEGER;
-    w*, h*: INTEGER;  (* Size of screen in cells on resize *)
-    button*: INTEGER; (* Mouse button that is pressed, 0 means release *)
-    key*: INTEGER;    (* Physical key code *)
-    ch*: CHAR;        (* Typed character *)
-    mod*: SET         (* Key modifiers *)
+  Event* = RECORD (** Record that holds information on the event occurred *)
+    type*: INTEGER;   (** One of Event.type constants (see above) *)
+    x*, y*: INTEGER;  (** For mouse presses, releases and drags *)
+    w*, h*: INTEGER;  (** Size of screen in cells on resize *)
+    button*: INTEGER; (** Mouse button that is pressed, 0 means release *)
+    key*: INTEGER;    (** Physical key code of the key pressed or released *)
+    ch*: CHAR;        (** The typed character on key press *)
+    mod*: SET         (** Key modifiers set (see above) *)
   END;
 
   Cell = RECORD
     ch, oldCh: CHAR;
     fg, oldFg: INTEGER;
     bg, oldBg: INTEGER;
-    updated: INTEGER (* > 0 means need to redraw, 2 means redraw in any case *)
+    updated: INTEGER (** >0 means need to redraw, 2 means redraw in any case *)
   END;
 
-  Part* = POINTER TO PartDesc; (* Part of screen buffer *)
-  PartDesc* = RECORD
+  Part = POINTER TO PartDesc; (** Part of screen buffer *)
+  PartDesc = RECORD
     cells: ARRAY partH, partW OF Cell;
-    w, h: INTEGER; (* Actually used sizes of array *)
-    redraw: BOOLEAN; (* TRUE if any cell needs to be redrawn *)
+    w, h: INTEGER;   (** Actually used sizes of array *)
+    redraw: BOOLEAN; (** TRUE if any cell needs to be redrawn *)
     down, right: Part
   END;
 
-  Buffer = RECORD (* Screen buffer *)
+  Buffer = RECORD (** Screen buffer *)
     first: Part;
     w, h: INTEGER;
     redrawAll: BOOLEAN
@@ -269,7 +273,7 @@ TYPE
 VAR
   t0, t1: REAL;
 
-  wantTitle: ARRAY 256 OF CHAR; (* Assigned in procedure SetTitle *)
+  wantTitle: ARRAY 256 OF CHAR; (** Assigned in procedure SetTitle *)
   wantZoom: REAL;
   wantW, wantH: INTEGER;
   wantScaleX, wantScaleY: REAL;
@@ -278,22 +282,22 @@ VAR
   iconFile, fontFile: ARRAY 256 OF CHAR;
 
   processingEvent: BOOLEAN;
-  skipEnter: BOOLEAN; (* If TRUE, skip the G.char event with key = enter *)
+  skipEnter: BOOLEAN; (** If TRUE, skip the G.char event with key = enter *)
   mouseDown: BOOLEAN;
   mouseShown: BOOLEAN;
   mouseX, mouseY, mouseButton: INTEGER;
-  curX, curY: INTEGER; (* Text cursor position *)
-  cursorShown: BOOLEAN; (* TRUE if text cursor is show while it is blinking *)
-  cursorTimer: G.Timer; (* Text cursor tick timer *)
-  flipTimer: G.Timer; (* Frame change timer *)
-  userTimer: G.Timer; (* User timer set by StartTimer *)
+  curX, curY: INTEGER; (** Text cursor position *)
+  cursorShown: BOOLEAN; (** TRUE if text cursor is show while it is blinking *)
+  cursorTimer: G.Timer; (** Text cursor tick timer *)
+  flipTimer: G.Timer; (** Frame change timer *)
+  userTimer: G.Timer; (** User timer set by StartTimer *)
 
   needFlip: INTEGER;
   screen: G.Window;
   font: G.MonoFont;
   colors: ARRAY nofcolors OF G.Color;
 
-  Done*: BOOLEAN;
+  Done*: BOOLEAN; (** TRUE on successful initialization, FALSE on error *)
 
 PROCEDURE SetPartCellUpdated(p: Part; VAR cell: Cell);
 BEGIN
@@ -348,6 +352,7 @@ BEGIN
   END
 RETURN p END GetPart;
 
+(** Clears the internal back buffer with foreground `fg` and background `bg` *)
 PROCEDURE ClearTo*(fg, bg: INTEGER);
 VAR x, y: INTEGER;
   l, p: Part;
@@ -365,6 +370,8 @@ BEGIN l := buffer.first;
   END
 END ClearTo;
 
+(** Clears the internal back buffer with a grey foreground and a
+    black background *)
 PROCEDURE Clear*;
 BEGIN ClearTo(7, 0)
 END Clear;
@@ -408,6 +415,8 @@ BEGIN
   END
 END Flip;
 
+(** Synchronizes the internal back buffer with the terminal.
+     Nothing will change on the screen until Flush or Sync is called *)
 PROCEDURE Flush*;
 VAR x, y, X, Y: INTEGER;
   l, p: Part;
@@ -435,6 +444,10 @@ BEGIN
   END
 END Flush;
 
+(** Sync comes handy when something causes desync between TermBox's
+    understanding of a terminal buffer and the reality. Such as a third party
+    process. Sync forces a complete resync between TermBox and the terminal,
+    it may not be visually pretty though. *)
 PROCEDURE Sync*;
 BEGIN
   buffer.redrawAll := TRUE;
@@ -462,14 +475,17 @@ BEGIN
   Sync
 END ToggleFS;
 
+(** Returns TRUE if fullscreen mode is currently used *)
 PROCEDURE IsFS*(): BOOLEAN;
 RETURN ~(G.window IN G.GetWindowOptions(screen))
 END IsFS;
 
+(** Switch to window mode *)
 PROCEDURE SwitchToWindow*;
 BEGIN IF IsFS() THEN ToggleFS END
 END SwitchToWindow;
 
+(** Switch to fullscreen mode *)
 PROCEDURE SwitchToFS*;
 BEGIN IF ~IsFS() THEN ToggleFS END
 END SwitchToFS;
@@ -603,10 +619,14 @@ BEGIN
   END
 RETURN got END PeekAndParseEvent;
 
+(** Waits until the next event, copies it in `event`
+    and removes it from the queue *)
 PROCEDURE WaitEvent*(VAR event: Event);
 BEGIN REPEAT WaitAndParseEvent(event) UNTIL event.type # noEvent
 END WaitEvent;
 
+(** Copies the next event in the queue to `event` but does not remove
+    it from the queue. *)
 PROCEDURE PeekEvent*(VAR event: Event): BOOLEAN;
 VAR got: BOOLEAN;
 BEGIN
@@ -616,6 +636,7 @@ BEGIN
   END
 RETURN got END PeekEvent;
 
+(** Returns TRUE if there are events in the events queue *)
 PROCEDURE HasEvents*(): BOOLEAN;
 VAR e: Event;
   x: BOOLEAN;
@@ -623,6 +644,7 @@ BEGIN
   IF processingEvent THEN x := FALSE ELSE x := PeekEvent(e) END
 RETURN x END HasEvents;
 
+(** Moves the text input cursor to cell (x; y) *)
 PROCEDURE SetCursor*(x, y: INTEGER);
 BEGIN
   IF (x # curX) OR (y # curY) THEN
@@ -638,36 +660,46 @@ BEGIN
   END
 END SetCursor;
 
+(** Hides the text input cursor (moves it off the screen) *)
 PROCEDURE HideCursor*;
 BEGIN SetCursor(-1, -1)
 END HideCursor;
 
+(** Shows the mouse cursor *)
 PROCEDURE ShowMouse*;
 BEGIN IF ~mouseShown THEN mouseShown := TRUE; UpdateCell(mouseX, mouseY) END
 END ShowMouse;
 
+(** Hides the mouse cursor *)
 PROCEDURE HideMouse*;
 BEGIN IF mouseShown THEN mouseShown := FALSE; UpdateCell(mouseX, mouseY) END
 END HideMouse;
 
+(** Sets background color `bg` for the cell at position (x; y) *)
 PROCEDURE SetBg*(x, y, bg: INTEGER);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartBg(p, x, y, bg) END
 END SetBg;
 
+(** Sets foreground color `fg` for the cell at position (x; y) *)
 PROCEDURE SetFg*(x, y, fg: INTEGER);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartFg(p, x, y, fg) END
 END SetFg;
 
+(** Fills the cell at (x; y) with character `ch` and the given
+    foreground (fg) and background (bg) colors *)
 PROCEDURE SetCell*(x, y: INTEGER; ch: CHAR; fg, bg: INTEGER);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartCell(p, x, y, ch, fg, bg) END
 END SetCell;
 
+(** Fill a rectangular area of characters with `ch` using the foreground (fg)
+    and background (bg) colors. The top-left corner of the area is (x; y),
+    width is `w` and height is `h` *)
 PROCEDURE Fill*(x, y, w, h: INTEGER; ch: CHAR; fg, bg: INTEGER);
 VAR X, Y: INTEGER;
 BEGIN
@@ -678,6 +710,9 @@ BEGIN
   END
 END Fill;
 
+(** Writes at most `limit` characters of `s` in a line starting at position
+    (x; y) on to the terminal using the given foreground (fg) and
+    background (bg) colors *)
 PROCEDURE Print*(x, y, limit: INTEGER; s: ARRAY OF CHAR; fg, bg: INTEGER);
 VAR i, w, h: INTEGER;
 BEGIN i := 0;
@@ -686,16 +721,20 @@ BEGIN i := 0;
   END
 END Print;
 
+(** Sets the character of the cell at (x; y) *)
 PROCEDURE SetChar*(x, y: INTEGER; ch: CHAR);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartChar(p, x, y, ch) END
 END SetChar;
 
+(** Returns size of the terminal window in characters *)
 PROCEDURE Size*(VAR width, height: INTEGER);
 BEGIN width := buffer.w; height := buffer.h
 END Size;
 
+(** Given the (x; y) coordinate, returns data of the
+    corresponding terminal cell *)
 PROCEDURE GetCell*(x, y: INTEGER; VAR ch: CHAR; VAR fg, bg: INTEGER);
 VAR p: Part;
   cell: Cell;
@@ -706,10 +745,12 @@ BEGIN p := GetPart(buffer, x, y);
   END
 END GetCell;
 
+(** Delay for `ms` milliseconds *)
 PROCEDURE Delay*(ms: INTEGER);
 BEGIN G.Delay(ms)
 END Delay;
 
+(** Closes TermBox *)
 PROCEDURE Close*;
 BEGIN
   font := NIL;
@@ -760,18 +801,24 @@ BEGIN
   END;
 END InitColors;
 
+(** Sets the title of the window *)
 PROCEDURE SetTitle*(title: ARRAY OF CHAR);
 BEGIN wantTitle := title
 END SetTitle;
 
+(** Sets zoom as a real number. *)
 PROCEDURE SetZoomF*(zoom: REAL);
 BEGIN wantZoom := zoom; G.SetZoomF(zoom)
 END SetZoomF;
 
+(** Sets zoom as an integer.
+     SetZoom(2) will make virtual pixels two times bigger in size *)
 PROCEDURE SetZoom*(zoom: INTEGER);
 BEGIN wantZoom := FLT(zoom); G.SetZoom(zoom)
 END SetZoom;
 
+(** Sets horizontal (x) and vertical (y) scale factors.
+     Call SetScale(2.0, 1.0) to two make pixels times wider *)
 PROCEDURE SetScale*(x, y: REAL);
 BEGIN wantScaleX := x; wantScaleY := y; G.SetScale(x, y)
 END SetScale;
@@ -801,6 +848,7 @@ BEGIN
   IF b # NIL THEN G.SetWindowIcon(screen, b) END
 END InitIcon;
 
+(** Returns Graph.Window object of the terminal (only when Graph is used) *)
 PROCEDURE GetWindow*(): G.Window;
 RETURN screen END GetWindow;
 
@@ -823,6 +871,9 @@ BEGIN G.GetDesktopResolution(dw, dh);
   InitIcon
 END InitScreen;
 
+(** Start TermBox timer. The timer event will be created every `speed`
+    fraction of a second.
+     Call StartTimer(1/30) for 30 timer events every second *)
 PROCEDURE StartTimer*(speed: REAL);
 BEGIN
   userTimer := G.NewTimer(speed);
@@ -839,6 +890,7 @@ BEGIN
   G.StartTimer(flipTimer)
 END InitTimers;
 
+(** Initializes TermBox. Sets Done to TRUE on success, FALSE otherwise *)
 PROCEDURE Init*;
 VAR opt: SET;
 BEGIN Done := FALSE;
@@ -863,6 +915,7 @@ BEGIN Done := FALSE;
   END
 END Init;
 
+(** Sets width and height of graphical window and settings flags (for Graph) *)
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
 BEGIN
   IF w = 0 THEN wantW := stdW ELSE wantW := w END;
@@ -873,14 +926,12 @@ BEGIN
   settings := flags
 END Settings;
 
-PROCEDURE TESTCB*(VAR s: ARRAY OF CHAR);
-BEGIN G.GetClipboardText(screen, s)
-END TESTCB;
-
+(** Sets the terminal icon (if Graph is used) *)
 PROCEDURE SetIcon*(s: ARRAY OF CHAR);
 BEGIN iconFile := s
 END SetIcon;
 
+(** Sets the font file for the terminal (if Graph is used) *)
 PROCEDURE SetFontFile*(s: ARRAY OF CHAR);
 BEGIN fontFile := s
 END SetFontFile;
