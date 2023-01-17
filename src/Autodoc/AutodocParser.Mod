@@ -413,31 +413,55 @@ RETURN x END ToHex;
 (** Reads a decimal or hexadecimal number (or a hexadecimal char literal),
     puts it in id, len, ival, sym. *)
 PROCEDURE ReadNumber;
-VAR hex, isChar: BOOLEAN;
+VAR hex, allDec, isChar: BOOLEAN;
   i: INTEGER;
 BEGIN
-  len := 0;
+  len := 0; allDec := TRUE;
   REPEAT
+    IF ~IsDec(c) THEN allDec := FALSE END;
     IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
     Read
   UNTIL ~IsHex(c);
-  id[len] := 0X;
 
-  isChar := c = 'X';
-  IF (c = 'H') OR (c = 'X') THEN hex := TRUE; Read ELSE hex := FALSE END;
-
-  ival := 0; i := 0;
-  IF hex THEN
-    WHILE id[i] # 0X DO ival := ival * 16 + FromHex(id[i]); INC(i) END;
-    IF isChar THEN sym := char ELSE sym := int END
-  ELSE
-    WHILE id[i] # 0X DO
-      IF IsDec(id[i]) THEN ival := ival * 10 + ORD(id[i]) - ORD('0')
-      ELSE Mark('Not a hexadecimal number')
-      END;
-      INC(i)
+  IF c = '.' THEN (* Real number *)
+    IF len < LEN(id) - 1 THEN id[len] := '.'; INC(len) END;
+    Read;
+    WHILE IsDec(c) DO
+      IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
+      Read
     END;
-    sym := int
+    IF (c = 'E') OR (c = 'e') OR (c = 'D') OR (c = 'd') THEN
+      IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
+      Read;
+      IF (c = '+') OR (c = '-') THEN
+        IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
+        Read
+      END;
+      WHILE IsDec(c) DO
+        IF len < LEN(id) - 1 THEN id[len] := c; INC(len) END;
+        Read
+      END
+    END;
+    id[len] := 0X;
+    sym := real
+  ELSE (* Integer *)
+    id[len] := 0X;
+    isChar := c = 'X';
+    IF (c = 'H') OR (c = 'X') THEN hex := TRUE; Read ELSE hex := FALSE END;
+
+    ival := 0; i := 0;
+    IF hex THEN
+      WHILE id[i] # 0X DO ival := ival * 16 + FromHex(id[i]); INC(i) END;
+      IF isChar THEN sym := char ELSE sym := int END
+    ELSE
+      WHILE id[i] # 0X DO
+        IF IsDec(id[i]) THEN ival := ival * 10 + ORD(id[i]) - ORD('0')
+        ELSE Mark('Not a hexadecimal number')
+        END;
+        INC(i)
+      END;
+      sym := int
+    END
   END
 END ReadNumber;
 

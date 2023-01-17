@@ -29,11 +29,11 @@ BEGIN
   IF OpenFile(in, r) THEN
     P.SetFname(in);
     module := P.ParseModule(r, err);
-    IF indexTitle[0] = 0X THEN Strings.Copy(module.name, indexTitle) END;
-    IF indexComment[0] = 0X THEN
-      Strings.Copy(module.comment, indexComment)
-    END;
     IF module # NIL THEN
+      IF indexTitle[0] = 0X THEN Strings.Copy(module.name, indexTitle) END;
+      IF indexComment[0] = 0X THEN
+        Strings.Copy(module.comment, indexComment)
+      END;
       IF H.Save(module, out) THEN
         Out.String('## Created "'); Out.String(out);
         Out.String('".'); Out.Ln
@@ -196,24 +196,25 @@ BEGIN
 RETURN ok END CreateIndex;
 
 PROCEDURE Do;
-VAR i, len: INTEGER;
+VAR i, count, len: INTEGER;
   out, s: ARRAY 256 OF CHAR;
   fnames: ARRAY 64, 256 OF CHAR;
   fnameCount: INTEGER;
   createIndex: BOOLEAN;
 BEGIN
-  IF Args.Count = 0 THEN
+  count := Args.Count();
+  IF count = 0 THEN
     Usage
   ELSE
     out[0] := 0X; i := 1; fnameCount := 0;
     indexTitle[0] := 0X; indexComment[0] := 0X;
     H.ClearLinkMods; createIndex := TRUE;
-    WHILE i <= Args.Count DO
+    WHILE i <= count DO
       Args.Get(i, s);
       IF s = '-o' THEN (* Output file or dir *)
-        IF i < Args.Count THEN INC(i); Args.Get(i, out) END
+        IF i < count THEN INC(i); Args.Get(i, out) END
       ELSIF s = '-L' THEN (* Link directory *)
-        IF i < Args.Count THEN INC(i); Args.Get(i, s); ParseLinkDir(s) END
+        IF i < count THEN INC(i); Args.Get(i, s); ParseLinkDir(s) END
       ELSIF s = '-a' THEN (* All *)
         P.SetExportedOnly(FALSE)
       ELSIF s = '-k' THEN (* Keep module aliases *)
@@ -225,11 +226,11 @@ BEGIN
       ELSIF (s = '--no-index') OR (s = '-n') THEN
         createIndex := FALSE
       ELSIF (s = '--title') OR (s = '-t') THEN
-        IF i < Args.Count THEN INC(i); Args.Get(i, indexTitle); END
+        IF i < count THEN INC(i); Args.Get(i, indexTitle); END
       ELSIF s = '--pal' THEN
-        IF i < Args.Count THEN INC(i); Args.Get(i, s); H.SetPalette(s) END
+        IF i < count THEN INC(i); Args.Get(i, s); H.SetPalette(s) END
       ELSIF s = '--lang' THEN (* Output language *)
-        IF i < Args.Count THEN INC(i); Args.Get(i, s); H.SetLang(s) END
+        IF i < count THEN INC(i); Args.Get(i, s); H.SetLang(s) END
       ELSE (* One of the Oberon module file names *)
         IF fnameCount < LEN(fnames) THEN
           Strings.Copy(s, fnames[fnameCount]); INC(fnameCount);

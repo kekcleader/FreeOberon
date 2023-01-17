@@ -3,7 +3,7 @@ MODULE Strings;
     constants and character arrays, both of which contain the character
     0X as a terminator).
      All positions in strings start at 0. *)
-IMPORT Reals, SYSTEM;
+IMPORT Reals, SYSTEM, Out;
 
 TYPE
   REAL = SYSTEM.REAL32;
@@ -108,9 +108,7 @@ END Extract;
 PROCEDURE Copy*(IN src: ARRAY OF CHAR; VAR dst: ARRAY OF CHAR);
 VAR i, len: INTEGER;
 BEGIN
-  IF LEN(src) < LEN(dst) THEN len := LEN(src) - 1
-  ELSE len := LEN(dst) - 1
-  END;
+  IF LEN(src) < LEN(dst) THEN len := LEN(src) - 1 ELSE len := LEN(dst) - 1 END;
   i := 0;
   WHILE (i # len) & (src[i] # 0X) DO dst[i] := src[i]; INC(i) END;
   dst[i] := 0X
