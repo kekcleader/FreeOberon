@@ -103,7 +103,7 @@ TYPE
 
   Type* = POINTER TO TypeDesc;
   TypeDesc* = RECORD(ObjectDesc)
-    form*: INTEGER; (** See @Form of Types *)
+    form*: INTEGER; (** See @Forms of Types *)
     len*: Str;      (** Length of array (may be an expression), or '' *)
     base*: Type;    (** Base type of rec/arr/pointer, return of procedure *)
     fields*: List
@@ -116,14 +116,16 @@ TYPE
 
   Param* = POINTER TO ParamDesc;
   ParamDesc* = RECORD(ObjectDesc)
-    passed*: INTEGER; (** See values of Param.pass *)
+    passed*: INTEGER; (** See constants above (values of Param.passed) *)
     type*: Type
   END;
 
   Procedure* = POINTER TO ProcedureDesc;
   ProcedureDesc* = RECORD(ObjectDesc)
     returnType*: Type;
-    params*: List
+    params*: List;
+    receiver*: Param;
+    modifier*: Str
   END;
 
   Module* = POINTER TO ModuleDesc;
@@ -1372,6 +1374,23 @@ BEGIN
   WHILE sym = procedure DO UpdateCurGroup(M.procedures);
     NEW(P); InitObject(P); SaveComment(P, -1); GetSym; foreign := FALSE;
     forward := FALSE; P.params := NewList(); P.exported := FALSE;
+    P.modifier[0] := 0X;
+    IF sym = lparen THEN NEW(P.receiver); InitObject(P.receiver); GetSym;
+      NEW(P.receiver.type); InitObject(P.receiver.type);
+      IF sym = var THEN GetSym; P.receiver.passed := byVar
+      ELSE P.receiver.passed := byValue
+      END;
+      IF sym = ident THEN Strings.Copy(id, P.receiver.name); GetSym
+      ELSE MarkExp('receiver name')
+      END;
+      IF sym = colon THEN GetSym ELSE MarkExp(':') END;
+      IF sym = ident THEN Strings.Copy(id, P.receiver.type.name); GetSym;
+        P.receiver.type.len[0] := 0X;
+        P.receiver.type.form := namedType
+      ELSE MarkExp('receiver name')
+      END;
+      IF sym = rparen THEN GetSym ELSE MarkExp(')') END
+    END;
     IF (sym = minus) OR (sym = arrow) THEN GetSym; forward := TRUE;
     ELSIF sym = times THEN GetSym
     END;
@@ -1391,6 +1410,9 @@ BEGIN
       END;
       IF sym = rparen THEN GetSym ELSE MarkExp(')') END;
       IF sym = colon THEN GetSym; P.returnType := ParseNamedType() END
+    END;
+    IF (sym = comma) & (P.receiver # NIL) THEN GetSym;
+      IF sym = ident THEN Strings.Copy(id, P.modifier); GetSym END
     END;
     IF sym = string THEN GetSym END; (* Foreign code *)
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;

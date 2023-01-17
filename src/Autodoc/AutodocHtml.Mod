@@ -49,7 +49,13 @@ VAR
 
   (** Module names of modules to which <a href> will work *)
   linkMods: ARRAY 256 OF ARRAY 64 OF CHAR;
-  linkModCount: INTEGER; (** Actual length of linkMods array *)
+  linkModCount: INTEGER; (** Actual length of array linkMods *)
+
+(** List of Declared Names **)
+
+  (** Names declared in the same module to which <a href> will work *)
+  declNames: ARRAY 256 OF ARRAY 64 OF CHAR;
+  declNameCount: INTEGER; (** Actual length of array declNames *)
 
 (** Link Module List **)
 
@@ -289,7 +295,15 @@ BEGIN Strings.Extract(s, 0, len, z); i := 0;
 WHILE (i # linkModCount) & (linkMods[i] # z) DO INC(i) END
 RETURN i # linkModCount END IsLinkedMod;
 
-(** Write s, but maybe add <a href> to another module *)
+PROCEDURE IsNameDeclared(s: ARRAY OF CHAR): BOOLEAN;
+VAR i: INTEGER;
+BEGIN
+  i := 0;
+  WHILE (i # declNameCount) & (declNames[i] # s) DO INC(i) END
+RETURN i # declNameCount END IsNameDeclared;
+
+(** Writes `s`, and maybe adds <a href> around it to another module or
+    to another place in this module *)
 PROCEDURE PrintLink(s: ARRAY OF CHAR);
 VAR i, j, k: INTEGER;
   written: BOOLEAN;
@@ -299,18 +313,21 @@ BEGIN written := FALSE;
   IF s[i] = '.' THEN (* First '.' found *)
     (* Find second '.', put in j *)
     j := i + 1; WHILE IsAlphanum(s[j]) DO INC(j) END;
-    IF (s[j] = 0X) & IsLinkedMod(s, i) THEN (* No second '.', all is alphanum *)
+    IF (s[j] = 0X) & IsLinkedMod(s, i) THEN (* No 2nd '.', all is alphanum *)
       Write('<a href="');
       FOR k := 0 TO i - 1 DO WriteChar(s[k]) END;
       Write('.html#');
       FOR k := i + 1 TO j - 1 DO WriteChar(s[k]) END;
       Write('">'); Write(s); Write('</a>'); written := TRUE
     END
+  ELSIF (s[i] = 0X) & IsNameDeclared(s) THEN (* No '.' in s *)
+    Write('<a href="#'); Write(s); Write('">'); Write(s); Write('</a>');
+    written := TRUE
   END;
   IF ~written THEN Write(s) END
 END PrintLink;
 
-(** Prints a href to a module name. *)
+(** Prints a href to a module name *)
 PROCEDURE PrintModLink(s: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN
@@ -478,6 +495,14 @@ BEGIN
   Write(p.name); WriteLn('">');
   WriteLn ('  <div class="def">');
   WriteLn ('    PROCEDURE');
+  IF p.receiver # NIL THEN
+    WriteLn('    <span class="receiver">');
+    Write  ('      (<span class="name">'); Write(p.receiver.name);
+    WriteLn('</span>:');
+    PrintType(p.receiver.type, indent, TRUE);
+    WriteLn(')');
+    WriteLn('    </span>')
+  END;
   Write   ('    <span class="name">'); Write(p.name);
   Write('</span>'); WriteExport(p); Write('<span class="params">');
   x := p.params.first;
@@ -617,9 +642,34 @@ BEGIN
   END
 END PrintSection;
 
+PROCEDURE DeclareNamesInSection(L: P.List);
+VAR g, p: P.Object;
+BEGIN
+  g := L.first;
+  WHILE g # NIL DO
+    p := g(P.Group).first;
+    WHILE p # NIL DO
+      IF declNameCount # LEN(declNames) THEN
+        Strings.Copy(p.name, declNames[declNameCount]);
+        INC(declNameCount)
+      END;
+      p := p.next
+    END;
+    g := g.next
+  END
+END DeclareNamesInSection;
+
+PROCEDURE DeclareNames(M: P.Module);
+BEGIN
+  declNameCount := 0;
+  DeclareNamesInSection(M.consts);
+  DeclareNamesInSection(M.types)
+END DeclareNames;
+
 PROCEDURE PrintModule(M: P.Module; indent: INTEGER; inlined: BOOLEAN);
 VAR s: ARRAY 64 OF CHAR;
 BEGIN
+  DeclareNames(M);
   showExportMarks := ~M.exportedOnly;
   Header(M.name, FALSE);
   PrintComment(M.comment, FALSE);
