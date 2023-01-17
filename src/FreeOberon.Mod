@@ -994,19 +994,19 @@ END IdentifyLanguage;
 
 PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR w, h: INTEGER;
     VAR lang: ARRAY OF CHAR; VAR fnames: Fnames);
-VAR i, nofnames: INTEGER;
+VAR i, nofnames, count: INTEGER;
   s: ARRAY 2048 OF CHAR;
 BEGIN fs := Config.startInFullscreen; sw := FALSE; i := 1;
-  nofnames := 0; w := defW; h := defH; lang := '';
-  WHILE i <= Args.Count DO Args.Get(i, s);
+  nofnames := 0; w := defW; h := defH; lang := ''; count := Args.Count();
+  WHILE i <= count DO Args.Get(i, s);
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--fullscreen' THEN fs := TRUE
     ELSIF s = '--software' THEN sw := TRUE
     ELSIF s = '--debug' THEN Config.SetDebug(TRUE)
     ELSIF s = '--size' THEN
-      IF i # Args.Count THEN INC(i); Args.Get(i, s); ParseSize(s, w, h) END
+      IF i # count THEN INC(i); Args.Get(i, s); ParseSize(s, w, h) END
     ELSIF s = '--lang' THEN
-      IF i # Args.Count THEN
+      IF i # count THEN
         INC(i); Args.Get(i, lang);
         IF ~FoStrings.LangExists(lang) THEN Out.String('Language "');
           Out.String(lang); Out.String('" does not exist.'); Out.Ln;

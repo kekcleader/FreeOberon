@@ -54,10 +54,10 @@ BEGIN
 END BuildErrorCallback;
 
 PROCEDURE ParseArgs(VAR mainFname, lang: ARRAY OF CHAR);
-VAR i: INTEGER;
+VAR i, count: INTEGER;
   s: ARRAY 4096 OF CHAR;
-BEGIN i := 1; lang := 'en';
-  WHILE i <= Args.Count DO
+BEGIN i := 1; count := Args.Count(); lang := 'en';
+  WHILE i <= count DO
     Args.Get(i, s);
     IF s = '--lang' THEN Args.Get(i + 1, lang); INC(i)
     ELSIF s = '--debug' THEN Config.SetDebug(TRUE)
@@ -93,5 +93,5 @@ BEGIN
 END Do;
 
 BEGIN
-  IF Args.Count = 0 THEN Usage ELSE Do END
+  IF Args.Count() = 0 THEN Usage ELSE Do END
 END Fob.
