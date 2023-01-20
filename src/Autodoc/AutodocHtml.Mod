@@ -57,6 +57,9 @@ VAR
   declNames: ARRAY 256 OF ARRAY 64 OF CHAR;
   declNameCount: INTEGER; (** Actual length of array declNames *)
 
+(** HTML Template **)
+  tpl: ARRAY 40960 OF CHAR;
+
 (** Link Module List **)
 
 PROCEDURE AddLinkMod*(name: ARRAY OF CHAR);
@@ -752,6 +755,28 @@ BEGIN ClearColors;
     SetPalette(defPal)
   END
 END SetPalette;
+
+(** Set template HTML-file *)
+PROCEDURE SetTemplate*(fname: ARRAY OF CHAR);
+VAR T: Texts.Text;
+  R: Texts.Reader;
+  i: INTEGER;
+  c: CHAR;
+BEGIN
+  NEW(T); Texts.Open(T, fname); i := 0;
+  IF T.len # 0 THEN
+    Texts.OpenReader(R, T, 0);
+    Texts.Read(R, c);
+    WHILE ~R.eot & (i # LEN(tpl) - 1) DO
+      tpl[i] := c; INC(i);
+      Texts.Read(R, c)
+    END
+  END;
+  tpl[i] := 0X;
+  Out.String('TEMPLATE');Out.Ln;
+  Out.String(tpl);Out.Ln;
+  Out.String('END TEMPLATE');Out.Ln;
+END SetTemplate;
 
 (** Main procedure *)
 PROCEDURE Save*(module: P.Module; fname: ARRAY OF CHAR): BOOLEAN;

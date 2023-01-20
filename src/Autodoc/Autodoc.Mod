@@ -106,10 +106,13 @@ BEGIN
   Out.Ln;
   Out.String('           Put extension in the end to change it: Program/.cp');
   Out.Ln;
-  Out.String('--pal <pal> ..... Supply a named palette.'); Out.Ln;
+  Out.String('--pal <pal> .............. Supply a named palette.'); Out.Ln;
   Out.String('  <pal> is one of: default, bw, horror'); Out.Ln;
-  Out.String('--debug ......... Produce debug output in console.'); Out.Ln;
-  Out.Ln; Out.Ln;
+  Out.String('--template <filename> .... Use <filename> as HTML-file'); Out.Ln;
+  Out.String('  with placeholders: %TITLE% %HEADING% %MENU% %BODY% %DATE%');
+  Out.Ln;
+  Out.String('--debug .................. Produce debug output in console.');
+  Out.Ln; Out.Ln; Out.Ln;
   Out.String('Examples:'); Out.Ln;
   Out.String('  '); Out.String(s);
   Out.String(' -o Apples.Mod'); Out.Ln;
@@ -229,6 +232,8 @@ BEGIN
         IF i < count THEN INC(i); Args.Get(i, indexTitle); END
       ELSIF s = '--pal' THEN
         IF i < count THEN INC(i); Args.Get(i, s); H.SetPalette(s) END
+      ELSIF s = '--template' THEN (* Template HTML file *)
+        IF i < count THEN INC(i); Args.Get(i, s); H.SetTemplate(s) END
       ELSIF s = '--lang' THEN (* Output language *)
         IF i < count THEN INC(i); Args.Get(i, s); H.SetLang(s) END
       ELSE (* One of the Oberon module file names *)
