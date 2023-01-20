@@ -18,6 +18,7 @@ along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT T := TermBox, Files, Args, Utf8, Builder, Env, Debug, Graph,
        OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
+(** Free Oberon IDE and Compiler. Part of Free Oberon IDE internal code *)
 CONST
   (* Direction of Selection *)
   dirLeft  = 0;

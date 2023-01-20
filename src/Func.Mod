@@ -1,8 +1,9 @@
 MODULE Func;
+(** Functions. Part of Free Oberon IDE internal code *)
 IMPORT Config;
 
-(** Replace all / with \ if on Windows *)
 PROCEDURE FixFname*(VAR s: ARRAY OF CHAR);
+(** Replace all / with \ if on Windows *)
 VAR i: INTEGER;
 BEGIN
   IF Config.pathDelimiter = '\' THEN i := 0;

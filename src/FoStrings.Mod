@@ -1,4 +1,6 @@
 MODULE FoStrings;
+(** Free Oberon string handling procedures. Part of Free Oberon IDE
+    internal code *)
 IMPORT Strings, Texts, Int, Dir, Env, Out;
 
 CONST

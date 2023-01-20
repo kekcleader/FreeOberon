@@ -17,7 +17,8 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT Config, Func, Files, Strings, Out, Utf8;
-
+(** Free Oberon Editor Oberon Vision object. Part of Free Oberon IDE
+    internal code *)
 CONST
   lineLen = 256;
 

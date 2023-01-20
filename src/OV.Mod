@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT T := TermBox, Strings, StrList, Out, SYSTEM, Kernel;
+(** Oberon Vision *)
 CONST
   minInt = -70000000H-1;
   maxInt = 7FFFFFFFH;

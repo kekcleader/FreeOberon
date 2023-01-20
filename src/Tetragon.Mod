@@ -1,4 +1,5 @@
 MODULE Tetragon;
+(** Another TermBox usage example module *)
 IMPORT T := TermBox, Out, Random, Kernel;
 CONST
   maxW = 19; maxH = 12; (* Field maximum size *)

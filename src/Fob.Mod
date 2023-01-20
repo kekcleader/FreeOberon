@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT FoStrings, Builder, Config, Args, Strings, Out, Platform, Kernel;
+(** Free Oberon Console Compiler. Part of Free Oberon IDE internal code *)
 
 PROCEDURE Usage;
 VAR s: ARRAY 256 OF CHAR;

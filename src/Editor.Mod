@@ -18,6 +18,7 @@ along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT OV, T := TermBox, Text := EditorText, Config, Debug,
   Int, Strings, FoStrings, StrList, Dir, Out;
+(** Free Oberon IDE Editor. Part of Free Oberon IDE internal code *)
 CONST
   dotChar = 0B7X; (* To higlight spaces *)
 

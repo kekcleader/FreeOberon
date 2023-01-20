@@ -1,4 +1,5 @@
 MODULE TermSnow;
+(** TermSnow - an example program using TermBox *)
 IMPORT T := TermBox, Out, Random, Kernel;
 
 TYPE

@@ -1,4 +1,4 @@
-(* Graph Test Module *)
+(** Graph Test Module *)
 MODULE GTest;
 IMPORT G := Graph, Random, Out;
 VAR main: G.Window;
