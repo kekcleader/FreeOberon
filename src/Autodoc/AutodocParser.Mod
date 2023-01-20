@@ -125,7 +125,9 @@ TYPE
     returnType*: Type;
     params*: List;
     receiver*: Param;
-    modifier*: Str
+    modifier*: Str;
+    code*: Str; (** Code of the procedure as string, when external is TRUE *)
+    external*: BOOLEAN; (* TRUE if has a minus after the word PROCEDURE *)
   END;
 
   Module* = POINTER TO ModuleDesc;
@@ -153,8 +155,7 @@ VAR
   id: ARRAY 256 OF CHAR; (** Identifier read *)
   len: INTEGER; (** Actual length of id *)
 
-  sval: Str; (** String read, when sym = string *)
-  ival: INTEGER;
+  ival: INTEGER; (** Integer value read *)
 
   writingDoc: BOOLEAN; (** TRUE when inside a doc comment *)
   docNewLine: BOOLEAN; (** 0AX reached and no non-spaces after it yet *)
@@ -1374,7 +1375,7 @@ BEGIN
   WHILE sym = procedure DO UpdateCurGroup(M.procedures);
     NEW(P); InitObject(P); SaveComment(P, -1); GetSym; foreign := FALSE;
     forward := FALSE; P.params := NewList(); P.exported := FALSE;
-    P.modifier[0] := 0X;
+    P.external := FALSE; P.modifier[0] := 0X; P.code[0] := 0X;
     IF sym = lparen THEN NEW(P.receiver); InitObject(P.receiver); GetSym;
       NEW(P.receiver.type); InitObject(P.receiver.type);
       IF sym = var THEN GetSym; P.receiver.passed := byVar
@@ -1391,7 +1392,8 @@ BEGIN
       END;
       IF sym = rparen THEN GetSym ELSE MarkExp(')') END
     END;
-    IF (sym = minus) OR (sym = arrow) THEN GetSym; forward := TRUE;
+    IF sym = minus THEN GetSym; P.external := TRUE
+    ELSIF sym = arrow THEN GetSym; forward := TRUE
     ELSIF sym = times THEN GetSym
     END;
     IF sym = ident THEN Strings.Copy(id, P.name); GetSym
@@ -1401,7 +1403,9 @@ BEGIN
     IF sym = times THEN GetSym; P.exported := TRUE END;
     IF sym = lbrak THEN GetSym; (* Foreign name *)
       foreign := TRUE;
-      IF sym = string THEN GetSym ELSE MarkExp('foreign name of procedure') END;
+      IF sym = string THEN GetSym
+      ELSE MarkExp('foreign name of procedure')
+      END;
       IF sym = rbrak THEN GetSym ELSE MarkExp(']') END
     END;
     IF sym = lparen THEN GetSym;
@@ -1414,15 +1418,17 @@ BEGIN
     IF (sym = comma) & (P.receiver # NIL) THEN GetSym;
       IF sym = ident THEN Strings.Copy(id, P.modifier); GetSym END
     END;
-    IF sym = string THEN GetSym END; (* Foreign code *)
+    IF P.external & (sym = string) THEN Strings.Copy(id, P.code); GetSym END;
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
-    IF ~forward & ~foreign THEN
+    IF ~forward & ~foreign & ~P.external THEN
       ReachEndOf(P.name); SaveComment(P, -1);
       IF sym = ident THEN GetSym;
         IF sym = semicol THEN GetSym ELSE MarkExp(';') END
       ELSE (* sym = eot *) MarkEnd('Procedure', P.name)
-      END;
-      IF P.exported OR ~exportedOnly THEN AddToList(M.procedures.last(List), P) END
+      END
+    END;
+    IF P.exported OR ~exportedOnly THEN
+      AddToList(M.procedures.last(List), P)
     END
   END
 END ParseProcedureDecl;

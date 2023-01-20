@@ -503,7 +503,9 @@ BEGIN
     WriteLn(')');
     WriteLn('    </span>')
   END;
-  Write   ('    <span class="name">'); Write(p.name);
+  Write('    ');
+  IF p.external THEN Write('-') END;
+  Write('<span class="name">'); Write(p.name);
   Write('</span>'); WriteExport(p); Write('<span class="params">');
   x := p.params.first;
   IF (x # NIL) OR (p.returnType # NIL) THEN Write('(');
@@ -517,7 +519,12 @@ BEGIN
   IF p.returnType # NIL THEN
     Write(': '); PrintType(p.returnType, indent, TRUE)
   END;
-  WriteLn(';</span></div>');
+  Write(';</span>');
+  IF p.external THEN
+    WriteLn(''); Write('<div class="value"><i>&nbsp; ');
+    Write("'"); Write(p.code); Write("'"); WriteLn('</i></div>')
+  END;
+  WriteLn('</div>');
   PrintComment(p.comment, FALSE);
   WriteLn('</article>')
 END PrintProcedure;
