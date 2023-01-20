@@ -18,7 +18,9 @@ along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT Term, FoStrings, Files, Utf8, Config, Func, Strings,
   Int, Out, Debug, Env, Dir, Kernel;
-
+(** Free Oberon builder and compiler runner. Builder finds files of the
+    compiled program, interrelates them, puts them in order, compiles every
+    one of them and links the program. Part of Free Oberon IDE internal code *)
 TYPE
   Module* = POINTER TO ModuleDesc;
   ModuleDesc* = RECORD
@@ -259,10 +261,6 @@ BEGIN ok := TRUE;
       Out.String('Running command "'); Out.String(cmd); Out.Char('"'); Out.Ln
     END;
     Utf8.Encode(cmd, q);
-
-    IF Config.debug THEN
-      Out.String('Term.RunProcess "'); Out.String(cmd); Out.Char('"'); Out.Ln
-    END;
 
     success := (Term.RunProcess(q, buf, bufLen, len, err) # 0) & (err = 0);
     IF ~success & (onError # NIL) THEN
