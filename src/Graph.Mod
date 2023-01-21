@@ -1426,7 +1426,7 @@ VAR a: Al.ADRINT; p: P;
 BEGIN
   a := Al.get_clipboard_text(win.display);
   IF ~Platform.Windows THEN (* Workaround for an Allegro bug on X11 *)
-    FOR i := 1 TO 2 DO (* Maybe "TO 1" is enough *)
+    FOR i := 1 TO 6 DO (* Maybe "TO 1" is enough *)
       Al.free_with_context(a, 1429, 'Graph.Mod', 'GetClipboardText');
       a := Al.get_clipboard_text(win.display)
     END

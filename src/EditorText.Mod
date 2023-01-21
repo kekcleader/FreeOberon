@@ -307,7 +307,6 @@ BEGIN x := t.x; IF autoIndent THEN t.MaybeRemoveIndent END;
         L.s[i + spaces] := t.cur.s[i + t.x]
       END
     END;
-    Out.String('t.x=');Out.Int(t.x,0);Out.Ln;
     L.len := t.cur.len + spaces - t.x; t.cur.s[t.x] := 0X; t.cur.len := t.x;
     IF t.cur.next # NIL THEN t.cur.next.prev := L END;
     L.next := t.cur.next; L.prev := t.cur; t.cur.next := L;
