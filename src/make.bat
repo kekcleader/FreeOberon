@@ -28,6 +28,8 @@ ECHO ON
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cw Int.Mod
 @IF ERRORLEVEL 1 GOTO ERR
+%OFR% -Cw Time.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cw In.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cw Out.Mod
@@ -81,6 +83,8 @@ windres resources.rc resources.o
 @IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Int.c
 @IF ERRORLEVEL 1 GOTO ERR
+%CCFULL% -c Time.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c In.c
 @IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Out.c
@@ -105,7 +109,7 @@ windres resources.rc resources.o
 @IF ERRORLEVEL 1 GOTO ERR
 
 %AR% -crs ..\Data\bin\FreeOberon.a ^
-  Utf8.o Strings.o Reals.o Int.o In.o Out.o Args.o Env.o ^
+  Utf8.o Strings.o Reals.o Int.o Time.o In.o Out.o Args.o Env.o ^
   Files.o Texts.o Random.o ^
   StrList.o Dir.o Graph.o TermBox.o
 @IF ERRORLEVEL 1 GOTO ERR

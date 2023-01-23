@@ -26,6 +26,8 @@ $OFR -Cw Reals.Mod &&
 
 $OFR -Cw Int.Mod &&
 
+$OFR -7w Time.Mod &&
+
 $OFR -Cw In.Mod &&
 
 $OFR -Cw Out.Mod &&
@@ -79,6 +81,8 @@ $CCFULL -c Reals.c &&
 
 $CCFULL -c Int.c &&
 
+$CCFULL -c Time.c &&
+
 $CCFULL -c In.c &&
 
 $CCFULL -c Out.c &&
@@ -103,7 +107,7 @@ $CCFULL -c TermBox.c &&
 
 
 $AR -crs ../Data/bin/libFreeOberon.a \
-  Utf8.o Strings.o Reals.o Int.o In.o Out.o Args.o Env.o \
+  Utf8.o Strings.o Reals.o Int.o Time.o In.o Out.o Args.o Env.o \
   Files.o Texts.o Random.o \
   StrList.o Dir.o Graph.o TermBox.o &&
 
