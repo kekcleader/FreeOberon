@@ -17,7 +17,7 @@ headingAfter ""
 headingSubtitle "Reference"
 indexHeadingSubtitle "Library Reference"
 overview "Overview"
-indexLink "Module Index"
+indexLink "Main Page"
 
 tableColName "Name"
 tableColValue "Value"
