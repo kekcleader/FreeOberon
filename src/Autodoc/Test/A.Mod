@@ -49,11 +49,15 @@ CONST
 PROCEDURE P*;
 BEGIN END P;
 (** Функция Ф *)
+(** ЫЫЫ *)
+(** ЖЖЖ *)
 PROCEDURE F*(): INTEGER;
 RETURN 5 END F;
 
 PROCEDURE Q*(a: INTEGER; b: PROCEDURE(x, y: INTEGER): REAL; c: CHAR);
-(** Процедура принимает число, процедуру и литеру *)
+(** Процедура принимает число, процедуру и литеру. А ищщё *)
+(** А тут ещё коментарий *)
+(** И ЕЩЁ ОДИН *)
 BEGIN
 END Q;
 

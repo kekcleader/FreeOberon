@@ -543,13 +543,37 @@ BEGIN
   END
 END WriteDoc;
 
+(** Returns TRUE if last comment in doc needs a period in the end *)
+PROCEDURE NeedPeriod(): BOOLEAN;
+VAR x: CHAR;
+  i: INTEGER;
+  res: BOOLEAN;
+
+  PROCEDURE IsPunctuation(x: CHAR): BOOLEAN;
+  RETURN (x = '.') OR (x = ':') OR (x = '?') OR
+         (x = '!') OR (x = ';') OR (x = '*')
+  END IsPunctuation;
+
+BEGIN
+  res := FALSE;
+  IF docLen # 0 THEN
+    i := docLen - 1; x := doc[i];
+    IF ~IsPunctuation(x) & (x # ',') THEN
+      REPEAT
+        DEC(i);
+        IF i # -1 THEN x := doc[i] END
+      UNTIL (i = -1) OR (x = tab) OR (x = vtab) OR IsPunctuation(x);
+      IF (i # -1) & (x # tab) & (x # vtab) THEN res := TRUE END
+    END
+  END
+RETURN res END NeedPeriod;
+
 (** Recursive procedure to read (potentially nested) comments.
      toplevel is TRUE only for the top-level comments, only the top-level
     comments that are opened with two stars are being saved in doc.
     The procedure is called at '*' that comes after '(' *)
 PROCEDURE ReadComment(toplevel: BOOLEAN);
 VAR closed, tmp: BOOLEAN;
-  x: CHAR;
   title: BOOLEAN;
 BEGIN
   IF toplevel & (docLen = 0) THEN docLine := line END;
@@ -591,13 +615,10 @@ BEGIN
     ELSE title := FALSE
     END;
     REPEAT DEC(docLen) UNTIL (docLen = -1) OR (doc[docLen] > ' ');
-    IF (docLen # -1) & (docLen < LEN(doc) - 2) THEN x := doc[docLen];
-      IF ~title & (x # '!') & (x # ',') & (x # '.') &
-         (x # ':') & (x # ';') & (x # '?') & (x # '*')
-      THEN INC(docLen); doc[docLen] := '.'
-      END
-    END;
     INC(docLen); doc[docLen] := 0X;
+    IF ~title & (docLen < LEN(doc) - 1) & NeedPeriod() THEN
+      doc[docLen] := '.'; INC(docLen); doc[docLen] := 0X
+    END;
     IF title THEN
       titleNotUsed := TRUE;
       IF doc[0] = 0X THEN curTitle := '-'
@@ -1536,9 +1557,11 @@ END SortGroups;
 PROCEDURE SortModule(M: Module);
 BEGIN
   SortGroups(M.consts);
+  (*
   SortGroups(M.vars);
   SortGroups(M.types);
   SortGroups(M.procedures)
+  *)
 END SortModule;
 
 PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
