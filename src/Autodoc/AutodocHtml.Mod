@@ -1,5 +1,6 @@
 MODULE AutodocHtml;
-IMPORT Texts, Out, Strings, P := AutodocParser, Env, Lang := SimpleLangs;
+IMPORT Texts, Out, Strings, P := AutodocParser, Env, Lang := SimpleLangs,
+  Time;
 
 CONST
   styleFname = 'Data/style.css'; (** Where to take stylesheet from *)
@@ -20,6 +21,10 @@ CONST
   box       = 16; (** bg - group title shadow, fg - table border color *)
   comment   = 18; (** bg - comment parenthesis, fg - comment text color *)
   nofcolors = 20; (** Number of colors. Last color is high + 1 = 15 *)
+
+  (** Misc **)
+
+  TAB = 09X; (** Tab ASCII code *)
 
 TYPE
   Color = ARRAY 10 OF CHAR; (** Example: 'FF000080' (HEX RGBA) *)
@@ -59,6 +64,9 @@ VAR
 
 (** HTML Template **)
   tpl: ARRAY 40960 OF CHAR;
+  renderingIndex: BOOLEAN;
+  indexTitle: P.Str;
+  indexComment: P.LongStr;
 
 (** Link Module List **)
 
@@ -77,7 +85,7 @@ BEGIN
 END AddLinkMod;
 
 (** Calls AddLinkMod, but removes the last period and everyting after it,
-    also removing the last '/' or '\' and everything before it. *)
+    also removing the last '/' (or '\') and everything before it. *)
 PROCEDURE AddLinkModExt*(name: ARRAY OF CHAR);
 VAR s: ARRAY 256 OF CHAR;
   i, j: INTEGER;
@@ -536,12 +544,31 @@ PROCEDURE BigTitle(text: ARRAY OF CHAR);
 BEGIN WriteLn3('<h2 class="heading">', text, '</h2>')
 END BigTitle;
 
-PROCEDURE PrintModMenu(showIndex: BOOLEAN);
+PROCEDURE Title(modName: ARRAY OF CHAR; index: BOOLEAN);
+VAR s: ARRAY 64 OF CHAR;
 BEGIN
-  WriteLn('<nav class="module-menu">');
-  PrintModIndex(showIndex);
-  WriteLn('</nav>')
-END PrintModMenu;
+  IF index THEN
+    Lang.Get('indexTitleBefore', s); Write(s); Write(modName);
+    Lang.Get('indexTitleAfter', s); Write(s)
+  ELSE
+    Lang.Get('titleBefore', s); Write(s); Write(modName);
+    Lang.Get('titleAfter', s); Write(s)
+  END
+END Title;
+
+PROCEDURE Heading(modName: ARRAY OF CHAR; index: BOOLEAN);
+VAR s: ARRAY 64 OF CHAR;
+BEGIN
+  IF ~index THEN Lang.Get('headingBefore', s); Write(s) END;
+  Write('<span class="module-name">'); Write(modName);
+  IF ~index THEN Lang.Get('headingAfter', s); Write(s) END;
+  Write('</span> <span class="subtitle">');
+
+  IF index THEN Lang.Get('indexHeadingSubtitle', s); Write(s)
+  ELSE Lang.Get('headingSubtitle', s); Write(s)
+  END;
+  WriteLn('</span>')
+END Heading;
 
 PROCEDURE Header(modName: ARRAY OF CHAR; index: BOOLEAN);
 VAR s: ARRAY 256 OF CHAR;
@@ -551,13 +578,7 @@ BEGIN
   WriteLn('<head>');
   WriteLn('<meta charset="utf-8">');
   WriteLn('<title>');
-  IF index THEN
-    Lang.Get('indexTitleBefore', s); Write(s); Write(modName);
-    Lang.Get('indexTitleAfter', s); Write(s)
-  ELSE
-    Lang.Get('titleBefore', s); Write(s); Write(modName);
-    Lang.Get('titleAfter', s); Write(s)
-  END;
+  Title(modName, index);
   WriteLn('</title>');
   Write  ('<meta name="viewport" content="');
   WriteLn('width=device-width,initial-scale=1.0">');
@@ -566,17 +587,14 @@ BEGIN
   WriteLn('<header class="header"><div class="inner">');
 
   Write('<h1>');
-  IF ~index THEN Lang.Get('headingBefore', s); Write(s) END;
-  Write('<span class="module-name">'); Write(modName);
-  IF ~index THEN Lang.Get('headingAfter', s); Write(s) END;
-  Write('</span> <span class="subtitle">');
+  Heading(modName, index);
+  WriteLn('</h1>');
 
-  IF index THEN Lang.Get('indexHeadingSubtitle', s); Write(s)
-  ELSE Lang.Get('headingSubtitle', s); Write(s)
+  IF ~index THEN
+    WriteLn('<nav class="module-menu">');
+    PrintModIndex(TRUE);
+    WriteLn('</nav>')
   END;
-
-  WriteLn('</span></h1>');
-  IF ~index THEN PrintModMenu(TRUE) END;
   WriteLn('</div></header>');
   WriteLn('<main class="main"><div class="inner">')
 END Header;
@@ -676,19 +694,141 @@ BEGIN
   DeclareNamesInSection(M.types)
 END DeclareNames;
 
-PROCEDURE PrintModule(M: P.Module; indent: INTEGER; inlined: BOOLEAN);
-VAR s: ARRAY 64 OF CHAR;
+PROCEDURE PrintBody(M: P.Module);
 BEGIN
-  DeclareNames(M);
-  showExportMarks := ~M.exportedOnly;
-  Header(M.name, FALSE);
   PrintComment(M.comment, FALSE);
   PrintSection(M.imports, 'import');
   PrintSection(M.consts, 'constants');
   PrintSection(M.types, 'types');
   PrintSection(M.vars, 'variables');
   PrintSection(M.procedures, 'procedures');
-  Footer
+END PrintBody;
+
+PROCEDURE PrintIndexComment;
+VAR s: ARRAY 256 OF CHAR;
+BEGIN
+  Write('<h2>');
+  Lang.Get('overview', s); Write(s);
+  WriteLn('</h2>');
+  PrintComment(indexComment, FALSE)
+END PrintIndexComment;
+
+PROCEDURE PrintDate;
+VAR Y, M, D, h, m, s: INTEGER;
+BEGIN
+  Time.GetTime(Y, M, D, h, m, s);
+
+  WriteInt(Y); Write('.');
+  WriteInt(M); Write('.');
+  WriteInt(D); Write(' ');
+
+  WriteInt(h); Write(':');
+  WriteInt(m); Write(':');
+  WriteInt(s)
+
+  ;Time.GetClock(Y, M);
+  Write('   ');
+  WriteInt(Y); Write(':');
+  WriteInt(M);
+END PrintDate;
+
+PROCEDURE RunTag(M: P.Module; tag: ARRAY OF CHAR);
+BEGIN
+  IF tag = 'TITLE' THEN
+    IF renderingIndex THEN Title(indexTitle, TRUE)
+    ELSE Title(M.name, FALSE)
+    END
+  ELSIF tag = 'HEADING' THEN
+    IF renderingIndex THEN Heading(indexTitle, TRUE)
+    ELSE Heading(M.name, FALSE)
+    END
+  ELSIF tag = 'MENU' THEN
+    IF renderingIndex THEN PrintModIndex(FALSE)
+    ELSE PrintModIndex(TRUE)
+    END
+  ELSIF tag = 'BODY' THEN
+    IF renderingIndex THEN PrintIndexComment
+    ELSE PrintBody(M)
+    END
+  ELSIF tag = 'BODYCLASSES' THEN
+    IF renderingIndex THEN Write('index') END
+  ELSIF tag = 'DATE' THEN PrintDate
+  ELSE Write('{{#ERROR:Uknown tag:'); Write(tag); Write('}}')
+  END
+END RunTag;
+
+PROCEDURE Trim(VAR s: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN
+  (* Remove leading spaces/tabs *)
+  i := 0; WHILE (s[i] = ' ') OR (s[i] = TAB) DO INC(i) END;
+  Strings.Delete(s, 0, i);
+
+  (* Remove trailing spaces/tabs *)
+  i := Strings.Length(s) - 1;
+  IF i # 0 THEN
+    WHILE (i # -1) & ((s[i] = ' ') OR (s[i] = TAB)) DO DEC(i) END;
+    Strings.Delete(s, i + 1, LEN(s))
+  END
+END Trim;
+
+PROCEDURE ReadTag(M: P.Module; VAR pos: INTEGER);
+VAR i: INTEGER;
+  c: CHAR;
+  wasBrace: BOOLEAN;
+  tag: ARRAY 64 OF CHAR;
+BEGIN
+  i := pos; wasBrace := FALSE;
+  IF tpl[i + 1] # 0X THEN
+    REPEAT
+      INC(i); c := tpl[i];
+      IF c = '}' THEN
+        IF wasBrace THEN
+          Strings.Extract(tpl, pos + 1, i - pos - 2, tag);
+          Trim(tag); Strings.Cap(tag);
+          RunTag(M, tag);
+          c := 0X
+        ELSE wasBrace := TRUE
+        END
+      ELSIF ~(('a' <= c) & (c <= 'z') OR ('A' <= c) & (c <= 'Z') OR
+              (c = TAB) OR (c = ' '))
+      THEN c := 0X; Write('{{#ERROR:Bad tag}}'); i := pos
+      END
+    UNTIL c = 0X;
+  END;
+  pos := i
+END ReadTag;
+
+PROCEDURE PrintTemplate(M: P.Module; index: BOOLEAN);
+VAR i: INTEGER;
+  c: CHAR;
+  wasBrace: BOOLEAN;
+BEGIN
+  renderingIndex := index;
+  i := 0; c := tpl[0]; wasBrace := FALSE;
+  WHILE c # 0X DO
+    IF c = '{' THEN
+      IF wasBrace THEN ReadTag(M, i); c := tpl[i]; wasBrace := FALSE
+      ELSE wasBrace := TRUE
+      END
+    ELSE
+      IF wasBrace THEN Write('{'); wasBrace := FALSE END;
+      WriteChar(c)
+    END;
+    INC(i); c := tpl[i]
+  END
+END PrintTemplate;
+
+PROCEDURE PrintModule(M: P.Module; indent: INTEGER; inlined: BOOLEAN);
+BEGIN
+  DeclareNames(M);
+  showExportMarks := ~M.exportedOnly;
+  IF tpl[0] = 0X THEN
+    Header(M.name, FALSE);
+    PrintBody(M);
+    Footer
+  ELSE PrintTemplate(M, FALSE)
+  END
 END PrintModule;
 
 PROCEDURE PrintObject0(o: P.Object; indent: INTEGER; inlined: BOOLEAN);
@@ -772,10 +912,7 @@ BEGIN
       Texts.Read(R, c)
     END
   END;
-  tpl[i] := 0X;
-  Out.String('TEMPLATE');Out.Ln;
-  Out.String(tpl);Out.Ln;
-  Out.String('END TEMPLATE');Out.Ln;
+  tpl[i] := 0X
 END SetTemplate;
 
 (** Main procedure *)
@@ -792,24 +929,31 @@ PROCEDURE CreateIndex*(title, comment, fname: ARRAY OF CHAR): BOOLEAN;
 VAR s: ARRAY 256 OF CHAR;
 BEGIN
   NEW(TX); Texts.Open(TX, ''); Texts.OpenWriter(W);
-  Header(title, TRUE);
 
-  Write('<h2>');
-  Lang.Get('indexHeading', s); Write(s);
-  WriteLn('</h2>');
-  PrintModIndex(FALSE);
+  IF tpl[0] = 0X THEN
+    Header(title, TRUE);
 
-  Write('<h2>');
-  Lang.Get('overview', s); Write(s);
-  WriteLn('</h2>');
-  PrintComment(comment, FALSE);
+    Write('<h2>');
+    Lang.Get('indexHeading', s); Write(s);
+    WriteLn('</h2>');
+    PrintModIndex(FALSE);
 
-  Footer;
+    Write('<h2>');
+    Lang.Get('overview', s); Write(s);
+    WriteLn('</h2>');
+    PrintComment(comment, FALSE);
+
+    Footer
+  ELSE
+    Strings.Copy(title, indexTitle);
+    Strings.Copy(comment, indexComment);
+    PrintTemplate(NIL, TRUE)
+  END;
   Texts.Append(TX, W.buf); Texts.Close(TX, fname)
 RETURN TRUE END CreateIndex;
 
 BEGIN
   PrintObject := PrintObject0;
   externalStyle := FALSE;
-  lang[0] := 0X; palette[0] := 0X
+  lang[0] := 0X; palette[0] := 0X; tpl[0] := 0X
 END AutodocHtml.

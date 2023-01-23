@@ -198,6 +198,15 @@ BEGIN
   END
 RETURN ok END CreateIndex;
 
+PROCEDURE AddFname(VAR m: ARRAY OF ARRAY OF CHAR; VAR len: INTEGER;
+  s: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN
+  i := 0; (* Search for duplicate *)
+  WHILE (i # len) & (m[i] # s) DO INC(i) END;
+  IF i = len THEN Strings.Copy(s, m[i]); INC(len) END
+END AddFname;
+
 PROCEDURE Do;
 VAR i, count, len: INTEGER;
   out, s: ARRAY 256 OF CHAR;
@@ -236,11 +245,8 @@ BEGIN
         IF i < count THEN INC(i); Args.Get(i, s); H.SetTemplate(s) END
       ELSIF s = '--lang' THEN (* Output language *)
         IF i < count THEN INC(i); Args.Get(i, s); H.SetLang(s) END
-      ELSE (* One of the Oberon module file names *)
-        IF fnameCount < LEN(fnames) THEN
-          Strings.Copy(s, fnames[fnameCount]); INC(fnameCount);
-          H.AddLinkModExt(s)
-        END
+      ELSIF fnameCount < LEN(fnames) THEN (* One of the module file names *)
+        AddFname(fnames, fnameCount, s); H.AddLinkModExt(s)
       END;
       INC(i)
     END;
@@ -251,11 +257,16 @@ BEGIN
           (len # 0) & ((out[len - 1] = '/') OR (out[len - 1] = '\')) OR
           Dir.IsDir(out)
     THEN (* treat "-o" parameter as directory *)
-      FOR i := 0 TO fnameCount - 1 DO
-        HandleFileToDir(fnames[i], out)
-      END;
-      IF createIndex & ~CreateIndex(indexTitle, indexComment, out) THEN
-        Out.String('Could not create an index file.'); Out.Ln
+      IF Dir.IsDir(out) THEN
+        FOR i := 0 TO fnameCount - 1 DO
+          HandleFileToDir(fnames[i], out)
+        END;
+        IF createIndex & ~CreateIndex(indexTitle, indexComment, out) THEN
+          Out.String('Could not create an index file.'); Out.Ln
+        END
+      ELSE
+        Out.String('Directory does not exist: "'); Out.String(out);
+        Out.String('".'); Out.Ln
       END
     ELSE (* Single file given and "-o" is a file name *)
       IF out[0] = 0X THEN FnameToHtml(fnames[0], out) END;
