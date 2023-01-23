@@ -718,18 +718,18 @@ VAR Y, M, D, h, m, s: INTEGER;
 BEGIN
   Time.GetTime(Y, M, D, h, m, s);
 
-  WriteInt(Y); Write('.');
+  Write('20'); WriteInt(Y); Write('.');
   WriteInt(M); Write('.');
-  WriteInt(D); Write(' ');
+  WriteInt(D)
 
-  WriteInt(h); Write(':');
+  (*WriteInt(h); Write(':');
   WriteInt(m); Write(':');
   WriteInt(s)
 
   ;Time.GetClock(Y, M);
   Write('   ');
   WriteInt(Y); Write(':');
-  WriteInt(M);
+  WriteInt(M);*)
 END PrintDate;
 
 PROCEDURE RunTag(M: P.Module; tag: ARRAY OF CHAR);

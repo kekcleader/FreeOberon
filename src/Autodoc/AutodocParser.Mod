@@ -306,7 +306,7 @@ END ClearComments;
 
 (** Comments **)
 
-(** Append the first comment from global variable doc to the the given string.
+(** Appends the first comment from global variable doc to the the given string.
      If vertical tab exists in doc, the first comment spans from doc[0] till
     the first vertical tab, otherwise till the first tab or 0X character. *)
 PROCEDURE AppendComment(VAR comment: ARRAY OF CHAR);
@@ -326,8 +326,8 @@ BEGIN
   END
 END AppendComment;
 
-(** Put text of the last comment to varpar comment, remove it from doc,
-    put in its place in doc the character vtab instead of tab. *)
+(** Puts text of the last comment to varpar comment, removes it from doc,
+    puts in its place in doc the character vtab instead of tab. *)
 PROCEDURE GetLastComment(VAR comment: ARRAY OF CHAR);
 VAR L, i, j: INTEGER;
 BEGIN
@@ -342,13 +342,17 @@ BEGIN
   END
 END GetLastComment;
 
-(** Join all comments and attach them to o *)
+(** Join all comments and append the to the comments of o.
+     !TODO:
+    If tabs or vertical tabs exist in doc, they are substituted with periods,
+    but only if the left side does not end with a punctuation mark or a comma,
+    in which case the character is substituted with a space. *)
 PROCEDURE SaveAllComments(o: Object);
 VAR i: INTEGER;
 BEGIN
   IF o # NIL THEN
-    Strings.Copy(doc, o.comment); ClearComments;
-    i := 0;
+    i := Strings.Length(o.comment);
+    Strings.Append(doc, o.comment); ClearComments;
     WHILE o.comment[i] # 0X DO
       IF o.comment[i] < ' ' THEN o.comment[i] := 0AX END;
       INC(i)
@@ -367,8 +371,8 @@ PROCEDURE SaveComment(o: Object; lastLine: INTEGER);
 BEGIN
   IF (o # NIL) & (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
     IF o.comment[0] = 0X THEN AppendComment(o.comment)
-    ELSIF docLine = lastLine THEN Strings.Append(0AX, o.comment);
-      AppendComment(o.comment)
+    ELSIF (lastLine = -1) OR (docLine = lastLine) THEN
+      Strings.Append(0AX, o.comment); AppendComment(o.comment)
     END
   END
 END SaveComment;
@@ -1394,7 +1398,7 @@ VAR name: Str;
 BEGIN
   IF ~titleNotUsed THEN curTitle := '-' END;
   WHILE sym = procedure DO UpdateCurGroup(M.procedures);
-    NEW(P); InitObject(P); SaveComment(P, -1); GetSym; foreign := FALSE;
+    NEW(P); InitObject(P); SaveAllComments(P); GetSym; foreign := FALSE;
     forward := FALSE; P.params := NewList(); P.exported := FALSE;
     P.external := FALSE; P.modifier[0] := 0X; P.code[0] := 0X;
     IF sym = lparen THEN NEW(P.receiver); InitObject(P.receiver); GetSym;
@@ -1442,7 +1446,7 @@ BEGIN
     IF P.external & (sym = string) THEN Strings.Copy(id, P.code); GetSym END;
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
     IF ~forward & ~foreign & ~P.external THEN
-      ReachEndOf(P.name); SaveComment(P, -1);
+      ReachEndOf(P.name); SaveAllComments(P);
       IF sym = ident THEN GetSym;
         IF sym = semicol THEN GetSym ELSE MarkExp(';') END
       ELSE (* sym = eot *) MarkEnd('Procedure', P.name)
