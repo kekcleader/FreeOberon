@@ -179,9 +179,9 @@ END WriteExport;
 PROCEDURE WriteParagraphs(s: ARRAY OF CHAR; marks: BOOLEAN);
 VAR i: INTEGER;
   c: CHAR;
-  closed, pre: BOOLEAN;
+  closed, pre, code: BOOLEAN;
 BEGIN
-  i := 0; c := s[0]; pre := FALSE;
+  i := 0; c := s[0]; pre := FALSE; code := FALSE;
   IF c # 0X THEN
     WriteLn('<p>'); closed := FALSE;
     IF marks THEN Write('<span class="mark">(*</span> ') END;
@@ -198,6 +198,15 @@ BEGIN
         END;
         INC(i, 3);
         IF s[i - 1] = 0AX THEN INC(i) END
+      ELSIF ~pre & (c = '`') & (s[i + 1] # '`') &
+            ((i = 0) OR (s[i - 1] # '`')) THEN
+        IF code THEN
+          Texts.WriteString(W, '</code>');
+          code := FALSE
+        ELSE
+          Texts.WriteString(W, '<code>');
+          code := TRUE
+        END
       ELSE
         IF closed THEN WriteLn('<p>'); closed := FALSE END;
         IF c = '<' THEN Texts.WriteString(W, '&lt;')
@@ -212,6 +221,7 @@ BEGIN
       END;
       INC(i); c := s[i]
     END;
+    IF pre THEN WriteLn('</pre>') ELSIF code THEN WriteLn('</code>') END;
     IF ~closed THEN WriteLn('') END;
     IF marks THEN Write(' <span class="mark">*)</span>') END;
     IF ~closed THEN WriteLn('</p>') END
@@ -645,11 +655,19 @@ BEGIN
   WriteLn('</style>')
 END PrintPalette;
 
+PROCEDURE PrintDate;
+VAR s: ARRAY 256 OF CHAR;
+BEGIN
+  Time.GetDateStr(s);
+  Write(s)
+END PrintDate;
+
 PROCEDURE Footer;
 VAR s: ARRAY 256 OF CHAR;
 BEGIN
   WriteLn('</div></main><footer class="footer"><div class="inner">');
   Write('<p>'); Lang.Get('generatedMsg', s); Write(s); WriteLn('</p>');
+  Write('<p class="date">'); PrintDate; WriteLn('</p>');
  
   WriteLn('</div></footer>');
 
@@ -712,25 +730,6 @@ BEGIN
   WriteLn('</h2>');
   PrintComment(indexComment, FALSE)
 END PrintIndexComment;
-
-PROCEDURE PrintDate;
-VAR Y, M, D, h, m, s: INTEGER;
-BEGIN
-  Time.GetTime(Y, M, D, h, m, s);
-
-  Write('20'); WriteInt(Y); Write('.');
-  WriteInt(M); Write('.');
-  WriteInt(D)
-
-  (*WriteInt(h); Write(':');
-  WriteInt(m); Write(':');
-  WriteInt(s)
-
-  ;Time.GetClock(Y, M);
-  Write('   ');
-  WriteInt(Y); Write(':');
-  WriteInt(M);*)
-END PrintDate;
 
 PROCEDURE RunTag(M: P.Module; tag: ARRAY OF CHAR);
 BEGIN

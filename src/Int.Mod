@@ -1,8 +1,10 @@
 MODULE Int;
-(** Module for INTEGER conversion from and to a string *)
+(** Module for conversion of integers to and from a string
+%RU Модуль для преобразования целых чисел в строку и из строки *)
 IMPORT Strings;
 
-(** Converts integer `n` to string `s` *)
+(** Converts integer `n` to string `s`
+%RU Преобразует целое число `n` в строку `s` *)
 PROCEDURE Str*(n: INTEGER; VAR s: ARRAY OF CHAR);
 VAR i, j: INTEGER; tmp: CHAR; neg: BOOLEAN;
 BEGIN
@@ -40,20 +42,24 @@ BEGIN n := 0; c := s[0]; ok := FALSE;
 RETURN n END ValEx;
 
 (** Returns the contents of string `s` converted to an integer. If `s`
-    does not contain a valid representation of an integer number, returns 0 *)
+    does not contain a valid representation of an integer number, returns 0
+%RU Возвращает содержимое строки `s`, преобразованное в целое число. Если `s`
+    не содержит правильного представления целого числа, возвращается 0 *)
 PROCEDURE Val*(IN s: ARRAY OF CHAR): INTEGER;
 VAR ok: BOOLEAN;
 BEGIN RETURN ValEx(s, ok) END Val;
 
 (** Inserts a textual representation of integer `n` in position `pos` of
-    string `s` *)
+    string `s`
+%RU Вставляет текстовое представление целого числа `n` в позицию `pos`
+    строки `s` *)
 PROCEDURE Insert*(n: INTEGER; pos: INTEGER; VAR s: ARRAY OF CHAR);
 VAR sn: ARRAY 30 OF CHAR;
 BEGIN Str(n, sn); Strings.Insert(sn, pos, s)
 END Insert;
 
-(** Appends a textual representation of integer `n` to the end of
-    the string `s` *)
+(** Appends a textual representation of integer `n` to the end of string `s`
+%RU Добавляет текстовое представление целого числа `n` в конец строки `s` *)
 PROCEDURE Append*(n: INTEGER; VAR s: ARRAY OF CHAR);
 VAR sn: ARRAY 30 OF CHAR;
 BEGIN Str(n, sn); Strings.Append(sn, s)

@@ -77,6 +77,11 @@ a:hover {
   text-align: center;
 }
 
+.footer .date {
+  color: var(--head2-bg);
+  margin-top: 1em;
+}
+
 .main {
   padding: 20px 0;
   flex: 1;
@@ -236,6 +241,10 @@ h2, h3, h4, h5, h6 {
 .group > .comment:empty,
 .object > .comment:empty {
   display: none;
+}
+
+.comment code {
+  color: var(--tab-row-fg);
 }
 
 .record-fields .comment {

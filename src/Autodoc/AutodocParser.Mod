@@ -1587,8 +1587,8 @@ BEGIN NEW(M); InitObject(M); curModule := M;
     ELSE MarkExp('module name')
     END;
     IF sym = semicol THEN GetSym ELSE MarkExp(';') END;
-    ParseImportList(M);
     SaveAllComments(M);
+    ParseImportList(M);
     Declarations(M);
     IF sym = begin THEN
       REPEAT GetSym UNTIL (sym = eot) OR (sym = end)
