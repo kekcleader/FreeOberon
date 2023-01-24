@@ -381,7 +381,8 @@ END PrintOrdinalConst;
 
 PROCEDURE PrintConst(C: P.Const; indent: INTEGER; inlined: BOOLEAN);
 BEGIN
-  Write   ('<article class="object const" id="'); Write(C.name); WriteLn('">');
+  Write   ('<div class="anchor" id="'); Write(C.name); WriteLn('"></div>');
+  Write   ('<article class="object const">');
   WriteLn ('  <div class="def">');
   Write   ('    <span class="name">'); Write(C.name);
   Write   ('</span>'); WriteExport(C); WriteLn(' =');
@@ -443,7 +444,8 @@ BEGIN tmp := isLastItem; isLastItem := FALSE;
     Write(' &nbsp;</span></span>');
     PrintComment(v.comment, TRUE);
   ELSE
-    Write   ('<article class="object var" id="'); Write(v.name); WriteLn('">');
+    Write   ('<div class="anchor" id="'); Write(v.name); WriteLn('"></div>');
+    Write   ('<article class="object var">');
     WriteLn ('  <div class="def">');
     Write   ('    <span class="name">'); Write(v.name);
     WriteExport(v); WriteLn('</span>:');
@@ -493,7 +495,8 @@ BEGIN
       END
     END
   ELSE
-    Write('<article class="object type" id="'); Write(T.name); WriteLn('">');
+    Write   ('<div class="anchor" id="'); Write(T.name); WriteLn('"></div>');
+    Write   ('<article class="object type">');
     WriteLn ('  <div class="def">');
     Write   ('    <span class="name">'); Write(T.name); Write('</span>');
     WriteExport(T); WriteLn(' =');
@@ -508,8 +511,8 @@ END PrintType;
 PROCEDURE PrintProcedure(p: P.Procedure; indent: INTEGER; inlined: BOOLEAN);
 VAR x: P.Object;
 BEGIN
-  Write   ('<article class="object procedure" id="');
-  Write(p.name); WriteLn('">');
+  Write   ('<div class="anchor" id="'); Write(p.name); WriteLn('"></div>');
+  WriteLn ('<article class="object procedure">');
   WriteLn ('  <div class="def">');
   WriteLn ('    PROCEDURE');
   IF p.receiver # NIL THEN
@@ -550,8 +553,10 @@ BEGIN
   WriteLn('</article>')
 END PrintProcedure;
 
-PROCEDURE BigTitle(text: ARRAY OF CHAR);
-BEGIN WriteLn3('<h2 class="heading">', text, '</h2>')
+PROCEDURE BigTitle(text, anchor: ARRAY OF CHAR);
+BEGIN
+  Write   ('<div class="anchor" id="'); Write(anchor); WriteLn('"></div>');
+  WriteLn3('<h2 class="heading">', text, '</h2>')
 END BigTitle;
 
 PROCEDURE Title(modName: ARRAY OF CHAR; index: BOOLEAN);
@@ -679,12 +684,24 @@ BEGIN
   WriteLn('</body></html>')
 END Footer;
 
-PROCEDURE PrintSection(L: P.List; name: ARRAY OF CHAR);
+PROCEDURE PrintSection(L: P.List; name: ARRAY OF CHAR; showEmpty: BOOLEAN);
 VAR s: ARRAY 64 OF CHAR;
+  empty: BOOLEAN;
 BEGIN
-  IF (L # NIL) & (L.first # NIL) &
-     (~(L.first IS P.Group) OR (L.first(P.Group).first # NIL))
-  THEN Lang.Get(name, s); BigTitle(s); PrintList(L, 0, FALSE)
+  empty := ~((L # NIL) & (L.first # NIL) &
+             (~(L.first IS P.Group) OR (L.first(P.Group).first # NIL)));
+
+  IF ~empty OR showEmpty THEN
+    Write  ('<article class="list-wrap '); Write(name); WriteLn('-list">');
+    Lang.Get(name, s); BigTitle(s, name);
+    WriteLn('  <section class="list-items">');
+    IF empty THEN
+      Write('  <section class="empty-section">');
+      Lang.Get('sectionEmpty', s); Write(s); WriteLn('</section>')
+    ELSE PrintList(L, 0, FALSE)
+    END;
+    WriteLn('  </section>');
+    WriteLn('</article>')
   END
 END PrintSection;
 
@@ -715,11 +732,11 @@ END DeclareNames;
 PROCEDURE PrintBody(M: P.Module);
 BEGIN
   PrintComment(M.comment, FALSE);
-  PrintSection(M.imports, 'import');
-  PrintSection(M.consts, 'constants');
-  PrintSection(M.types, 'types');
-  PrintSection(M.vars, 'variables');
-  PrintSection(M.procedures, 'procedures');
+  PrintSection(M.imports, 'import', FALSE);
+  PrintSection(M.consts, 'constants', TRUE);
+  PrintSection(M.types, 'types', TRUE);
+  PrintSection(M.vars, 'variables', TRUE);
+  PrintSection(M.procedures, 'procedures', TRUE);
 END PrintBody;
 
 PROCEDURE PrintIndexComment;

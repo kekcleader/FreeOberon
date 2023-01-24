@@ -17,6 +17,7 @@ headingAfter ""
 headingSubtitle "Reference"
 indexHeadingSubtitle "Library Reference"
 overview "Overview"
+sectionEmpty "This section is empty."
 indexLink "Main Page"
 
 tableColName "Name"
