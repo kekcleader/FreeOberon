@@ -1,5 +1,5 @@
 MODULE AutodocParser;
-IMPORT Files, Texts, Out, Strings, Platform, Int;
+IMPORT Files, Texts, Out, Strings, Platform, Int, Env;
 CONST
   (** Lexer constants **)
   null    = 0;
@@ -66,6 +66,9 @@ CONST
   (** Comment separators **)
   tab  = 9X;  (** Separates two special comments *)
   vtab = 0BX; (** Separates two comments that related to different objects *)
+
+  (** - **)
+  defLang = 'EN'; (** Default comment language *)
 
 TYPE
   Str* = ARRAY 256 OF CHAR;
@@ -182,6 +185,11 @@ VAR
   
   (** Debug **)
   debug*: BOOLEAN;
+
+  (** Comment Language **)
+  lang: ARRAY 3 OF CHAR; (** In what langauge to write the documentation *)
+  curLang: ARRAY 3 OF CHAR; (** Current comment language, changed with '%RU' *)
+  langMark: INTEGER; (** curLang[langMark] is begin set, or langMark = -1 *)
 
 (** Parsing Parameters **)
 
@@ -472,7 +480,9 @@ BEGIN
   END
 END ReadNumber;
 
-(** Добавляет литеру в конец doc по следующей схеме:
+(** Добавляет литеру (перенос строки или пробел) в конец `doc` по нижеследующей
+    схеме. Не добавляет литеру, если она уже есть на конце `doc`, но добавляет
+    её в любом случае, если pre = TRUE.
      (был - что там на конце сейчас, доб - что добавляем, рез - результат)
 
       был   доб  рез
@@ -518,6 +528,17 @@ BEGIN
   END
 END EndPre;
 
+(** Set language in which to get the documentation comments *)
+PROCEDURE SetLang*(L: ARRAY OF CHAR);
+BEGIN Strings.Copy(L, lang); Strings.Cap(lang)
+END SetLang;
+
+(** If language is not set, take it from the OS *)
+PROCEDURE MaybeSetLang;
+BEGIN
+  IF lang[0] = 0X THEN Env.GetLang(lang); lang[2] := 0X; Strings.Cap(lang) END
+END MaybeSetLang;
+
 (** Attach a character to the end of comment in global varaible doc *)
 PROCEDURE WriteDoc(c: CHAR);
 VAR i: INTEGER;
@@ -527,20 +548,31 @@ BEGIN
       IF ~docNewLine THEN docNewLine := TRUE
       ELSE AppendDocChar(0AX)
       END
+    ELSIF c <= ' ' THEN AppendDocChar(' ')
+    ELSIF docNewLine & (c = '%') & (langMark < 0) THEN (* Begin of curLang mark *)
+      AppendDocChar(0AX); AppendDocChar(' ');
+      langMark := 0
+    ELSIF docNewLine & (langMark >= 0) &
+          (('A' <= c) & (c <= 'Z') OR ('a' <= c) & (c <= 'z')) THEN
+      curLang[langMark] := CAP(c); INC(langMark); curLang[langMark] := 0X;
+      IF langMark = 2 THEN (* End of language mark *)
+        langMark := -1;
+        IF curLang = lang THEN ClearComments END
+      END;
+      AppendDocChar(' ')
     ELSE
-      IF c <= ' ' THEN AppendDocChar(' ')
-      ELSE
-        IF docNewLine THEN
-          IF (col = docCol) OR (col = 0) THEN
-            IF pre THEN DocTrimRight; EndPre; AppendDocChar(0AX)
-            ELSE AppendDocChar(' ')
-            END
-          ELSIF col = docCol + 1 THEN EndPre; AppendDocChar(0AX)
-          ELSE DocTrimRight; AppendDocChar(0AX); BeginPre;
-            FOR i := 1 TO col - docCol DO AppendDocChar(' ') END
-          END;
-          docNewLine := FALSE
+      IF docNewLine THEN
+        IF (col = docCol) OR (col = 1) THEN
+          IF pre THEN DocTrimRight; EndPre; AppendDocChar(0AX)
+          ELSE AppendDocChar(' ')
+          END
+        ELSIF col = docCol + 1 THEN EndPre; AppendDocChar(0AX)
+        ELSE DocTrimRight; AppendDocChar(0AX); BeginPre;
+          FOR i := 1 TO col - docCol DO AppendDocChar(' ') END
         END;
+        docNewLine := FALSE
+      END;
+      IF (curLang = lang) OR (curLang[0] = 0X) THEN
         doc[docLen] := c; INC(docLen)
       END
     END
@@ -583,6 +615,7 @@ BEGIN
   IF toplevel & (docLen = 0) THEN docLine := line END;
   Read; closed := FALSE; writingDoc := FALSE;
   docNewLine := FALSE; docCol := -1; pre := FALSE;
+  curLang[0] := 0X; langMark := -1;
   IF c = '*' THEN Read; (* Second star *)
     IF c = ')' THEN Read; closed := TRUE
     ELSIF toplevel THEN writingDoc := TRUE;
@@ -630,7 +663,8 @@ BEGIN
       END
     END
   END;
-  IF pre & writingDoc THEN EndPre END
+  IF pre & writingDoc THEN EndPre END;
+  doc[docLen] := 0X
 END ReadComment;
 
 (** Uses global var id to set global var sym.
@@ -1570,7 +1604,7 @@ END SortModule;
 
 PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;
 VAR M: Module;
-BEGIN NEW(M); InitObject(M); curModule := M;
+BEGIN NEW(M); InitObject(M); curModule := M; MaybeSetLang;
   M.foreign := FALSE; M.exportedOnly := exportedOnly;
   M.imports := NewList(); M.consts := NewList();
   M.types := NewList(); M.vars := NewList(); M.procedures := NewList();
@@ -1611,6 +1645,6 @@ BEGIN
   ParseType := ParseType0;
   ParseParamType := ParseParamType0;
 
-  curFname[0] := 0X; debug := FALSE;
+  curFname[0] := 0X; lang[0] := 0X; debug := FALSE;
   exportedOnly := TRUE; keepAliases := FALSE
 END AutodocParser.

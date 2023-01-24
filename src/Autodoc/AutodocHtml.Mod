@@ -200,12 +200,8 @@ BEGIN
         IF s[i - 1] = 0AX THEN INC(i) END
       ELSIF ~pre & (c = '`') & (s[i + 1] # '`') &
             ((i = 0) OR (s[i - 1] # '`')) THEN
-        IF code THEN
-          Texts.WriteString(W, '</code>');
-          code := FALSE
-        ELSE
-          Texts.WriteString(W, '<code>');
-          code := TRUE
+        IF code THEN Write('</code>'); code := FALSE
+        ELSE Write('<code>'); code := TRUE
         END
       ELSE
         IF closed THEN WriteLn('<p>'); closed := FALSE END;
@@ -527,20 +523,24 @@ BEGIN
   Write('    ');
   IF p.external THEN Write('-') END;
   Write('<span class="name">'); Write(p.name);
-  Write('</span>'); WriteExport(p); Write('<span class="params">');
+  Write('</span>'); WriteExport(p);
   x := p.params.first;
-  IF (x # NIL) OR (p.returnType # NIL) THEN Write('(');
-    WHILE x # NIL DO
-      IF x = p.params.last THEN isLastItem := TRUE END;
-      PrintObject(x, indent, TRUE);
-      x := x.next
+  IF (x # NIL) OR (p.returnType # NIL) THEN
+    Write('<span class="params">');
+    IF (x # NIL) OR (p.returnType # NIL) THEN Write(' (');
+      WHILE x # NIL DO
+        IF x = p.params.last THEN isLastItem := TRUE END;
+        PrintObject(x, indent, TRUE);
+        x := x.next
+      END;
+      Write(')')
     END;
-    Write(')')
+    IF p.returnType # NIL THEN
+      Write(': '); PrintType(p.returnType, indent, TRUE)
+    END;
+    Write('</span>')
   END;
-  IF p.returnType # NIL THEN
-    Write(': '); PrintType(p.returnType, indent, TRUE)
-  END;
-  Write(';</span>');
+  Write(';');
   IF p.external THEN
     WriteLn(''); Write('<div class="value"><i>&nbsp; ');
     Write("'"); Write(p.code); Write("'"); WriteLn('</i></div>')

@@ -244,7 +244,9 @@ BEGIN
       ELSIF s = '--template' THEN (* Template HTML file *)
         IF i < count THEN INC(i); Args.Get(i, s); H.SetTemplate(s) END
       ELSIF s = '--lang' THEN (* Output language *)
-        IF i < count THEN INC(i); Args.Get(i, s); H.SetLang(s) END
+        IF i < count THEN
+          INC(i); Args.Get(i, s); P.SetLang(s); H.SetLang(s)
+        END
       ELSIF fnameCount < LEN(fnames) THEN (* One of the module file names *)
         AddFname(fnames, fnameCount, s); H.AddLinkModExt(s)
       END;

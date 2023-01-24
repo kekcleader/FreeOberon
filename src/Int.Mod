@@ -27,7 +27,10 @@ END Str;
 
 (** Returns the contents of string `s` converted to an integer. Sets `ok` to
     TRUE if `s` contains a valid representation of an integer number,
-    otherwise sets `ok` to FALSE and returns 0 *)
+    otherwise sets `ok` to FALSE and returns 0
+%RU Возвращает содержимое строки `s` в виде целого числа. Устанавливает `ok` в
+    TRUE, если `s` содержит правильное представление целого числа, в противном
+    случае устанавливает `ok` в FALSE и возвращает 0 *)
 PROCEDURE ValEx*(IN s: ARRAY OF CHAR; VAR ok: BOOLEAN): INTEGER;
 VAR i, n: INTEGER;
   c: CHAR;
