@@ -208,10 +208,10 @@ TYPE
   Window* = POINTER TO WindowDesc;
   WindowDesc* = RECORD(BitmapDesc) (** This is a window. *)
     display: Al.Display; (** Allegro Display *)
-    winW, winH: INTEGER; (** Window size in real pixels *)
-    initX*, initY: INTEGER; (** Window position upon its creation *)
+    winW, winH*: INTEGER; (** Window size in real pixels *)
+    initX*, initY*: INTEGER; (** Window position upon its creation *)
     initW, initH: INTEGER; (** Window size upon its creation *)
-    fsW, fsH*: INTEGER; (** Window size upon its creation *)
+    fsW*, fsH*: INTEGER; (** Fullscreen size *)
     wantZoom: REAL; (** Window zoom upon its creation *)
     lastX, lastY: INTEGER; (** Last mouse position in virtual pixels *)
     lastW, lastH: INTEGER; (** Last stepped size in virtual pixels *)

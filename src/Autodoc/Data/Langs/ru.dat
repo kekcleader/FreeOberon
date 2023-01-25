@@ -18,7 +18,7 @@ headingSubtitle "Справочный лист"
 indexHeadingSubtitle "Документация к библиотеке"
 overview "Введение"
 sectionEmpty "Этот раздел пуст."
-indexLink "Главный лист"
+indexLink "Начало"
 
 tableColName "Имя"
 tableColValue "Значение"

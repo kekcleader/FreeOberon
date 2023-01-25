@@ -91,7 +91,7 @@ BEGIN
   Out.String(' by Arthur Yefimov and others.'); Out.Ln;
   Out.String('Usage:'); Out.Ln; Args.Get(0, s);
   Out.String('  '); Out.String(s);
-  Out.String(' { "-o" outputPath | "--lang" code | otherParam | sourceFile}');
+  Out.String(' {"-o" outputPath | "--lang" code | otherParam | sourceFile}');
   Out.Ln; Out.Ln;
   Out.String('outputPath may be a file name or a directory. It must be');
   Out.Ln;
@@ -106,12 +106,16 @@ BEGIN
   Out.Ln;
   Out.String('           Put extension in the end to change it: Program/.cp');
   Out.Ln;
-  Out.String('--pal <pal> .............. Supply a named palette.'); Out.Ln;
+  Out.String('--intro <intro> .......... Supply an introduction text file');
+  Out.Ln;
+  Out.String('--title   or'); Out.Ln;
+  Out.String('-t <title> ............... Supply the index page title'); Out.Ln;
+  Out.String('--pal <pal> .............. Supply a named palette'); Out.Ln;
   Out.String('  <pal> is one of: default, bw, horror'); Out.Ln;
   Out.String('--template <filename> .... Use <filename> as HTML-file'); Out.Ln;
   Out.String('  with placeholders: %TITLE% %HEADING% %MENU% %BODY% %DATE%');
   Out.Ln;
-  Out.String('--debug .................. Produce debug output in console.');
+  Out.String('--debug .................. Produce debug output in console');
   Out.Ln; Out.Ln; Out.Ln;
   Out.String('Examples:'); Out.Ln;
   Out.String('  '); Out.String(s);
@@ -207,6 +211,23 @@ BEGIN
   IF i = len THEN Strings.Copy(s, m[i]); INC(len) END
 END AddFname;
 
+PROCEDURE SetIntro(fname: ARRAY OF CHAR);
+VAR T: Texts.Text;
+  R: Texts.Reader;
+  ch: CHAR;
+  i: INTEGER;
+BEGIN
+  NEW(T); Texts.Open(T, fname);
+  Texts.OpenReader(R, T, 0);
+  Texts.Read(R, ch);
+  i := 0;
+  WHILE ~R.eot DO
+    IF i < LEN(indexComment) - 1 THEN indexComment[i] := ch; INC(i) END;
+    Texts.Read(R, ch)
+  END;
+  indexComment[i] := 0X
+END SetIntro;
+
 PROCEDURE Do;
 VAR i, count, len: INTEGER;
   out, s: ARRAY 256 OF CHAR;
@@ -236,9 +257,12 @@ BEGIN
       ELSIF (s = '--external-style') OR (s = '-e') THEN
         H.SetExternalStyle(TRUE)
       ELSIF (s = '--no-index') OR (s = '-n') THEN
-        createIndex := FALSE
+        createIndex := FALSE;
+        H.LinkToIndex(FALSE)
       ELSIF (s = '--title') OR (s = '-t') THEN
         IF i < count THEN INC(i); Args.Get(i, indexTitle); END
+      ELSIF (s = '--intro') OR (s = '-i') THEN
+        IF i < count THEN INC(i); Args.Get(i, s); SetIntro(s) END
       ELSIF s = '--pal' THEN
         IF i < count THEN INC(i); Args.Get(i, s); H.SetPalette(s) END
       ELSIF s = '--template' THEN (* Template HTML file *)
@@ -272,6 +296,7 @@ BEGIN
       END
     ELSE (* Single file given and "-o" is a file name *)
       IF out[0] = 0X THEN FnameToHtml(fnames[0], out) END;
+      H.LinkToIndex(FALSE);
       HandleFile(fnames[0], out)
     END
   END

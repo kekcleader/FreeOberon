@@ -374,13 +374,20 @@ END SaveAllComments;
     if lastLine is equal to the line where the comment started (= docLine).
      Parameter lastLine should be equal to the line number of the last symbol
     of the declaration (the semicolon), or -1 when saving a pre-comment.
-     See AppendComment for more info on what "the first comment" means. *)
+     See AppendComment for more info on what "the first comment" means.
+     If comment should be saved, but o = NIL, removes the comment from doc *)
 PROCEDURE SaveComment(o: Object; lastLine: INTEGER);
+VAR s: ARRAY 4096 OF CHAR;
 BEGIN
-  IF (o # NIL) & (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
-    IF o.comment[0] = 0X THEN AppendComment(o.comment)
-    ELSIF (lastLine = -1) OR (docLine = lastLine) THEN
-      Strings.Append(0AX, o.comment); AppendComment(o.comment)
+    Out.String('Save comment?'); Out.Int(docLine, 5); Out.Int(lastLine, 5);Out.Ln;
+  IF (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
+    Out.String('IN!');Out.Ln;
+    IF o # NIL THEN
+      IF o.comment[0] = 0X THEN AppendComment(o.comment)
+      ELSIF (lastLine = -1) OR (docLine = lastLine) THEN
+        Strings.Append(0AX, o.comment); AppendComment(o.comment)
+      END
+    ELSE AppendComment(s)
     END
   END
 END SaveComment;
@@ -392,6 +399,7 @@ PROCEDURE Read;
 BEGIN
   IF c = 0AX THEN INC(line); col := 0 END;
   IF ~R.eof THEN Files.ReadChar(R, c); INC(col) ELSE c := 0X END
+  ;Out.String('          READ[');Out.Char(c);Out.Char(']'); Out.Int(col, 0);Out.Ln;
 END Read;
 
 PROCEDURE IsLetter*(x: CHAR): BOOLEAN;
@@ -522,7 +530,8 @@ BEGIN
   IF pre THEN
     IF docLen < LEN(doc) - 4 THEN
       doc[docLen] := 0AX; INC(docLen); doc[docLen] := '`'; INC(docLen);
-      doc[docLen] := '`'; INC(docLen); doc[docLen] := '`'; INC(docLen)
+      doc[docLen] := '`'; INC(docLen); doc[docLen] := '`'; INC(docLen);
+      doc[docLen] := 0X
     END;
     pre := FALSE
   END
@@ -549,15 +558,14 @@ BEGIN
       ELSE AppendDocChar(0AX)
       END
     ELSIF c <= ' ' THEN AppendDocChar(' ')
-    ELSIF docNewLine & (c = '%') & (langMark < 0) THEN (* Begin of curLang mark *)
-      AppendDocChar(0AX); AppendDocChar(' ');
-      langMark := 0
+    ELSIF docNewLine & (c = '%') & (langMark < 0) THEN (* Begin curLang mark *)
+      AppendDocChar(0AX); AppendDocChar(' '); langMark := 0
     ELSIF docNewLine & (langMark >= 0) &
           (('A' <= c) & (c <= 'Z') OR ('a' <= c) & (c <= 'z')) THEN
       curLang[langMark] := CAP(c); INC(langMark); curLang[langMark] := 0X;
       IF langMark = 2 THEN (* End of language mark *)
         langMark := -1;
-        IF curLang = lang THEN ClearComments END
+        IF curLang = lang THEN doc[0] := 0X; docLen := 0 END
       END;
       AppendDocChar(' ')
     ELSE
@@ -567,7 +575,10 @@ BEGIN
           ELSE AppendDocChar(' ')
           END
         ELSIF col = docCol + 1 THEN EndPre; AppendDocChar(0AX)
-        ELSE DocTrimRight; AppendDocChar(0AX); BeginPre;
+        ELSE
+          Out.String('col, docCol ====== '); Out.Int(col, 0);
+          Out.String(', '); Out.Int(docCol, 0); Out.Ln;
+          DocTrimRight; AppendDocChar(0AX); BeginPre;
           FOR i := 1 TO col - docCol DO AppendDocChar(' ') END
         END;
         docNewLine := FALSE
@@ -612,7 +623,9 @@ PROCEDURE ReadComment(toplevel: BOOLEAN);
 VAR closed, tmp: BOOLEAN;
   title: BOOLEAN;
 BEGIN
-  IF toplevel & (docLen = 0) THEN docLine := line END;
+  Out.String('docLen = '); Out.Int(docLen, 0);Out.String(' <-------');Out.Ln;
+  IF toplevel & (docLen = 0) THEN docLine := line; Out.String('docline=');Out.Int(docLine,0);Out.Ln; END;
+
   Read; closed := FALSE; writingDoc := FALSE;
   docNewLine := FALSE; docCol := -1; pre := FALSE;
   curLang[0] := 0X; langMark := -1;
@@ -627,6 +640,8 @@ BEGIN
   IF ~closed THEN
     WHILE (c # 0X) & (c = ' ') DO Read END;
     docCol := col;
+    Out.String('>>>>> set docCol := '); Out.Int(docCol, 0);
+    Out.String(' (c = '); Out.Char(c); Out.Char(')'); Out.Ln;
     REPEAT
       WHILE (c # 0X) & (c # '*') DO
         IF c = '(' THEN Read;
@@ -664,6 +679,7 @@ BEGIN
     END
   END;
   IF pre & writingDoc THEN EndPre END;
+  ;Out.String(doc);Out.Ln;
   doc[docLen] := 0X
 END ReadComment;
 
@@ -1129,10 +1145,10 @@ END ConstructChar;
     cast to integer and stored in intVal. *)
 PROCEDURE ParseConstExpr(VAR s: ARRAY OF CHAR;
     VAR isOrdinal: BOOLEAN; VAR intVal: INTEGER);
-VAR start, end, i: INTEGER;
+VAR start, end, i, tmpCol, tmpLine: INTEGER;
   x, tmpC: CHAR;
 BEGIN isOrdinal := FALSE; intVal := 0; i := 0; x := constExprBeginC;
-  REPEAT end := Files.Pos(R); tmpC := c; GetSym
+  REPEAT end := Files.Pos(R); tmpC := c; tmpCol := col; tmpLine := line; GetSym
   UNTIL (sym = semicol) OR (sym = of) OR (sym = eot) OR (sym = comma);
   IF sym # eot THEN
     IF constExprBeginPos < end THEN
@@ -1147,8 +1163,8 @@ BEGIN isOrdinal := FALSE; intVal := 0; i := 0; x := constExprBeginC;
       UNTIL Files.Pos(R) >= end;
       IF i > 0 THEN DEC(i) END
     END;
-    Files.Set(R, Files.Base(R), end); c := tmpC;
-    IF col # 0 THEN DEC(col) END;
+    Files.Set(R, Files.Base(R), end);
+    c := tmpC; col := tmpCol; line := tmpLine;
     GetSym
   END;
   WHILE (i # 1) & (s[i - 1] <= ' ') DO DEC(i) END;
@@ -1191,7 +1207,12 @@ BEGIN L := NewList(); stop := FALSE;
       WHILE x # NIL DO x(Var).type := T; x := x.next END
     END;
     IF (sym = semicol) OR ~isVarDecl THEN line2 := line;
-      IF sym = semicol THEN GetSym; SaveComment(first, line2)
+      IF sym = semicol THEN GetSym;
+      ;Out.String('line2=');Out.Int(line2, 0);Out.Ln;
+      SaveComment(first, line2)
+      ;IF first = NIL THEN Out.String('first IS NIL'); Out.Ln; ELSE
+      ;Out.String('first.comment=');Out.String(first.comment);Out.Ln;
+      END;
       ELSE stop := TRUE; SaveAllComments(first)
       END;
       IF (first # NIL) & (first.comment[0] # 0X) THEN x := first.next;
@@ -1310,7 +1331,10 @@ VAR T, T1: Type;
   isInt: BOOLEAN;
   tmp: INTEGER;
 BEGIN ASSERT(sym = array);
-  constExprBeginPos := Files.Pos(R); constExprBeginC := c; GetSym;
+  constExprBeginPos := Files.Pos(R); constExprBeginC := c;
+  Out.String('constExprBeginPos=');Out.Int(constExprBeginPos, 0);
+  Out.String('   constExprBeginC='); Out.Char(c);Out.Ln;
+  GetSym;
   T := NewType(arrayType); T1 := T; CheckDirective(T);
   IF (sym # of) THEN
     ParseConstExpr(T.len, isInt, tmp)
@@ -1595,11 +1619,9 @@ END SortGroups;
 PROCEDURE SortModule(M: Module);
 BEGIN
   SortGroups(M.consts);
-  (*
   SortGroups(M.vars);
-  SortGroups(M.types);
+  (* SortGroups(M.types); *)
   SortGroups(M.procedures)
-  *)
 END SortModule;
 
 PROCEDURE ParseModule*(VAR r: Files.Rider; VAR err: ARRAY OF CHAR): Module;

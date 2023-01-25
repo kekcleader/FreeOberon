@@ -55,6 +55,7 @@ VAR
   (** Module names of modules to which <a href> will work *)
   linkMods: ARRAY 256 OF ARRAY 64 OF CHAR;
   linkModCount: INTEGER; (** Actual length of array linkMods *)
+  linkToIndex: BOOLEAN; (** TRUE if link to "Get Started" should be added *)
 
 (** List of Declared Names **)
 
@@ -101,6 +102,10 @@ END AddLinkModExt;
 PROCEDURE ClearLinkMods*;
 BEGIN linkModCount := 0;
 END ClearLinkMods;
+
+PROCEDURE LinkToIndex*(yes: BOOLEAN);
+BEGIN linkToIndex := yes
+END LinkToIndex;
 
 (** Language **)
 
@@ -253,17 +258,20 @@ BEGIN
   WriteLn('</section>')
 END PrintComment;
 
-PROCEDURE PrintModIndex(showIndex: BOOLEAN);
+(** If modName is an empty string, the index page is considered current *)
+PROCEDURE PrintModIndex(modName: ARRAY OF CHAR; showIndex: BOOLEAN);
 VAR i: INTEGER;
   s: ARRAY 64 OF CHAR;
 BEGIN
   WriteLn('<ul class="modules-index">');
-  IF showIndex THEN
-    Write('<li><a href="index.html">');
-    Lang.Get('indexLink', s); Write(s); WriteLn('</a></li>')
-  END;
+  Write('<li');
+  IF modName[0] = 0X THEN Write(' class="cur"') END;
+  Write('><a href="index.html">');
+  Lang.Get('indexLink', s); Write(s); WriteLn('</a></li>');
   FOR i := 0 TO linkModCount - 1 DO
-    Write('<li><a href="'); Write(linkMods[i]); Write('.html">');
+    Write('<li');
+    IF linkMods[i] = modName THEN Write(' class="cur"') END;
+    Write('><a href="'); Write(linkMods[i]); Write('.html">');
     Write(linkMods[i]); WriteLn('</a></li>')
   END;
   WriteLn('</ul>')
@@ -607,7 +615,7 @@ BEGIN
 
   IF ~index THEN
     WriteLn('<nav class="module-menu">');
-    PrintModIndex(TRUE);
+    PrintModIndex(modName, TRUE);
     WriteLn('</nav>')
   END;
   WriteLn('</div></header>');
@@ -759,8 +767,8 @@ BEGIN
     ELSE Heading(M.name, FALSE)
     END
   ELSIF tag = 'MENU' THEN
-    IF renderingIndex THEN PrintModIndex(FALSE)
-    ELSE PrintModIndex(TRUE)
+    IF renderingIndex THEN PrintModIndex('', FALSE)
+    ELSE PrintModIndex(M.name, TRUE)
     END
   ELSIF tag = 'BODY' THEN
     IF renderingIndex THEN PrintIndexComment
@@ -952,7 +960,7 @@ BEGIN
     Write('<h2>');
     Lang.Get('indexHeading', s); Write(s);
     WriteLn('</h2>');
-    PrintModIndex(FALSE);
+    PrintModIndex('', FALSE);
 
     Write('<h2>');
     Lang.Get('overview', s); Write(s);
@@ -970,6 +978,6 @@ RETURN TRUE END CreateIndex;
 
 BEGIN
   PrintObject := PrintObject0;
-  externalStyle := FALSE;
+  externalStyle := FALSE; linkToIndex := TRUE;
   lang[0] := 0X; palette[0] := 0X; tpl[0] := 0X
 END AutodocHtml.
