@@ -379,9 +379,7 @@ END SaveAllComments;
 PROCEDURE SaveComment(o: Object; lastLine: INTEGER);
 VAR s: ARRAY 4096 OF CHAR;
 BEGIN
-    Out.String('Save comment?'); Out.Int(docLine, 5); Out.Int(lastLine, 5);Out.Ln;
   IF (doc[0] # 0X) & ((lastLine = -1) OR (docLine = lastLine)) THEN
-    Out.String('IN!');Out.Ln;
     IF o # NIL THEN
       IF o.comment[0] = 0X THEN AppendComment(o.comment)
       ELSIF (lastLine = -1) OR (docLine = lastLine) THEN
@@ -399,7 +397,6 @@ PROCEDURE Read;
 BEGIN
   IF c = 0AX THEN INC(line); col := 0 END;
   IF ~R.eof THEN Files.ReadChar(R, c); INC(col) ELSE c := 0X END
-  ;Out.String('          READ[');Out.Char(c);Out.Char(']'); Out.Int(col, 0);Out.Ln;
 END Read;
 
 PROCEDURE IsLetter*(x: CHAR): BOOLEAN;
@@ -517,7 +514,6 @@ END DocTrimRight;
 PROCEDURE BeginPre;
 BEGIN
   IF ~pre THEN
-    Out.String('BEGIN pre'); Out.Ln;
     IF docLen < LEN(doc) - 11 THEN
       doc[docLen] := '`'; INC(docLen); doc[docLen] := '`'; INC(docLen);
       doc[docLen] := '`'; INC(docLen); doc[docLen] := 0AX; INC(docLen)
@@ -529,7 +525,6 @@ END BeginPre;
 PROCEDURE EndPre;
 BEGIN
   IF pre THEN
-    Out.String('END pre'); Out.Ln;
     IF docLen < LEN(doc) - 4 THEN
       doc[docLen] := 0AX; INC(docLen); doc[docLen] := '`'; INC(docLen);
       doc[docLen] := '`'; INC(docLen); doc[docLen] := '`'; INC(docLen);
@@ -572,9 +567,6 @@ BEGIN
       AppendDocChar(' ')
     ELSE
       IF docNewLine THEN
-        Out.String('col, docCol ====== '); Out.Int(col, 0);
-        Out.String(', '); Out.Int(docCol, 0);
-        Out.String('; pre='); Out.Int(ORD(pre), 0);Out.Ln;
         IF (col = docCol) OR (col = 1) THEN
           IF pre THEN DocTrimRight; EndPre; AppendDocChar(0AX)
           ELSE AppendDocChar(' ')
@@ -625,8 +617,7 @@ PROCEDURE ReadComment(toplevel: BOOLEAN);
 VAR closed, tmp: BOOLEAN;
   title: BOOLEAN;
 BEGIN
-  Out.String('docLen = '); Out.Int(docLen, 0);Out.String(' <-------');Out.Ln;
-  IF toplevel & (docLen = 0) THEN docLine := line; Out.String('docline=');Out.Int(docLine,0);Out.Ln; END;
+  IF toplevel & (docLen = 0) THEN docLine := line END;
 
   Read; closed := FALSE; writingDoc := FALSE;
   docNewLine := FALSE; docCol := -1; pre := FALSE;
@@ -642,8 +633,6 @@ BEGIN
   IF ~closed THEN
     WHILE (c # 0X) & (c = ' ') DO Read END;
     docCol := col;
-    Out.String('>>>>> set docCol := '); Out.Int(docCol, 0);
-    Out.String(' (c = '); Out.Char(c); Out.Char(')'); Out.Ln;
     REPEAT
       WHILE (c # 0X) & (c # '*') DO
         IF c = '(' THEN Read;
@@ -681,7 +670,6 @@ BEGIN
     END
   END;
   IF pre & writingDoc THEN EndPre END;
-  ;Out.String(doc);Out.Ln;
   doc[docLen] := 0X
 END ReadComment;
 
