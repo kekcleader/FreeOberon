@@ -24,8 +24,8 @@ TYPE
 %RU                    Результат. 0 означает отсутствие ошибки *)
     name*: ARRAY 512 OF CHAR; (** File or directory name
 %RU                               Имя файла или каталога *)
-    path*: ARRAY 1024 OF CHAR; (** HELLO
-%RU                                ПРИВЕТ *)
+    path*: ARRAY 1024 OF CHAR; (** Path that has been set
+%RU                                Путь, который был задан *)
     pathlen: INTEGER;
     dir: DIR
   END;
