@@ -1197,13 +1197,7 @@ BEGIN L := NewList(); stop := FALSE;
       WHILE x # NIL DO x(Var).type := T; x := x.next END
     END;
     IF (sym = semicol) OR ~isVarDecl THEN line2 := line;
-      IF sym = semicol THEN GetSym;
-      ;Out.String('line2=');Out.Int(line2, 0);Out.Ln;
-      SaveComment(first, line2)
-      ;IF first = NIL THEN Out.String('first IS NIL'); Out.Ln; ELSE
-      ;Out.String('first.comment="');Out.String(first.comment);
-      Out.Char('"');Out.Ln;
-      END;
+      IF sym = semicol THEN GetSym
       ELSE stop := TRUE; SaveAllComments(first)
       END;
       IF (first # NIL) & (first.comment[0] # 0X) THEN x := first.next;
@@ -1323,8 +1317,6 @@ VAR T, T1: Type;
   tmp: INTEGER;
 BEGIN ASSERT(sym = array);
   constExprBeginPos := Files.Pos(R); constExprBeginC := c;
-  Out.String('constExprBeginPos=');Out.Int(constExprBeginPos, 0);
-  Out.String('   constExprBeginC='); Out.Char(c);Out.Ln;
   GetSym;
   T := NewType(arrayType); T1 := T; CheckDirective(T);
   IF (sym # of) THEN
