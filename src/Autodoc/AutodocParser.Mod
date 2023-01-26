@@ -517,6 +517,7 @@ END DocTrimRight;
 PROCEDURE BeginPre;
 BEGIN
   IF ~pre THEN
+    Out.String('BEGIN pre'); Out.Ln;
     IF docLen < LEN(doc) - 11 THEN
       doc[docLen] := '`'; INC(docLen); doc[docLen] := '`'; INC(docLen);
       doc[docLen] := '`'; INC(docLen); doc[docLen] := 0AX; INC(docLen)
@@ -528,6 +529,7 @@ END BeginPre;
 PROCEDURE EndPre;
 BEGIN
   IF pre THEN
+    Out.String('END pre'); Out.Ln;
     IF docLen < LEN(doc) - 4 THEN
       doc[docLen] := 0AX; INC(docLen); doc[docLen] := '`'; INC(docLen);
       doc[docLen] := '`'; INC(docLen); doc[docLen] := '`'; INC(docLen);
@@ -570,15 +572,15 @@ BEGIN
       AppendDocChar(' ')
     ELSE
       IF docNewLine THEN
+        Out.String('col, docCol ====== '); Out.Int(col, 0);
+        Out.String(', '); Out.Int(docCol, 0);
+        Out.String('; pre='); Out.Int(ORD(pre), 0);Out.Ln;
         IF (col = docCol) OR (col = 1) THEN
           IF pre THEN DocTrimRight; EndPre; AppendDocChar(0AX)
           ELSE AppendDocChar(' ')
           END
         ELSIF col = docCol + 1 THEN EndPre; AppendDocChar(0AX)
-        ELSE
-          Out.String('col, docCol ====== '); Out.Int(col, 0);
-          Out.String(', '); Out.Int(docCol, 0); Out.Ln;
-          DocTrimRight; AppendDocChar(0AX); BeginPre;
+        ELSE DocTrimRight; AppendDocChar(0AX); BeginPre;
           FOR i := 1 TO col - docCol DO AppendDocChar(' ') END
         END;
         docNewLine := FALSE
@@ -1211,7 +1213,8 @@ BEGIN L := NewList(); stop := FALSE;
       ;Out.String('line2=');Out.Int(line2, 0);Out.Ln;
       SaveComment(first, line2)
       ;IF first = NIL THEN Out.String('first IS NIL'); Out.Ln; ELSE
-      ;Out.String('first.comment=');Out.String(first.comment);Out.Ln;
+      ;Out.String('first.comment="');Out.String(first.comment);
+      Out.Char('"');Out.Ln;
       END;
       ELSE stop := TRUE; SaveAllComments(first)
       END;
