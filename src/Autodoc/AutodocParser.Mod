@@ -1197,7 +1197,7 @@ BEGIN L := NewList(); stop := FALSE;
       WHILE x # NIL DO x(Var).type := T; x := x.next END
     END;
     IF (sym = semicol) OR ~isVarDecl THEN line2 := line;
-      IF sym = semicol THEN GetSym
+      IF sym = semicol THEN GetSym; SaveComment(first, line2)
       ELSE stop := TRUE; SaveAllComments(first)
       END;
       IF (first # NIL) & (first.comment[0] # 0X) THEN x := first.next;
