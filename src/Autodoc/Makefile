@@ -1,7 +1,7 @@
 
 all: Autodoc
 
-Autodoc: Autodoc.Mod AutodocParser.Mod AutodocHtml.Mod
+Autodoc: Autodoc.Mod AutodocParser.Mod AutodocHtml.Mod SimpleLangs.Mod
 	fob Autodoc.Mod
 
 run: Autodoc
