@@ -6,25 +6,39 @@ MODULE In;
 
     Module In as in Oakwood Guidlines for  Oberon-2 Compiler Developers, 1995.
      With the following changes:
-     LongInt, Int, Int16 also read minus signs first.
+     LongInt, Int, Int16 read and parse minus signs first.
      Char reads a 2-byte character. On Linux it decodes input as UTF-8.
     On Windows it uses ReadConsoleW WinAPI call if console is attached,
-    otherwise uses ReadFile and decodes input as UTF-8.
+    otherwise ReadFile is used and input is decoded from UTF-8.
      Open may not rewind.
-    Extra procedures: Line, HugeInt, Int16. *)
+     Extra procedures: Line, HugeInt, Int16.
 
-(*!FIXME From the Oakwood guidlines:
-  An unsuccessful input operation sets Done to FALSE;
-  it remains FALSE until the next call to Open. *)
+%RU Модуль In предоставляет набор основных процедур для форматированного ввода
+    литер, последовательностей литер, чисел и имён. Он предполагает наличие
+    стандартного потока ввода с текущей позицией, которая может быть сброшена
+    в начало потока (но не всегда это возможно в Linux/Unix или Windows).
+    
+    Модуль In как в Oakwood Guidlines for Oberon-2 Compiler Developers, 1995.
+     Со следующими изменениями:         
+     LongInt, Int, Int16 сначала читают и распознают знаки минус.         
+     Char читает 2-байтовую литеру. В Linux он декодирует вводимые данные как
+    UTF-8. В Windows используется вызов ReadConsoleW из WinAPI если консоль
+    подключена, в противном случае используется ReadFile и ввод автоматически
+    декодируется из UTF-8.
+     Open не может перематывать.
+     Дополнительные процедуры: Line, HugeInt, Int16. *)
 
 IMPORT Platform, SYSTEM, Reals, Out, Utf8;
 
 CONST
-  pending = 0; (* readState when at start of input or end of line. Implies nextch undefined. *)
-  ready   = 1; (* readState when nextch is defined and contains next character on current line. *)
+  pending = 0; (* readState when at start of input or end of line.
+                  Implies nextch undefined. *)
+  ready   = 1; (* readState when nextch is defined and contains
+                  next character on current line. *)
   eof     = 2; (* readState when at end of file. *)
 
-  (** Codepages, values of cp **)
+  (** Codepages, values of cp
+%RU   Кодовые страницы, значения cp **)
   singleByte = 1;
   utf8       = 2; (*!TODO also add UTF16 *)
 
