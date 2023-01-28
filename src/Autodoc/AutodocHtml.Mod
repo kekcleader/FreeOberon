@@ -206,7 +206,9 @@ BEGIN
       ELSIF ~pre & (c = '`') & (s[i + 1] # '`') &
             ((i = 0) OR (s[i - 1] # '`')) THEN
         IF code THEN Write('</code>'); code := FALSE
-        ELSE Write('<code>'); code := TRUE
+        ELSE
+          IF closed THEN WriteLn('<p>'); closed := FALSE END;
+          Write('<code>'); code := TRUE
         END
       ELSE
         IF closed THEN WriteLn('<p>'); closed := FALSE END;
@@ -769,6 +771,10 @@ BEGIN
   ELSIF tag = 'MENU' THEN
     IF renderingIndex THEN PrintModIndex('', FALSE)
     ELSE PrintModIndex(M.name, TRUE)
+    END
+  ELSIF tag = 'NAME' THEN
+    IF renderingIndex THEN Write('index')
+    ELSE Write(M.name)
     END
   ELSIF tag = 'BODY' THEN
     IF renderingIndex THEN PrintIndexComment
