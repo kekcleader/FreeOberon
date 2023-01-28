@@ -117,8 +117,8 @@ BEGIN
   END ;
 RETURN ok END GetChar;
 
-(** Puts in `x` the byte at the current position *)
-%RU  *)
+(** Puts in `x` the byte at the current position
+%RU Помещает в `x` байт в текущей позиции *)
 PROCEDURE Byte*(VAR x: BYTE);
 BEGIN x := SYSTEM.VAL(BYTE, SHORT(SHORT(GetByte())))
 END Byte;
@@ -318,10 +318,10 @@ BEGIN i := 0; Char(c);
 END Name;
 
 (** Reads and puts in `x` a 32-bit real number (REAL) in format:
-      ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]].
+     ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]].
 %RU Считывает и помещает в `x` 32-битное вещественное число (REAL)
     согласно формату:
-      ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]]. *)
+     ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]]. *)
 PROCEDURE Real*(VAR x: SHORTREAL);
 VAR s: ARRAY 16 OF CHAR;
 BEGIN StartAndSkip; Word(s);
@@ -330,10 +330,10 @@ BEGIN StartAndSkip; Word(s);
 END Real;
 
 (** Reads and puts in `x` a 64-bit real number (LONGREAL) in format:
-      ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]].
+     ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]].
 %RU Считывает и помещает в `x` 64-битное вещественное число (LONGREAL)
     согласно формату:
-      ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]]. *)
+     ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]]. *)
 %RU  *)
 PROCEDURE LongReal*(VAR x: REAL);
 VAR s: ARRAY 16 OF CHAR;
