@@ -1,13 +1,23 @@
 MODULE Files;
-(** Standard data type input-output from/to a storage media.
+(** Input-output of standard data types from/to a storage media.
 
-      Little Endian,
+      The order of bytes used is Little Endian,
       SInt: 2 bytes, Int: 4 bytes, LInt: 8 bytes
       ORD({0}) = 1,
       FALSE = 0, TRUE = 1
       IEEE Real Format,
       Null-terminated strings,
-      compact numbers according to M. Odersky *)
+      compact numbers according to M. Odersky
+
+%RU Ввод-вывод стандартных типов данных с/на носитель информации
+
+      Используется порядок байтов от младшего к старшему,
+      SInt: 2 байта, Int: 4 байта, LInt: 8 байтов.
+      ORD({0}) = 1,
+      FALSE = 0, TRUE = 1
+      Вещественный формат IEEE,
+      Нуль-терминированные строки,
+      компактные числа по М. Одерскому *)
 
 IMPORT SYSTEM, Platform, Heap, Strings, Out, Utf8;
 
@@ -28,13 +38,18 @@ CONST
                  just write directly to final register name *)
 
 TYPE
-  SBYTE* = BYTE; (** Signed 8-bit integer, -128..127 *)
-  BYTE* = UBYTE; (** Unsigned 8-bit integer, 0..255 *)
-  INT64 = LONGINT; (** Signed 64-bit integer *)
-  LONGINT = INTEGER; (* For larger version of Files, i.e. Files64 *)
+  SBYTE* = BYTE; (** Signed 8-bit integer, -128..127
+%RU                  Знаковое 8-битное целое, -128..127 *)
+  BYTE* = UBYTE; (** Unsigned 8-bit integer, 0..255
+%RU                  Беззнаковое 8-битное целое, 0..255 *)
+  INT64 = LONGINT; (** Signed 64-bit integer
+%RU                    Знаковое 64-битное целое *)
+  LONGINT = INTEGER; (* For larger version of Files, i.e. Files64
+%RU                     Для более крупной версии Files, т.е. Files64 *)
 
   FileName = ARRAY 256 OF CHAR;
-  File* = POINTER TO FileDesc; (** A file object *)
+  File* = POINTER TO FileDesc; (** A file object
+%RU                                Объект, представляющий файл *)
   Buffer = POINTER TO BufDesc;
 
   FileDesc = RECORD
@@ -58,10 +73,18 @@ TYPE
 
   (** Rider on a file. Used to read or write data from/to a file.
       Can be set in a arbitrary place in a file. Automatically moves forward
-      in a file every time it is used for reading or writing *)
+      in a file every time it is used for reading or writing
+%RU   Бегунок по файлу. Используется для чтения или записи данных из/в файл.
+      Может быть установлен в произвольном месте файла. Автоматически
+      перемещается вперёд в файле всякий раз, когда используется для
+      чтения или записи. *)
   Rider* = RECORD
-    res*: INTEGER; (** Residue (byte count not read) at eof of ReadBytes *)
-    eof*: BOOLEAN; (** TRUE when end of file is reached. Check after Read... *)
+    res*: INTEGER; (** Residue (byte count not read) at eof of ReadBytes
+%RU                     *)
+    eof*: BOOLEAN; (** TRUE when end of file is reached. Should be checked
+                       after calling Read procedures.
+%RU                    TRUE, когда достигнут конец файла. Должен проверяться
+                       после вызова Read-процедур. *)
     justSet: BOOLEAN; (* TRUE after Set(r, F, n>0) for UTF-8 error handling *)
     buf: Buffer;
     org: LONGINT; (* File offset of block containing current position *)
@@ -174,7 +197,7 @@ BEGIN
   IF f.fd = Platform.InvalidHandleValue() THEN
     IF f.state = create THEN
       (* New file with enough data written to exceed buffers, so we need to
-         create a temporary file to back it. *) 
+         create a temporary file to back it. *)
       GetTempName(f.registerName, f.workName); f.tempFile := TRUE
     ELSE
       ASSERT(f.state = close);
@@ -238,8 +261,10 @@ BEGIN
   f.fd := Platform.InvalidHandleValue(); f.state := create; DEC(Heap.FileCount)
 END CloseOSFile;
 
-(** Flush the contents of the file to storage media.
-    The file can still be used after a call to Close *)
+(** Flushes the contents of the file to storage media.
+    The file can still be used after a call to Close.
+%RU Сбрасывает содержимое файла на носитель.
+    Файл может быть использован и после вызова Close. *)
 PROCEDURE Close*(f: File);
 VAR i: INTEGER;
 BEGIN
@@ -249,13 +274,19 @@ BEGIN
   END
 END Close;
 
-(** Returns the length of the given file in bytes *)
+(** Returns the length of the given file in bytes
+%RU Возвращает длину данного файла в байтах *)
 PROCEDURE Length*(f: File): LONGINT;
 BEGIN RETURN f.len END Length;
 
 (** Creates and returns a file object with the given file name.
-    This procedure is used to create new files or rewrite old files, but
-    `New` does not delete or rewrite the file if it existed *)
+     This procedure is used to create new files or rewrite old files, but
+    New does not delete or rewrite the file if it existed -- this is done
+    by Register or Close.
+%RU Создает и возвращает объект файла с заданным именем файла.
+     Эта процедура используется для создания новых или перезаписи старых
+    файлов, но New не удаляет и не перезаписывает файл, если он уже
+    существовал -- это делает Register или Close. *)
 PROCEDURE New*(IN name: ARRAY OF CHAR): File;
 VAR f: File;
 BEGIN
@@ -322,7 +353,11 @@ END CacheEntry;
 (** Opens a file with the given file name if it exists. Returns the object
     representing the file. If the file does not exist, returns NIL.
      If you write to a file opened with Old, the changes will be stored
-    in the storage medium only after a call to Register or Close. *)
+    in the storage medium only after a call to Register or Close.
+%RU Открывает файл с заданным именем файла, если он существует. Возвращает
+    объект, представляющий этот файл. Если файл не существует, возвращает NIL.
+     Если вы пишете в файл, открытый с помощью Old, изменения будут сохранены
+     на носителе информации только после вызова Register или Close. *)
 PROCEDURE Old*(name: ARRAY OF CHAR): File;
 VAR f: File;
   fd: Platform.FileHandle;
@@ -381,7 +416,8 @@ BEGIN
   END
 END Old;
 
-(** Frees the sectors used by the file object *)
+(** Frees the sectors of storage device used by the file
+%RU Освобождает сектора носителя данных, используемые файлом *)
 PROCEDURE Purge*(f: File);
 VAR i: INTEGER;
   identity: Platform.FileIdentity;
@@ -403,7 +439,11 @@ END Purge;
 (** Puts in `t` and `d` the time and date of the file in a special bit format:
       d = YYYYYYYMMMMDDDDD  Y-year  M-month   D-day
       t = HHHHmmmmmmSSSSSS  H-hour  m-minute  S-second
-    The year bits hold the two last digits of the year *)
+    The year bits hold the two last digits of the year
+%RU Помещает в `t` и `d` время и дату файла в особом битовом формате:
+      d = YYYYYYYMMMMDDDDD  Y-год  M-месяц   D-день
+      t = HHHHmmmmmmSSSSSS  H-час  m-минута  S-секунда
+    Биты года содержат две последние цифры года.*)
 PROCEDURE GetDate*(f: File; VAR t, d: INTEGER);
 VAR identity: Platform.FileIdentity;
   error: Platform.ErrorCode;
@@ -412,18 +452,32 @@ BEGIN Create(f); error := Platform.Identify(f.fd, identity);
 END GetDate;
 
 (** Returns position of rider `r` in the file.
-     Note that the position is measured in bytes (not UTF-8 characters).
-    Position 0 means the position exactly before the very first byte of the
-    file. Position Length() points at exactly after the last byte. *)
+     Note that the position is measured in bytes (and not characters, each
+    of which is coded in UTF-8 as 1, 2, 3 or 4 bytes).
+     Position 0 means the position exactly before the very first byte of the
+    file. Position Length() points at exactly after the last byte.
+%RU Возвращает позицию бегунка `r` в файле.
+     Обратите внимание, что позиция измеряется в байтах (а не в литерах,
+    каждая из которых закодирована в UTF-8 как 1, 2, 3 или 4 байта).
+     Позиция 0 означает позицию точно перед самым первым байтом файла.
+    Позиция Length() указывает на позицию сразу после последнего байта. *)
 PROCEDURE Pos*(VAR r: Rider): INTEGER;
 BEGIN RETURN r.org + r.offset
 END Pos;
 
 (** Sets rider `r` at position `pos` of the file `f`.
      Use this procedure after successfully opening a file with Old or New.
-     Note that the position is measured in bytes (not UTF-8 characters).
+     Note that the position is measured in bytes (and not characters, each
+    of which is coded in UTF-8 as 1, 2, 3 or 4 bytes).
     Position 0 means the position exactly before the very first byte of the
-    file. Position Length() points at exactly after the last byte. *)
+    file. Position Length() points at exactly after the last byte.
+%RU Устанавливает райдер `r` в позиции `pos` файла `f`.
+     Эту процедуру вызывают после успешного открытия файла с помощью Old
+    или New.
+     Обратите внимание, что позиция измеряется в байтах (а не в литерах,
+    каждая из которых закодирована в UTF-8 как 1, 2, 3 или 4 байта).
+     Позиция 0 означает позицию точно перед самым первым байтом файла.
+    Позиция Length() указывает на позицию сразу после последнего байта. *)
 PROCEDURE Set*(VAR r: Rider; f: File; pos: LONGINT);
 VAR org: LONGINT;
   offset, i, n: INTEGER;
@@ -465,7 +519,9 @@ BEGIN
 END Set;
 
 (** Reads one byte from a file and puts it in `x`.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает один байт из файла и помещает его в `x`.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE Read*(VAR r: Rider; VAR x: BYTE);
 VAR offset: INTEGER; buf: Buffer;
 BEGIN
@@ -484,7 +540,10 @@ END Read;
 
 (** Reads several bytes from a file and puts it in `x`. Puts the number of
     bytes read in `n`.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает несколько байтов из файла и помещает их в `x`, количество
+    считанных байтов помещается в `n`.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadBytes*(VAR r: Rider; VAR x: ARRAY OF BYTE; n: INTEGER);
 VAR xpos, min, restInBuf, offset: INTEGER; buf: Buffer;
 BEGIN
@@ -505,15 +564,22 @@ BEGIN
 END ReadBytes;
 
 (** Reads one byte from a file and puts it in `x` as a short (ASCII) character.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает один байт из файла и помещает его в `x` в виде короткого
+    (ASCII) символа.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadShortChar*(VAR r: Rider; VAR x: SHORTCHAR);
 BEGIN Read(r, SYSTEM.VAL(BYTE, x))
 END ReadShortChar;
 
 (** Reads up to four bytes (but at least one byte) from a file, interprets
     them as a UTF-8-encoded character and puts the decoded character in `x`
-    (as a 2-byte UCS-2 character.
-     The rider `r` must have been set to a file using Set. *)
+    (as 2 bytes in UCS-2 format).
+     The rider `r` must have been set to a file using Set.
+%RU Считывает до четырех байт (но не менее одного байта) из файла,
+    расценивает их как литеру, закодированную в UTF-8, и помещает
+    декодированную литеру в `x` (как 2 байта в формате UCS-2).
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadChar*(VAR r: Rider; VAR x: CHAR);
 VAR b: BYTE; y: INTEGER;
 BEGIN Read(r, b); y := b;
@@ -535,14 +601,18 @@ BEGIN Read(r, b); y := b;
   x := CHR(y); r.justSet := FALSE
 END ReadChar;
 
-(** Returns a file object that was connected to rider `r` with Set. *)
+(** Returns a file object that was connected to rider `r` with Set.
+%RU Возвращает файловый объект, связанный с бегунком `r` с помощью Set. *)
 PROCEDURE Base*(VAR r: Rider): File;
 BEGIN RETURN r.buf.f
 END Base;
 
-(** Writes `x` as one byte to a file.
+(** Writes a single byte `x` to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл один байт `x`.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE Write*(VAR r: Rider; x: BYTE);
 VAR buf: Buffer; offset: INTEGER;
 BEGIN
@@ -561,7 +631,10 @@ END Write;
 
 (** Writes `n` bytes from array `x` to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+    Записывает в файл `n` байт из массива `x`.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteBytes*(VAR r: Rider; IN x: ARRAY OF BYTE; n: INTEGER);
 VAR xpos, min, restInBuf, offset: INTEGER; buf: Buffer;
 BEGIN
@@ -583,14 +656,19 @@ BEGIN
 END WriteBytes;
 
 (** Truncates a file at position `pos`.
-    The file length will be equal to `pos`. *)
+    The file length will be equal to `pos`.
+%RU Усекает файл в позиции `pos`.
+    Длина файла будет равна `pos`. *)
 PROCEDURE Truncate*(F: File; pos: INTEGER);
 BEGIN F.len := pos (*!FIXME*)
 END Truncate;
 
 (** Deletes (deregisters) a file with the given name from the storage media.
      Sets `res` to 0 on success, 1 on error.
-     IMPORTANT! It uses SearchPath to find the specified file. *)
+     IMPORTANT! It uses SearchPath to find the specified file.
+%RU Удаляет (дерегистрирует) файл с заданным именем с носителя.
+     Устанавливает `res` в 0 при успехе, в 1 при ошибке.
+     ВАЖНО! Для поиска указанного файла используется SearchPath. *)
 PROCEDURE Delete*(IN name: ARRAY OF CHAR; VAR res: INTEGER);
 VAR pos: INTEGER;
   dir, path: ARRAY 2048 OF CHAR;
@@ -614,9 +692,13 @@ BEGIN
 END Delete;
 
 (** Renames a file with the name `old` to `new`.
-     Sets `res` to 0 on success, something else on error.
-     `res = 2` means old file not found.
-     IMPORTANT! It uses SearchPath to find the specified file. *)
+     Sets `res` to 0 on success, non-0 on error.
+     `res = 2` means file not found.
+     IMPORTANT! It uses SearchPath to find the specified file.
+%RU Переименовывает файл с именем `old` в `new`.
+     Устанавливает `res` в 0 при успехе, не-0 при ошибке.
+     `res = 2` означает, что файл не найден.
+     ВАЖНО! Для поиска указанного файла используется SearchPath. *)
 PROCEDURE Rename*(IN old, new: ARRAY OF CHAR; VAR res: INTEGER);
 VAR n: INTEGER;
   fdold, fdnew: Platform.FileHandle;
@@ -671,7 +753,10 @@ END Rename;
 
 (** Registers and saves a file on the storage media.
      Call Register when you are finished writing a file.
-    Register can be called several times and anywhere in between. *)
+    Register can be called several times and anywhere in between.
+%RU Регистрирует и сохраняет файл на носителе.
+     Вызовите Register, когда закончите запись файла.
+    Register можно вызывать несколько раз и в любой точке создания файла. *)
 PROCEDURE Register*(f: File);
 VAR errcode: INTEGER;
   q: ARRAY 2048 OF SHORTCHAR;
@@ -696,7 +781,9 @@ BEGIN
 END Register;
 
 (** Sets current working directory to `path`.
-     Sets `res` to 0 on success, something else on failure. *)
+     Sets `res` to 0 on success, non-0 on failure.
+%RU Устанавливает текущий рабочий каталог в `path`.
+     Устанавливает `res` в 0 при успехе, в не-0 при неудаче. *)
 PROCEDURE ChangeDirectory*(IN path: ARRAY OF CHAR; VAR res: INTEGER);
 VAR q: ARRAY 2048 OF SHORTCHAR;
 BEGIN Utf8.Encode(path, q); res := Platform.ChDir(q)
@@ -713,13 +800,18 @@ END FlipBytes;
 
 (** Reads one byte from a file and puts it in `x` as a BOOLEAN value,
     where byte value of 0 means FALSE, other values mean TRUE.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает один байт из файла и помещает его в `x` как значение типа
+    BOOLEAN. Значение 0 означает FALSE, а другие значения означают TRUE.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadBool*(VAR R: Rider; VAR x: BOOLEAN);
 BEGIN Read(R, SYSTEM.VAL(BYTE, x))
 END ReadBool;
 
 (** Reads two bytes from a file and puts them in `x` as a SHORTINT.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает два байта из файла и помещает их в `x` в виде SHORTINT.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadSInt*(VAR R: Rider; VAR x: SHORTINT);
 VAR b: ARRAY 2 OF SHORTCHAR;
 BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 2), 2);
@@ -727,7 +819,9 @@ BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 2), 2);
 END ReadSInt;
 
 (** Reads four bytes from a file and puts them in `x` as an INTEGER.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает четыре байта из файла и помещает их в `x` в виде INTEGER.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadInt*(VAR R: Rider; VAR x: INTEGER);
 VAR b: ARRAY 4 OF SHORTCHAR;
 BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4);
@@ -736,7 +830,9 @@ BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4);
 END ReadInt;
 
 (** Reads eight bytes from a file and puts them in `x` as a LONGINT.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает восемь байтов из файла и помещает их в `x` в виде LONGINT.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadLInt*(VAR R: Rider; VAR x: INT64);
 VAR b: ARRAY 8 OF SHORTCHAR; n: INTEGER; s: INT64;
 BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 8), 8);
@@ -745,7 +841,9 @@ BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 8), 8);
 END ReadLInt;
 
 (** Reads four bytes from a file and puts it in `x` as a SET.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает четыре байта из файла и помещает их в `x` в виде SET.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadSet*(VAR R: Rider; VAR x: SET);
 VAR b: ARRAY 4 OF SHORTCHAR;
 BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4);
@@ -754,7 +852,9 @@ BEGIN ReadBytes(R, SYSTEM.THISARR(SYSTEM.ADR(b), 4), 4);
 END ReadSet;
 
 (** Reads four bytes from a file and puts it in `x` as REAL.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает четыре байта из файла и помещает их в `x` как REAL.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadReal*(VAR R: Rider; VAR x: SHORTREAL);
 VAR b: ARRAY 4 OF BYTE;
 BEGIN ReadBytes(R, b, 4);
@@ -762,7 +862,9 @@ BEGIN ReadBytes(R, b, 4);
 END ReadReal;
 
 (** Reads eight bytes from a file and puts it in `x` as LONGREAL.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает восемь байтов из файла и помещает их в `x` как LONGREAL.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadLReal*(VAR R: Rider; VAR x: REAL);
 VAR b: ARRAY 8 OF BYTE;
 BEGIN ReadBytes(R, b, 8);
@@ -770,7 +872,9 @@ BEGIN ReadBytes(R, b, 8);
 END ReadLReal;
 
 (** Reads bytes from a file until the first zero byte, puts all in `x`.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает байты из файла до первого нулевого байта, помещает всё в `x`.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadShortString*(VAR R: Rider; VAR x: ARRAY OF SHORTCHAR);
 VAR i: INTEGER; ch: SHORTCHAR;
 BEGIN i := 0; (*!FIXME code from scratch*)
@@ -778,7 +882,9 @@ BEGIN i := 0; (*!FIXME code from scratch*)
 END ReadShortString;
 
 (** Reads a file character by character until the first 0X, puts all in `x`.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает файл по одной литере до первой литеры 0X, помещает всё в `x`.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadString*(VAR R: Rider; VAR x: ARRAY OF CHAR);
 VAR i: INTEGER; ch: CHAR;
 BEGIN i := 0; (*!FIXME code from scratch*)
@@ -786,8 +892,11 @@ BEGIN i := 0; (*!FIXME code from scratch*)
 END ReadString;
 
 (** Reads bytes from a file until the first 0X, 0AX or 0DX byte,
-    puts all in `x`.
-     The rider `r` must have been set to a file using Set. *)
+    puts all in `x` (except the last byte).
+     The rider `r` must have been set to a file using Set.
+%RU Считывает байты из файла до первого байта 0X, 0AX или 0DX,
+    помещает всё в `x` (кроме последнего байта).
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadLine*(VAR R: Rider; VAR x: ARRAY OF SHORTCHAR);
 VAR i: INTEGER; ch: SHORTCHAR; b: BOOLEAN;
 BEGIN i := 0; b := FALSE;
@@ -801,7 +910,10 @@ END ReadLine;
 
 (** Reads one or more bytes from a file to decode a compact number
     (according to M. Odersky), puts the number read in `x`.
-     The rider `r` must have been set to a file using Set. *)
+     The rider `r` must have been set to a file using Set.
+%RU Считывает один или несколько байт из файла и декодирует их как
+    компактное число (по М. Одерскому), помещает считанное число в `x`.
+     Бегунок `r` должен быть установлен на файл с помощью Set. *)
 PROCEDURE ReadNum*(VAR R: Rider; VAR x: INTEGER);
 VAR n: INTEGER; b: BYTE;
 BEGIN n := 0; x := 0; Read(R, b);
@@ -813,21 +925,30 @@ END ReadNum;
 
 (** Writes BOOLEAN `x` as one byte to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл BOOLEAN `x` в виде одного байта.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteBool*(VAR R: Rider; x: BOOLEAN);
 BEGIN Write(R, SYSTEM.VAL(BYTE, x))
 END WriteBool;
 
-(** Writes short character `x` as one byte to a file.
+(** Writes short (1-byte) character `x` to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл короткую (однобайтную) литеру `x`.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteShortChar*(VAR R: Rider; x: SHORTCHAR);
 BEGIN Write(R, SYSTEM.VAL(BYTE, x))
 END WriteShortChar;
 
 (** Writes character `x` as UTF-8 to a file (1 to 4 bytes).
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл литеру `x` в формате UTF-8 (от 1 до 4 байт).
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteChar*(VAR R: Rider; c: CHAR);
 VAR i, L: INTEGER;
   q: ARRAY 5 OF SHORTCHAR;
@@ -838,7 +959,10 @@ END WriteChar;
 
 (** Writes SHORTINT `x` as two bytes to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл SHORTINT `x` как два байта.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteSInt*(VAR R: Rider; x: SHORTINT);
 VAR b: ARRAY 2 OF SHORTCHAR;
 BEGIN b[0] := SHORT(CHR(x)); b[1] := SHORT(CHR(x DIV 256));
@@ -847,7 +971,10 @@ END WriteSInt;
 
 (** Writes INTEGER `x` as four bytes to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл INTEGER `x` как четыре байта.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteInt*(VAR R: Rider; x: INTEGER);
 VAR b: ARRAY 4 OF SHORTCHAR;
 BEGIN b[0] := SHORT(CHR(x)); b[1] := SHORT(CHR(x DIV 100H));
@@ -857,7 +984,10 @@ END WriteInt;
 
 (** Writes LONGINT `x` as eight bytes to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл LONGINT `x` как восемь байтов.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteLInt*(VAR R: Rider; x: INT64);
 VAR b: ARRAY 8 OF SHORTCHAR; n: INTEGER; s: INT64;
 BEGIN b[0] := SHORT(CHR(x)); s := 100H;
@@ -867,7 +997,10 @@ END WriteLInt;
 
 (** Writes SET `x` as four bytes to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл SET `x` как четыре байта.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteSet*(VAR R: Rider; x: SET);
 VAR b: ARRAY 4 OF SHORTCHAR; i: INTEGER;
 BEGIN i := SYSTEM.VAL(INTEGER, x);
@@ -878,7 +1011,10 @@ END WriteSet;
 
 (** Writes REAL `x` as four bytes to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл REAL `x` как четыре байта.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteReal*(VAR R: Rider; x: SHORTREAL);
 VAR b: ARRAY 4 OF BYTE;
 BEGIN FlipBytes(SYSTEM.THISARR(SYSTEM.ADR(x), 4), b);
@@ -887,7 +1023,10 @@ END WriteReal;
 
 (** Writes LONGREAL `x` as eight bytes to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл LONGREAL `x` как восемь байтов.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteLReal*(VAR R: Rider; x: REAL);
 VAR b: ARRAY 8 OF BYTE;
 BEGIN FlipBytes(SYSTEM.THISARR(SYSTEM.ADR(x), 8), b);
@@ -896,7 +1035,10 @@ END WriteLReal;
 
 (** Writes string `x` consising of a 1-byte characters to a file.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл строку `x`, состоящую из 1-байтовых литер.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteShortString*(VAR R: Rider; IN x: ARRAY OF SHORTCHAR);
 VAR i: INTEGER;
 BEGIN i := 0; WHILE x[i] # 0X DO INC(i) END;
@@ -905,7 +1047,10 @@ END WriteShortString;
 
 (** Writes string `x` to a file in UTF-8 format.
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл строку `x` в формате UTF-8.
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteString*(VAR R: Rider; IN x: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN i := -1;
@@ -915,7 +1060,11 @@ END WriteString;
 (** Writes INTEGER `x` as one or more bytes to a file in a compact number
     format (according to M. Odersky).
      The rider `r` must have been set to a file using Set.
-     The file is not immediately written on a storage media. *)
+     The file is not immediately written on a storage media.
+%RU Записывает в файл INTEGER `x` в виде одного или нескольких байтов
+    в формате компактного числа формате (по М. Одерскому).
+     Бегунок `r` должен быть установлен на файл с помощью Set.
+     Файл не записывается на носитель сразу. *)
 PROCEDURE WriteNum*(VAR R: Rider; x: INTEGER);
 BEGIN
   WHILE (x < - 64) OR (x > 63) DO
@@ -924,7 +1073,8 @@ BEGIN
   Write(R, SYSTEM.VAL(BYTE, x MOD 128))
 END WriteNum;
 
-(** Puts in `name` the naem of the file `f`. *)
+(** Puts in `name` the naem of the file `f`.
+%RU Помещает в `name` имя файла `f`. *)
 PROCEDURE GetName*(f: File; VAR name: ARRAY OF CHAR);
 BEGIN name := f.workName$
 END GetName;
@@ -942,7 +1092,8 @@ BEGIN f := SYSTEM.VAL(File, o);
   END
 END Finalize;
 
-(** Sets a search path for Old, New, Delete, Rename etc. *)
+(** Sets a search path for Old, New, Delete, Rename etc.
+%RU Устанавливает путь поиска для Old, New, Delete, Rename и т. д. *)
 PROCEDURE SetSearchPath*(IN path: ARRAY OF CHAR);
 BEGIN SearchPath := path$
 END SetSearchPath;

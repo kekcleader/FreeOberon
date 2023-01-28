@@ -44,7 +44,8 @@ CONST
 
 TYPE
   SBYTE = BYTE;
-  BYTE* = UBYTE; (** 8-bit unsigned integer, 0..255 *)
+  BYTE* = UBYTE; (** 8-bit unsigned integer, 0..255
+%RU                  8-битное беззнаковое целое, 0..255 *)
 
 VAR
   (** TRUE after every Open, FALSE after the first error.
@@ -52,19 +53,32 @@ VAR
       an input operation, the operation was successful and its result is
       valid. An unsuccessful input operation sets Done to FALSE; it remains
       FALSE until the next call to Open. In particular, Done is set to FALSE
-      if an attempt is made to read beyond the end of the input stream. *)
+      if an attempt is made to read beyond the end of the input stream.
+%RU   TRUE после каждого Open, FALSE после первой ошибки.
+       Done выражает успешность операции ввода. Если Done равно TRUE после
+      операции ввода, то операция была успешной и её результат считается
+      действительным. Неудачная операция ввода устанавливает значение Done в
+      FALSE; оно остается FALSE до следующего вызова Open. В частности, Done
+      устанавливается в FALSE, если была предпринята попытка чтения за пределы
+      конца входного потока. *)
   Done-: BOOLEAN;
 
   nextch: CHAR; (** Maintains 1 character read ahaead except at end of line *)
   readState: INTEGER;
   cp: INTEGER; (** Input Code Page *)
 
-(** Initialization **)
+(** Initialization
+%RU Инициализация **)
 
-(** Open (re)sets the current position to the beginning of the input stream.
+(** Open sets the current position to the beginning of the input stream.
     Done indicates if the operation was successful.
-     Note that on Windows or Linux/Unix rewind may not be possible, also on
-    these OS Open is not strictly required before any other operation. *)
+     Note that on Windows or Linux/Unix rewind may not be possible. Also on
+    these OS Open is not strictly required before any other operation.
+%RU Open устанавливает текущую позицию в начало входного потока.
+    Done указывает, была ли операция успешной.
+     Обратите внимание, что на Windows или Linux/Unix перемотка может быть
+    невозможна. Кроме того, на этих ОС нет строгого требования вызывать Open
+    перед любой другой операцией. *)
 PROCEDURE Open*;
 VAR error: Platform.ErrorCode;
 BEGIN
@@ -76,12 +90,12 @@ BEGIN
   Done := error = 0
 END Open;
 
-(** Input operations **)
+(** Input operations
+%RU Операции ввода **)
 
 (** The following operations require Done = TRUE and guarantee (Done = TRUE
     and the result is valid) or (Done = FALSE). All operations except Char
     skip leading blanks, tabs or end-of-line characters. *)
-
 PROCEDURE GetByte(): INTEGER;
 VAR error: Platform.ErrorCode; x, n: INTEGER;
   m: ARRAY 1 OF SBYTE;
@@ -104,6 +118,7 @@ BEGIN
 RETURN ok END GetChar;
 
 (** Puts in `x` the byte at the current position *)
+%RU  *)
 PROCEDURE Byte*(VAR x: BYTE);
 BEGIN x := SYSTEM.VAL(BYTE, SHORT(SHORT(GetByte())))
 END Byte;
@@ -143,7 +158,10 @@ END StartAndSkip;
 
 (** Puts in `ch` the character at the current position. May read 1 to 4 bytes
     if decoding from UTF-8 (on Linux/Unix and on Windows if input
-    is redirected). *)
+    is redirected).
+%RU Помещает в `ch` литеру в текущей позиции. Может считывать от 1 до 4 байт
+    при декодировании из UTF-8 (в Linux/Unix и в Windows, если ввод
+    перенаправляется). *)
 PROCEDURE Char*(VAR ch: CHAR);
 BEGIN StartRead;
   IF readState = ready THEN ch := nextch;
@@ -153,6 +171,8 @@ BEGIN StartRead;
 END Char;
 
 (** Returns 64-bit integer at the current position according to the format:
+     IntConst = [-] (digit {digit} | digit {hexDigit} "H").
+%RU Возвращает 64-битное целое число в текущей позиции согласно формату:
      IntConst = [-] (digit {digit} | digit {hexDigit} "H"). *)
 PROCEDURE HugeInt*(VAR h: LONGINT);
 VAR ok, neg, hex, endofnum: BOOLEAN;
@@ -195,24 +215,28 @@ BEGIN StartAndSkip;
   IF ~ok THEN Done := FALSE END
 END HugeInt;
 
-(** Returns 16-bit integer in the same way as HugeInt does *)
+(** Returns 16-bit integer in the same way as HugeInt does
+%RU Возвращает 16-битное целое число так же, как это делает HugeInt *)
 PROCEDURE Int16*(VAR i: SHORTINT);
 VAR h: LONGINT;
 BEGIN HugeInt(h); i := SHORT(SHORT(h)) (*!FIXME check range, update Done*)
 END Int16;
 
-(** Returns 32-bit integer in the same way as HugeInt does *)
+(** Returns 32-bit integer in the same way as HugeInt does
+%RU Возвращает 32-битное целое число так же, как это делает HugeInt *)
 PROCEDURE Int*(VAR i: INTEGER); (*32-bit INTEGER alias*)
 VAR h: LONGINT;
 BEGIN HugeInt(h); i := SHORT(h) (*!FIXME check range, update Done*)
 END Int;
 
-(** Alias for Int. Does the same thing *)
+(** Alias for Int. Does the same thing
+%RU Псевдоним для Int. Делает то же самое *)
 PROCEDURE LongInt*(VAR i: INTEGER);
 BEGIN Int(i)
 END LongInt;
 
-(** Read a line of UTF-8-encoded characters until CR, LF or end of file *)
+(** Reads a line of characters until CR, LF or end of file
+%RU Считывает строку литер до первого CR, LF или конца файла *)
 PROCEDURE Line*(VAR line: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN StartRead; i := 0;
@@ -226,10 +250,15 @@ BEGIN StartRead; i := 0;
   IF (readState = ready) & (nextch = 0AX) THEN readState := pending END
 END Line;
 
-(** Read a word and put it in `s`.
-     Skip whitespaces, read UTF-8-encoded characters until the next whitespace
-    and put the read word in `s`, then skip whitespaces until the next
-    non-whitespace or a new line character. Skip the new line character *)
+(** Reads a word and put it in `s`.
+     Skips whitespaces, reads characters until the next whitespace
+    and puts the read word in `s`, then skips whitespaces until the next
+    non-whitespace or a new line character. Skips the new line character
+%RU Читает слово и помещает его в `s`.
+     Пропускает пробельные литеры, считывает литеры до следующей пробельной
+    литеры и помещает прочитанное слово в `s`, затем пропускает литеры до
+    следующей непробельной литеры или литеры новой строки.
+    Пропускает символ новой строки *)
 PROCEDURE Word*(VAR s: ARRAY OF CHAR);
 VAR i: INTEGER;
 BEGIN StartRead; i := 0;
@@ -243,11 +272,16 @@ BEGIN StartRead; i := 0;
   IF (readState = ready) & (nextch = 0AX) THEN readState := pending END
 END Word;
 
-(** Read a string literal and put it in `s`.
+(** Reads a string literal and puts it in `s`.
      A string literal is a quoted sequence of characters that may include
     spaces but not other whitespaces (tabs, new lines etc.). The quotes can
     be single or double quotes. The string must begin and end with the same
-    quotation marks. *)
+    quotation marks.
+%RU Считывает строковый литерал и помещает его в `s`.
+     Строковый литерал -- это заключенная в кавычки последовательность литер,
+    которая может включать в себя пробелы, но не другие пробельные литеры
+    (табуляции, новые строки и т. п.). Кавычки могут быть одинарные или
+    двойные. Строка должна начинаться и заканчиваться одинаковыми кавычками. *)
 PROCEDURE String*(VAR s: ARRAY OF CHAR);
 VAR i: INTEGER;
   q: CHAR; (* ' or " *)
@@ -267,7 +301,10 @@ END String;
 
 (** Reads the name `s` at the current position according to the file name
     format of the operating system (e.g. "lib/My.Mod" under Unix).
-    Skips the 0AX in the end (if any). *)
+    Skips the 0AX in the end (if any).
+%RU Считывает имя `s` в текущей позиции в соответствии с форматом имени файла
+    операционной системы (например, "lib/My.Mod" под Unix).
+    Пропускает 0AX в конце (если есть). *)
 PROCEDURE Name*(VAR s: ARRAY OF CHAR);
 VAR c: CHAR;
   i: INTEGER;
@@ -281,6 +318,9 @@ BEGIN i := 0; Char(c);
 END Name;
 
 (** Reads and puts in `x` a 32-bit real number (REAL) in format:
+      ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]].
+%RU Считывает и помещает в `x` 32-битное вещественное число (REAL)
+    согласно формату:
       ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]]. *)
 PROCEDURE Real*(VAR x: SHORTREAL);
 VAR s: ARRAY 16 OF CHAR;
@@ -290,7 +330,11 @@ BEGIN StartAndSkip; Word(s);
 END Real;
 
 (** Reads and puts in `x` a 64-bit real number (LONGREAL) in format:
+      ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]].
+%RU Считывает и помещает в `x` 64-битное вещественное число (LONGREAL)
+    согласно формату:
       ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]]. *)
+%RU  *)
 PROCEDURE LongReal*(VAR x: REAL);
 VAR s: ARRAY 16 OF CHAR;
 BEGIN StartAndSkip; Word(s);
