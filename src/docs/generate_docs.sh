@@ -2,7 +2,7 @@
 
 OUTPATH=/var/www/freeoberon
 OUTPATH_ru=$OUTPATH/docs
-OUTPATH_en=$OUTPATH/en/docs
+OUTPATH_en=$OUTPATH/docs/en
 MODULES="Args.Mod Dir.Mod Env.Mod Files.Mod Graph.Mod In.Mod Int.Mod Out.Mod \
   OV.Mod Random.Mod Reals.Mod Strings.Mod TermBox.Mod \
   Term.Mod Texts.Mod Time.Mod Utf8.Mod"
