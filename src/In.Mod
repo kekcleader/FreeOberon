@@ -334,7 +334,6 @@ END Real;
 %RU Считывает и помещает в `x` 64-битное вещественное число (LONGREAL)
     согласно формату:
      ["-"] digit {digit} [{digit} ["E" ("+" | "-") digit {digit}]]. *)
-%RU  *)
 PROCEDURE LongReal*(VAR x: REAL);
 VAR s: ARRAY 16 OF CHAR;
 BEGIN StartAndSkip; Word(s);

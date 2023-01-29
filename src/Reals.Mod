@@ -1,5 +1,6 @@
 MODULE Reals;
-(** Module for REAL and LONGREAL conversion from and to a string *)
+(** Module for REAL and LONGREAL conversion from and to a string
+%RU Модуль для преобразования REAL и LONGREAL из строки и в строку *)
 IMPORT SYSTEM;
 
 TYPE
@@ -11,7 +12,8 @@ TYPE
 
   LONGREAL* = SYSTEM.REAL64;
 
-VAR Done-: BOOLEAN;
+VAR Done-: BOOLEAN; (* Indicates the success of the last conversion operation
+%RU                    Указывает на успешность последней операции перевода *)
 
 PROCEDURE Ten(e: INTEGER): LONGREAL;
 VAR r, power: LONGREAL;
@@ -23,7 +25,8 @@ BEGIN r := 1.0E0; power := 1.0E1;
   RETURN r
 END Ten;
 
-(** Returns a long real number converted from string `s` *)
+(** Returns a long real number converted from string `s`
+%RU Возвращает длинное вещественное число, преобразованное из строки `s` *)
 PROCEDURE LongVal*(IN s: ARRAY OF CHAR): LONGREAL;
 VAR p, e: INTEGER; y, g: LONGREAL; neg, negE: BOOLEAN;
 BEGIN Done := FALSE;
@@ -63,7 +66,8 @@ BEGIN Done := FALSE;
   END ;
 RETURN y END LongVal;
 
-(** Returns a real number converted from string `s` *)
+(** Returns a real number converted from string `s`
+%RU Возвращает вещественное число, преобразованное из строки `s` *)
 PROCEDURE Val*(IN s: ARRAY OF CHAR): REAL;
 VAR y: LONGREAL;
 BEGIN
@@ -192,13 +196,17 @@ BEGIN si := 0; Done := TRUE;
 END RealP;
 
 (** Converts real number `x` to string `s`.
-     `n` means the minimum number of charactes (`s` prepended with spaces). *)
+     `n` is the minimum number of charactes (`s` is prepended with spaces).
+%RU Преобразует вещественное число `x` в строку `s`.
+     `n` -- минимальное количество литер (`s` дополняется пробелами слева). *)
 PROCEDURE Str*(x: REAL; n: INTEGER; VAR s: ARRAY OF CHAR);
 BEGIN RealP(x, n, FALSE, s)
 END Str;
 
 (** Converts long real number `x` to string `s`.
-     `n` means the minimum number of charactes (`s` prepended with spaces). *)
+     `n` is the minimum number of charactes (`s` is prepended with spaces).
+%RU Преобразует длинное вещественное число `x` в строку `s`.
+     `n` -- минимальное количество литер (`s` дополняется пробелами слева). *)
 PROCEDURE LongStr*(x: LONGREAL; n: INTEGER; VAR s: ARRAY OF CHAR);
 BEGIN RealP(x, n, TRUE, s)
 END LongStr;
@@ -246,8 +254,11 @@ BEGIN SYSTEM.GET(SYSTEM.ADR(x), i);
 END LongExpo;
 
 (** Converts real number `x` to string `s`.
-     `n` means the minimum number of charactes (`s` prepended with spaces).
-     `k` means the number of digits after a decimal point *)
+     `n` means the minimum number of charactes (`s` is prepended with spaces).
+     `k` means the number of digits after a decimal point
+%RU Преобразует вещественное число `x` в строку `s`.
+     `n` -- минимальное количество литер (`s` дополняется пробелами слева).
+     `k` -- количество цифр после запятой (которая выводится как точка) *)
 PROCEDURE StrFix*(x: REAL; n, k: INTEGER; VAR s: ARRAY OF CHAR);
 CONST maxD = 9;
 VAR e, si, i, minus, p, N: INTEGER; x0: REAL;
@@ -308,8 +319,11 @@ BEGIN Done := TRUE; si := 0; e := Expo(x);
 END StrFix;
 
 (** Converts long real number `x` to string `s`.
-     `n` means the minimum number of charactes (`s` prepended with spaces).
-     `k` means the number of digits after a decimal point *)
+     `n` is the minimum number of charactes (`s` is prepended with spaces).
+     `k` is the number of digits after a decimal point
+%RU Преобразует длинное вещественное число `x` в строку `s`.
+     `n` -- минимальное количество литер (`s` дополняется пробелами слева).
+     `k` -- количество цифр после запятой (которая выводится как точка) *)
 PROCEDURE LongStrFix*(x: LONGREAL; n, k: INTEGER; VAR s: ARRAY OF CHAR);
 CONST maxD = 20;
 VAR e, si, i, minus, p, N: INTEGER; x0: LONGREAL;
