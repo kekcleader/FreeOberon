@@ -10,10 +10,11 @@ TYPE
   REAL = SYSTEM.REAL32;
   CHAR = SYSTEM.CHAR16;
 
-  LONGREAL* = SYSTEM.REAL64;
+  LONGREAL* = SYSTEM.REAL64; (** 64-bit long real number
+%RU                              64-битное длинное вещественное число *)
 
-VAR Done-: BOOLEAN; (* Indicates the success of the last conversion operation
-%RU                    Указывает на успешность последней операции перевода *)
+VAR Done-: BOOLEAN; (** Indicates the success of the last procedure call
+%RU                     Означает успешность последнего вызова процедуры *)
 
 PROCEDURE Ten(e: INTEGER): LONGREAL;
 VAR r, power: LONGREAL;
