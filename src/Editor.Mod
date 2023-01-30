@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT OV, T := TermBox, Text := EditorText, Config, Debug,
-  Int, Strings, FoStrings, StrList, Dir, Out;
+  Int, Strings, FoStrings, StrList, Dir, Out, Env;
 (** Free Oberon IDE Editor. Part of Free Oberon IDE internal code *)
 CONST
   dotChar = 0B7X; (* To higlight spaces *)
@@ -54,7 +54,7 @@ TYPE
     edtFilename*: OV.Edit;
     btnOk*, btnCancel*: OV.Button;
     path*: ARRAY 1024 OF CHAR; (* full path to current chosen dir *)
-    home*: ARRAY 1024 OF CHAR; (* i.e. 'C:/FreeOberon/Programs' *)
+    home*: ARRAY 1024 OF CHAR; (* i.e. 'C:/FreeOberon/Programs/' *)
     colFiles*: OV.ColumnList;
     onFileOk*: PROCEDURE (c: OV.Control; fname: ARRAY OF CHAR)
   END;
@@ -262,7 +262,7 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.btnCancel.do.resize(c.btnCancel, c.w - 13, 11, 9, 1);
   OV.Add(c, c.btnCancel);
 
-  Dir.GetCwd(c.home); L := 0;
+  Env.GetAppDir(c.home); L := 0;
   WHILE c.home[L] # 0X DO (* Replace \ with /, set L to length of c.home *)
     IF c.home[L] = '\' THEN c.home[L] := '/' END; INC(L)
   END; (* L = length of c.home; append / if it is not in the end *)

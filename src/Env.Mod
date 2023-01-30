@@ -174,10 +174,12 @@ END GetAppDirUnix;
 
 (** Returns a full path to the application directory. That is the directory
     where the executable file of the currently running program resides.
+     The path ends with delimeter / or \ (in the case of Windows).
      It might not be logically possible to determine application directory
     in some cases on Linux/Unix systems
 %RU Возвращает полный путь к директории приложения. Это тот каталог, в котором
     находится исполняемый файл текущей запущенной программы.
+     Путь заканчивается разделителем / или \ (в случае Windows).
      В некоторых случаях определить каталог приложения может быть оказаться
     логически невозможным в ОС Linux/Unix *)
 PROCEDURE GetAppDir*(VAR s: ARRAY OF CHAR);

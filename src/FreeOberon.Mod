@@ -1035,7 +1035,7 @@ VAR success, fs, sw: BOOLEAN;
   opt: SET;
 BEGIN
   success := FALSE;
-  lastFileDialogDir := '';
+  lastFileDialogDir[0] := 0X;
   ParseArgs(fs, sw, w, h, lang, fnames);
   opt := {T.resizable, T.center};
   IF fs THEN INCL(opt, T.fullscreen) ELSE INCL(opt, T.window) END;

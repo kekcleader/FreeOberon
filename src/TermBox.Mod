@@ -1,6 +1,6 @@
 MODULE TermBox;
 (** Termbox is a module for creating cross-platform text-based interfaces *)
-IMPORT G := Graph, Strings, Int, Out, Platform, Kernel;
+IMPORT G := Graph, Strings, Int, Out, Env, Platform;
 
 CONST
   partW = 512;
@@ -763,9 +763,9 @@ BEGIN
   f := G.LoadFontInfo(fontFile);
   IF f # NIL THEN 
     IF f IS G.MonoFont THEN font := f(G.MonoFont)
-    ELSE Out.String('The font is not monospaced.'); Out.Ln
+    ELSE Out.String('TermBox: The font is not monospaced.'); Out.Ln
     END
-  ELSE Out.String('Could not load font "');
+  ELSE Out.String('TermBox: Could not load font "');
     Out.String(fontFile); Out.String('".'); Out.Ln
   END
 RETURN font # NIL END PreloadFont;
@@ -938,6 +938,7 @@ END SetFontFile;
 
 BEGIN wantW := stdW; wantH := stdH; wantScaleX := 0.0; wantScaleY := 0.0;
   settings := {fullscreen}; Done := FALSE;
-  iconFile := 'Data/Images/Icon.png';
-  fontFile := 'Data/Fonts/Main'
+  Env.GetAppDir(iconFile); Strings.Copy(iconFile, fontFile);
+  Strings.Append('Data/Images/Icon.png', iconFile);
+  Strings.Append('Data/Fonts/Main', fontFile)
 END TermBox.
