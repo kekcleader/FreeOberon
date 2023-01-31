@@ -51,7 +51,7 @@ CONST
   defLang = 'en';
 
 TYPE
-  Fnames = ARRAY 32, 256 OF CHAR;
+  Fnames = ARRAY 64, 256 OF CHAR;
 
   LanguageDialog* = POINTER TO LanguageDialogDesc;
   LanguageDialogDesc = RECORD(OV.WindowDesc)
@@ -956,7 +956,9 @@ BEGIN i := 0;
   WHILE (i < LEN(fnames)) & (fnames[i] # '') DO
     DoOpenFile(fnames[i]); INC(i)
   END;
-  IF i # 0 THEN OV.NextWindow(app.windows) END
+  IF i # 0 THEN
+    IF i > 1 THEN CascadeWindows(NIL) END
+  END
 END OpenFiles;
 
 PROCEDURE ParseFileNameArg(VAR s: ARRAY OF CHAR);
@@ -999,15 +1001,16 @@ BEGIN
   IF ~FoStrings.LangExists(lang) THEN lang := defLang END
 END IdentifyLanguage;
 
-PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR w, h: INTEGER;
+PROCEDURE ParseArgs(VAR fs, sw, mx: BOOLEAN; VAR w, h: INTEGER;
     VAR lang: ARRAY OF CHAR; VAR fnames: Fnames);
 VAR i, nofnames, count: INTEGER;
   s: ARRAY 2048 OF CHAR;
-BEGIN fs := Config.startInFullscreen; sw := FALSE; i := 1;
+BEGIN fs := Config.startInFullscreen; sw := FALSE; mx := FALSE; i := 1;
   nofnames := 0; w := defW; h := defH; lang := ''; count := Args.Count();
   WHILE i <= count DO Args.Get(i, s);
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--fullscreen' THEN fs := TRUE
+    ELSIF s = '--maximized' THEN mx := TRUE
     ELSIF s = '--software' THEN sw := TRUE
     ELSIF s = '--debug' THEN Config.SetDebug(TRUE)
     ELSIF s = '--size' THEN
@@ -1033,7 +1036,7 @@ BEGIN fs := Config.startInFullscreen; sw := FALSE; i := 1;
 END ParseArgs;
 
 PROCEDURE Init(): BOOLEAN;
-VAR success, fs, sw: BOOLEAN;
+VAR success, fs, sw, mx: BOOLEAN;
   w, h: INTEGER;
   lang: ARRAY 6 OF CHAR;
   s: FoStrings.String;
@@ -1042,9 +1045,10 @@ VAR success, fs, sw: BOOLEAN;
 BEGIN
   success := FALSE;
   lastFileDialogDir[0] := 0X;
-  ParseArgs(fs, sw, w, h, lang, fnames);
+  ParseArgs(fs, sw, mx, w, h, lang, fnames);
   opt := {T.resizable, T.center};
   IF fs THEN INCL(opt, T.fullscreen) ELSE INCL(opt, T.window) END;
+  IF mx THEN INCL(opt, T.maximized) END;
   T.Settings(w, h, opt);
   FoStrings.SetLang(lang);
   FoStrings.Get('titleFreeOberon', s);
