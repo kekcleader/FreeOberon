@@ -22,7 +22,7 @@ IMPORT Config, Func, Files, Strings, Out, Utf8;
 CONST
   lineLen = 256;
 
-  (* Character kinds, see CurCharKind below *)
+  (** Character kinds, see CurCharKind below **)
   other*       = 0;
   eol*         = 1;
   whitespace*  = 2;
@@ -35,25 +35,25 @@ TYPE
   Line* = POINTER TO LineDesc;
   LineDesc* = RECORD
     s*: String;
-    len*: INTEGER; (* Actual amount characters before 0X *)
-    lineEndLen*: INTEGER; (* Character count of LF or CRLF (1 or 2) *)
-    comLevel*: INTEGER; (* Comment level in start of string *)
+    len*: INTEGER; (** Actual amount characters before 0X *)
+    lineEndLen*: INTEGER; (** Character count of LF or CRLF (1 or 2) *)
+    comLevel*: INTEGER; (** Comment level in start of string *)
     prev*, next*: Line
   END;
 
   Text* = POINTER TO TextDesc;
   TextDesc* = RECORD
-    x*, y*, scrY*: INTEGER; (* Cursor coordinates *)
-    first*, last*, cur*: Line; (* First, last and current lines *)
-    scrFirst*: Line; (* First line seen on screen *)
-    selected*: BOOLEAN; (* Is something selected *)
-    selL*, selR*, selT*, selB*: INTEGER; (* Selection left, right, top, bot. *)
+    x*, y*, scrY*: INTEGER; (** Cursor coordinates *)
+    first*, last*, cur*: Line; (** First, last and current lines *)
+    scrFirst*: Line; (** First line seen on screen *)
+    selected*: BOOLEAN; (** Is something selected *)
+    selL*, selR*, selT*, selB*: INTEGER; (** Selection left,right,top,bottom *)
     changed*: BOOLEAN;
-    newLineCreated*: BOOLEAN; (* TRUE after Enter but before any edits/moves *)
-    winLineEndings*: BOOLEAN (* True if most lines had CRLF line endings *)
+    newLineCreated*: BOOLEAN; (** TRUE after Enter but before edits/moves *)
+    winLineEndings*: BOOLEAN (** True if most lines had CRLF line endings *)
   END;
 
-(* Line *)
+(** Line **)
 
 PROCEDURE InitLine*(L: Line);
 BEGIN L.s[0] := 0X; L.len := 0; L.comLevel := 0; L.prev := NIL; L.next := NIL
@@ -90,7 +90,7 @@ BEGIN
   END
 END Delete;
 
-(* Text *)
+(** Text **)
 
 PROCEDURE InitText*(t: Text);
 BEGIN t.cur := NewLine();
@@ -113,7 +113,8 @@ BEGIN
   t.changed := TRUE
 END RemoveLine;
 
-(* Объединить данную строку со следующей, прицепив её к данной *)
+(** Combine this line with the next one by attaching it to this one
+%RU Объединить данную строку со следующей, прицепив её к данной *)
 PROCEDURE (t: Text) Combine2Lines(L: Line), NEW;
 VAR i: INTEGER;
 BEGIN ASSERT(L.next # NIL, 101); i := 0;
@@ -159,8 +160,8 @@ BEGIN t.selected := TRUE;
   t.MoveToLineCol(t.y + 1, t.x + 1, winH)
 END Select;
 
-(**Returns true if at least one whole line is selected,
-   but leading spaces may still be unselected*)
+(** Returns true if at least one whole line is selected,
+    but leading spaces may still be unselected *)
 PROCEDURE (t: Text) WholeLineSelected*(): BOOLEAN, NEW;
 VAR L: Line;
   i: INTEGER;

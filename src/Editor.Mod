@@ -816,17 +816,15 @@ END MoveByLine;
 
 (** Moves input cursor up and down by page *)
 PROCEDURE MoveByPage(c: Editor; down, shiftPressed: BOOLEAN);
-VAR i: INTEGER; moved: BOOLEAN;
+VAR i: INTEGER;
 BEGIN c.text.MaybeRemoveIndent; i := c.h - 3;
   IF down THEN
-    moved := c.text.cur.next # NIL;
     WHILE (i > 0) & (c.text.cur.next # NIL) DO
       c.text.scrFirst := c.text.scrFirst.next; INC(c.text.scrY);
       MoveByLine(c, TRUE, FALSE, shiftPressed);
       DEC(i)
     END
   ELSE (* Up *)
-    moved := c.text.cur.prev # NIL;
     WHILE (i > 0) & (c.text.cur.prev # NIL) DO
       IF c.text.scrY > 0 THEN
         c.text.scrFirst := c.text.scrFirst.prev; DEC(c.text.scrY)
@@ -834,9 +832,28 @@ BEGIN c.text.MaybeRemoveIndent; i := c.h - 3;
       MoveByLine(c, FALSE, FALSE, shiftPressed);
       DEC(i)
     END
-  END;
-  IF moved THEN PrintText(c) END
+  END
 END MoveByPage;
+
+(** Moves input cursor up and down to the edge of the whole file *)
+PROCEDURE MoveToFileEdge(c: Editor; down, shiftPressed: BOOLEAN);
+BEGIN c.text.MaybeRemoveIndent;
+  IF down THEN
+    WHILE c.text.cur.next # NIL DO
+      c.text.scrFirst := c.text.scrFirst.next; INC(c.text.scrY);
+      MoveByLine(c, TRUE, FALSE, shiftPressed)
+    END;
+    c.text.x := c.text.cur.len
+  ELSE (* Up *)
+    c.text.x := 0;
+    WHILE c.text.cur.prev # NIL DO
+      IF c.text.scrY > 0 THEN
+        c.text.scrFirst := c.text.scrFirst.prev; DEC(c.text.scrY)
+      END;
+      MoveByLine(c, FALSE, FALSE, shiftPressed)
+    END
+  END
+END MoveToFileEdge;
 
 (** Moves input cursor left and right by one char *)
 PROCEDURE MoveByChar(c: Editor; right, shiftPressed: BOOLEAN);
@@ -1110,14 +1127,26 @@ BEGIN OV.WindowKeyDown(c, E); HideMsg(c);
     PrintText(c(Editor))
   | T.kUp:        MoveByLine(c(Editor), FALSE, FALSE, shiftPressed)
   | T.kDown:      MoveByLine(c(Editor), TRUE, FALSE, shiftPressed)
-  | T.kHome:      MoveToLineEdge(c(Editor), FALSE, shiftPressed)
-  | T.kEnd:       MoveToLineEdge(c(Editor), TRUE, shiftPressed)
-  | T.kPgUp:      MoveByPage(c(Editor), FALSE, shiftPressed)
-  | T.kPgDn:      MoveByPage(c(Editor), TRUE, shiftPressed)
+  | T.kHome:
+    IF T.mCtrl IN E.mod THEN MoveToFileEdge(c(Editor), FALSE, shiftPressed)
+    ELSE MoveToLineEdge(c(Editor), FALSE, shiftPressed)
+    END
+  | T.kEnd:
+    IF T.mCtrl IN E.mod THEN MoveToFileEdge(c(Editor), TRUE, shiftPressed)
+    ELSE MoveToLineEdge(c(Editor), TRUE, shiftPressed)
+    END
+  | T.kPgUp:
+    IF T.mCtrl IN E.mod THEN MoveToLineEdge(c(Editor), FALSE, shiftPressed)
+    ELSE MoveByPage(c(Editor), FALSE, shiftPressed)
+    END
+  | T.kPgDn:
+    IF T.mCtrl IN E.mod THEN MoveToLineEdge(c(Editor), TRUE, shiftPressed)
+    ELSE MoveByPage(c(Editor), TRUE, shiftPressed)
+    END
   | T.kBackspace: HandleBackspace(c(Editor))
   | T.kDel, T.kDelPad:     HandleDelete(c(Editor))
   | T.kEnter, T.kEnterPad: HandleEnter(c(Editor))
-  | T.kTab:       HandleTab(c(Editor), shiftPressed)
+  | T.kTab:                HandleTab(c(Editor), shiftPressed)
   ELSE END
 END EditorKeyDown;
 
