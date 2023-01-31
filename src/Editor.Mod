@@ -102,17 +102,23 @@ VAR L: StrList.List;
 BEGIN L := c.colFiles.items;
   StrList.Clear(L);
   Dir.First(r, c.path);
-  WHILE ~r.eod DO
-    IF r.name # '.' THEN s := r.name$;
-      IF r.isDir THEN
-        Strings.Insert('[', 0, s); Strings.Append(']', s)
+  IF r.res = 0 THEN
+    WHILE ~r.eod DO
+      IF r.name # '.' THEN s := r.name$;
+        IF r.isDir THEN
+          Strings.Insert('[', 0, s); Strings.Append(']', s)
+        END;
+        StrList.Append(L, s)
       END;
-      StrList.Append(L, s)
+      Dir.Next(r)
     END;
-    Dir.Next(r)
+    StrList.Sort(L, FileNamesCmp)
+  ELSE
+    IF Config.debug THEN
+      Out.String('FileDialogUpdateFileList: Could not read directory "');
+      Out.String(c.path); Out.String('".'); Out.Ln
+    END
   END;
-  StrList.Sort(L, FileNamesCmp);
-
   StrList.First(L, s);
   IF L.eol THEN s := ''
   ELSIF s[0] = '[' THEN Strings.Delete(s, 0, 1);
