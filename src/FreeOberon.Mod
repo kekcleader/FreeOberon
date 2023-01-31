@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT T := TermBox, Files, Args, Utf8, Builder, Env, Debug, Graph,
-       OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
+       OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Dir, Kernel;
 (** Free Oberon IDE and Compiler. Part of Free Oberon IDE internal code *)
 CONST
   (* Direction of Selection *)
@@ -974,8 +974,13 @@ BEGIN
     IF (L < 4) OR (Strings.Pos('.Mod', s, L - 4) = -1) THEN
       Strings.Append('.Mod', s)
     END;
-    (*!FIXME first check if file not exists: *)
-    Strings.Insert(Config.stdPath, 0, s)
+    IF ~Dir.FileExists(s) THEN
+      Strings.Insert(Config.stdPath, 0, s);
+      IF ~Dir.FileExists(s) THEN
+        Strings.Delete(s, 0, Strings.Length(Config.stdPath));
+        Debug.StrVal('File not found: ', s)
+      END
+    END
   END
 END ParseFileNameArg;
 
