@@ -28,7 +28,29 @@ Fob — это консольный компилятор языка Оберон
 
 ## Установка на Линукс
 
-1. Скачайте Free Oberon в виде архива tar.gz с сайта
+1. Зависимости:
+
+   Allegro (пакеты разработки), Git, GCC
+
+   На ОС Дебиан / Убунту / Линукс Минт и т. п.:
+   ```
+   sudo apt-get update
+   sudo apt-get install -y git gcc libc-dev liballegro5-dev
+   ```
+   или:
+   ```
+   su
+   apt-get update
+   apt-get install -y git gcc libc-dev liballegro5-dev
+   ```
+
+   На ОС Федора:
+
+   ```
+   sudo dnf install -y git gcc glibc-devel allegro5-devel allegro5-addon-image allegro5-addon-audio allegro5-addon-acodec allegro5-addon-dialog allegro5-devel allegro5-addon-image-devel allegro5-addon-audio-devel allegro5-addon-acodec-devel allegro5-addon-dialog-devel
+   ```
+
+2. Скачайте Free Oberon в виде архива tar.gz с сайта
    [free.oberon.org](https://free.oberon.org/download)
    и распакуйте его в домашнем каталоге (или в любом другом месте).
 
@@ -39,17 +61,12 @@ Fob — это консольный компилятор языка Оберон
    распакуйте архив в домашнем каталоге.
    Переименуйте каталог `FreeOberon-main` в `FreeOberon`.
 
-2. Находясь в распакованном каталоге, запустите `install.sh` с правами администратора.
+3. Находясь в распакованном каталоге, запустите `install.sh`.
   ```
-  sudo ./install.sh
-  ```
-  или
-  ```
-  su
   ./install.sh
   ```
 
-3. (по желанию) Допишите в конец файла `~/.bashrc` строчку:
+4. (по желанию) Допишите в конец файла `~/.bashrc` строчку:
   ```
   alias fo='cd ~/FreeOberon;./FreeOberon'
   ```
@@ -98,7 +115,29 @@ ______
 
 ## Install on Linux
 
-1. Download Free Oberon in tar.gz format from
+1. Dependencies:
+
+   Allegro (development packages), Git, GCC
+
+   On OS Debian / Ubuntu / Linux Minut and so on:
+   ```
+   sudo apt-get update
+   sudo apt-get install -y git gcc libc-dev liballegro5-dev
+   ```
+   or:
+   ```
+   su
+   apt-get update
+   apt-get install -y git gcc libc-dev liballegro5-dev
+   ```
+
+   On OS Fedora:
+
+   ```
+   sudo dnf install -y git gcc glibc-devel allegro5-devel allegro5-addon-image allegro5-addon-audio allegro5-addon-acodec allegro5-addon-dialog allegro5-devel allegro5-addon-image-devel allegro5-addon-audio-devel allegro5-addon-acodec-devel allegro5-addon-dialog-devel argro5-addon-dialog-devel
+   ```
+
+2. Download Free Oberon in tar.gz format from
    [free.oberon.org](https://free.oberon.org/en/download)
    and unpack it inside home directory (or in any other place).
 
@@ -109,17 +148,12 @@ ______
    unpack the archive inside your home directory.
    Rename directory `FreeOberon-main` to `FreeOberon`.
 
-2. Inside the unpacked directory, run `install.sh` with root privileges.
+3. Inside the unpacked directory, run `install.sh`.
   ```
-  sudo ./install.sh
-  ```
-  or
-  ```
-  su
   ./install.sh
   ```
 
-3. (optional) Append the following line to the end of file `~/.bashrc`:
+4. (optional) Append the following line to the end of file `~/.bashrc`:
   ```
   alias fo='cd ~/FreeOberon;./FreeOberon'
   ```
