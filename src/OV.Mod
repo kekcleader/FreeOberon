@@ -907,7 +907,7 @@ BEGIN single := moving OR inactive;
     IF i + len > x2 - 4 THEN len := x2 - i - 4 END;
     IF i # x + 5 THEN T.SetCell(i - 1, y, ' ', fg, bg) END;
     IF i + len # x2 - 4 THEN T.SetCell(i + len, y, ' ', fg, bg) END;
-    T.Print(i, y, i + len - 1, title, fg, bg)
+    T.Print(i, y, len, title, fg, bg)
   END
 END DrawWindowBorder;
 
