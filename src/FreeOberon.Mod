@@ -974,7 +974,8 @@ BEGIN
     IF (L < 4) OR (Strings.Pos('.Mod', s, L - 4) = -1) THEN
       Strings.Append('.Mod', s)
     END;
-    Strings.Insert(Config.stdPath, 0, s);
+    (*!FIXME first check if file not exists: *)
+    Strings.Insert(Config.stdPath, 0, s)
   END
 END ParseFileNameArg;
 

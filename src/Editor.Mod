@@ -20,15 +20,15 @@ IMPORT OV, T := TermBox, Text := EditorText, Config, Debug,
   Int, Strings, FoStrings, StrList, Dir, Out, Env;
 (** Free Oberon IDE Editor. Part of Free Oberon IDE internal code *)
 CONST
-  dotChar = 0B7X; (* To higlight spaces *)
+  dotChar = 0B7X; (** To higlight spaces *)
 
-  (* Direction of Selection *)
+  (** Direction of Selection **)
   dirLeft  = 0;
   dirRight = 1;
   dirUp    = 2;
   dirDown  = 3;
 
-  (* Character Classes *)
+  (** Character Classes **)
   charOther       = 0;
   charAlpha       = 1;
   charDigit       = 2;
@@ -36,25 +36,26 @@ CONST
   charQuote       = 4;
   charOpenBracket = 5;
 
-  (* Token Classes *)
+  (** Token Classes **)
   tokenOther   = 0;
   tokenKeyword = 1;
   tokenNumber  = 2;
   tokenString  = 3;
   tokenComment = 4;
 
-  (* FileDialog type *)
+  (** FileDialog type **)
   open* = 1;
   save* = 2;
 
 TYPE
   FileDialog* = POINTER TO FileDialogDesc;
   FileDialogDesc* = RECORD(OV.WindowDesc)
-    type*: INTEGER; (* open or save *)
+    type*: INTEGER; (** open or save *)
     edtFilename*: OV.Edit;
     btnOk*, btnCancel*: OV.Button;
-    path*: ARRAY 1024 OF CHAR; (* full path to current chosen dir *)
-    home*: ARRAY 1024 OF CHAR; (* i.e. 'C:/FreeOberon/Programs/' *)
+    path*: ARRAY 1024 OF CHAR; (** full path to current chosen dir *)
+    home*: ARRAY 1024 OF CHAR; (** i.e. 'C:/FreeOberon/Programs/' *)
+    addStdPath*: BOOLEAN; (** TRUE if 'Programs/' has been added to home *)
     colFiles*: OV.ColumnList;
     onFileOk*: PROCEDURE (c: OV.Control; fname: ARRAY OF CHAR)
   END;
@@ -63,8 +64,8 @@ TYPE
   EditorDesc* = RECORD(OV.WindowDesc)
     text*: Text.Text;
     fname*: ARRAY 1000 OF CHAR;
-    search*: ARRAY 256 OF CHAR; (* Search string *)
-    msgShown*: INTEGER; (* 0 - hidden, 1 - top, 2 - bottom *)
+    search*: ARRAY 256 OF CHAR; (** Search string *)
+    msgShown*: INTEGER; (** 0 - hidden, 1 - top, 2 - bottom *)
     msg*: ARRAY 256 OF CHAR
   END;
 
@@ -81,7 +82,7 @@ VAR
   fileDialogMethod-: OV.ControlMethod;
   searchDialogMethod-: OV.ControlMethod;
 
-(* FileDialog *)
+(** FileDialog **)
 
 PROCEDURE FileNamesCmp(IN a, b: ARRAY OF CHAR): INTEGER;
 VAR r: INTEGER;
@@ -112,12 +113,10 @@ BEGIN L := c.colFiles.items;
       END;
       Dir.Next(r)
     END;
+    Dir.Close(r);
     StrList.Sort(L, FileNamesCmp)
   ELSE
-    IF Config.debug THEN
-      Out.String('FileDialogUpdateFileList: Could not read directory "');
-      Out.String(c.path); Out.String('".'); Out.Ln
-    END
+    Debug.StrVal('FileDialogUpdateFileList: Could not read directory ', c.path)
   END;
   StrList.First(L, s);
   IF L.eol THEN s := ''
@@ -170,7 +169,7 @@ VAR w: FileDialog;
 BEGIN ok := FALSE; w := c.parent(FileDialog); s := w.edtFilename.caption$;
   (* Replace all \ with / and set L to length of s *)
   L := 0; WHILE s[L] # 0X DO IF s[L] = '\' THEN s[L] := '/' END; INC(L) END;
-  Debug.StrVal('FileDialogOkClick s = ', s);
+  Debug.StrVal('FileDialogOkClick: s = ', s);
   IF L = 0 THEN
     IF w.colFiles.onChange # NIL THEN w.colFiles.onChange(w.colFiles) END
   ELSE
@@ -181,20 +180,24 @@ BEGIN ok := FALSE; w := c.parent(FileDialog); s := w.edtFilename.caption$;
     	  (s[1] = ':') & (s[2] = '/')
     THEN full := s$; ok := TRUE
     ELSE full := w.path$;
-      Debug.StrVal('FileDialogOkClick full = ', full);
+      Debug.StrVal('FileDialogOkClick: full (1) = ', full);
       WHILE (s[0] = '.') & (s[1] = '.') & (s[2] = '/') &
             ~((full[1] = ':') & (full[2] = '/') & (full[3] = 0X))
       DO Strings.Delete(s, 0, 3); i := Strings.Length(full) - 2;
-        WHILE (i >= 0) & (full[i] # '/') DO DEC(i) END;
-        IF i >= 0 THEN full[i + 1] := 0X ELSE full := '' END
+        IF i < 0 THEN i := -1 END;
+        WHILE (i # -1) & (full[i] # '/') DO DEC(i) END;
+        full[i + 1] := 0X
       END;
+      Debug.StrVal('full (2) = ', full);
       IF ~((s[0] = '.') & (s[1] = '.') & (s[2] = '/')) THEN
         Strings.Append(s, full);
         IF Match(w.home, full, 0) THEN
           Strings.Delete(full, 0, Strings.Length(w.home));
-          Strings.Insert(Config.stdPath, 0, full)
+          Debug.StrVal('Match home. full (3) = ', full);
+          IF w.addStdPath THEN Strings.Insert(Config.stdPath, 0, full) END;
+          Debug.StrVal('full (4) = ', full);
         END;
-	ok := TRUE
+        ok := TRUE
       END
     END
   END;
@@ -235,9 +238,37 @@ BEGIN C := c(OV.ColumnList); w := C.parent(FileDialog);
   OV.EditSetCaption(w.edtFilename, s)
 END FileDialogListChange;
 
-PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER; IN dir: ARRAY OF CHAR);
+PROCEDURE SetHome(c: FileDialog);
 VAR L: INTEGER;
-  s: FoStrings.String;
+BEGIN
+  c.addStdPath := FALSE;
+  Dir.GetCwd(c.home); L := 0;
+  Debug.StrVal('FileDialog: CWD is ', c.home);
+  WHILE c.home[L] # 0X DO (* Replace \ with /, set L to length of c.home *)
+    IF c.home[L] = '\' THEN c.home[L] := '/' END; INC(L)
+  END; (* L = length of c.home; append / if it is not in the end *)
+  IF L # 0 THEN
+    IF c.home[L - 1] # '/' THEN c.home[L] := '/'; INC(L); c.home[L] := 0X END;
+    Strings.Append(Config.stdPath, c.home);
+    IF ~Dir.IsDir(c.home) THEN
+      Debug.StrVal('This is not a dir (1): ', c.home);
+      c.home[L] := 0X
+    ELSE c.addStdPath := TRUE
+    END
+  END;
+  IF ~Dir.IsDir(c.home) THEN
+    Debug.StrVal('This is not a dir (2): ', c.home);
+    Env.GetAppDir(c.home);
+    IF ~Dir.IsDir(c.home) THEN
+      Debug.StrVal('This is not a dir (3): ', c.home);
+      c.home := './'
+    END
+  END;
+  Debug.StrVal('FileDialog: Home is ', c.home)
+END SetHome;
+
+PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER; IN dir: ARRAY OF CHAR);
+VAR s: FoStrings.String;
 BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   IF type = open THEN FoStrings.Get('titleOpenAFile', c.caption)
   ELSE FoStrings.Get('titleSaveFileAs', c.caption)
@@ -268,13 +299,7 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.btnCancel.do.resize(c.btnCancel, c.w - 13, 11, 9, 1);
   OV.Add(c, c.btnCancel);
 
-  Env.GetAppDir(c.home); L := 0;
-  WHILE c.home[L] # 0X DO (* Replace \ with /, set L to length of c.home *)
-    IF c.home[L] = '\' THEN c.home[L] := '/' END; INC(L)
-  END; (* L = length of c.home; append / if it is not in the end *)
-  IF c.home[L - 1] # '/' THEN c.home[L] := '/'; INC(L); c.home[L] := 0X END;
-  Strings.Append(Config.stdPath, c.home);
-
+  SetHome(c);
   IF dir[0] = 0X THEN c.path := c.home$ ELSE c.path := dir$ END; 
 
   (* ColumnList *)
@@ -294,7 +319,7 @@ VAR c: FileDialog;
 BEGIN NEW(c); InitFileDialog(c, type, dir) ;
 RETURN c END NewFileDialog;
 
-(* FileDialog Method *)
+(** FileDialog Method **)
 
 PROCEDURE FileDialogDraw*(c: OV.Control; x, y: INTEGER);
 VAR f: FileDialog;
@@ -319,7 +344,7 @@ BEGIN OV.InitWindowMethod(m);
   m.getFocus := FileDialogGetFocus
 END InitFileDialogMethod;
 
-(* Editor *)
+(** Editor **)
 
 PROCEDURE IsEmpty*(e: Editor): BOOLEAN;
 BEGIN
@@ -550,7 +575,7 @@ BEGIN
   ELSE color := 14 END ;
 RETURN color END GetTokenColor;
 
-(* Like T.PutString, but highlighted *)
+(** Like T.PutString, but highlighted *)
 PROCEDURE PutStringH*(x, y: INTEGER; s: ARRAY OF CHAR;
   bg, limit: INTEGER; VAR comLevel: INTEGER);
 VAR i, fg, class, len, tW, tH: INTEGER;
@@ -575,7 +600,7 @@ BEGIN
   END
 END PutStringH;
 
-(* Put selected string (highlighted) *)
+(** Put selected string (highlighted) *)
 PROCEDURE PutSelStringH*(x, y: INTEGER; s: ARRAY OF CHAR;
   bg, limit: INTEGER; VAR comLevel: INTEGER;
   fgSel, bgSel: INTEGER; x0, x1: INTEGER);
@@ -764,7 +789,7 @@ BEGIN
   END
 END MoveScreen;
 
-(* Moves input cursor up and down *)
+(** Moves input cursor up and down *)
 PROCEDURE MoveByLine(c: Editor; down, viaHoriz, shiftPressed: BOOLEAN);
 VAR moved: BOOLEAN;
 BEGIN c.text.MaybeRemoveIndent; moved := FALSE;
@@ -789,7 +814,7 @@ BEGIN c.text.MaybeRemoveIndent; moved := FALSE;
   END
 END MoveByLine;
 
-(* Moves input cursor up and down by page *)
+(** Moves input cursor up and down by page *)
 PROCEDURE MoveByPage(c: Editor; down, shiftPressed: BOOLEAN);
 VAR i: INTEGER; moved: BOOLEAN;
 BEGIN c.text.MaybeRemoveIndent; i := c.h - 3;
@@ -813,7 +838,7 @@ BEGIN c.text.MaybeRemoveIndent; i := c.h - 3;
   IF moved THEN PrintText(c) END
 END MoveByPage;
 
-(* Moves input cursor left and right by one char *)
+(** Moves input cursor left and right by one char *)
 PROCEDURE MoveByChar(c: Editor; right, shiftPressed: BOOLEAN);
 BEGIN
   IF right THEN c.text.MaybeRemoveIndent;
@@ -833,7 +858,7 @@ BEGIN
   END
 END MoveByChar;
 
-(* Moves input cursor left and right by one word *)
+(** Moves input cursor left and right by one word *)
 PROCEDURE MoveByWord(c: Editor; right, shiftPressed: BOOLEAN);
 VAR kind: INTEGER;
 BEGIN
@@ -852,7 +877,7 @@ BEGIN
   END
 END MoveByWord;
 
-(* Moves input cursor to start and to end *)
+(** Moves input cursor to start and to end *)
 PROCEDURE MoveToLineEdge(c: Editor; end, shiftPressed: BOOLEAN);
 VAR onLeft, onRight: BOOLEAN;
 BEGIN
@@ -935,7 +960,7 @@ PROCEDURE HideMsg*(c: OV.Control);
 BEGIN c(Editor).msgShown := 0
 END HideMsg;
 
-(* Standard Menu Hanlders *)
+(** Standard Menu Hanlders **)
 
 PROCEDURE EditCut*(c: OV.Control);
 BEGIN
@@ -1119,7 +1144,7 @@ BEGIN OV.InitWindowMethod(m);
   m.close := EditorClose
 END InitEditorMethod;
 
-(* Search Dialog *)
+(** Search Dialog **)
 
 PROCEDURE SearchDialogOkClick*(c: OV.Control);
 VAR w: SearchDialog;
@@ -1171,7 +1196,7 @@ VAR c: SearchDialog;
 BEGIN NEW(c); InitSearchDialog(c, editor) ;
 RETURN c END NewSearchDialog;
 
-(* SearchDialog Method *)
+(** SearchDialog Method **)
 
 PROCEDURE SearchDialogDraw*(c: OV.Control; x, y: INTEGER);
 VAR f: SearchDialog;
