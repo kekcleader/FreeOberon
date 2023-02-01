@@ -50,6 +50,11 @@ Fob — это консольный компилятор языка Оберон
    sudo dnf install -y git gcc glibc-devel allegro5-devel allegro5-addon-image allegro5-addon-audio allegro5-addon-acodec allegro5-addon-dialog allegro5-devel allegro5-addon-image-devel allegro5-addon-audio-devel allegro5-addon-acodec-devel allegro5-addon-dialog-devel
    ```
 
+   На Арх Линукс:
+   ```
+   sudo pacman -Sy git gcc pkgconf glibc allegro
+   ```
+
 2. Скачайте Free Oberon в виде архива tar.gz с сайта
    [free.oberon.org](https://free.oberon.org/download)
    и распакуйте его в домашнем каталоге (или в любом другом месте).
@@ -135,6 +140,11 @@ ______
 
    ```
    sudo dnf install -y git gcc glibc-devel allegro5-devel allegro5-addon-image allegro5-addon-audio allegro5-addon-acodec allegro5-addon-dialog allegro5-devel allegro5-addon-image-devel allegro5-addon-audio-devel allegro5-addon-acodec-devel allegro5-addon-dialog-devel argro5-addon-dialog-devel
+   ```
+
+   On Arch Linux:
+   ```
+   sudo pacman -Sy git gcc pkgconf glibc allegro
    ```
 
 2. Download Free Oberon in tar.gz format from

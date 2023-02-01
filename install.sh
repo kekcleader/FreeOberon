@@ -21,6 +21,9 @@ echo
 echo "On OS Fedora:"
 echo "  sudo dnf install -y git gcc glibc-devel allegro5-devel allegro5-addon-image allegro5-addon-audio allegro5-addon-acodec allegro5-addon-dialog allegro5-devel allegro5-addon-image-devel allegro5-addon-audio-devel allegro5-addon-acodec-devel allegro5-addon-dialog-devel argro5-addon-dialog-devel"
 echo
+echo "On Arch Linux:"
+echo "  sudo pacman -Sy git gcc pkgconf glibc allegro"
+echo
 read -p "Are the dependencies installed? [y/n] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
