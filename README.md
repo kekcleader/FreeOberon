@@ -50,9 +50,14 @@ Fob — это консольный компилятор языка Оберон
    sudo dnf install -y git gcc glibc-devel allegro5-devel allegro5-addon-image allegro5-addon-audio allegro5-addon-acodec allegro5-addon-dialog allegro5-devel allegro5-addon-image-devel allegro5-addon-audio-devel allegro5-addon-acodec-devel allegro5-addon-dialog-devel
    ```
 
-   На Арх Линукс:
+   На Арч Линукс:
    ```
    sudo pacman -Sy git gcc pkgconf glibc allegro
+   ```
+
+   На Опен Сюзе:
+   ```
+   sudo zypper install -y git gcc glibc-devel liballegro5_2-devel liballegro_audio5_2-devel liballegro_image5_2-devel liballegro_primitives5_2-devel liballegro_dialog5_2-devel liballegro_acodec5_2-devel liballegro_acodec5_2-devel liballegro_font5_2-devel
    ```
 
 2. Скачайте Free Oberon в виде архива tar.gz с сайта
@@ -124,7 +129,7 @@ ______
 
    Allegro (development packages), Git, GCC
 
-   On OS Debian / Ubuntu / Linux Minut and so on:
+   On OS Debian / Ubuntu / Linux Mint and so on:
    ```
    sudo apt-get update
    sudo apt-get install -y git gcc libc-dev liballegro5-dev
@@ -145,6 +150,11 @@ ______
    On Arch Linux:
    ```
    sudo pacman -Sy git gcc pkgconf glibc allegro
+   ```
+
+   On openSUSE:
+   ```
+   sudo zypper install -y git gcc glibc-devel liballegro5_2-devel liballegro_audio5_2-devel liballegro_image5_2-devel liballegro_primitives5_2-devel liballegro_dialog5_2-devel liballegro_acodec5_2-devel liballegro_acodec5_2-devel liballegro_font5_2-devel
    ```
 
 2. Download Free Oberon in tar.gz format from

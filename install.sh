@@ -10,7 +10,7 @@ echo
 echo "You can find the information on how to install the dependencies in the"
 echo "README.md file."
 echo
-echo "On OS Debian / Ubuntu / Linux Minut and so on:"
+echo "On OS Debian / Ubuntu / Linux Mint and so on:"
 echo "  sudo apt-get update"
 echo "  sudo apt-get install -y git gcc libc-dev liballegro5-dev"
 echo "or:"
@@ -23,6 +23,9 @@ echo "  sudo dnf install -y git gcc glibc-devel allegro5-devel allegro5-addon-im
 echo
 echo "On Arch Linux:"
 echo "  sudo pacman -Sy git gcc pkgconf glibc allegro"
+echo
+echo "On openSUSE:"
+echo "  sudo zypper install -y git gcc glibc-devel liballegro5_2-devel liballegro_audio5_2-devel liballegro_image5_2-devel liballegro_primitives5_2-devel liballegro_dialog5_2-devel liballegro_acodec5_2-devel liballegro_acodec5_2-devel liballegro_font5_2-devel"
 echo
 read -p "Are the dependencies installed? [y/n] " -n 1 -r
 echo
