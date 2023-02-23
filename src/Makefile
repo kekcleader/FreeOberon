@@ -1,5 +1,5 @@
 run: all
-	@cd .. && ./FreeOberon
+	@cd .. && ./FreeOberon --window
 
 all:
 	./make.sh
