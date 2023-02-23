@@ -6,7 +6,6 @@ Autodoc.exe
 Autodoc
 !Autodoc/
 _Build
-/src/Makefile
 /src/*.o
 /src/*.h
 /src/*.oh
