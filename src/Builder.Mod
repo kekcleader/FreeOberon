@@ -322,6 +322,7 @@ PROCEDURE ResetSysModules*;
     Add('Graph'); p := sysModules;
     IF Config.isWindows THEN
       p.libs := '-lallegro -lallegro_primitives -lallegro_image';
+      Strings.Append(' -lallegro_audio -lallegro_acodec', p.libs);
       Strings.Append(' "-Wl,-subsystem,windows"', p.libs)
     ELSE
       p.libs := '$(pkg-config allegro_primitives-5 allegro_image-5';
@@ -332,11 +333,12 @@ PROCEDURE ResetSysModules*;
   END AddGraph;
 
 BEGIN sysModules := NIL;
-  Add('SYSTEM');   Add('Texts');    Add('Files');   Add('Strings');
-  Add('In');       Add('Out');      Add('Math');    Add('MathL');
-  Add('Modules');  Add('Platform'); Add('Oberon');  Add('Reals');
-  Add('VT100');    AddGraph;        Add('TermBox'); Add('Term');
-  Add('Allegro5'); Add('Dir');      Add('Int');     Add('Random')
+  Add('SYSTEM');   Add('Texts');     Add('Files');   Add('Strings');
+  Add('In');       Add('Out');       Add('Math');    Add('MathL');
+  Add('Modules');  Add('Platform');  Add('Oberon');  Add('Reals');
+  Add('VT100');    AddGraph;         Add('Sound');   Add('TermBox');
+  Add('Term');     Add('Allegro5');  Add('Dir');     Add('Int');
+  Add('Random')
 END ResetSysModules;
 
 PROCEDURE GetWord(IN s: ARRAY OF CHAR; VAR i: INTEGER; OUT w: ARRAY OF CHAR);
@@ -589,8 +591,12 @@ BEGIN L := NIL; res := 0(*OK*); foreign := FALSE;
   NEW(mod); mod.s := modname$; mod.fname := fname$;
   mod.foreign := FALSE; mod.next := NIL;
   IF IsSysModule(modname) THEN
-    NEW(p); p.next := NIL; p.s := modname$; p.fname[0] := 0X;
-    p.foreign := FALSE; p.system := TRUE; GetSysLibs(modname, p.libs);
+    NEW(p); p.next := NIL;
+    IF (modname = 'TermBox') OR (modname = 'Sound') THEN p.s := 'Graph'
+    ELSE p.s := modname$
+    END;
+    p.fname[0] := 0X;
+    p.foreign := FALSE; p.system := TRUE; GetSysLibs(p.s, p.libs);
     AddUniqueToList(p, L)
   ELSE
     list := GetModuleInfo(mod, errLine, errCol, res);

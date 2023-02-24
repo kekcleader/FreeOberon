@@ -52,6 +52,8 @@ $OFR -7w Allegro5.Mod &&
 
 $OFR -7w Graph.Mod &&
 
+$OFR -7w Sound.Mod &&
+
 $OFR -7w TermBox.Mod &&
 
 $OFR -Cw Term.Mod &&
@@ -103,17 +105,19 @@ $CCFULL -c Dir.c &&
 
 $CCFULL -c Graph.c &&
 
+$CCFULL -c Sound.c &&
+
 $CCFULL -c TermBox.c &&
 
 
 $AR -crs ../Data/bin/libFreeOberon.a \
   Utf8.o Strings.o Reals.o Int.o Time.o In.o Out.o Args.o Env.o \
   Files.o Texts.o Random.o \
-  StrList.o Dir.o Graph.o TermBox.o &&
+  StrList.o Dir.o Graph.o Sound.o TermBox.o &&
 
 
 $CCFULL -o ../$PROG1 \
-  Graph.c TermBox.c \
+  Graph.c Sound.c TermBox.c \
   Term.c term/term_linux.c \
   Config.c Func.c Debug.c OV.c FoStrings.c EditorText.c Editor.c Builder.c \
   FreeOberon.c \

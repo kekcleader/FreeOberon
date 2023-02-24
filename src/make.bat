@@ -54,6 +54,8 @@ ECHO ON
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w Graph.Mod
 @IF ERRORLEVEL 1 GOTO ERR
+%OFR% -7w Sound.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w TermBox.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -Cw Term.Mod
@@ -105,17 +107,19 @@ windres resources.rc resources.o
 @IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c Graph.c
 @IF ERRORLEVEL 1 GOTO ERR
+%CCFULL% -c Sound.c
+@IF ERRORLEVEL 1 GOTO ERR
 %CCFULL% -c TermBox.c
 @IF ERRORLEVEL 1 GOTO ERR
 
 %AR% -crs ..\Data\bin\FreeOberon.a ^
   Utf8.o Strings.o Reals.o Int.o Time.o In.o Out.o Args.o Env.o ^
   Files.o Texts.o Random.o ^
-  StrList.o Dir.o Graph.o TermBox.o
+  StrList.o Dir.o Graph.o Sound.o TermBox.o
 @IF ERRORLEVEL 1 GOTO ERR
 
 %CCFULL% -o ..\%PROG1%.exe resources.o ^
-  Graph.c TermBox.c ^
+  Graph.c Sound.c TermBox.c ^
   Config.c Func.c Debug.c term\term_win32.c ^
   Term.c OV.c FoStrings.c EditorText.c Editor.c Builder.c ^
   FreeOberon.c ^

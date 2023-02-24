@@ -277,6 +277,7 @@ TYPE
 
 VAR
   Done*: BOOLEAN;
+  initialized*: BOOLEAN;
 
   settings: SET; (** See list of constants Settings above *)
   wantW, wantH: INTEGER; (** Assigned in procedure Settings *)
@@ -1501,21 +1502,23 @@ BEGIN ok := TRUE;
       Error('Could not install keyboard.'); ok := FALSE
     END;
 
-    IF ~(noMouse IN settings) & ~Al.install_mouse() THEN
+    IF ok & ~(noMouse IN settings) & ~Al.install_mouse() THEN
       Error('Could not install mouse.'); ok := FALSE
     END;
 
-    IF ~Al.init_primitives_addon() THEN
+    IF ok & ~Al.init_primitives_addon() THEN
       Error('Could not init primitives addon.'); ok := FALSE
     END;
 
-    IF ~Al.init_image_addon() THEN
+    IF ok & ~Al.init_image_addon() THEN
       Error('Could not init image addon.'); ok := FALSE
     END;
 
-    queue := Al.create_event_queue();
-    IF queue = NIL THEN
-      Error('Could not create queue.'); ok := FALSE
+    IF ok THEN
+      queue := Al.create_event_queue();
+      IF queue = NIL THEN
+        Error('Could not create queue.'); ok := FALSE
+      END
     END;
 
     IF ok THEN
@@ -1525,7 +1528,8 @@ BEGIN ok := TRUE;
       Al.register_event_source(queue, Al.get_keyboard_event_source());
       IF ~(noMouse IN settings) THEN
         Al.register_event_source(queue, Al.get_mouse_event_source())
-      END
+      END;
+      initialized := TRUE
     END;
 
     IF ~(manual IN settings) THEN
@@ -1555,6 +1559,7 @@ BEGIN
 END Close;
 
 BEGIN Done := FALSE;
+  initialized := FALSE;
   MakeCol(black, 0, 0, 0);
   ResetDefaults
 END Graph.

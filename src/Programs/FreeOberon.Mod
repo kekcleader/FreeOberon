@@ -1,4 +1,4 @@
-MODULE FreeOberon;
+MODULE FreeOberon; (* COPY *)
 (* Copyright 2017-2023 Arthur Yefimov
 
 This file is part of Free Oberon.
@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT T := TermBox, Files, Args, Utf8, Builder, Env, Debug, Graph,
-       OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Dir, Kernel;
+       OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Kernel;
 (** Free Oberon IDE and Compiler. Part of Free Oberon IDE internal code *)
 CONST
   (* Direction of Selection *)
@@ -51,7 +51,7 @@ CONST
   defLang = 'en';
 
 TYPE
-  Fnames = ARRAY 64, 256 OF CHAR;
+  Fnames = ARRAY 32, 256 OF CHAR;
 
   LanguageDialog* = POINTER TO LanguageDialogDesc;
   LanguageDialogDesc = RECORD(OV.WindowDesc)
@@ -956,9 +956,7 @@ BEGIN i := 0;
   WHILE (i < LEN(fnames)) & (fnames[i] # '') DO
     DoOpenFile(fnames[i]); INC(i)
   END;
-  IF i # 0 THEN
-    IF i > 1 THEN CascadeWindows(NIL) END
-  END
+  IF i # 0 THEN OV.NextWindow(app.windows) END
 END OpenFiles;
 
 PROCEDURE ParseFileNameArg(VAR s: ARRAY OF CHAR);
@@ -976,13 +974,8 @@ BEGIN
     IF (L < 4) OR (Strings.Pos('.Mod', s, L - 4) = -1) THEN
       Strings.Append('.Mod', s)
     END;
-    IF ~Dir.FileExists(s) THEN
-      Strings.Insert(Config.stdPath, 0, s);
-      IF ~Dir.FileExists(s) THEN
-        Strings.Delete(s, 0, Strings.Length(Config.stdPath));
-        Debug.StrVal('File not found: ', s)
-      END
-    END
+    (*!FIXME first check if file not exists: *)
+    Strings.Insert(Config.stdPath, 0, s)
   END
 END ParseFileNameArg;
 
@@ -1001,16 +994,15 @@ BEGIN
   IF ~FoStrings.LangExists(lang) THEN lang := defLang END
 END IdentifyLanguage;
 
-PROCEDURE ParseArgs(VAR fs, sw, mx: BOOLEAN; VAR w, h: INTEGER;
+PROCEDURE ParseArgs(VAR fs, sw: BOOLEAN; VAR w, h: INTEGER;
     VAR lang: ARRAY OF CHAR; VAR fnames: Fnames);
 VAR i, nofnames, count: INTEGER;
   s: ARRAY 2048 OF CHAR;
-BEGIN fs := Config.startInFullscreen; sw := FALSE; mx := FALSE; i := 1;
+BEGIN fs := Config.startInFullscreen; sw := FALSE; i := 1;
   nofnames := 0; w := defW; h := defH; lang := ''; count := Args.Count();
   WHILE i <= count DO Args.Get(i, s);
     IF s = '--window' THEN fs := FALSE
     ELSIF s = '--fullscreen' THEN fs := TRUE
-    ELSIF s = '--maximized' THEN mx := TRUE
     ELSIF s = '--software' THEN sw := TRUE
     ELSIF s = '--debug' THEN Config.SetDebug(TRUE)
     ELSIF s = '--size' THEN
@@ -1036,31 +1028,22 @@ BEGIN fs := Config.startInFullscreen; sw := FALSE; mx := FALSE; i := 1;
 END ParseArgs;
 
 PROCEDURE Init(): BOOLEAN;
-VAR success, fs, sw, mx: BOOLEAN;
+VAR success, fs, sw: BOOLEAN;
   w, h: INTEGER;
   lang: ARRAY 6 OF CHAR;
-  iconFile, fontFile: ARRAY 256 OF CHAR;
   s: FoStrings.String;
   fnames: Fnames;
   opt: SET;
 BEGIN
   success := FALSE;
   lastFileDialogDir[0] := 0X;
-  ParseArgs(fs, sw, mx, w, h, lang, fnames);
+  ParseArgs(fs, sw, w, h, lang, fnames);
   opt := {T.resizable, T.center};
   IF fs THEN INCL(opt, T.fullscreen) ELSE INCL(opt, T.window) END;
-  IF mx THEN INCL(opt, T.maximized) END;
   T.Settings(w, h, opt);
   FoStrings.SetLang(lang);
   FoStrings.Get('titleFreeOberon', s);
   T.SetTitle(s);
-
-  Env.GetAppDir(iconFile); Strings.Copy(iconFile, fontFile);
-  Strings.Append('Data/Images/Icon.png', iconFile);
-  Strings.Append('Data/Fonts/Main', fontFile);
-  T.SetIconFile(iconFile);
-  T.SetFontFile(fontFile);
-
   T.Init;
   IF T.Done THEN
     InitIDE;

@@ -2,7 +2,7 @@ MODULE [foreign] Allegro5;
 IMPORT SYSTEM;
 
 CONST
-  (** Values of al_set_new_display_flags *)
+  (** Values of al_set_new_display_flags **)
   windowed*                = 0;
   fullscreen*              = 1;
   opengl*                  = 2;
@@ -19,12 +19,12 @@ CONST
   maximized*               = 13;
   openglEsProfile*         = 14;
 
-  (** Values of parameter importance in al_set_new_display_option *)
+  (** Values of parameter importance in al_set_new_display_option **)
   dontcare* = 0;
   require*  = 1;
   suggest*  = 2;
 
-  (** Bitmap Flags *)
+  (** Bitmap Flags **)
   memoryBitmap*         = 0;
   keepBitmapFormat*     = 1;
   forceLocking*         = 2;
@@ -38,7 +38,7 @@ CONST
   videoBitmap*          = 10;
   convertBitmap*        = 12;
 
-  (** Values of parameter option in al_set_new_display_option *)
+  (** Values of parameter option in al_set_new_display_option **)
   redSize*               = 0;
   greenSize*             = 1;
   blueSize*              = 2;
@@ -72,11 +72,38 @@ CONST
   supportSeparateAlpha*  = 30;
   autoConvertBitmaps*    = 31;
   supportedOrientations* = 32;
-  openglMajorVersion*    = 33;
+    openglMajorVersion*    = 33;
   openglMinorVersion*    = 34;
   displayOptionsCount*   = 35;
 
-  (** Values of Event.type *)
+  (** Audio Constants **)
+  audioDepthInt8*    = 0;
+  audioDepthInt16*   = 1;
+  audioDepthInt24    = 2;
+  audioDepthFloat32* = 3;
+
+  audioDepthUint8*   = 8;
+  audioDepthUint16*  = 9;
+  audioDepthUint24   = 10;
+
+  channelConf1*  = 10H;
+  channelConf2*  = 20H;
+  channelConf3*  = 30H;
+  channelConf4*  = 40H;
+  channelConf51* = 51H;
+  channelConf61* = 61H;
+  channelConf71* = 71H;
+
+  playmodeOnce*      = 100H;
+  playmodeLoop*      = 101H;
+  playmodeBidir*     = 102H;
+  playmodeLoopOnce*  = 105H;
+
+  mixerQualityPoint*  = 110H;
+  mixerQualityLinear* = 111H;
+  mixerQualityCubic*  = 112H;
+
+  (** Values of Event.type **)
   eventJoystickAxis*          =  1;
   eventJoystickButtonDown*    =  2;
   eventJoystickButtonUp*      =  3;
@@ -114,11 +141,11 @@ CONST
   eventDisplayConnected*      = 60;
   eventDisplayDisconnected*   = 61;
 
-  (** Flip flags for al_draw_bitmap *)
+  (** Flip flags for al_draw_bitmap **)
   flipHorizontal* = 1;
   flipVertical* = 2;
 
-  (** Key codes *)
+  (** Key codes **)
   keyA* = 1;
   keyB* = 2;
   keyC* = 3;
@@ -294,7 +321,7 @@ CONST
   keymodAccent3*    = 14;
   keymodAccent4*    = 15;
 
-  (* Other *)
+  (** - **)
   intMax* = 2147483647;
 
 TYPE
@@ -514,10 +541,16 @@ PROCEDURE put_blended_pixel* ["al_put_blended_pixel"] (x, y: INTEGER; c: Color);
 
 PROCEDURE init_primitives_addon* ["al_init_primitives_addon"] (): BOOLEAN;
 PROCEDURE init_image_addon* ["al_init_image_addon"] (): BOOLEAN;
-PROCEDURE init_audio_addon* ["al_init_audio_addon"] (): BOOLEAN;
 PROCEDURE init_acodec_addon* ["al_init_acodec_addon"] (): BOOLEAN;
 PROCEDURE init_font_addon* ["al_init_font_addon"] (): BOOLEAN;
 PROCEDURE init_native_dialog_addon* ["al_init_native_dialog_addon"] (): BOOLEAN;
+
+PROCEDURE install_audio* ["al_install_audio"] (): BOOLEAN;
+PROCEDURE reserve_samples* ["al_reserve_samples"] (n: INTEGER): BOOLEAN;
+PROCEDURE create_audio_stream* ["al_create_audio_stream"] (fragmentCount, samples, freq, depth, chanConf: INTEGER): ADRINT;
+PROCEDURE attach_audio_stream_to_mixer* ["al_attach_audio_stream_to_mixer"] (stream, mixer: ADRINT): BOOLEAN;
+PROCEDURE get_default_mixer* ["al_get_default_mixer"] (): ADRINT;
+PROCEDURE destroy_audio_stream* ["al_destroy_audio_stream"] (stream: ADRINT);
 
 PROCEDURE draw_line* ["al_draw_line"] (x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
 PROCEDURE draw_triangle* ["al_draw_triangle"] (x1, y1, x2, y2, x3, y3: REAL; color: Color; thickness: REAL);

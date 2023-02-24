@@ -1,6 +1,6 @@
 MODULE TermBox;
 (** Termbox is a module for creating cross-platform text-based interfaces *)
-IMPORT G := Graph, Strings, Int, Out, Env, Platform;
+IMPORT G := Graph, Strings, Int, Out, Platform;
 
 CONST
   partW = 512;
@@ -926,19 +926,18 @@ BEGIN
   settings := flags
 END Settings;
 
-(** Sets the terminal icon (if Graph is used) *)
-PROCEDURE SetIcon*(s: ARRAY OF CHAR);
+(** Sets the terminal icon file name (if Graph is used) *)
+PROCEDURE SetIconFile*(s: ARRAY OF CHAR);
 BEGIN iconFile := s
-END SetIcon;
+END SetIconFile;
 
-(** Sets the font file for the terminal (if Graph is used) *)
+(** Sets the font file name for the terminal (if Graph is used) *)
 PROCEDURE SetFontFile*(s: ARRAY OF CHAR);
 BEGIN fontFile := s
 END SetFontFile;
 
 BEGIN wantW := stdW; wantH := stdH; wantScaleX := 0.0; wantScaleY := 0.0;
   settings := {fullscreen}; Done := FALSE;
-  Env.GetAppDir(iconFile); Strings.Copy(iconFile, fontFile);
-  Strings.Append('Data/Images/Icon.png', iconFile);
-  Strings.Append('Data/Fonts/Main', fontFile)
+  iconFile := '../Data/Images/Icon.png';
+  fontFile := '../Data/Fonts/Main';
 END TermBox.
