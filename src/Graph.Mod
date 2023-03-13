@@ -680,6 +680,39 @@ PROCEDURE VLine*(x, y1, y2: INTEGER; color: Color);
 BEGIN LineF(FLT(x), FLT(y1), FLT(x), FLT(y2), color)
 END VLine;
 
+PROCEDURE FillTriangleF*(x1, y1, x2, y2, x3, y3: REAL; color: Color);
+BEGIN Al.draw_filled_triangle(x1, y1, x2, y2, x3, y3, SYSTEM.VAL(Al.Color, color))
+END FillTriangleF;
+
+PROCEDURE FillTriangle*(x1, y1, x2, y2, x3, y3: INTEGER; color: Color);
+BEGIN
+  Al.draw_filled_triangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
+    FLT(x2) + 0.5, FLT(y2) + 0.5, FLT(x3) + 0.5, FLT(y3) + 0.5, SYSTEM.VAL(Al.Color, color))
+END FillTriangle;
+
+PROCEDURE ThickTriangleF*(x1, y1, x2, y2, x3, y3: REAL; color: Color; thickness: REAL);
+BEGIN Al.draw_triangle(x1, y1, x2, y2, x3, y3, SYSTEM.VAL(Al.Color, color), thickness)
+END ThickTriangleF;
+
+PROCEDURE ThickTriangle*(x1, y1, x2, y2, x3, y3: INTEGER; color: Color;
+    thickness: INTEGER);
+BEGIN
+  Al.draw_triangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
+    FLT(x2) + 0.5, FLT(y2) + 0.5, FLT(x3) + 0.5, FLT(y3) + 0.5,
+    SYSTEM.VAL(Al.Color, color), FLT(thickness))
+END ThickTriangle;
+
+PROCEDURE TriangleF*(x1, y1, x2, y2, x3, y3: REAL; color: Color);
+BEGIN Al.draw_triangle(x1, y1, x2, y2, x3, y3, SYSTEM.VAL(Al.Color, color), 1.0)
+END TriangleF;
+
+PROCEDURE Triangle*(x1, y1, x2, y2, x3, y3: INTEGER; color: Color);
+BEGIN
+  Al.draw_triangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
+    FLT(x2) + 0.5, FLT(y2) + 0.5, FLT(x3) + 0.5, FLT(y3) + 0.5,
+    SYSTEM.VAL(Al.Color, color), 1.0)
+END Triangle;
+
 PROCEDURE FillRectF*(x1, y1, x2, y2: REAL; color: Color);
 BEGIN Al.draw_filled_rectangle(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color))
 END FillRectF;

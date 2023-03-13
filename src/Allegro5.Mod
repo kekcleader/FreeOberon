@@ -554,6 +554,7 @@ PROCEDURE destroy_audio_stream* ["al_destroy_audio_stream"] (stream: ADRINT);
 
 PROCEDURE draw_line* ["al_draw_line"] (x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
 PROCEDURE draw_triangle* ["al_draw_triangle"] (x1, y1, x2, y2, x3, y3: REAL; color: Color; thickness: REAL);
+PROCEDURE draw_filled_triangle* ["al_draw_filled_triangle"] (x1, y1, x2, y2, x3, y3: REAL; color: Color);
 PROCEDURE draw_rectangle* ["al_draw_rectangle"] (x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
 PROCEDURE draw_filled_rectangle* ["al_draw_filled_rectangle"] (x1, y1, x2, y2: REAL; color: Color);
 PROCEDURE draw_rounded_rectangle* ["al_draw_rounded_rectangle"] (x1, y1, x2, y2, rx, ry: REAL; color: Color; thickness: REAL);
