@@ -459,7 +459,7 @@ BEGIN
       KW('ELSE') OR KW('OF') OR KW('WITH') OR KW('LONGSET') OR
       KW('UNTIL') OR KW('CONST') OR KW('MOD') OR KW('FLOOR') OR KW('LSL') OR
       KW('ASR') OR KW('ROR') OR KW('ASSERT') OR KW('BYTE') OR
-      KW('SHORTCHAR') OR KW('SYSTEM')
+      KW('SHORTCHAR') OR KW('SYSTEM') OR KW('FLT')
       OR KW('МОДУЛЬ') OR KW('ИМПОРТ') OR KW('ПЕРЕМЕННЫЕ') OR KW('МАССИВ') OR
       KW('ИЗ') OR KW('ЛИТЕРА') OR KW('ЦЕЛОЕ') OR KW('НАЧАЛО') OR KW('НОВЫЙ') OR
       KW('ЕСЛИ') OR KW('ТОГДА') OR KW('ИНАЧЕ') OR KW('АЕСЛИ') OR KW('КОНЕЦ')
