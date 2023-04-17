@@ -11,7 +11,7 @@ SET OBERON=.;%OFRDIR%\Lib\Sym
 
 
 SET OFR=ofront+ -s -48
-SET CC=gcc
+SET CC=cc
 SET AR=ar
 SET CCFULL=%CC% -O3 -fno-exceptions -I %OFRDIR%\..\..\Mod\Lib -I %OFRDIR%\Lib\Obj
 

@@ -9,7 +9,7 @@ export OBERON=.:$OFRDIR/Lib/Sym
 
 
 OFR="ofront+ -s -88"
-CC="gcc"
+CC="cc"
 AR="ar"
 CCFULL="$CC -O0 -fno-exceptions -I $OFRDIR/../../Mod/Lib -I $OFRDIR/Lib/Obj"
 
