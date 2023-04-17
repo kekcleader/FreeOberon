@@ -277,6 +277,7 @@ TYPE
 
 VAR
   Done*: BOOLEAN;
+  initialized*: BOOLEAN;
 
   settings: SET; (** See list of constants Settings above *)
   wantW, wantH: INTEGER; (** Assigned in procedure Settings *)
@@ -678,6 +679,39 @@ END HLine;
 PROCEDURE VLine*(x, y1, y2: INTEGER; color: Color);
 BEGIN LineF(FLT(x), FLT(y1), FLT(x), FLT(y2), color)
 END VLine;
+
+PROCEDURE FillTriangleF*(x1, y1, x2, y2, x3, y3: REAL; color: Color);
+BEGIN Al.draw_filled_triangle(x1, y1, x2, y2, x3, y3, SYSTEM.VAL(Al.Color, color))
+END FillTriangleF;
+
+PROCEDURE FillTriangle*(x1, y1, x2, y2, x3, y3: INTEGER; color: Color);
+BEGIN
+  Al.draw_filled_triangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
+    FLT(x2) + 0.5, FLT(y2) + 0.5, FLT(x3) + 0.5, FLT(y3) + 0.5, SYSTEM.VAL(Al.Color, color))
+END FillTriangle;
+
+PROCEDURE ThickTriangleF*(x1, y1, x2, y2, x3, y3: REAL; color: Color; thickness: REAL);
+BEGIN Al.draw_triangle(x1, y1, x2, y2, x3, y3, SYSTEM.VAL(Al.Color, color), thickness)
+END ThickTriangleF;
+
+PROCEDURE ThickTriangle*(x1, y1, x2, y2, x3, y3: INTEGER; color: Color;
+    thickness: INTEGER);
+BEGIN
+  Al.draw_triangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
+    FLT(x2) + 0.5, FLT(y2) + 0.5, FLT(x3) + 0.5, FLT(y3) + 0.5,
+    SYSTEM.VAL(Al.Color, color), FLT(thickness))
+END ThickTriangle;
+
+PROCEDURE TriangleF*(x1, y1, x2, y2, x3, y3: REAL; color: Color);
+BEGIN Al.draw_triangle(x1, y1, x2, y2, x3, y3, SYSTEM.VAL(Al.Color, color), 1.0)
+END TriangleF;
+
+PROCEDURE Triangle*(x1, y1, x2, y2, x3, y3: INTEGER; color: Color);
+BEGIN
+  Al.draw_triangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
+    FLT(x2) + 0.5, FLT(y2) + 0.5, FLT(x3) + 0.5, FLT(y3) + 0.5,
+    SYSTEM.VAL(Al.Color, color), 1.0)
+END Triangle;
 
 PROCEDURE FillRectF*(x1, y1, x2, y2: REAL; color: Color);
 BEGIN Al.draw_filled_rectangle(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color))
@@ -1428,6 +1462,7 @@ BEGIN
   IF ~Platform.Windows THEN (* Workaround for an Allegro bug on X11 *)
     FOR i := 1 TO 6 DO (* Maybe "TO 1" is enough *)
       Al.free_with_context(a, 1429, 'Graph.Mod', 'GetClipboardText');
+      Delay(1);
       a := Al.get_clipboard_text(win.display)
     END
   END;
@@ -1500,21 +1535,23 @@ BEGIN ok := TRUE;
       Error('Could not install keyboard.'); ok := FALSE
     END;
 
-    IF ~(noMouse IN settings) & ~Al.install_mouse() THEN
+    IF ok & ~(noMouse IN settings) & ~Al.install_mouse() THEN
       Error('Could not install mouse.'); ok := FALSE
     END;
 
-    IF ~Al.init_primitives_addon() THEN
+    IF ok & ~Al.init_primitives_addon() THEN
       Error('Could not init primitives addon.'); ok := FALSE
     END;
 
-    IF ~Al.init_image_addon() THEN
+    IF ok & ~Al.init_image_addon() THEN
       Error('Could not init image addon.'); ok := FALSE
     END;
 
-    queue := Al.create_event_queue();
-    IF queue = NIL THEN
-      Error('Could not create queue.'); ok := FALSE
+    IF ok THEN
+      queue := Al.create_event_queue();
+      IF queue = NIL THEN
+        Error('Could not create queue.'); ok := FALSE
+      END
     END;
 
     IF ok THEN
@@ -1524,7 +1561,8 @@ BEGIN ok := TRUE;
       Al.register_event_source(queue, Al.get_keyboard_event_source());
       IF ~(noMouse IN settings) THEN
         Al.register_event_source(queue, Al.get_mouse_event_source())
-      END
+      END;
+      initialized := TRUE
     END;
 
     IF ~(manual IN settings) THEN
@@ -1554,6 +1592,7 @@ BEGIN
 END Close;
 
 BEGIN Done := FALSE;
+  initialized := FALSE;
   MakeCol(black, 0, 0, 0);
   ResetDefaults
 END Graph.
