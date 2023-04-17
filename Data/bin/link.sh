@@ -42,7 +42,8 @@ done
 
 
 
-$CC -O0 -fno-exceptions \
+# FOR DEBUG ADD: -g -fvar-tracking
+$CC -O0 -g -fvar-tracking -fno-exceptions \
   -I $FOBDIR/src \
   -I $OFRDIR/Mod/Lib \
   -I $OFRTAR/Lib/Obj \
