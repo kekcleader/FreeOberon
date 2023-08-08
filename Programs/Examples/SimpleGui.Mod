@@ -161,15 +161,28 @@ END DrawWidget;
 PROCEDURE DrawBody*(c: Widget; x, y, w, h: INTEGER);
 VAR p: Widget;
   x2, y2, w2, h2: INTEGER;
+  Z: G.Color;
 BEGIN
   p := c.body;
   WHILE p # NIL DO
     x2 := x + p.x; y2 := y + p.y;
     w2 := w - p.x; h2 := h - p.y;
-    DrawWidget(p, x2, y2, w2, h2);
+    (* !FIXME clip x2,y2,w2,h2 to not more than x,y,w,h*)
+    (*G.UnsetClip; G.MakeCol(Z, 255, 0, 0); G.Rect(x2-1, y2-1, x2 + w2, y2 + h2,Z);*)
+    G.SetClip(x2, y2, p.w, p.h);
+    DrawWidget(p, x2, y2, p.w, p.h);
     p := p.next
-  END
+  END;
+  G.UnsetClip
 END DrawBody;
+
+PROCEDURE SetBgColor*(c: Widget; color: G.Color);
+BEGIN c.bgColor := color
+END SetBgColor;
+
+PROCEDURE SetFgColor*(c: Widget; color: G.Color);
+BEGIN c.fgColor := color
+END SetFgColor;
 
 PROCEDURE InitWidget*(c: Widget; w, h: INTEGER);
 BEGIN c.x := 0; c.y := 0; c.w := w; c.h := h;
@@ -181,9 +194,13 @@ END InitWidget;
 
 PROCEDURE Put*(c, where: Widget; x, y: INTEGER);
 BEGIN
-  c.x := x; c.y := y;
-  c.next := where.body;
-  where.body := c
+  IF c # NIL THEN
+    c.x := x; c.y := y;
+    IF where # NIL THEN
+      c.next := where.body;
+      where.body := c
+    END
+  END
 END Put;
 
 (** Panel **)
@@ -199,14 +216,15 @@ BEGIN
   END
 END PanelHandler;
 
-PROCEDURE InitPanel*(c: Panel; w, h: INTEGER);
+PROCEDURE InitPanel*(c: Panel; where: Widget; x, y, w, h: INTEGER);
 BEGIN InitWidget(c, w, h);
-  c.handle := PanelHandler
+  c.handle := PanelHandler;
+  Put(c, where, x, y)
 END InitPanel;
 
-PROCEDURE NewPanel*(x, y, w, h: INTEGER): Panel;
+PROCEDURE NewPanel*(where: Widget; x, y, w, h: INTEGER): Panel;
 VAR c: Panel;
-BEGIN NEW(c); InitPanel(c, w, h)
+BEGIN NEW(c); InitPanel(c, where, x, y, w, h)
 RETURN c END NewPanel;
 
 (** Form **)
@@ -222,8 +240,7 @@ BEGIN WidgetHandler(c, msg)
 END FormHandler;
 
 PROCEDURE InitForm*(c: Form; x, y, w, h: INTEGER);
-BEGIN InitPanel(c, w, h);
-  c.x := x; c.y := y;
+BEGIN InitPanel(c, NIL, x, y, w, h);
   c.handle := FormHandler;
   c.next := forms; forms := c
 END InitForm;
@@ -238,9 +255,16 @@ RETURN c END NewForm;
 PROCEDURE DrawButton*(c: Button; x, y, w, h: INTEGER);
 VAR cw, ch, tw, tx, ty: INTEGER;
   down: BOOLEAN;
+  Z: G.Color;
 BEGIN
   down := c(Button).pressed & c(Button).hovered;
   G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
+
+  ;G.MakeCol(Z, 255, 128, 0);
+  ;G.Line(x + c.h DIV 4, y + c.h DIV 2, x + c(Button).X, y + c(Button).Y, Z);
+  ;G.MakeCol(Z, 215, 0, 0);
+  ;G.Line(x + c.h DIV 4, y + c.h DIV 2 + 1, x + c(Button).X, y + c(Button).Y + 1, Z);
+
   G.Rect(x, y, x + c.w - 1, y + c.h - 1, c.fgColor);
   IF ~down THEN
     G.Rect(x, y, x + c.w - 2, y + c.h - 2, c.fgColor)
@@ -251,8 +275,6 @@ BEGIN
   ty := y + (c.h - ch) DIV 2;
   IF down THEN INC(tx); INC(ty) END;
   G.DrawString(c.caption, tx, ty, font, c.fgColor)
-
-  ;G.Line(x + c.w DIV 2, y + c.h DIV 2, x + c(Button).X, y + c(Button).Y, c.fgColor)
 END DrawButton;
 
 PROCEDURE BMM(c: Button; x, y: INTEGER);
