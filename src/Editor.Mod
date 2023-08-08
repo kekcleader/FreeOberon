@@ -44,13 +44,14 @@ CONST
   tokenComment = 4;
 
   (** FileDialog type **)
-  open* = 1;
-  save* = 2;
+  primaryModule* = 1;
+  open* = 2;
+  save* = 3;
 
 TYPE
   FileDialog* = POINTER TO FileDialogDesc;
   FileDialogDesc* = RECORD(OV.WindowDesc)
-    type*: INTEGER; (** open or save *)
+    type*: INTEGER; (** See constants above: primaryModule, open and save *)
     edtFilename*: OV.Edit;
     btnOk*, btnCancel*: OV.Button;
     path*: ARRAY 1024 OF CHAR; (** full path to current chosen dir *)
@@ -270,7 +271,8 @@ END SetHome;
 PROCEDURE InitFileDialog*(c: FileDialog; type: INTEGER; IN dir: ARRAY OF CHAR);
 VAR s: FoStrings.String;
 BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
-  IF type = open THEN FoStrings.Get('titleOpenAFile', c.caption)
+  IF type = primaryModule THEN FoStrings.Get('titlePrimaryModule', c.caption)
+  ELSIF type = open THEN FoStrings.Get('titleOpenAFile', c.caption)
   ELSE FoStrings.Get('titleSaveFileAs', c.caption)
   END;
   c.modal := TRUE; c.w := 70; c.h := 20; OV.CenterWindow(c);
@@ -280,7 +282,7 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.edtFilename.do.resize(c.edtFilename, 3, 3, c.w - 18, 1);
   OV.Add(c, c.edtFilename);
 
-  (* Open/Save (Ok) button *)
+  (* Open/Ok button (Ok for save and primaryModule types) *)
   IF type = open THEN FoStrings.Get('btnOpen', s)
   ELSE FoStrings.Get('btnOk', s)
   END;
@@ -326,7 +328,8 @@ VAR f: FileDialog;
   s: FoStrings.String;
 BEGIN f := c(FileDialog);
   OV.WindowDraw(c, x, y); INC(x, c.x); INC(y, c.y);
-  IF f.type = open THEN FoStrings.Get('labelName', s)
+  IF f.type = primaryModule THEN FoStrings.Get('labelPrimaryModuleFile', s)
+  ELSIF f.type = open THEN FoStrings.Get('labelName', s)
   ELSE FoStrings.Get('labelSaveFileAs', s)
   END;
   OV.PutMarkedString(x + 3, y + 2, s, 15, 14, 7, 0);

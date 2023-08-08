@@ -20,17 +20,17 @@ IMPORT T := TermBox, Files, Args, Utf8, Builder, Env, Debug, Graph,
        OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Dir, Kernel;
 (** Free Oberon IDE and Compiler. Part of Free Oberon IDE internal code *)
 CONST
-  (* Direction of Selection *)
+  (** Direction of Selection **)
   dirLeft  = 0;
   dirRight = 1;
   dirUp    = 2;
   dirDown  = 3;
 
-  (* States *)
+  (** States **)
   stateEditor   = 0;
   stateTerminal = 1;
 
-  (* Character Classes *)
+  (** Character Classes **)
   charOther       = 0; (*!FIXME Remove these constants *)
   charAlpha       = 1;
   charDigit       = 2;
@@ -38,14 +38,14 @@ CONST
   charQuote       = 4;
   charOpenBracket = 5;
 
-  (* Token Classes *)
+  (** Token Classes **)
   tokenOther   = 0;
   tokenKeyword = 1;
   tokenNumber  = 2;
   tokenString  = 3;
   tokenComment = 4;
 
-  (* Defaults *)
+  (** Defaults **)
   defW = 106;
   defH = 25;
   defLang = 'en';
@@ -59,21 +59,22 @@ TYPE
   END;
 
 VAR
-  progBuf: ARRAY 16300 OF SHORTCHAR; (* For interaction with running program *)
-  inputBuf: ARRAY 16300 OF CHAR; (* Holds entered chars before Enter pressed *)
+  progBuf: ARRAY 16300 OF SHORTCHAR; (** For interaction with running program *)
+  inputBuf: ARRAY 16300 OF CHAR; (** Holds entered chars before Enter pressed *)
   inputBufLen: INTEGER;
   programFinished: BOOLEAN;
-  lastFileDialogDir: ARRAY 256 OF CHAR; (* Directory path for file dialog *)
+  lastFileDialogDir: ARRAY 256 OF CHAR; (** Directory path for file dialog *)
+  primaryFname: ARRAY 256 OF CHAR; (***)
   app: OV.App;
 
-  curX, curY: INTEGER; (* Text cursor position *)
-  curFg, curBg: INTEGER; (* Current foreground and background of proc. Write *)
-  terminalNeedRedraw: BOOLEAN; (* Used when a compiled program is running *)
-  terminalMouseShown: BOOLEAN; (* Same *)
+  curX, curY: INTEGER; (** Text cursor position *)
+  curFg, curBg: INTEGER; (** Current foreground and background of proc. Write *)
+  terminalNeedRedraw: BOOLEAN; (** Used when a compiled program is running *)
+  terminalMouseShown: BOOLEAN; (** Used when a compiled program is running *)
 
-  lastW, lastH: INTEGER; (* Last screen size *)
+  lastW, lastH: INTEGER; (** Last screen size *)
 
-(* Language Dialog *)
+(** Language Dialog **)
 
 PROCEDURE LanguageButtonClick*(c: OV.Control);
 VAR lang: ARRAY 10 OF CHAR;
@@ -113,7 +114,7 @@ VAR c: LanguageDialog;
 BEGIN NEW(c); InitLanguageDialog(c) ;
 RETURN c END NewLanguageDialog;
 
-(* General *)
+(** General **)
 
 PROCEDURE CountLines(s: ARRAY OF CHAR; width: INTEGER): INTEGER;
 VAR i, x, lines: INTEGER;
@@ -412,6 +413,16 @@ BEGIN
   DoOpenFile(fname)
 END OpenFileOkClick;
 
+PROCEDURE SetPrimaryModule(IN fname: ARRAY OF CHAR);
+BEGIN primaryFname := fname$
+END SetPrimaryModule;
+
+PROCEDURE PrimaryModuleDialogOkClick(c: OV.Control; fname: ARRAY OF CHAR);
+BEGIN
+  DirName(fname, lastFileDialogDir);
+  SetPrimaryModule(fname)
+END PrimaryModuleDialogOkClick;
+
 PROCEDURE DoSaveFile(c: OV.Control; fname: ARRAY OF CHAR);
 VAR w: OV.Window; e: Editor.Editor;
 BEGIN
@@ -517,33 +528,52 @@ VAR w: OV.Window;
   modules: Builder.Module;
   e: Editor.Editor;
 BEGIN w := c.app.windows;
+  (* Automatically save the current file before compilation *)
   IF (w # NIL) & (w IS Editor.Editor) THEN
-    IF Editor.TextChanged(w(Editor.Editor)) THEN FileSave(c) END;
-    IF w(Editor.Editor).fname[0] # 0X THEN
-      mainFname := w(Editor.Editor).fname$;
-      Debug.StrVal('File name of main module: ', mainFname);
-      Builder.SetWorkDir(mainFname);
-      Debug.StrVal('Work directory: ', Builder.workDir);
-      Builder.GetModuleName(mainFname, modname);
-      Debug.StrVal('Module name: ', modname);
-      modules := Builder.UsedModuleList(modname, mainFname,
-        errFname, errLine, errCol, foreign, res);
-      IF foreign THEN res := 402 END;
-      Debug.IntVal('Result of UserModuleList: ', res);
-      IF res = 0 THEN
-        IF Builder.CompileAll(modules, exename, FALSE, BuildErrorCallback)
-        THEN RunProgram(exename)
-        END
-      ELSE
-        FocusOrOpenFile(errFname);
-        e := app.windows(Editor.Editor);
-        e.text.MoveToLineCol(errLine, errCol, e.h - 2);
-        FoStrings.MakeErrorStr(res, s);
-        ShowError(s)
+    IF Editor.TextChanged(w(Editor.Editor)) THEN FileSave(c) END
+  END;
+
+  mainFname := primaryFname$;
+  IF (mainFname[0] = 0X) & (w # NIL) & (w IS Editor.Editor) &
+     (w(Editor.Editor).fname[0] # 0X)
+  THEN mainFname := w(Editor.Editor).fname$
+  END;
+
+  IF mainFname[0] # 0X THEN
+    Debug.StrVal('File name of main module: ', mainFname);
+    Builder.SetWorkDir(mainFname);
+    Debug.StrVal('Work directory: ', Builder.workDir);
+    Builder.GetModuleName(mainFname, modname);
+    Debug.StrVal('Module name: ', modname);
+    modules := Builder.UsedModuleList(modname, mainFname,
+      errFname, errLine, errCol, foreign, res);
+    IF foreign THEN res := 402 END;
+    Debug.IntVal('Result of UserModuleList: ', res);
+    IF res = 0 THEN
+      IF Builder.CompileAll(modules, exename, FALSE, BuildErrorCallback)
+      THEN RunProgram(exename)
       END
+    ELSE
+      FocusOrOpenFile(errFname);
+      e := app.windows(Editor.Editor);
+      e.text.MoveToLineCol(errLine, errCol, e.h - 2);
+      FoStrings.MakeErrorStr(res, s);
+      ShowError(s)
     END
   END
 END OnBuild;
+
+PROCEDURE OnPrimaryModule(c: OV.Control);
+VAR w: Editor.FileDialog;
+BEGIN
+  w := Editor.NewFileDialog(Editor.primaryModule, lastFileDialogDir);
+  w.onFileOk := PrimaryModuleDialogOkClick;
+  OV.AddWindow(app, w)
+END OnPrimaryModule;
+
+PROCEDURE OnClearPrimaryModule(c: OV.Control);
+BEGIN primaryFname[0] := 0X
+END OnClearPrimaryModule;
 
 PROCEDURE HelpAbout(c: OV.Control);
 CONST W = 37; H = 13;
@@ -806,6 +836,11 @@ BEGIN
   OV.Add(m, OV.NewMenu(s, 'F9', OV.hF9, OnBuild));
   FoStrings.Get('menuBuild', s);
   OV.Add(m, OV.NewMenu(s, '', 0, OnBuild));
+  OV.Add(m, OV.NewMenu('-', '', 0, NIL));
+  FoStrings.Get('menuPrimaryModule', s);
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+Shift+F2', OV.hCtrlShiftF2, OnPrimaryModule));
+  FoStrings.Get('menuClearPrimaryModule', s);
+  OV.Add(m, OV.NewMenu(s, '', 0, OnClearPrimaryModule));
   OV.AddMenu(app, m);
   FoStrings.Get('menuDebug', s);
   m := OV.NewMenu(s, '', 0, NIL);
@@ -1046,6 +1081,7 @@ VAR success, fs, sw, mx: BOOLEAN;
 BEGIN
   success := FALSE;
   lastFileDialogDir[0] := 0X;
+  primaryFname[0] := 0X;
   ParseArgs(fs, sw, mx, w, h, lang, fnames);
   opt := {T.resizable, T.center};
   IF fs THEN INCL(opt, T.fullscreen) ELSE INCL(opt, T.window) END;
