@@ -123,7 +123,8 @@ VAR msg: MouseDownMsg;
 BEGIN
   pressedWidget := c;
   msg.x := x; msg.y := y;
-  c.handle(c, msg)
+  c.handle(c, msg);
+  IF c.onMouseDown # NIL THEN c.onMouseDown(c, x, y) END
 END WidgetOnMouseDown;
 
 PROCEDURE WidgetHandleMouseDown*(c: Widget; x, y: INTEGER);
@@ -142,7 +143,8 @@ VAR msg: MouseUpMsg;
 BEGIN
   pressedWidget := NIL;
   msg.x := x; msg.y := y;
-  c.handle(c, msg)
+  c.handle(c, msg);
+  IF c.onMouseUp # NIL THEN c.onMouseUp(c, x, y) END
 END WidgetOnMouseUp;
 
 PROCEDURE WidgetOnClick*(c: Widget);
@@ -172,15 +174,20 @@ END DrawWidget;
 PROCEDURE DrawBody*(c: Widget; x, y, w, h: INTEGER);
 VAR p: Widget;
   x2, y2, w2, h2: INTEGER;
-  Z: G.Color;
+  cx, cy, cw, ch: INTEGER;
 BEGIN
   p := c.body;
   WHILE p # NIL DO
     x2 := x + p.x; y2 := y + p.y;
     w2 := w - p.x; h2 := h - p.y;
     (* !FIXME clip x2,y2,w2,h2 to not more than x,y,w,h*)
-    (*G.UnsetClip; G.MakeCol(Z, 255, 0, 0); G.Rect(x2-1, y2-1, x2 + w2, y2 + h2,Z);*)
-    G.SetClip(x2, y2, p.w, p.h);
+    cx := x2; cy := y2; cw := p.w; ch := p.h;
+    IF cx + cw > x + w THEN cw := x + w - cx END;
+    IF cy + ch > y + h THEN ch := y + h - cy END;
+    IF cx < x THEN DEC(cw, x - cx); cx := x END;
+    IF cy < y THEN DEC(ch, y - cy); cy := y END;
+    G.SetClip(cx, cy, cw, ch);
+
     DrawWidget(p, x2, y2, p.w, p.h);
     p := p.next
   END;
@@ -199,6 +206,14 @@ PROCEDURE SetOnMouseMove*(c: Widget; proc: PROCEDURE (c: Widget; x, y: INTEGER))
 BEGIN c.onMouseMove := proc
 END SetOnMouseMove;
 
+PROCEDURE SetOnMouseDown*(c: Widget; proc: PROCEDURE (c: Widget; x, y: INTEGER));
+BEGIN c.onMouseDown := proc
+END SetOnMouseDown;
+
+PROCEDURE SetOnMouseUp*(c: Widget; proc: PROCEDURE (c: Widget; x, y: INTEGER));
+BEGIN c.onMouseUp := proc
+END SetOnMouseUp;
+
 PROCEDURE SetOnClick*(c: Widget; proc: PROCEDURE (c: Widget));
 BEGIN c.onClick := proc
 END SetOnClick;
@@ -212,12 +227,19 @@ BEGIN c.x := 0; c.y := 0; c.w := w; c.h := h;
 END InitWidget;
 
 PROCEDURE Put*(c, where: Widget; x, y: INTEGER);
+VAR p: Widget;
 BEGIN
   IF c # NIL THEN
     c.x := x; c.y := y;
     IF where # NIL THEN
-      c.next := where.body;
-      where.body := c
+      c.next := NIL;
+      p := where.body;
+      IF p = NIL THEN
+        where.body := c
+      ELSE
+        WHILE p.next # NIL DO p := p.next END;
+        p.next := c
+      END
     END
   END
 END Put;

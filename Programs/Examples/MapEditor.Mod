@@ -8,6 +8,10 @@ VAR
   btnExit: S.Button;
   pnlMap: S.Panel;
   btn2: S.Button;
+  btnMove: S.Button;
+
+  XX, YY: INTEGER;
+  moving: BOOLEAN;
 
 PROCEDURE Btn2OnClick(c: S.Widget);
 BEGIN
@@ -20,6 +24,24 @@ BEGIN
   c(S.Button).caption[6] := CHR(ORD(c(S.Button).caption[5]) + 1);
   c(S.Button).caption[7] := 0X
 END BtnExitOnMouseMove;
+
+PROCEDURE BtnMoveOnMouseDown(c: S.Widget; x, y: INTEGER);
+BEGIN moving := TRUE; XX := x; YY := y
+END BtnMoveOnMouseDown;
+
+PROCEDURE BtnMoveOnMouseUp(c: S.Widget; x, y: INTEGER);
+BEGIN moving := FALSE
+END BtnMoveOnMouseUp;
+
+PROCEDURE BtnMoveOnMouseMove(c: S.Widget; x, y: INTEGER);
+BEGIN
+  IF moving THEN
+    c.x := c.x + x - XX;
+    c.y := c.y + y - YY;
+    XX := x; YY := y;
+    IF c.x < 0 THEN c.x := 0 END
+  END;
+END BtnMoveOnMouseMove;
 
 PROCEDURE InitInterface(): BOOLEAN;
 VAR W, H: INTEGER;
@@ -39,8 +61,13 @@ BEGIN
   G.MakeCol(color, 150, 90, 40);
   S.SetBgColor(pnlMap, color);
   btn2 := S.NewButton(pnlMap, 64, 64, 96, 96, 'ОГО!');
-  S.SetOnClick(btn2, Btn2OnClick)
+  S.SetOnClick(btn2, Btn2OnClick);
+  btnMove := S.NewButton(pnlMap, 168, 64, 96, 96, 'ДВИГАЙ');
+  S.SetOnMouseDown(btnMove, BtnMoveOnMouseDown);
+  S.SetOnMouseUp(btnMove, BtnMoveOnMouseUp);
+  S.SetOnMouseMove(btnMove, BtnMoveOnMouseMove);
 
+  moving := FALSE
 RETURN TRUE END InitInterface;
 
 PROCEDURE Init(): BOOLEAN;
