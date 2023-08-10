@@ -7,19 +7,29 @@ TYPE
   Message* = RECORD END;
   DrawMsg* = RECORD(Message) x*, y*, w*, h*: INTEGER END;
   MouseMoveMsg* = RECORD(Message) x*, y*: INTEGER END;
-  MouseEnterMsg* = RECORD(Message) END;
-  MouseLeaveMsg* = RECORD(Message) END;
   MouseDownMsg* = RECORD(Message) x*, y*: INTEGER END;
   MouseUpMsg* = RECORD(Message) x*, y*: INTEGER END;
+  MouseEnterMsg* = RECORD(Message) END;
+  MouseLeaveMsg* = RECORD(Message) END;
+  ClickMsg* = RECORD(Message) END;
 
   Handler* = PROCEDURE (c: Widget; VAR msg: Message);
 
   WidgetDesc* = RECORD
     x*, y*, w*, h*: INTEGER;
     bgColor*, fgColor*: G.Color;
+    hovered*: BOOLEAN; (** TRUE if mouse pointer is over the widget *)
+    pressed*: BOOLEAN; (** TRUE if widget is held down with LMB *)
     body*: Widget;
     next*: Widget;
     handle*: Handler;
+
+    onMouseDown*: PROCEDURE (c: Widget; x, y: INTEGER);
+    onMouseUp*: PROCEDURE (c: Widget; x, y: INTEGER);
+    onMouseMove*: PROCEDURE (c: Widget; x, y: INTEGER);
+    onMouseEnter*: PROCEDURE (c: Widget);
+    onMouseLeave*: PROCEDURE (c: Widget);
+    onClick*: PROCEDURE (c: Widget);
   END;
 
   Panel* = POINTER TO PanelDesc;
@@ -30,9 +40,7 @@ TYPE
 
   Button* = POINTER TO ButtonDesc;
   ButtonDesc* = RECORD(WidgetDesc)
-    caption*: ARRAY 64 OF CHAR;
-    hovered*: BOOLEAN; (** TRUE if mouse pointer is over the button *)
-    pressed*: BOOLEAN (** TRUE if button is held down with LMB *)
+    caption*: ARRAY 64 OF CHAR
     ;X*, Y*: INTEGER
   END;
 
@@ -63,24 +71,36 @@ RETURN c END FindHoveredInList;
 
 PROCEDURE WidgetOnMouseEnter*(c: Widget);
 VAR msg: MouseEnterMsg;
-BEGIN c.handle(c, msg)
+BEGIN
+  IF pressedWidget = c THEN c.pressed := TRUE END;
+  c.handle(c, msg)
 END WidgetOnMouseEnter;
 
 PROCEDURE WidgetOnMouseLeave*(c: Widget);
 VAR msg: MouseLeaveMsg;
-BEGIN c.handle(c, msg)
+BEGIN
+  c.pressed := FALSE;
+  c.handle(c, msg)
 END WidgetOnMouseLeave;
 
 PROCEDURE WidgetOnMouseMove*(c: Widget; x, y: INTEGER);
 VAR msg: MouseMoveMsg;
 BEGIN
-  IF (hoveredWidget = NIL) OR (c # hoveredWidget) THEN
-    IF hoveredWidget # NIL THEN WidgetOnMouseLeave(hoveredWidget) END;
-    hoveredWidget := c;
-    WidgetOnMouseEnter(hoveredWidget)
+  IF (0 <= x) & (x < c.w) & (0 <= y) & (y < c.h) THEN
+    IF c # hoveredWidget THEN
+      IF hoveredWidget # NIL THEN WidgetOnMouseLeave(hoveredWidget) END;
+      hoveredWidget := c;
+      WidgetOnMouseEnter(hoveredWidget)
+    END
+  ELSIF c = hoveredWidget THEN
+    WidgetOnMouseLeave(c);
+    hoveredWidget := NIL
   END;
+
   msg.x := x; msg.y := y;
-  c.handle(c, msg)
+  c.handle(c, msg);
+
+  IF c.onMouseMove # NIL THEN c.onMouseMove(c, x, y) END
 END WidgetOnMouseMove;
 
 PROCEDURE WidgetHandleMouseMove*(c: Widget; x, y: INTEGER);
@@ -125,20 +145,11 @@ BEGIN
   c.handle(c, msg)
 END WidgetOnMouseUp;
 
-PROCEDURE WidgetHandleMouseUp*(c: Widget; x, y: INTEGER);
-VAR p: Widget;
-BEGIN
-  IF pressedWidget # NIL THEN
-    WidgetOnMouseUp(pressedWidget, x - pressedX, y - pressedY)
-  ELSE
-    p := FindHoveredInList(c.body, x, y, FALSE);
-    IF p # NIL THEN
-      WidgetHandleMouseUp(p, x - p.x, y - p.y)
-    ELSE
-      WidgetOnMouseUp(c, x, y)
-    END
-  END
-END WidgetHandleMouseUp;
+PROCEDURE WidgetOnClick*(c: Widget);
+VAR msg: ClickMsg;
+BEGIN c.handle(c, msg);
+  IF c.onClick # NIL THEN c.onClick(c) END
+END WidgetOnClick;
 
 PROCEDURE WidgetHandler*(c: Widget; VAR msg: Message);
 VAR x, y: INTEGER;
@@ -183,6 +194,14 @@ END SetBgColor;
 PROCEDURE SetFgColor*(c: Widget; color: G.Color);
 BEGIN c.fgColor := color
 END SetFgColor;
+
+PROCEDURE SetOnMouseMove*(c: Widget; proc: PROCEDURE (c: Widget; x, y: INTEGER));
+BEGIN c.onMouseMove := proc
+END SetOnMouseMove;
+
+PROCEDURE SetOnClick*(c: Widget; proc: PROCEDURE (c: Widget));
+BEGIN c.onClick := proc
+END SetOnClick;
 
 PROCEDURE InitWidget*(c: Widget; w, h: INTEGER);
 BEGIN c.x := 0; c.y := 0; c.w := w; c.h := h;
@@ -348,9 +367,13 @@ END HandleMouseDown;
 PROCEDURE HandleMouseUp(VAR e: G.Event);
 VAR c: Widget;
 BEGIN
-  c := FindHoveredInList(forms, e.x, e.y, FALSE);
-  IF c # NIL THEN
-    WidgetHandleMouseUp(c, e.x - c.x, e.y - c.y)
+  IF pressedWidget # NIL THEN
+    c := pressedWidget;
+    IF ~c.hovered THEN c := NIL END;
+    WidgetOnMouseUp(pressedWidget, e.x - pressedX, e.y - pressedY);
+    IF c # NIL THEN
+      WidgetOnClick(c)
+    END
   END
 END HandleMouseUp;
 
