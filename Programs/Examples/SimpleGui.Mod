@@ -6,30 +6,45 @@ TYPE
 
   Message* = RECORD END;
   DrawMsg* = RECORD(Message) x*, y*, w*, h*: INTEGER END;
-  MouseMoveMsg* = RECORD(Message) x*, y*: INTEGER END;
-  MouseDownMsg* = RECORD(Message) x*, y*: INTEGER END;
-  MouseUpMsg* = RECORD(Message) x*, y*: INTEGER END;
+  MouseMoveMsg* = RECORD(Message) x*, y*, btn*: INTEGER END;
+  MouseDownMsg* = RECORD(Message) x*, y*, btn*: INTEGER END;
+  MouseUpMsg* = RECORD(Message) x*, y*, btn*: INTEGER END;
   MouseEnterMsg* = RECORD(Message) END;
   MouseLeaveMsg* = RECORD(Message) END;
   ClickMsg* = RECORD(Message) END;
+  GetFocusMsg* = RECORD(Message) END;
+  LostFocusMsg* = RECORD(Message) END;
+  KeyDownMsg* = RECORD(Message) key*: INTEGER END;
+  KeyUpMsg* = RECORD(Message) key*: INTEGER END;
+  CharMsg* = RECORD(Message)
+    key*: INTEGER;
+    ch*: CHAR;
+    mod*: SET;
+    repeat*: BOOLEAN
+  END;
 
   Handler* = PROCEDURE (c: Widget; VAR msg: Message);
 
   WidgetDesc* = RECORD
     x*, y*, w*, h*: INTEGER;
     bgColor*, fgColor*: G.Color;
+    focusable*: BOOLEAN; (** TRUE if widget can get focus *)
+    focused*: BOOLEAN; (** TRUE if this widget is globally in focus *)
     hovered*: BOOLEAN; (** TRUE if mouse pointer is over the widget *)
     pressed*: BOOLEAN; (** TRUE if widget is held down with LMB *)
-    body*: Widget;
-    next*: Widget;
+    body*: Widget; (** Ring *)
+    prev*, next*, parent*: Widget;
     handle*: Handler;
 
-    onMouseDown*: PROCEDURE (c: Widget; x, y: INTEGER);
-    onMouseUp*: PROCEDURE (c: Widget; x, y: INTEGER);
-    onMouseMove*: PROCEDURE (c: Widget; x, y: INTEGER);
+    onMouseDown*: PROCEDURE (c: Widget; x, y, btn: INTEGER);
+    onMouseUp*: PROCEDURE (c: Widget; x, y, btn: INTEGER);
+    onMouseMove*: PROCEDURE (c: Widget; x, y, btn: INTEGER);
     onMouseEnter*: PROCEDURE (c: Widget);
     onMouseLeave*: PROCEDURE (c: Widget);
     onClick*: PROCEDURE (c: Widget);
+    onKeyDown*: PROCEDURE (c: Widget; key: INTEGER);
+    onKeyUp*: PROCEDURE (c: Widget; key: INTEGER);
+    onChar*: PROCEDURE (c: Widget; key: INTEGER; ch: CHAR; mod: SET; repeat: BOOLEAN);
   END;
 
   Panel* = POINTER TO PanelDesc;
@@ -44,9 +59,18 @@ TYPE
     ;X*, Y*: INTEGER
   END;
 
+  Edit* = POINTER TO EditDesc;
+  EditDesc* = RECORD(WidgetDesc)
+    text*: ARRAY 256 OF CHAR;
+    len*: INTEGER; (** Length of text in characters *)
+    pos*: INTEGER; (** Position of text carret, in range [0; len] *)
+    off*: INTEGER (** Used to slide text that does not fit, normal is 0 *)
+  END;
+
 VAR
   Done*: BOOLEAN; (** FALSE after a failed opration and before the next Init *)
-  forms*: Form;
+  forms*: Widget;
+  focusedWidget*: Widget; (** The widget with focus = TRUE *)
   font*: G.Font;
   quit: BOOLEAN; (** Main loop in procedure Run ends when TRUE *)
   hoveredWidget: Widget;
@@ -58,14 +82,19 @@ VAR
 PROCEDURE FindHoveredInList(list: Widget; x, y: INTEGER;
     forMouseDown: BOOLEAN): Widget;
 VAR c: Widget;
-BEGIN c := list;
-  WHILE (c # NIL) &
-        ~((c.x <= x) & (x < c.x + c.w) &
-          (c.y <= y) & (y < c.y + c.h))
-  DO c := c.next
-  END;
-  IF forMouseDown & (c # NIL) THEN
-    INC(pressedX, c.x); INC(pressedY, c.y)
+BEGIN
+  IF list # NIL THEN
+    c := list.prev;
+    WHILE (c # NIL) &
+          ~((c.x <= x) & (x < c.x + c.w) &
+            (c.y <= y) & (y < c.y + c.h))
+    DO
+      IF c = list THEN c := NIL ELSE c := c.prev END
+    END;
+    IF forMouseDown & (c # NIL) THEN
+      INC(pressedX, c.x); INC(pressedY, c.y)
+    END
+  ELSE c := NIL
   END
 RETURN c END FindHoveredInList;
 
@@ -83,7 +112,7 @@ BEGIN
   c.handle(c, msg)
 END WidgetOnMouseLeave;
 
-PROCEDURE WidgetOnMouseMove*(c: Widget; x, y: INTEGER);
+PROCEDURE WidgetOnMouseMove*(c: Widget; x, y, btn: INTEGER);
 VAR msg: MouseMoveMsg;
 BEGIN
   IF (0 <= x) & (x < c.w) & (0 <= y) & (y < c.h) THEN
@@ -97,54 +126,70 @@ BEGIN
     hoveredWidget := NIL
   END;
 
-  msg.x := x; msg.y := y;
+  msg.x := x; msg.y := y; msg.btn := btn;
   c.handle(c, msg);
 
-  IF c.onMouseMove # NIL THEN c.onMouseMove(c, x, y) END
+  IF c.onMouseMove # NIL THEN c.onMouseMove(c, x, y, btn) END
 END WidgetOnMouseMove;
 
-PROCEDURE WidgetHandleMouseMove*(c: Widget; x, y: INTEGER);
+PROCEDURE WidgetHandleMouseMove*(c: Widget; x, y, btn: INTEGER);
 VAR p: Widget;
 BEGIN
   IF pressedWidget # NIL THEN
-    WidgetOnMouseMove(pressedWidget, x - pressedX, y - pressedY)
+    WidgetOnMouseMove(pressedWidget, x - pressedX, y - pressedY, btn)
   ELSE
     p := FindHoveredInList(c.body, x, y, FALSE);
     IF p # NIL THEN
-      WidgetHandleMouseMove(p, x - p.x, y - p.y)
+      WidgetHandleMouseMove(p, x - p.x, y - p.y, btn)
     ELSE
-      WidgetOnMouseMove(c, x, y)
+      WidgetOnMouseMove(c, x, y, btn)
     END
   END
 END WidgetHandleMouseMove;
 
-PROCEDURE WidgetOnMouseDown*(c: Widget; x, y: INTEGER);
+PROCEDURE Focus*(c: Widget);
+VAR get: GetFocusMsg;
+  lost: LostFocusMsg;
+BEGIN
+  IF c.focusable THEN
+    IF focusedWidget # NIL THEN
+      focusedWidget.focused := FALSE;
+      focusedWidget.handle(focusedWidget, lost)
+    END;
+    c.focused := TRUE;
+    focusedWidget := c;
+    focusedWidget.handle(focusedWidget, get)
+  END
+END Focus;
+
+PROCEDURE WidgetOnMouseDown*(c: Widget; x, y, btn: INTEGER);
 VAR msg: MouseDownMsg;
 BEGIN
   pressedWidget := c;
-  msg.x := x; msg.y := y;
+  Focus(c);
+  msg.x := x; msg.y := y; msg.btn := btn;
   c.handle(c, msg);
-  IF c.onMouseDown # NIL THEN c.onMouseDown(c, x, y) END
+  IF c.onMouseDown # NIL THEN c.onMouseDown(c, x, y, btn) END
 END WidgetOnMouseDown;
 
-PROCEDURE WidgetHandleMouseDown*(c: Widget; x, y: INTEGER);
+PROCEDURE WidgetHandleMouseDown*(c: Widget; x, y, btn: INTEGER);
 VAR p: Widget;
 BEGIN
   p := FindHoveredInList(c.body, x, y, TRUE);
   IF p # NIL THEN
-    WidgetHandleMouseDown(p, x - p.x, y - p.y)
+    WidgetHandleMouseDown(p, x - p.x, y - p.y, btn)
   ELSE
-    WidgetOnMouseDown(c, x, y)
+    WidgetOnMouseDown(c, x, y, btn)
   END
 END WidgetHandleMouseDown;
 
-PROCEDURE WidgetOnMouseUp*(c: Widget; x, y: INTEGER);
+PROCEDURE WidgetOnMouseUp*(c: Widget; x, y, btn: INTEGER);
 VAR msg: MouseUpMsg;
 BEGIN
   pressedWidget := NIL;
-  msg.x := x; msg.y := y;
+  msg.x := x; msg.y := y; msg.btn := btn;
   c.handle(c, msg);
-  IF c.onMouseUp # NIL THEN c.onMouseUp(c, x, y) END
+  IF c.onMouseUp # NIL THEN c.onMouseUp(c, x, y, btn) END
 END WidgetOnMouseUp;
 
 PROCEDURE WidgetOnClick*(c: Widget);
@@ -177,21 +222,23 @@ VAR p: Widget;
   cx, cy, cw, ch: INTEGER;
 BEGIN
   p := c.body;
-  WHILE p # NIL DO
-    x2 := x + p.x; y2 := y + p.y;
-    w2 := w - p.x; h2 := h - p.y;
-    (* !FIXME clip x2,y2,w2,h2 to not more than x,y,w,h*)
-    cx := x2; cy := y2; cw := p.w; ch := p.h;
-    IF cx + cw > x + w THEN cw := x + w - cx END;
-    IF cy + ch > y + h THEN ch := y + h - cy END;
-    IF cx < x THEN DEC(cw, x - cx); cx := x END;
-    IF cy < y THEN DEC(ch, y - cy); cy := y END;
-    G.SetClip(cx, cy, cw, ch);
+  IF p # NIL THEN
+    REPEAT
+      x2 := x + p.x; y2 := y + p.y;
+      w2 := w - p.x; h2 := h - p.y;
 
-    DrawWidget(p, x2, y2, p.w, p.h);
-    p := p.next
-  END;
-  G.UnsetClip
+      cx := x2; cy := y2; cw := p.w; ch := p.h;
+      IF cx + cw > x + w THEN cw := x + w - cx END;
+      IF cy + ch > y + h THEN ch := y + h - cy END;
+      IF cx < x THEN DEC(cw, x - cx); cx := x END;
+      IF cy < y THEN DEC(ch, y - cy); cy := y END;
+      G.SetClip(cx, cy, cw, ch);
+
+      DrawWidget(p, x2, y2, p.w, p.h);
+      p := p.next
+    UNTIL p = c.body;
+    G.UnsetClip
+  END
 END DrawBody;
 
 PROCEDURE SetBgColor*(c: Widget; color: G.Color);
@@ -202,15 +249,15 @@ PROCEDURE SetFgColor*(c: Widget; color: G.Color);
 BEGIN c.fgColor := color
 END SetFgColor;
 
-PROCEDURE SetOnMouseMove*(c: Widget; proc: PROCEDURE (c: Widget; x, y: INTEGER));
+PROCEDURE SetOnMouseMove*(c: Widget; proc: PROCEDURE (c: Widget; x, y, btn: INTEGER));
 BEGIN c.onMouseMove := proc
 END SetOnMouseMove;
 
-PROCEDURE SetOnMouseDown*(c: Widget; proc: PROCEDURE (c: Widget; x, y: INTEGER));
+PROCEDURE SetOnMouseDown*(c: Widget; proc: PROCEDURE (c: Widget; x, y, btn: INTEGER));
 BEGIN c.onMouseDown := proc
 END SetOnMouseDown;
 
-PROCEDURE SetOnMouseUp*(c: Widget; proc: PROCEDURE (c: Widget; x, y: INTEGER));
+PROCEDURE SetOnMouseUp*(c: Widget; proc: PROCEDURE (c: Widget; x, y, btn: INTEGER));
 BEGIN c.onMouseUp := proc
 END SetOnMouseUp;
 
@@ -220,27 +267,30 @@ END SetOnClick;
 
 PROCEDURE InitWidget*(c: Widget; w, h: INTEGER);
 BEGIN c.x := 0; c.y := 0; c.w := w; c.h := h;
+  c.focusable := FALSE; c.focused := FALSE;
+  c.hovered := FALSE; c.pressed := FALSE;
   G.MakeCol(c.bgColor, 180, 180, 180);
   G.MakeCol(c.fgColor, 0, 0, 0);
-  c.handle := WidgetHandler;
-  c.body := NIL; c.next := NIL
+  c.handle := WidgetHandler
 END InitWidget;
+
+PROCEDURE AppendToRing*(c: Widget; VAR ring: Widget);
+BEGIN
+  IF ring = NIL THEN
+    ring := c;
+    c.prev := c; c.next := c
+  ELSE
+    c.next := ring; c.prev := ring.prev;
+    ring.prev.next := c; ring.prev := c
+  END
+END AppendToRing;
 
 PROCEDURE Put*(c, where: Widget; x, y: INTEGER);
 VAR p: Widget;
 BEGIN
-  IF c # NIL THEN
+  IF (c # NIL) & (where # NIL) THEN
     c.x := x; c.y := y;
-    IF where # NIL THEN
-      c.next := NIL;
-      p := where.body;
-      IF p = NIL THEN
-        where.body := c
-      ELSE
-        WHILE p.next # NIL DO p := p.next END;
-        p.next := c
-      END
-    END
+    AppendToRing(c, where.body)
   END
 END Put;
 
@@ -283,7 +333,7 @@ END FormHandler;
 PROCEDURE InitForm*(c: Form; x, y, w, h: INTEGER);
 BEGIN InitPanel(c, NIL, x, y, w, h);
   c.handle := FormHandler;
-  c.next := forms; forms := c
+  AppendToRing(c, forms)
 END InitForm;
 
 PROCEDURE NewForm*(x, y, w, h: INTEGER): Form;
@@ -294,26 +344,26 @@ RETURN c END NewForm;
 (** Button **)
 
 PROCEDURE DrawButton*(c: Button; x, y, w, h: INTEGER);
-VAR cw, ch, tw, tx, ty: INTEGER;
+VAR fw, fh, tw, tx, ty: INTEGER;
   down: BOOLEAN;
   Z: G.Color;
 BEGIN
-  down := c(Button).pressed & c(Button).hovered;
+  down := c.pressed & c.hovered;
   G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
 
   ;G.MakeCol(Z, 255, 128, 0);
-  ;G.Line(x + c.h DIV 4, y + c.h DIV 2, x + c(Button).X, y + c(Button).Y, Z);
+  ;G.Line(x + c.h DIV 4, y + c.h DIV 2, x + c.X, y + c.Y, Z);
   ;G.MakeCol(Z, 215, 0, 0);
-  ;G.Line(x + c.h DIV 4, y + c.h DIV 2 + 1, x + c(Button).X, y + c(Button).Y + 1, Z);
+  ;G.Line(x + c.h DIV 4, y + c.h DIV 2 + 1, x + c.X, y + c.Y + 1, Z);
 
   G.Rect(x, y, x + c.w - 1, y + c.h - 1, c.fgColor);
   IF ~down THEN
     G.Rect(x, y, x + c.w - 2, y + c.h - 2, c.fgColor)
   END;
-  G.GetMonoFontSize(font, cw, ch);
-  tw := Strings.Length(c.caption) * cw;
+  G.GetMonoFontSize(font, fw, fh);
+  tw := Strings.Length(c.caption) * fw;
   tx := x + (c.w - tw) DIV 2;
-  ty := y + (c.h - ch) DIV 2;
+  ty := y + (c.h - fh) DIV 2;
   IF down THEN INC(tx); INC(ty) END;
   G.DrawString(c.caption, tx, ty, font, c.fgColor)
 END DrawButton;
@@ -332,7 +382,8 @@ BEGIN b := c(Button);
   ELSIF msg IS MouseMoveMsg THEN BMM(b, msg(MouseMoveMsg).x, msg(MouseMoveMsg).y)
   ELSIF msg IS MouseEnterMsg THEN b.hovered := TRUE
   ELSIF msg IS MouseLeaveMsg THEN b.hovered := FALSE
-  ELSIF msg IS MouseDownMsg THEN b.pressed := TRUE
+  ELSIF msg IS MouseDownMsg THEN
+    IF msg(MouseDownMsg).btn = 1 THEN b.pressed := TRUE END
   ELSIF msg IS MouseUpMsg THEN b.pressed := FALSE
   ELSE WidgetHandler(c, msg)
   END
@@ -342,8 +393,7 @@ PROCEDURE InitButton*(c: Button; where: Widget;
     x, y, w, h: INTEGER; caption: ARRAY OF CHAR);
 BEGIN InitWidget(c, w, h);
   Strings.Copy(caption, c.caption);
-  c.hovered := FALSE;
-  c.pressed := FALSE;
+  c.focusable := TRUE;
   c.handle := ButtonHandler;
   Put(c, where, x, y)
   ;c.X := 0; c.Y := 0;
@@ -354,16 +404,123 @@ VAR c: Button;
 BEGIN NEW(c); InitButton(c, where, x, y, w, h, caption)
 RETURN c END NewButton;
 
+(** Edit **)
+
+PROCEDURE DrawEdit*(c: Edit; x, y, w, h: INTEGER);
+VAR fw, fh, tw, tx, ty: INTEGER;
+  down: BOOLEAN;
+  red: G.Color;
+BEGIN
+  G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
+  G.GetMonoFontSize(font, fw, fh);
+  tw := Strings.Length(c.text) * fw;
+  tx := x + 2 - c.off;
+  ty := y + (c.h - fh) DIV 2;
+  G.DrawString(c.text, tx, ty, font, c.fgColor);
+  IF c.focused THEN
+    G.MakeCol(red, 250, 0, 0);
+    INC(tx, fw * c.pos - 1);
+    G.VLine(tx, ty, ty + fh - 1, red);
+    G.HLine(tx - 1, ty, tx + 1, red);
+    G.HLine(tx - 1, ty + fh - 1, tx + 1, red)
+  END;
+  G.Rect(x, y, x + c.w - 1, y + c.h - 1, c.fgColor)
+END DrawEdit;
+
+PROCEDURE EditOnMouseDown*(c: Edit; VAR msg: MouseDownMsg);
+VAR n, fw, fh: INTEGER;
+BEGIN
+  IF (msg.btn = 1) & (msg.x > 0) & (msg.x < c.w - 1) &
+     (msg.y > 0) & (msg.y < c.h - 1)
+  THEN
+    G.GetMonoFontSize(font, fw, fh);
+    n := (msg.x - 2 + fw DIV 2) DIV fw;
+    IF n < 0 THEN n := 0 ELSIF n > c.len THEN n := c.len END;
+    c.pos := n
+  END
+END EditOnMouseDown;
+
+PROCEDURE EditCheckOffset(c: Edit);
+VAR n, fw, fh: INTEGER;
+BEGIN
+  G.GetMonoFontSize(font, fw, fh);
+  n := c.pos * fw - c.off;
+  IF c.len * fw <= c.w - 4 THEN c.off := 0
+  ELSIF n < 0 THEN c.off := c.pos * fw
+  ELSIF n >= c.w - 4 THEN c.off := c.pos * fw - c.w + 4
+  ELSIF c.len * fw - c.off <= c.w - 4 THEN c.off := c.len * fw - c.w + 4
+  END
+END EditCheckOffset;
+
+PROCEDURE EditOnChar*(c: Edit; VAR msg: CharMsg);
+VAR i: INTEGER;
+BEGIN
+  IF msg.key = G.kBackspace THEN
+    IF c.pos > 0 THEN
+      Strings.Delete(c.text, c.pos - 1, 1);
+      DEC(c.len); DEC(c.pos)
+    END
+  ELSIF msg.key = G.kDel THEN
+    IF c.pos < c.len THEN
+      Strings.Delete(c.text, c.pos, 1);
+      DEC(c.len)
+    END
+  ELSIF msg.ch < ' ' THEN
+    IF msg.key = G.kLeft THEN DEC(c.pos)
+    ELSIF msg.key = G.kRight THEN INC(c.pos)
+    ELSIF msg.key = G.kHome THEN c.pos := 0
+    ELSIF msg.key = G.kEnd THEN c.pos := c.len
+    END;
+    IF c.pos < 0 THEN c.pos := 0 ELSIF c.pos > c.len THEN c.pos := c.len END
+  ELSIF c.len < LEN(c.text) - 1 THEN
+    c.text[c.len + 1] := 0X;
+    i := c.len;
+    WHILE i > c.pos DO
+      c.text[i] := c.text[i - 1];
+      DEC(i)
+    END;
+    c.text[c.pos] := msg.ch;
+    INC(c.len); INC(c.pos)
+  END;
+  EditCheckOffset(c)
+END EditOnChar;
+
+PROCEDURE EditHandler*(c: Widget; VAR msg: Message);
+VAR e: Edit;
+BEGIN e := c(Edit);
+  IF msg IS DrawMsg THEN
+    DrawEdit(e, msg(DrawMsg).x, msg(DrawMsg).y,
+        msg(DrawMsg).w, msg(DrawMsg).h)
+  ELSIF msg IS MouseDownMsg THEN EditOnMouseDown(e, msg(MouseDownMsg))
+  ELSIF msg IS CharMsg THEN EditOnChar(e, msg(CharMsg))
+  ELSE WidgetHandler(c, msg)
+  END
+END EditHandler;
+
+PROCEDURE InitEdit*(c: Edit; where: Widget; x, y, w, h: INTEGER);
+BEGIN InitWidget(c, w, h);
+  c.focusable := TRUE;
+  G.MakeCol(c.bgColor, 255, 255, 255);
+  c.text := 'Привет'; c.len := 6; c.pos := 2; c.off := 0;
+  c.handle := EditHandler;
+  Put(c, where, x, y)
+END InitEdit;
+
+PROCEDURE NewEdit*(where: Widget; x, y, w, h: INTEGER): Edit;
+VAR c: Edit;
+BEGIN NEW(c); InitEdit(c, where, x, y, w, h)
+RETURN c END NewEdit;
+
 (** General **)
 
 PROCEDURE DrawAll*;
 VAR c: Widget;
 BEGIN
   c := forms;
-  WHILE c # NIL DO
+  REPEAT
     DrawForm(c(Form));
     c := c.next
-  END;
+  UNTIL c = forms;
   G.Flip
 END DrawAll;
 
@@ -372,7 +529,7 @@ VAR c: Widget;
 BEGIN
   c := FindHoveredInList(forms, e.x, e.y, FALSE);
   IF c # NIL THEN
-    WidgetHandleMouseMove(c, e.x - c.x, e.y - c.y)
+    WidgetHandleMouseMove(c, e.x - c.x, e.y - c.y, e.button)
   END
 END HandleMouseMove;
 
@@ -382,7 +539,7 @@ BEGIN
   pressedX := 0; pressedY := 0;
   c := FindHoveredInList(forms, e.x, e.y, TRUE);
   IF c # NIL THEN
-    WidgetHandleMouseDown(c, e.x - c.x, e.y - c.y)
+    WidgetHandleMouseDown(c, e.x - c.x, e.y - c.y, e.button)
   END
 END HandleMouseDown;
 
@@ -392,19 +549,50 @@ BEGIN
   IF pressedWidget # NIL THEN
     c := pressedWidget;
     IF ~c.hovered THEN c := NIL END;
-    WidgetOnMouseUp(pressedWidget, e.x - pressedX, e.y - pressedY);
-    IF c # NIL THEN
+    WidgetOnMouseUp(pressedWidget, e.x - pressedX, e.y - pressedY, e.button);
+    IF (c # NIL) & (e.button = 1) THEN
       WidgetOnClick(c)
     END
   END
 END HandleMouseUp;
+
+PROCEDURE HandleKeyDown(VAR e: G.Event);
+VAR msg: KeyDownMsg;
+BEGIN
+  IF focusedWidget # NIL THEN
+    msg.key := e.key;
+    focusedWidget.handle(focusedWidget, msg)
+  END
+END HandleKeyDown;
+
+PROCEDURE HandleKeyUp(VAR e: G.Event);
+VAR msg: KeyUpMsg;
+BEGIN
+  IF focusedWidget # NIL THEN
+    msg.key := e.key;
+    focusedWidget.handle(focusedWidget, msg)
+  END
+END HandleKeyUp;
+
+PROCEDURE HandleChar(VAR e: G.Event);
+VAR msg: CharMsg;
+BEGIN
+  IF focusedWidget # NIL THEN
+    msg.key := e.key; msg.ch := e.ch;
+    msg.mod := e.mod; msg.repeat := e.repeat;
+    focusedWidget.handle(focusedWidget, msg)
+  END
+END HandleChar;
 
 PROCEDURE HandleEvent(VAR e: G.Event);
 BEGIN
   IF e.type = G.quit THEN quit := TRUE
   ELSIF e.type = G.mouseMove THEN HandleMouseMove(e)
   ELSIF e.type = G.mouseDown THEN HandleMouseDown(e)
-  ELSIF e.type = G.mouseUp THEN HandleMouseUp(e)
+  ELSIF e.type = G.mouseUp   THEN HandleMouseUp(e)
+  ELSIF e.type = G.keyDown   THEN HandleKeyDown(e)
+  ELSIF e.type = G.keyUp     THEN HandleKeyUp(e)
+  ELSIF e.type = G.char      THEN HandleChar(e)
   END
 END HandleEvent;
 
