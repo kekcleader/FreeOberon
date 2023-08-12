@@ -838,7 +838,7 @@ BEGIN
   OV.Add(m, OV.NewMenu(s, '', 0, OnBuild));
   OV.Add(m, OV.NewMenu('-', '', 0, NIL));
   FoStrings.Get('menuPrimaryModule', s);
-  OV.Add(m, OV.NewMenu(s, 'Ctrl+Shift+F2', OV.hCtrlShiftF2, OnPrimaryModule));
+  OV.Add(m, OV.NewMenu(s, 'Ctrl+Shift+F3', OV.hCtrlShiftF3, OnPrimaryModule));
   FoStrings.Get('menuClearPrimaryModule', s);
   OV.Add(m, OV.NewMenu(s, '', 0, OnClearPrimaryModule));
   OV.AddMenu(app, m);
@@ -1058,6 +1058,8 @@ BEGIN fs := Config.startInFullscreen; sw := FALSE; mx := FALSE; i := 1;
           lang := ''
         END
       END
+    ELSIF (s = '--primary') OR (s = '-p') THEN
+      IF i # count THEN INC(i); Args.Get(i, s); SetPrimaryModule(s) END
     ELSIF nofnames < LEN(fnames) THEN
       ParseFileNameArg(s);
       fnames[nofnames] := s$;
