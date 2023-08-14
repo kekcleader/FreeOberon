@@ -67,6 +67,15 @@ TYPE
     off*: INTEGER (** Used to slide text that does not fit, normal is 0 *)
   END;
 
+  ScrollBar* = POINTER TO ScrollBarDesc;
+  ScrollBarDesc* = RECORD(WidgetDesc)
+    vertical*: BOOLEAN; (** TRUE for vertical scroll, FALSE for horizontal *)
+    min*, max*: INTEGER;
+    pos*: INTEGER;
+    inc*: INTEGER; (** A single increment of pos *)
+    handleSize*: INTEGER (** The size of the handle *)
+  END;
+
 VAR
   Done*: BOOLEAN; (** FALSE after a failed opration and before the next Init *)
   forms*: Widget;
@@ -102,12 +111,14 @@ PROCEDURE WidgetOnMouseEnter*(c: Widget);
 VAR msg: MouseEnterMsg;
 BEGIN
   IF pressedWidget = c THEN c.pressed := TRUE END;
+  c.hovered := TRUE;
   c.handle(c, msg)
 END WidgetOnMouseEnter;
 
 PROCEDURE WidgetOnMouseLeave*(c: Widget);
 VAR msg: MouseLeaveMsg;
 BEGIN
+  c.hovered := FALSE;
   c.pressed := FALSE;
   c.handle(c, msg)
 END WidgetOnMouseLeave;
@@ -380,8 +391,6 @@ BEGIN b := c(Button);
     DrawButton(b, msg(DrawMsg).x, msg(DrawMsg).y,
         msg(DrawMsg).w, msg(DrawMsg).h)
   ELSIF msg IS MouseMoveMsg THEN BMM(b, msg(MouseMoveMsg).x, msg(MouseMoveMsg).y)
-  ELSIF msg IS MouseEnterMsg THEN b.hovered := TRUE
-  ELSIF msg IS MouseLeaveMsg THEN b.hovered := FALSE
   ELSIF msg IS MouseDownMsg THEN
     IF msg(MouseDownMsg).btn = 1 THEN b.pressed := TRUE END
   ELSIF msg IS MouseUpMsg THEN b.pressed := FALSE
@@ -510,6 +519,72 @@ PROCEDURE NewEdit*(where: Widget; x, y, w, h: INTEGER): Edit;
 VAR c: Edit;
 BEGIN NEW(c); InitEdit(c, where, x, y, w, h)
 RETURN c END NewEdit;
+
+(** ScrollBar **)
+
+PROCEDURE DrawBox(x, y, w, h: INTEGER; bg, fg: G.Color);
+BEGIN
+  G.FillRect(x, y, x + w - 1, y + h - 1, bg);
+  G.Rect(x, y, x + w - 1, y + h - 1, fg)
+END DrawBox;
+
+PROCEDURE DrawScrollBar*(c: ScrollBar; x, y, w, h: INTEGER);
+VAR fw, fh, X, Y, hs, maxHs, pos, range: INTEGER;
+  grey: G.Color;
+BEGIN
+  G.MakeCol(grey, 80, 80, 80);
+  DrawBox(x, y, c.w, c.h, grey, c.fgColor);
+  DrawBox(x, y, c.h, c.h, c.bgColor, c.fgColor);
+  DrawBox(x + c.w - c.h, y, c.h, c.h, c.bgColor, c.fgColor);
+  X := x + c.h DIV 2; Y := y + c.h DIV 2;
+  G.HLine(X - 4, Y, X + 4, c.fgColor);
+  G.Line(X - 4, Y, X - 1, Y + 3, c.fgColor);
+  G.Line(X - 4, Y, X - 1, Y - 3, c.fgColor);
+  X := x + c.w - c.h DIV 2;
+  G.HLine(X - 4, Y, X + 4, c.fgColor);
+  G.Line(X + 4, Y, X + 1, Y + 3, c.fgColor);
+  G.Line(X + 4, Y, X + 1, Y - 3, c.fgColor);
+  hs := c.handleSize;
+  maxHs := c.w - c.h * 2 + 2;
+  IF hs > maxHs THEN hs := maxHs END;
+  range := c.max - c.min;
+  pos := c.pos;
+  IF pos < c.min THEN pos := c.min ELSIF pos > c.max THEN pos := c.max END;
+  X := x + c.h - 1 + ((maxHs - hs) * c.pos + range DIV 2) DIV range;
+  DrawBox(X, y, hs, c.h, c.bgColor, c.fgColor);
+END DrawScrollBar;
+
+PROCEDURE HandleScrollBarMouseMove(c: ScrollBar; VAR msg: MouseMoveMsg);
+BEGIN
+
+END HandleScrollBarMouseMove;
+
+PROCEDURE ScrollBarHandler*(c: Widget; VAR msg: Message);
+VAR s: ScrollBar;
+BEGIN s := c(ScrollBar);
+  IF msg IS DrawMsg THEN
+    DrawScrollBar(s, msg(DrawMsg).x, msg(DrawMsg).y,
+        msg(DrawMsg).w, msg(DrawMsg).h)
+  ELSIF msg IS MouseMoveMsg THEN HandleScrollBarMouseMove(s, msg(MouseMoveMsg))
+  ELSIF msg IS MouseDownMsg THEN
+    IF msg(MouseDownMsg).btn = 1 THEN s.pressed := TRUE END
+  ELSIF msg IS MouseUpMsg THEN s.pressed := FALSE
+  ELSE WidgetHandler(c, msg)
+  END
+END ScrollBarHandler;
+
+PROCEDURE InitScrollBar*(c: ScrollBar; where: Widget;
+    x, y, w, h: INTEGER);
+BEGIN InitWidget(c, w, h);
+  c.handle := ScrollBarHandler;
+  c.pos := 0; c.min := 0; c.max := 100; c.inc := 10; c.handleSize := 24;
+  Put(c, where, x, y)
+END InitScrollBar;
+
+PROCEDURE NewScrollBar*(where: Widget; x, y, w, h: INTEGER): ScrollBar;
+VAR c: ScrollBar;
+BEGIN NEW(c); InitScrollBar(c, where, x, y, w, h)
+RETURN c END NewScrollBar;
 
 (** General **)
 

@@ -10,6 +10,7 @@ VAR
   btn2: S.Button;
   btnMove: S.Button;
   edtText: S.Edit;
+  scbHoriz: S.ScrollBar;
 
   XX, YY: INTEGER;
   moving: BOOLEAN;
@@ -52,13 +53,14 @@ BEGIN
   G.GetScreenSize(W, H);
   frmMain := S.NewForm(0, 0, W, H);
 
-  pnlSide := S.NewPanel(frmMain, 4, 4, 104, 84);
+  pnlSide := S.NewPanel(frmMain, 4, 4, 104, 104);
   G.MakeCol(color, 40, 150, 40);
   S.SetBgColor(pnlSide, color);
   btnSave := S.NewButton(pnlSide, 4, 4, 96, 24, 'Сохранить');
   btnExit := S.NewButton(pnlSide, 4, 32, 96, 24, 'Выйти');
   S.SetOnMouseMove(btnExit, BtnExitOnMouseMove);
   edtText := S.NewEdit(pnlSide, 4, 60, 96, 20);
+  scbHoriz := S.NewScrollBar(pnlSide, 4, 84, 96, 16);
 
   pnlMap := S.NewPanel(frmMain, 112, 4, W - 116, H - 8);
   G.MakeCol(color, 150, 90, 40);
