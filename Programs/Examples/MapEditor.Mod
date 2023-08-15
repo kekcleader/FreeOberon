@@ -1,5 +1,5 @@
 MODULE MapEditor;
-IMPORT G := Graph, S := SimpleGui, Out;
+IMPORT G := Graph, S := SimpleGui, Out, Int;
 
 VAR
   frmMain: S.Form;
@@ -46,6 +46,13 @@ BEGIN
   END;
 END BtnMoveOnMouseMove;
 
+PROCEDURE ScbHorizOnScroll(c: S.Widget; value: INTEGER);
+VAR s: ARRAY 16 OF CHAR;
+BEGIN
+  Int.Str(value, s);
+  S.EditSetText(edtText, s)
+END ScbHorizOnScroll;
+
 PROCEDURE InitInterface(): BOOLEAN;
 VAR W, H: INTEGER;
   color: G.Color;
@@ -61,6 +68,7 @@ BEGIN
   S.SetOnMouseMove(btnExit, BtnExitOnMouseMove);
   edtText := S.NewEdit(pnlSide, 4, 60, 96, 20);
   scbHoriz := S.NewScrollBar(pnlSide, 4, 84, 96, 16);
+  S.SetOnScroll(scbHoriz, ScbHorizOnScroll);
 
   pnlMap := S.NewPanel(frmMain, 112, 4, W - 116, H - 8);
   G.MakeCol(color, 150, 90, 40);

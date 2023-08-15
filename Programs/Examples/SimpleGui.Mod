@@ -71,9 +71,12 @@ TYPE
   ScrollBarDesc* = RECORD(WidgetDesc)
     vertical*: BOOLEAN; (** TRUE for vertical scroll, FALSE for horizontal *)
     min*, max*: INTEGER;
-    pos*: INTEGER;
-    inc*: INTEGER; (** A single increment of pos *)
-    handleSize*: INTEGER (** The size of the handle *)
+    value*: INTEGER; (** The position of the scroll, in range [min; max] *)
+    inc*, bigInc*: INTEGER; (** A single increment of value, and a big one *)
+    handlePos*, handleSize*: INTEGER; (** Size and position of handle, px *)
+    handlePressed*: BOOLEAN;
+    handlePressPos*: INTEGER; (** Where handle was pressed, offset in px *)
+    onScroll*: PROCEDURE (c: Widget; value: INTEGER);
   END;
 
 VAR
@@ -217,6 +220,9 @@ BEGIN
     G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
     G.Rect(x, y, x + c.w - 1, y + c.h - 1, c.fgColor);
     G.Rect(x + 2, y + 2, x + c.w - 3, y + c.h - 3, c.fgColor)
+  ELSIF msg IS MouseDownMsg THEN
+    IF msg(MouseDownMsg).btn = 1 THEN c.pressed := TRUE END
+  ELSIF msg IS MouseUpMsg THEN c.pressed := FALSE
   END
 END WidgetHandler;
 
@@ -391,9 +397,6 @@ BEGIN b := c(Button);
     DrawButton(b, msg(DrawMsg).x, msg(DrawMsg).y,
         msg(DrawMsg).w, msg(DrawMsg).h)
   ELSIF msg IS MouseMoveMsg THEN BMM(b, msg(MouseMoveMsg).x, msg(MouseMoveMsg).y)
-  ELSIF msg IS MouseDownMsg THEN
-    IF msg(MouseDownMsg).btn = 1 THEN b.pressed := TRUE END
-  ELSIF msg IS MouseUpMsg THEN b.pressed := FALSE
   ELSE WidgetHandler(c, msg)
   END
 END ButtonHandler;
@@ -520,6 +523,10 @@ VAR c: Edit;
 BEGIN NEW(c); InitEdit(c, where, x, y, w, h)
 RETURN c END NewEdit;
 
+PROCEDURE EditSetText*(c: Edit; text: ARRAY OF CHAR);
+BEGIN Strings.Copy(text, c.text)
+END EditSetText;
+
 (** ScrollBar **)
 
 PROCEDURE DrawBox(x, y, w, h: INTEGER; bg, fg: G.Color);
@@ -548,16 +555,56 @@ BEGIN
   maxHs := c.w - c.h * 2 + 2;
   IF hs > maxHs THEN hs := maxHs END;
   range := c.max - c.min;
-  pos := c.pos;
+  pos := c.value;
   IF pos < c.min THEN pos := c.min ELSIF pos > c.max THEN pos := c.max END;
-  X := x + c.h - 1 + ((maxHs - hs) * c.pos + range DIV 2) DIV range;
-  DrawBox(X, y, hs, c.h, c.bgColor, c.fgColor);
+  c.handlePos := c.h - 1 + ((maxHs - hs) * pos + range DIV 2) DIV range;
+  DrawBox(x + c.handlePos, y, hs, c.h, c.bgColor, c.fgColor);
 END DrawScrollBar;
 
-PROCEDURE HandleScrollBarMouseMove(c: ScrollBar; VAR msg: MouseMoveMsg);
+PROCEDURE SetScrollBarValue*(c: ScrollBar; value: INTEGER);
 BEGIN
+  IF value < c.min THEN value := c.min
+  ELSIF value > c.max THEN value := c.max
+  END;
+  c.value := value;
+  IF c.onScroll # NIL THEN c.onScroll(c, value) END
+END SetScrollBarValue;
 
+PROCEDURE HandleScrollBarMouseMove(c: ScrollBar; VAR msg: MouseMoveMsg);
+VAR n, x, size, btnSize, w: INTEGER;
+BEGIN
+  IF c.handlePressed THEN
+    x := msg.x; size := c.w; btnSize := c.h;
+
+    w := size - btnSize * 2 - c.handleSize;
+    n := x - c.handlePressPos - btnSize;
+    n := (n * (c.max - c.min) + w DIV 2) DIV w + c.min;
+
+    SetScrollBarValue(c, n)
+  END
 END HandleScrollBarMouseMove;
+
+PROCEDURE HandleScrollBarMouseDown(c: ScrollBar; VAR msg: MouseDownMsg);
+VAR x, d, size, btnSize: INTEGER;
+BEGIN
+  x := msg.x; size := c.w; btnSize := c.h;
+  IF msg.btn = 2 THEN d := 1 ELSE d := c.inc END;
+  IF x < btnSize THEN
+    SetScrollBarValue(c, c.value - d)
+  ELSIF x >= size - btnSize THEN
+    SetScrollBarValue(c, c.value + d)
+  ELSIF msg.btn = 1 THEN
+    IF (c.handlePos <= x) & (x < c.handlePos + c.handleSize) THEN
+      c.handlePressed := TRUE;
+      c.handlePressPos := x - c.handlePos
+    ELSIF x < c.handlePos THEN
+      SetScrollBarValue(c, c.value - c.bigInc)
+    ELSE
+      SetScrollBarValue(c, c.value + c.bigInc)
+    END
+  END;
+  WidgetHandler(c, msg)
+END HandleScrollBarMouseDown;
 
 PROCEDURE ScrollBarHandler*(c: Widget; VAR msg: Message);
 VAR s: ScrollBar;
@@ -566,9 +613,8 @@ BEGIN s := c(ScrollBar);
     DrawScrollBar(s, msg(DrawMsg).x, msg(DrawMsg).y,
         msg(DrawMsg).w, msg(DrawMsg).h)
   ELSIF msg IS MouseMoveMsg THEN HandleScrollBarMouseMove(s, msg(MouseMoveMsg))
-  ELSIF msg IS MouseDownMsg THEN
-    IF msg(MouseDownMsg).btn = 1 THEN s.pressed := TRUE END
-  ELSIF msg IS MouseUpMsg THEN s.pressed := FALSE
+  ELSIF msg IS MouseDownMsg THEN HandleScrollBarMouseDown(s, msg(MouseDownMsg))
+  ELSIF msg IS MouseUpMsg THEN s.handlePressed := FALSE
   ELSE WidgetHandler(c, msg)
   END
 END ScrollBarHandler;
@@ -577,7 +623,8 @@ PROCEDURE InitScrollBar*(c: ScrollBar; where: Widget;
     x, y, w, h: INTEGER);
 BEGIN InitWidget(c, w, h);
   c.handle := ScrollBarHandler;
-  c.pos := 0; c.min := 0; c.max := 100; c.inc := 10; c.handleSize := 24;
+  c.value := 0; c.min := 0; c.max := 100; c.inc := 5; c.bigInc := 20;
+  c.handlePos := 0; c.handleSize := 24;
   Put(c, where, x, y)
 END InitScrollBar;
 
@@ -585,6 +632,10 @@ PROCEDURE NewScrollBar*(where: Widget; x, y, w, h: INTEGER): ScrollBar;
 VAR c: ScrollBar;
 BEGIN NEW(c); InitScrollBar(c, where, x, y, w, h)
 RETURN c END NewScrollBar;
+
+PROCEDURE SetOnScroll*(c: ScrollBar; proc: PROCEDURE (c: Widget; value: INTEGER));
+BEGIN c.onScroll := proc
+END SetOnScroll;
 
 (** General **)
 
