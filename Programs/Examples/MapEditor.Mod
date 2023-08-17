@@ -60,7 +60,7 @@ BEGIN
   G.GetScreenSize(W, H);
   frmMain := S.NewForm(0, 0, W, H);
 
-  pnlSide := S.NewPanel(frmMain, 4, 4, 104, 104);
+  pnlSide := S.NewPanel(frmMain, 4, 4, 104, 214);
   G.MakeCol(color, 40, 150, 40);
   S.SetBgColor(pnlSide, color);
   btnSave := S.NewButton(pnlSide, 4, 4, 96, 24, 'Сохранить');
@@ -86,6 +86,7 @@ RETURN TRUE END InitInterface;
 PROCEDURE Init(): BOOLEAN;
 VAR ok: BOOLEAN;
 BEGIN ok := FALSE;
+  (*G.Settings(640, 480, {G.window});*)
   G.Init;
   S.Init;
   IF G.Done & S.Done & InitInterface() THEN
@@ -99,6 +100,7 @@ BEGIN
 END Close;
 
 BEGIN
+  (*G.Settings(320, 200, {});*)
   IF Init() THEN S.Run ELSE Out.String('Error loading.'); Out.Ln END;
   Close
 END MapEditor.
