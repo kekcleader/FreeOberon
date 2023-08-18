@@ -381,6 +381,30 @@ BEGIN
   END
 END TargetScreen;
 
+
+PROCEDURE MakeRGBA*(VAR color: Color; r, g, b, a: INTEGER);
+BEGIN color.r := r / 255; color.g := g / 255;
+  color.b := b / 255; color.a := a / 255
+END MakeRGBA;
+
+PROCEDURE MakeCol*(VAR color: Color; r, g, b: INTEGER);
+BEGIN color.r := r / 255; color.g := g / 255;
+  color.b := b / 255; color.a := 1.0
+END MakeCol;
+
+PROCEDURE ColorToRGB*(color: Color; VAR r, g, b: INTEGER);
+BEGIN r := FLOOR(color.r * 255 + 0.1) MOD 256;
+  g := FLOOR(color.g * 255 + 0.1) MOD 256;
+  b := FLOOR(color.b * 255 + 0.1) MOD 256
+END ColorToRGB;
+
+PROCEDURE ColorToRGBA*(color: Color; VAR r, g, b, a: INTEGER);
+BEGIN r := FLOOR(color.r * 255 + 0.1) MOD 256;
+  g := FLOOR(color.g * 255 + 0.1) MOD 256;
+  b := FLOOR(color.b * 255 + 0.1) MOD 256;
+  a := FLOOR(color.a * 255 + 0.1) MOD 256
+END ColorToRGBA;
+
 PROCEDURE ClearBitmapToColor*(bmp: Bitmap; c: Color);
 BEGIN
   IF bmp # NIL THEN
@@ -390,7 +414,9 @@ BEGIN
 END ClearBitmapToColor;
 
 PROCEDURE ClearBitmap*(bmp: Bitmap);
-BEGIN ClearBitmapToColor(bmp, black)
+VAR c: Color;
+BEGIN MakeRGBA(c, 0, 0, 0, 0);
+  ClearBitmapToColor(bmp, c)
 END ClearBitmap;
 
 PROCEDURE ClearToColor*(c: Color);
@@ -620,29 +646,6 @@ END PutPixel2;
 PROCEDURE PutPixel*(x, y: INTEGER; c: Color);
 BEGIN Al.draw_pixel(FLT(x) + 0.5, FLT(y) + 0.5, SYSTEM.VAL(Al.Color, c))
 END PutPixel;
-
-PROCEDURE MakeRGBA*(VAR color: Color; r, g, b, a: INTEGER);
-BEGIN color.r := r / 255; color.g := g / 255;
-  color.b := b / 255; color.a := a / 255
-END MakeRGBA;
-
-PROCEDURE MakeCol*(VAR color: Color; r, g, b: INTEGER);
-BEGIN color.r := r / 255; color.g := g / 255;
-  color.b := b / 255; color.a := 1.0
-END MakeCol;
-
-PROCEDURE ColorToRGB*(color: Color; VAR r, g, b: INTEGER);
-BEGIN r := FLOOR(color.r * 255 + 0.1) MOD 256;
-  g := FLOOR(color.g * 255 + 0.1) MOD 256;
-  b := FLOOR(color.b * 255 + 0.1) MOD 256
-END ColorToRGB;
-
-PROCEDURE ColorToRGBA*(color: Color; VAR r, g, b, a: INTEGER);
-BEGIN r := FLOOR(color.r * 255 + 0.1) MOD 256;
-  g := FLOOR(color.g * 255 + 0.1) MOD 256;
-  b := FLOOR(color.b * 255 + 0.1) MOD 256;
-  a := FLOOR(color.a * 255 + 0.1) MOD 256
-END ColorToRGBA;
 
 PROCEDURE ThickLineF*(x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
 BEGIN Al.draw_line(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color), thickness)
