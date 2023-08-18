@@ -1,5 +1,5 @@
 MODULE MapEditor;
-IMPORT G := Graph, S := SimpleGui, Out, Int;
+IMPORT G := Graph, S := SimpleGui, Out, Int, Strings;
 
 VAR
   frmMain: S.Form;
@@ -10,7 +10,8 @@ VAR
   btn2: S.Button;
   btnMove: S.Button;
   edtText: S.Edit;
-  scbHoriz: S.ScrollBar;
+  scbHoriz, scbHoriz2: S.ScrollBar;
+  scbVert: S.ScrollBar;
 
   XX, YY: INTEGER;
   moving: BOOLEAN;
@@ -46,12 +47,21 @@ BEGIN
   END;
 END BtnMoveOnMouseMove;
 
-PROCEDURE ScbHorizOnScroll(c: S.Widget; value: INTEGER);
-VAR s: ARRAY 16 OF CHAR;
+PROCEDURE OnScroll(c: S.Widget; value: INTEGER);
+VAR s: ARRAY 32 OF CHAR;
 BEGIN
-  Int.Str(value, s);
+  S.ScrollBarSetValue(scbHoriz2, value);
+
+  Int.Str(scbHoriz.value, s);
+  Strings.Append(':', s);
+  Int.Append(scbVert.value, s);
   S.EditSetText(edtText, s)
-END ScbHorizOnScroll;
+END OnScroll;
+
+PROCEDURE ScbHoriz2OnScroll(c: S.Widget; value: INTEGER);
+BEGIN
+  S.ScrollBarSetValue(scbVert, value)
+END ScbHoriz2OnScroll;
 
 PROCEDURE InitInterface(): BOOLEAN;
 VAR W, H: INTEGER;
@@ -60,7 +70,7 @@ BEGIN
   G.GetScreenSize(W, H);
   frmMain := S.NewForm(0, 0, W, H);
 
-  pnlSide := S.NewPanel(frmMain, 4, 4, 104, 214);
+  pnlSide := S.NewPanel(frmMain, 4, 4, 104, H - 8);
   G.MakeCol(color, 40, 150, 40);
   S.SetBgColor(pnlSide, color);
   btnSave := S.NewButton(pnlSide, 4, 4, 96, 24, 'Сохранить');
@@ -68,7 +78,12 @@ BEGIN
   S.SetOnMouseMove(btnExit, BtnExitOnMouseMove);
   edtText := S.NewEdit(pnlSide, 4, 60, 96, 20);
   scbHoriz := S.NewScrollBar(pnlSide, 4, 84, 96, 16);
-  S.SetOnScroll(scbHoriz, ScbHorizOnScroll);
+  S.SetOnScroll(scbHoriz, OnScroll);
+  scbHoriz2 := S.NewScrollBar(pnlSide, 24, 104, 76, 50);
+  S.SetOnScroll(scbHoriz2, ScbHoriz2OnScroll);
+  scbVert := S.NewScrollBar(pnlSide, 4, 104, 16, 140);
+  S.ScrollBarSetVertical(scbVert, TRUE);
+  S.SetOnScroll(scbVert, OnScroll);
 
   pnlMap := S.NewPanel(frmMain, 112, 4, W - 116, H - 8);
   G.MakeCol(color, 150, 90, 40);
@@ -100,7 +115,7 @@ BEGIN
 END Close;
 
 BEGIN
-  (*G.Settings(320, 200, {});*)
+  (*G.Settings(640, 400, {G.window});*)
   IF Init() THEN S.Run ELSE Out.String('Error loading.'); Out.Ln END;
   Close
 END MapEditor.

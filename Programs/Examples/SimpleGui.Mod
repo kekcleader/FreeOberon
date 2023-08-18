@@ -76,6 +76,7 @@ TYPE
     min*, max*: INTEGER;
     value*: INTEGER; (** The position of the scroll, in range [min; max] *)
     inc*, bigInc*: INTEGER; (** A single increment of value, and a big one *)
+    btnSize*: INTEGER; (** Width or height (depending on vertical) of buttons *)
     handlePos*, handleSize*: INTEGER; (** Size and position of handle, px *)
     handlePressed*: BOOLEAN;
     handlePressPos*: INTEGER; (** Where handle was pressed, offset in px *)
@@ -402,8 +403,18 @@ PROCEDURE MakeOrAndYw(bg: G.Color; VAR or, yw: G.Color);
 VAR r, g, b: INTEGER;
 BEGIN
   G.ColorToRGB(bg, r, g, b);
-  G.MakeCol(or, (r * 2 + 255 * 3) DIV 5, g + (255 - g) DIV 4, b);
-  G.MakeCol(yw, (r + 255 * 2) DIV 3, (g + 255 * 3) DIV 4, (b * 3 + 255) DIV 4)
+  G.MakeCol(yw, (r + 255 * 2) DIV 3, (g + 255 * 3) DIV 4, (b * 3 + 255) DIV 4);
+  IF (r <= g) & (r <= b) THEN
+    g := (g * 2 + 255 * 3) DIV 5;
+    b := (b * 3 + 255) DIV 4
+  ELSIF (g <= r) & (g <= b) THEN
+    r := (r * 2 + 255 * 3) DIV 5;
+    b := (b * 3 + 255) DIV 4
+  ELSE
+    r := (r * 2 + 255 * 3) DIV 5;
+    g := (g * 3 + 255) DIV 4
+  END;
+  G.MakeCol(or, r, g, b)
 END MakeOrAndYw;
 
 PROCEDURE DrawButtonBox(x, y, w, h: INTEGER; bg, parentBg: G.Color;
@@ -612,31 +623,35 @@ BEGIN
   G.Rect(x, y, x + w - 1, y + h - 1, fg)
 END DrawBox;
 
-PROCEDURE DrawScrollBar*(c: ScrollBar; x, y, w, h: INTEGER);
+PROCEDURE DrawHorizScrollBar(c: ScrollBar; x, y, w, h: INTEGER);
 VAR fw, fh, X, Y, hs, maxHs, pos, range: INTEGER;
+  bs: INTEGER; (** Button size *)
   grey: G.Color;
 BEGIN
   G.MakeCol(grey, 80, 80, 80);
 
   DrawButtonBox(x, y, c.w, c.h, c.bgColor, c.parent.bgColor, TRUE, TRUE);
   hs := c.handleSize;
-  maxHs := c.w - c.h * 2 + 4;
+  bs := c.h;
+  IF bs > 20 THEN bs := 20 END;
+  c.btnSize := bs;
+  maxHs := c.w - bs * 2 + 4;
   IF hs > maxHs THEN hs := maxHs END;
   range := c.max - c.min;
   pos := c.value;
   IF pos < c.min THEN pos := c.min ELSIF pos > c.max THEN pos := c.max END;
-  c.handlePos := c.h - 2 + ((maxHs - hs) * pos + range DIV 2) DIV range;
+  c.handlePos := bs - 2 + ((maxHs - hs) * pos + range DIV 2) DIV range;
 
-  DrawButtonBox(x, y, c.h, c.h, c.bgColor,
+  DrawButtonBox(x, y, bs, c.h, c.bgColor,
       c.parent.bgColor, c.btnPressed = 1, FALSE);
-  DrawButtonBox(x + c.w - c.h, y, c.h, c.h, c.bgColor,
+  DrawButtonBox(x + c.w - bs, y, bs, c.h, c.bgColor,
       c.parent.bgColor, c.btnPressed = 2, TRUE);
-  X := x + (c.h - 1) DIV 2; Y := y + (c.h - 1) DIV 2;
+  X := x + (bs - 1) DIV 2; Y := y + (bs - 1) DIV 2;
   IF c.btnPressed = 1 THEN INC(X); INC(Y) END;
   G.HLine(X - 4, Y, X + 4, c.fgColor);
   G.Line(X - 4, Y, X - 1, Y + 3, c.fgColor);
   G.Line(X - 4, Y, X - 1, Y - 3, c.fgColor);
-  X := x + c.w - c.h DIV 2 - 1;
+  X := x + c.w - bs DIV 2 - 1;
   IF c.btnPressed = 1 THEN DEC(Y) END;
   IF c.btnPressed = 2 THEN INC(X); INC(Y) END;
   G.HLine(X - 4, Y, X + 4, c.fgColor);
@@ -645,51 +660,109 @@ BEGIN
 
   DrawButtonBox(x + c.handlePos, y, hs, c.h, c.bgColor,
       c.parent.bgColor, c.btnPressed = 3, FALSE)
+END DrawHorizScrollBar;
+
+PROCEDURE DrawVertScrollBar(c: ScrollBar; x, y, w, h: INTEGER);
+VAR fw, fh, X, Y, hs, maxHs, pos, range: INTEGER;
+  bs: INTEGER; (** Button size *)
+  grey: G.Color;
+BEGIN
+  G.MakeCol(grey, 80, 80, 80);
+
+  DrawButtonBox(x, y, c.w, c.h, c.bgColor, c.parent.bgColor, TRUE, TRUE);
+  hs := c.handleSize;
+  bs := c.w;
+  IF bs > 20 THEN bs := 20 END;
+  c.btnSize := bs;
+  maxHs := c.h - bs * 2 + 4;
+  IF hs > maxHs THEN hs := maxHs END;
+  range := c.max - c.min;
+  pos := c.value;
+  IF pos < c.min THEN pos := c.min ELSIF pos > c.max THEN pos := c.max END;
+  c.handlePos := bs - 2 + ((maxHs - hs) * pos + range DIV 2) DIV range;
+
+  DrawButtonBox(x, y, c.w, bs, c.bgColor,
+      c.parent.bgColor, c.btnPressed = 1, FALSE);
+  DrawButtonBox(x, y + c.h - bs, c.w, bs, c.bgColor,
+      c.parent.bgColor, c.btnPressed = 2, TRUE);
+  X := x + (bs - 1) DIV 2; Y := y + (bs - 1) DIV 2;
+  IF c.btnPressed = 1 THEN INC(X); INC(Y) END;
+  G.VLine(X, Y - 4, Y + 4, c.fgColor);
+  G.Line(X, Y - 4, X + 3, Y - 1, c.fgColor);
+  G.Line(X, Y - 4, X - 3, Y - 1, c.fgColor);
+  Y := y + c.h - bs DIV 2 - 1;
+  IF c.btnPressed = 1 THEN DEC(X) END;
+  IF c.btnPressed = 2 THEN INC(X); INC(Y) END;
+  G.VLine(X, Y - 4, Y + 4, c.fgColor);
+  G.Line(X, Y + 4, X + 3, Y + 1, c.fgColor);
+  G.Line(X, Y + 4, X - 3, Y + 1, c.fgColor);
+
+  DrawButtonBox(x, y + c.handlePos, c.w, hs, c.bgColor,
+      c.parent.bgColor, c.btnPressed = 3, FALSE)
+END DrawVertScrollBar;
+
+PROCEDURE DrawScrollBar*(c: ScrollBar; x, y, w, h: INTEGER);
+BEGIN
+  IF c.vertical THEN
+    DrawVertScrollBar(c, x, y, w, h)
+  ELSE
+    DrawHorizScrollBar(c, x, y, w, h)
+  END
 END DrawScrollBar;
 
-PROCEDURE SetScrollBarValue*(c: ScrollBar; value: INTEGER);
+PROCEDURE ScrollBarSetVertical*(c: ScrollBar; vertical: BOOLEAN);
+BEGIN c.vertical := vertical
+END ScrollBarSetVertical;
+
+PROCEDURE ScrollBarSetValue*(c: ScrollBar; value: INTEGER);
 BEGIN
   IF value < c.min THEN value := c.min
   ELSIF value > c.max THEN value := c.max
   END;
-  c.value := value;
-  IF c.onScroll # NIL THEN c.onScroll(c, value) END
-END SetScrollBarValue;
+  IF c.value # value THEN
+    c.value := value;
+    IF c.onScroll # NIL THEN c.onScroll(c, value) END
+  END
+END ScrollBarSetValue;
 
 PROCEDURE HandleScrollBarMouseMove(c: ScrollBar; VAR msg: MouseMoveMsg);
-VAR n, x, size, btnSize, w: INTEGER;
+VAR n, x, size, w: INTEGER;
 BEGIN
   IF c.handlePressed THEN
-    x := msg.x; size := c.w; btnSize := c.h;
+    IF c.vertical THEN x := msg.y; size := c.h
+    ELSE x := msg.x; size := c.w
+    END;
 
-    w := size - btnSize * 2 - c.handleSize;
-    n := x - c.handlePressPos - btnSize;
+    w := size - c.btnSize * 2 - c.handleSize;
+    n := x - c.handlePressPos - c.btnSize;
     n := (n * (c.max - c.min) + w DIV 2) DIV w + c.min;
 
-    SetScrollBarValue(c, n)
+    ScrollBarSetValue(c, n)
   END
 END HandleScrollBarMouseMove;
 
 PROCEDURE HandleScrollBarMouseDown(c: ScrollBar; VAR msg: MouseDownMsg);
-VAR x, d, size, btnSize: INTEGER;
+VAR x, d, size: INTEGER;
 BEGIN
-  x := msg.x; size := c.w; btnSize := c.h;
+  IF c.vertical THEN x := msg.y; size := c.h
+  ELSE x := msg.x; size := c.w
+  END;
   IF msg.btn = 2 THEN d := 1 ELSE d := c.inc END;
-  IF x < btnSize THEN
+  IF x < c.btnSize THEN
     c.btnPressed := 1(*Less btn*);
-    SetScrollBarValue(c, c.value - d);
-  ELSIF x >= size - btnSize THEN
+    ScrollBarSetValue(c, c.value - d);
+  ELSIF x >= size - c.btnSize THEN
     c.btnPressed := 2(*More btn*);
-    SetScrollBarValue(c, c.value + d)
+    ScrollBarSetValue(c, c.value + d)
   ELSIF msg.btn = 1 THEN
     IF (c.handlePos <= x) & (x < c.handlePos + c.handleSize) THEN
       c.btnPressed := 3(*Handle*);
       c.handlePressed := TRUE;
       c.handlePressPos := x - c.handlePos
     ELSIF x < c.handlePos THEN
-      SetScrollBarValue(c, c.value - c.bigInc)
+      ScrollBarSetValue(c, c.value - c.bigInc)
     ELSE
-      SetScrollBarValue(c, c.value + c.bigInc)
+      ScrollBarSetValue(c, c.value + c.bigInc)
     END
   ELSE c.btnPressed := 0(*Nothing*);
   END;
@@ -714,7 +787,7 @@ PROCEDURE InitScrollBar*(c: ScrollBar; where: Widget;
 BEGIN InitWidget(c, w, h);
   c.handle := ScrollBarHandler;
   c.value := 0; c.min := 0; c.max := 100; c.inc := 5; c.bigInc := 20;
-  c.handlePos := 0; c.handleSize := 24;
+  c.handlePos := 0; c.handleSize := 24; c.btnSize := 0;
   c.btnPressed := 0(*Nothing*);
   Put(c, where, x, y)
 END InitScrollBar;
