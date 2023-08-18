@@ -100,13 +100,15 @@ RETURN TRUE END InitInterface;
 
 PROCEDURE Init(): BOOLEAN;
 VAR ok: BOOLEAN;
-BEGIN ok := FALSE;
+BEGIN ok := TRUE;
   (*G.Settings(640, 480, {G.window});*)
   G.Init;
-  S.Init;
-  IF G.Done & S.Done & InitInterface() THEN
-    ok := TRUE
-  END
+  IF ~G.Done THEN ok := FALSE END;
+  IF ok THEN
+    S.Init;
+    IF ~S.Done THEN ok := FALSE END
+  END;
+  IF ok & ~InitInterface() THEN ok := FALSE END
 RETURN ok END Init;
 
 PROCEDURE Close;

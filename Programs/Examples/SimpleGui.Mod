@@ -94,6 +94,9 @@ VAR
   pressedWidget: Widget;
   pressedX, pressedY: INTEGER;
 
+  mouseCursor: G.Bitmap;
+  mouseX, mouseY: INTEGER;
+
 (** Widget **)
 
 PROCEDURE FindHoveredInRing(list: Widget; x, y: INTEGER;
@@ -803,20 +806,30 @@ END SetOnScroll;
 
 (** General **)
 
-PROCEDURE DrawAll*;
+PROCEDURE DrawCursor;
+BEGIN
+  IF mouseX >= 0 THEN
+    G.Draw(mouseCursor, mouseX, mouseY)
+  END
+END DrawCursor;
+
+PROCEDURE DrawAll;
 VAR c: Widget;
 BEGIN
+  G.TargetScreen;
   c := app.body;
   REPEAT
     DrawForm(c(Form));
     c := c.next
   UNTIL c = app.body;
+  DrawCursor;
   G.Flip
 END DrawAll;
 
 PROCEDURE HandleMouseMove(VAR e: G.Event);
 VAR c: Widget;
 BEGIN
+  mouseX := e.x; mouseY := e.y;
   c := FindHoveredInRing(app.body, e.x, e.y, FALSE);
   IF c # NIL THEN
     WidgetHandleMouseMove(c, e.x - c.x, e.y - c.y, e.button)
@@ -899,10 +912,48 @@ BEGIN
   UNTIL quit
 END Run;
 
+PROCEDURE CreateArrowCursor(): G.Bitmap;
+VAR m: G.Bitmap;
+  bl, wh: G.Color;
+  i: INTEGER;
+BEGIN
+  m := G.NewBitmap(10, 16);
+  G.ClearBitmap(m);
+  G.Target(m);
+  G.MakeCol(bl, 0, 0, 0);
+  G.MakeCol(wh, 255, 255, 255);
+
+  G.PutPixel(1, 1, wh);
+  FOR i := 2 TO 8 DO G.HLine(1, i, i, wh) END;
+  G.HLine(1, 9, 5, wh);
+  G.HLine(1, 10, 5, wh);
+  G.PutPixel(1, 11, wh);
+  G.HLine(5, 11, 6, wh);
+  G.HLine(5, 12, 6, wh);
+  G.HLine(6, 13, 7, wh);
+  G.HLine(6, 14, 7, wh);
+
+  G.Line(1, 0, 9, 8, bl);
+  G.VLine(0, 1, 12, bl);
+  G.Line(1, 12, 3, 10, bl);
+  G.Line(4, 11, 5, 14, bl);
+  G.HLine(6, 15, 7, bl);
+  G.Line(6, 9, 8, 14, bl);
+  G.HLine(7, 9, 9, bl);
+RETURN m END CreateArrowCursor;
+
+PROCEDURE InitCursor;
+BEGIN
+  mouseCursor := CreateArrowCursor();
+  mouseX := -1; mouseY := 0;
+  G.ShowMouse(FALSE)
+END InitCursor;
+
 PROCEDURE Init*;
 BEGIN
   font := G.LoadFont('Data/Fonts/Main');
   IF font = NIL THEN Out.String('SimpleGui: could not load font.'); Out.Ln END;
+  InitCursor;
   Done := font # NIL;
   app := NewApp();
   hoveredWidget := NIL; pressedWidget := NIL;
