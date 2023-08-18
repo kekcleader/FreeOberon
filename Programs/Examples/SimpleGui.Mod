@@ -899,12 +899,16 @@ BEGIN
   END
 END HandleEvent;
 
+PROCEDURE Quit*;
+BEGIN quit := TRUE
+END Quit;
+
 PROCEDURE Run*;
 VAR e: G.Event;
 BEGIN
   quit := FALSE;
   REPEAT
-    WHILE G.HasEvents() DO
+    WHILE ~quit & G.HasEvents() DO
       G.WaitEvent(e);
       HandleEvent(e)
     END;

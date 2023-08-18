@@ -1,6 +1,7 @@
 MODULE MapEditor;
 IMPORT G := Graph, S := SimpleGui, Out, Int, Strings;
 
+CONST window = FALSE;
 VAR
   frmMain: S.Form;
   pnlSide: S.Panel;
@@ -15,6 +16,11 @@ VAR
 
   XX, YY: INTEGER;
   moving: BOOLEAN;
+
+PROCEDURE BtnExitOnClick(c: S.Widget);
+BEGIN
+  S.Quit
+END BtnExitOnClick;
 
 PROCEDURE Btn2OnClick(c: S.Widget);
 BEGIN
@@ -75,6 +81,7 @@ BEGIN
   S.SetBgColor(pnlSide, color);
   btnSave := S.NewButton(pnlSide, 4, 4, 96, 24, 'Сохранить');
   btnExit := S.NewButton(pnlSide, 4, 32, 96, 24, 'Выйти');
+  S.SetOnClick(btnExit, BtnExitOnClick);
   S.SetOnMouseMove(btnExit, BtnExitOnMouseMove);
   edtText := S.NewEdit(pnlSide, 4, 60, 96, 20);
   scbHoriz := S.NewScrollBar(pnlSide, 4, 84, 96, 16);
@@ -101,7 +108,7 @@ RETURN TRUE END InitInterface;
 PROCEDURE Init(): BOOLEAN;
 VAR ok: BOOLEAN;
 BEGIN ok := TRUE;
-  (*G.Settings(640, 480, {G.window});*)
+  IF window THEN G.Settings(640, 480, {G.window}) END;
   G.Init;
   IF ~G.Done THEN ok := FALSE END;
   IF ok THEN
@@ -117,7 +124,6 @@ BEGIN
 END Close;
 
 BEGIN
-  (*G.Settings(640, 400, {G.window});*)
   IF Init() THEN S.Run ELSE Out.String('Error loading.'); Out.Ln END;
   Close
 END MapEditor.
