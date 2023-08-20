@@ -5,6 +5,7 @@ TYPE
   Widget* = POINTER TO WidgetDesc;
 
   Message* = RECORD END;
+  PutMsg* = RECORD(Message) what*: Widget; x*, y*: INTEGER END;
   DrawMsg* = RECORD(Message) x*, y*, w*, h*: INTEGER END;
   MouseMoveMsg* = RECORD(Message) x*, y*, btn*: INTEGER END;
   MouseDownMsg* = RECORD(Message) x*, y*, btn*: INTEGER END;
@@ -48,14 +49,16 @@ TYPE
     onChar*: PROCEDURE (c: Widget; key: INTEGER; ch: CHAR; mod: SET; repeat: BOOLEAN);
   END;
 
-  Panel* = POINTER TO PanelDesc;
-  PanelDesc* = RECORD(WidgetDesc) END;
-
   App* = POINTER TO AppDesc;
   AppDesc* = RECORD(WidgetDesc) END;
 
   Form* = POINTER TO FormDesc;
   FormDesc* = RECORD(WidgetDesc) END;
+
+  Panel* = POINTER TO PanelDesc;
+  PanelDesc* = RECORD(WidgetDesc)
+    noBg*: BOOLEAN
+  END;
 
   Button* = POINTER TO ButtonDesc;
   ButtonDesc* = RECORD(WidgetDesc)
@@ -81,7 +84,13 @@ TYPE
     handlePressed*: BOOLEAN;
     handlePressPos*: INTEGER; (** Where handle was pressed, offset in px *)
     btnPressed*: INTEGER; (** 0-nothing, 1-less btn, 2-more btn, 3-handle *)
-    onScroll*: PROCEDURE (c: Widget; value: INTEGER);
+    onScroll*: PROCEDURE (c: ScrollBar; value: INTEGER);
+  END;
+
+  ScrollBox* = POINTER TO ScrollBoxDesc;
+  ScrollBoxDesc* = RECORD(WidgetDesc)
+    outer*, inner*: Panel;
+    scbHoriz*, scbVert*: ScrollBar
   END;
 
 VAR
@@ -169,6 +178,12 @@ BEGIN
   END
 END WidgetHandleMouseMove;
 
+PROCEDURE Resize*(c: Widget; w, h: INTEGER);
+BEGIN
+  c.w := w;
+  c.h := h
+END Resize;
+
 PROCEDURE Focus*(c: Widget);
 VAR get: GetFocusMsg;
   lost: LostFocusMsg;
@@ -183,6 +198,60 @@ BEGIN
     focusedWidget.handle(focusedWidget, get)
   END
 END Focus;
+
+PROCEDURE Detach*(c: Widget);
+VAR p: Widget;
+BEGIN
+  IF c.parent # NIL THEN
+    IF c.prev = c THEN
+      c.parent.body := NIL
+    ELSE
+      c.prev.next := c.next;
+      c.next.prev := c.prev
+    END;
+    c.parent := NIL
+  END;
+  c.prev := NIL; c.next := NIL
+END Detach;
+
+PROCEDURE AppendTo*(c: Widget; container: Widget);
+VAR r: Widget;
+BEGIN
+  Detach(c);
+  c.parent := container;
+  r := container.body;
+  IF r = NIL THEN
+    container.body := c;
+    c.prev := c; c.next := c
+  ELSE
+    c.next := r; c.prev := r.prev;
+    r.prev.next := c; r.prev := c
+  END
+END AppendTo;
+
+PROCEDURE DirectPut*(c, where: Widget; x, y: INTEGER);
+BEGIN
+  IF c # NIL THEN
+    c.x := x; c.y := y;
+    IF where # NIL THEN
+      AppendTo(c, where)
+    END
+  END
+END DirectPut;
+
+PROCEDURE Put*(c, where: Widget; x, y: INTEGER);
+VAR msg: PutMsg;
+BEGIN
+  IF c # NIL THEN
+    c.x := x; c.y := y;
+    IF where # NIL THEN
+      msg.what := c;
+      msg.x := x;
+      msg.y := y;
+      where.handle(where, msg)
+    END
+  END
+END Put;
 
 PROCEDURE WidgetOnMouseDown*(c: Widget; x, y, btn: INTEGER);
 VAR msg: MouseDownMsg;
@@ -231,6 +300,8 @@ BEGIN
   ELSIF msg IS MouseDownMsg THEN
     IF msg(MouseDownMsg).btn = 1 THEN c.pressed := TRUE END
   ELSIF msg IS MouseUpMsg THEN c.pressed := FALSE
+  ELSIF msg IS PutMsg THEN
+    DirectPut(msg(PutMsg).what, c, msg(PutMsg).x, msg(PutMsg).y)
   END
 END WidgetHandler;
 
@@ -299,53 +370,20 @@ BEGIN c.x := 0; c.y := 0; c.w := w; c.h := h;
   c.handle := WidgetHandler
 END InitWidget;
 
-PROCEDURE Detach*(c: Widget);
-VAR p: Widget;
-BEGIN
-  IF c.parent # NIL THEN
-    IF c.prev = c THEN
-      c.parent.body := NIL
-    ELSE
-      c.prev.next := c.next;
-      c.next.prev := c.prev
-    END;
-    c.parent := NIL
-  END;
-  c.prev := NIL; c.next := NIL
-END Detach;
-
-PROCEDURE AppendTo*(c: Widget; container: Widget);
-VAR r: Widget;
-BEGIN
-  Detach(c);
-  c.parent := container;
-  r := container.body;
-  IF r = NIL THEN
-    container.body := c;
-    c.prev := c; c.next := c
-  ELSE
-    c.next := r; c.prev := r.prev;
-    r.prev.next := c; r.prev := c
-  END
-END AppendTo;
-
-PROCEDURE Put*(c, where: Widget; x, y: INTEGER);
-VAR p: Widget;
-BEGIN
-  IF (c # NIL) & (where # NIL) THEN
-    c.x := x; c.y := y;
-    AppendTo(c, where)
-  END
-END Put;
-
 (** Panel **)
+
+PROCEDURE PanelSetNoBg*(c: Panel; noBg: BOOLEAN);
+BEGIN c.noBg := noBg
+END PanelSetNoBg;
 
 PROCEDURE PanelHandler*(c: Widget; VAR msg: Message);
 VAR x, y: INTEGER;
 BEGIN
   IF msg IS DrawMsg THEN
     x := msg(DrawMsg).x; y := msg(DrawMsg).y;
-    G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
+    IF ~c(Panel).noBg THEN
+      G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor)
+    END;
     DrawBody(c, x, y, c.w, c.h)
   ELSE WidgetHandler(c, msg)
   END
@@ -353,6 +391,7 @@ END PanelHandler;
 
 PROCEDURE InitPanel*(c: Panel; where: Widget; x, y, w, h: INTEGER);
 BEGIN InitWidget(c, w, h);
+  c.noBg := FALSE;
   c.handle := PanelHandler;
   Put(c, where, x, y)
 END InitPanel;
@@ -800,9 +839,65 @@ VAR c: ScrollBar;
 BEGIN NEW(c); InitScrollBar(c, where, x, y, w, h)
 RETURN c END NewScrollBar;
 
-PROCEDURE SetOnScroll*(c: ScrollBar; proc: PROCEDURE (c: Widget; value: INTEGER));
+PROCEDURE SetOnScroll*(c: ScrollBar; proc: PROCEDURE (c: ScrollBar; value: INTEGER));
 BEGIN c.onScroll := proc
 END SetOnScroll;
+
+(** ScrollBox **)
+
+PROCEDURE ScrollBoxHandler*(c: Widget; VAR msg: Message);
+VAR x, y: INTEGER;
+BEGIN
+  IF msg IS DrawMsg THEN
+    x := msg(DrawMsg).x; y := msg(DrawMsg).y;
+    G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
+    DrawBody(c, x, y, c.w, c.h)
+  ELSIF msg IS PutMsg THEN
+    DirectPut(msg(PutMsg).what, c(ScrollBox).inner,
+        msg(PutMsg).x, msg(PutMsg).y)
+  ELSE WidgetHandler(c, msg)
+  END
+END ScrollBoxHandler;
+
+PROCEDURE ScrollBoxSetInnerSize*(c: ScrollBox; w, h: INTEGER);
+BEGIN
+  Resize(c.inner, w, h);
+  c.scbHoriz.max := w - c.outer.w;
+  c.scbVert.max := h - c.outer.h
+END ScrollBoxSetInnerSize;
+
+PROCEDURE ScrollBoxOnHorizScroll*(c: ScrollBar; value: INTEGER);
+BEGIN
+  
+END ScrollBoxOnHorizScroll;
+
+PROCEDURE InitScrollBox*(c: ScrollBox; where: Widget; x, y, w, h: INTEGER);
+BEGIN InitWidget(c, w, h);
+  c.handle := ScrollBoxHandler;
+
+  c.scbHoriz := NewScrollBar(NIL, 0, 0, w - 16, 16);
+  DirectPut(c.scbHoriz, c, 0, h - 16);
+  SetOnScroll(c.scbHoriz, ScrollBoxOnHorizScroll);
+
+  c.scbVert := NewScrollBar(NIL, 0, 0, 16, h - 16);
+  DirectPut(c.scbVert, c, w - 16, 0);
+  (*SetOnScroll(c.scbHoriz, ScrollBoxOnVertScroll);*)
+
+  ScrollBarSetVertical(c.scbVert, TRUE);
+  c.outer := NewPanel(NIL, 0, 0, w - 16, h - 16);
+  DirectPut(c.outer, c, 0, 0);
+  PanelSetNoBg(c.outer, TRUE);
+
+  c.inner := NewPanel(c.outer, 0, 0, 1, 1);
+  ScrollBoxSetInnerSize(c, w * 2, h * 3);
+
+  Put(c, where, x, y)
+END InitScrollBox;
+
+PROCEDURE NewScrollBox*(where: Widget; x, y, w, h: INTEGER): ScrollBox;
+VAR c: ScrollBox;
+BEGIN NEW(c); InitScrollBox(c, where, x, y, w, h)
+RETURN c END NewScrollBox;
 
 (** General **)
 

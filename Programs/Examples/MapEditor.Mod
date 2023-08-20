@@ -13,6 +13,10 @@ VAR
   edtText: S.Edit;
   scbHoriz, scbHoriz2: S.ScrollBar;
   scbVert: S.ScrollBar;
+  sbxMap: S.ScrollBox;
+  btnFile: S.Button;
+  btnEdit: S.Button;
+  edtMsg: S.Edit;
 
   XX, YY: INTEGER;
   moving: BOOLEAN;
@@ -53,7 +57,7 @@ BEGIN
   END;
 END BtnMoveOnMouseMove;
 
-PROCEDURE OnScroll(c: S.Widget; value: INTEGER);
+PROCEDURE OnScroll(c: S.ScrollBar; value: INTEGER);
 VAR s: ARRAY 32 OF CHAR;
 BEGIN
   S.ScrollBarSetValue(scbHoriz2, value);
@@ -64,7 +68,7 @@ BEGIN
   S.EditSetText(edtText, s)
 END OnScroll;
 
-PROCEDURE ScbHoriz2OnScroll(c: S.Widget; value: INTEGER);
+PROCEDURE ScbHoriz2OnScroll(c: S.ScrollBar; value: INTEGER);
 BEGIN
   S.ScrollBarSetValue(scbVert, value)
 END ScbHoriz2OnScroll;
@@ -95,12 +99,19 @@ BEGIN
   pnlMap := S.NewPanel(frmMain, 112, 4, W - 116, H - 8);
   G.MakeCol(color, 150, 90, 40);
   S.SetBgColor(pnlMap, color);
-  btn2 := S.NewButton(pnlMap, 64, 64, 96, 96, 'ОГО!');
+  btn2 := S.NewButton(pnlMap, 64, 4, 96, 96, 'ОГО!');
   S.SetOnClick(btn2, Btn2OnClick);
-  btnMove := S.NewButton(pnlMap, 168, 64, 96, 96, 'ДВИГАЙ');
+  btnMove := S.NewButton(pnlMap, 168, 4, 96, 96, 'ДВИГАЙ');
   S.SetOnMouseDown(btnMove, BtnMoveOnMouseDown);
   S.SetOnMouseUp(btnMove, BtnMoveOnMouseUp);
   S.SetOnMouseMove(btnMove, BtnMoveOnMouseMove);
+
+  sbxMap := S.NewScrollBox(pnlMap, 4, 104, 300, 200);
+  G.MakeCol(color, 0, 90, 255);
+  S.SetBgColor(sbxMap, color);
+  btnFile := S.NewButton(sbxMap, 20, 40, 80, 24, 'Файл');
+  btnEdit := S.NewButton(sbxMap, 260, 40, 80, 24, 'Правка');
+  edtMsg := S.NewEdit(sbxMap, 60, 170, 120, 35);
 
   moving := FALSE
 RETURN TRUE END InitInterface;
