@@ -316,18 +316,24 @@ PROCEDURE DrawBody*(c: Widget; x, y, w, h: INTEGER);
 VAR p: Widget;
   x2, y2, w2, h2: INTEGER;
   cx, cy, cw, ch: INTEGER;
+  CX, CY, CW, CH: INTEGER;
 BEGIN
   p := c.body;
   IF p # NIL THEN
+    G.GetClip(CX, CY, CW, CH);
+    IF CX + CW > x + w THEN CW := x + w - CX END;
+    IF CY + CH > y + h THEN CH := y + h - CY END;
+    IF CX < x THEN DEC(CW, x - CX); CX := x END;
+    IF CY < y THEN DEC(CH, y - CY); CY := y END;
     REPEAT
       x2 := x + p.x; y2 := y + p.y;
       w2 := w - p.x; h2 := h - p.y;
 
       cx := x2; cy := y2; cw := p.w; ch := p.h;
-      IF cx + cw > x + w THEN cw := x + w - cx END;
-      IF cy + ch > y + h THEN ch := y + h - cy END;
-      IF cx < x THEN DEC(cw, x - cx); cx := x END;
-      IF cy < y THEN DEC(ch, y - cy); cy := y END;
+      IF cx + cw > CX + CW THEN cw := CX + CW - cx END;
+      IF cy + ch > CY + CH THEN ch := CY + CH - cy END;
+      IF cx < CX THEN DEC(cw, CX - cx); cx := CX END;
+      IF cy < CY THEN DEC(ch, CY - cy); cy := CY END;
       G.SetClip(cx, cy, cw, ch);
 
       DrawWidget(p, x2, y2, p.w, p.h);
@@ -839,9 +845,9 @@ VAR c: ScrollBar;
 BEGIN NEW(c); InitScrollBar(c, where, x, y, w, h)
 RETURN c END NewScrollBar;
 
-PROCEDURE SetOnScroll*(c: ScrollBar; proc: PROCEDURE (c: ScrollBar; value: INTEGER));
+PROCEDURE ScrollBarSetOnScroll*(c: ScrollBar; proc: PROCEDURE (c: ScrollBar; value: INTEGER));
 BEGIN c.onScroll := proc
-END SetOnScroll;
+END ScrollBarSetOnScroll;
 
 (** ScrollBox **)
 
@@ -850,7 +856,6 @@ VAR x, y: INTEGER;
 BEGIN
   IF msg IS DrawMsg THEN
     x := msg(DrawMsg).x; y := msg(DrawMsg).y;
-    G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
     DrawBody(c, x, y, c.w, c.h)
   ELSIF msg IS PutMsg THEN
     DirectPut(msg(PutMsg).what, c(ScrollBox).inner,
@@ -867,9 +872,18 @@ BEGIN
 END ScrollBoxSetInnerSize;
 
 PROCEDURE ScrollBoxOnHorizScroll*(c: ScrollBar; value: INTEGER);
+VAR sbx: ScrollBox;
 BEGIN
-  
+  sbx := c.parent(ScrollBox);
+  sbx.inner.x := -value
 END ScrollBoxOnHorizScroll;
+
+PROCEDURE ScrollBoxOnVertScroll*(c: ScrollBar; value: INTEGER);
+VAR sbx: ScrollBox;
+BEGIN
+  sbx := c.parent(ScrollBox);
+  sbx.inner.y := -value
+END ScrollBoxOnVertScroll;
 
 PROCEDURE InitScrollBox*(c: ScrollBox; where: Widget; x, y, w, h: INTEGER);
 BEGIN InitWidget(c, w, h);
@@ -877,13 +891,13 @@ BEGIN InitWidget(c, w, h);
 
   c.scbHoriz := NewScrollBar(NIL, 0, 0, w - 16, 16);
   DirectPut(c.scbHoriz, c, 0, h - 16);
-  SetOnScroll(c.scbHoriz, ScrollBoxOnHorizScroll);
+  ScrollBarSetOnScroll(c.scbHoriz, ScrollBoxOnHorizScroll);
 
   c.scbVert := NewScrollBar(NIL, 0, 0, 16, h - 16);
-  DirectPut(c.scbVert, c, w - 16, 0);
-  (*SetOnScroll(c.scbHoriz, ScrollBoxOnVertScroll);*)
-
   ScrollBarSetVertical(c.scbVert, TRUE);
+  DirectPut(c.scbVert, c, w - 16, 0);
+  ScrollBarSetOnScroll(c.scbVert, ScrollBoxOnVertScroll);
+
   c.outer := NewPanel(NIL, 0, 0, w - 16, h - 16);
   DirectPut(c.outer, c, 0, 0);
   PanelSetNoBg(c.outer, TRUE);

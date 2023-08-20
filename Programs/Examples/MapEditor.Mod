@@ -89,12 +89,12 @@ BEGIN
   S.SetOnMouseMove(btnExit, BtnExitOnMouseMove);
   edtText := S.NewEdit(pnlSide, 4, 60, 96, 20);
   scbHoriz := S.NewScrollBar(pnlSide, 4, 84, 96, 16);
-  S.SetOnScroll(scbHoriz, OnScroll);
+  S.ScrollBarSetOnScroll(scbHoriz, OnScroll);
   scbHoriz2 := S.NewScrollBar(pnlSide, 24, 104, 76, 50);
-  S.SetOnScroll(scbHoriz2, ScbHoriz2OnScroll);
+  S.ScrollBarSetOnScroll(scbHoriz2, ScbHoriz2OnScroll);
   scbVert := S.NewScrollBar(pnlSide, 4, 104, 16, 140);
   S.ScrollBarSetVertical(scbVert, TRUE);
-  S.SetOnScroll(scbVert, OnScroll);
+  S.ScrollBarSetOnScroll(scbVert, OnScroll);
 
   pnlMap := S.NewPanel(frmMain, 112, 4, W - 116, H - 8);
   G.MakeCol(color, 150, 90, 40);
@@ -107,6 +107,7 @@ BEGIN
   S.SetOnMouseMove(btnMove, BtnMoveOnMouseMove);
 
   sbxMap := S.NewScrollBox(pnlMap, 4, 104, 300, 200);
+  S.ScrollBoxSetInnerSize(sbxMap, 4096, 4096);
   G.MakeCol(color, 0, 90, 255);
   S.SetBgColor(sbxMap, color);
   btnFile := S.NewButton(sbxMap, 20, 40, 80, 24, 'Файл');
