@@ -17,6 +17,7 @@ VAR
   btnFile: S.Button;
   btnEdit: S.Button;
   edtMsg: S.Edit;
+  custom: S.Widget;
 
   XX, YY: INTEGER;
   moving: BOOLEAN;
@@ -73,6 +74,14 @@ BEGIN
   S.ScrollBarSetValue(scbVert, value)
 END ScbHoriz2OnScroll;
 
+PROCEDURE CustomOnPaint(c: S.Widget; x, y, w, h: INTEGER);
+VAR color: G.Color;
+BEGIN
+  G.MakeCol(color, 255, 255, 0);
+  G.Line(x, y, x + w - 1, y + h - 1, color);
+  G.Line(x + w - 1, y, x, y + h - 1, color);
+END CustomOnPaint;
+
 PROCEDURE InitInterface(): BOOLEAN;
 VAR W, H: INTEGER;
   color: G.Color;
@@ -107,12 +116,16 @@ BEGIN
   S.SetOnMouseMove(btnMove, BtnMoveOnMouseMove);
 
   sbxMap := S.NewScrollBox(pnlMap, 4, 104, 300, 200);
+  S.ScrollBoxSetNoBg(sbxMap, TRUE);
   S.ScrollBoxSetInnerSize(sbxMap, 4096, 4096);
   G.MakeCol(color, 0, 90, 255);
   S.SetBgColor(sbxMap, color);
   btnFile := S.NewButton(sbxMap, 20, 40, 80, 24, 'Файл');
   btnEdit := S.NewButton(sbxMap, 260, 40, 80, 24, 'Правка');
   edtMsg := S.NewEdit(sbxMap, 60, 170, 120, 35);
+
+  custom := S.NewWidget(sbxMap, 50, 70, 100, 70);
+  S.SetOnPaint(custom, CustomOnPaint);
 
   moving := FALSE
 RETURN TRUE END InitInterface;

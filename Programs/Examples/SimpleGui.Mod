@@ -38,6 +38,7 @@ TYPE
     prev*, next*: Widget;
     handle*: Handler;
 
+    onPaint*: PROCEDURE (c: Widget; x, y, w, h: INTEGER);
     onMouseDown*: PROCEDURE (c: Widget; x, y, btn: INTEGER);
     onMouseUp*: PROCEDURE (c: Widget; x, y, btn: INTEGER);
     onMouseMove*: PROCEDURE (c: Widget; x, y, btn: INTEGER);
@@ -89,6 +90,7 @@ TYPE
 
   ScrollBox* = POINTER TO ScrollBoxDesc;
   ScrollBoxDesc* = RECORD(WidgetDesc)
+    noBg*: BOOLEAN;
     outer*, inner*: Panel;
     scbHoriz*, scbVert*: ScrollBar
   END;
@@ -294,9 +296,13 @@ VAR x, y: INTEGER;
 BEGIN
   IF msg IS DrawMsg THEN
     x := msg(DrawMsg).x; y := msg(DrawMsg).y;
-    G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
-    G.Rect(x, y, x + c.w - 1, y + c.h - 1, c.fgColor);
-    G.Rect(x + 2, y + 2, x + c.w - 3, y + c.h - 3, c.fgColor)
+    IF c.onPaint # NIL THEN
+      c.onPaint(c, x, y, msg(DrawMsg).w, msg(DrawMsg).h)
+    ELSE
+      G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
+      G.Rect(x, y, x + c.w - 1, y + c.h - 1, c.fgColor);
+      G.Rect(x + 2, y + 2, x + c.w - 3, y + c.h - 3, c.fgColor)
+    END
   ELSIF msg IS MouseDownMsg THEN
     IF msg(MouseDownMsg).btn = 1 THEN c.pressed := TRUE END
   ELSIF msg IS MouseUpMsg THEN c.pressed := FALSE
@@ -351,6 +357,10 @@ PROCEDURE SetFgColor*(c: Widget; color: G.Color);
 BEGIN c.fgColor := color
 END SetFgColor;
 
+PROCEDURE SetOnPaint*(c: Widget; proc: PROCEDURE (c: Widget; x, y, w, h: INTEGER));
+BEGIN c.onPaint := proc
+END SetOnPaint;
+
 PROCEDURE SetOnMouseMove*(c: Widget; proc: PROCEDURE (c: Widget; x, y, btn: INTEGER));
 BEGIN c.onMouseMove := proc
 END SetOnMouseMove;
@@ -375,6 +385,13 @@ BEGIN c.x := 0; c.y := 0; c.w := w; c.h := h;
   G.MakeCol(c.fgColor, 0, 0, 0);
   c.handle := WidgetHandler
 END InitWidget;
+
+(** Creates and returns a new custom widget *)
+PROCEDURE NewWidget*(where: Widget; x, y, w, h: INTEGER): Widget;
+VAR c: Widget;
+BEGIN NEW(c); InitWidget(c, w, h);
+  Put(c, where, x, y)
+RETURN c END NewWidget;
 
 (** Panel **)
 
@@ -850,6 +867,10 @@ BEGIN c.onScroll := proc
 END ScrollBarSetOnScroll;
 
 (** ScrollBox **)
+
+PROCEDURE ScrollBoxSetNoBg*(c: ScrollBox; noBg: BOOLEAN);
+BEGIN PanelSetNoBg(c.inner, noBg)
+END ScrollBoxSetNoBg;
 
 PROCEDURE ScrollBoxHandler*(c: Widget; VAR msg: Message);
 VAR x, y: INTEGER;
