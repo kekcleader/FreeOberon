@@ -18,6 +18,7 @@ VAR
   btnEdit: S.Button;
   edtMsg: S.Edit;
   custom: S.Widget;
+  cnvSign: S.Canvas;
 
   XX, YY: INTEGER;
   moving: BOOLEAN;
@@ -32,7 +33,7 @@ BEGIN
   c(S.Button).caption[1] := CHR((ORD(c(S.Button).caption[1]) + 1) MOD 1256)
 END Btn2OnClick;
 
-PROCEDURE BtnExitOnMouseMove(c: S.Widget; x, y, btn: INTEGER);
+PROCEDURE BtnExitOnMouseMove(c: S.Widget; x, y: INTEGER; btns: SET);
 BEGIN
   c(S.Button).caption[5] := CHR((ORD(c(S.Button).caption[5]) + 1) MOD 256);
   c(S.Button).caption[6] := CHR(ORD(c(S.Button).caption[5]) + 1);
@@ -48,7 +49,7 @@ PROCEDURE BtnMoveOnMouseUp(c: S.Widget; x, y, btn: INTEGER);
 BEGIN moving := FALSE
 END BtnMoveOnMouseUp;
 
-PROCEDURE BtnMoveOnMouseMove(c: S.Widget; x, y, btn: INTEGER);
+PROCEDURE BtnMoveOnMouseMove(c: S.Widget; x, y: INTEGER; btns: SET);
 BEGIN
   IF moving THEN
     c.x := c.x + x - XX;
@@ -81,6 +82,31 @@ BEGIN
   G.Line(x, y, x + w - 1, y + h - 1, color);
   G.Line(x + w - 1, y, x, y + h - 1, color);
 END CustomOnPaint;
+
+PROCEDURE CustomOnMouseMove(c: S.Widget; x, y: INTEGER; btns: SET);
+VAR color: G.Color;
+BEGIN
+  G.MakeCol(color, 0, x * 7 MOD 256, y * 7 MOD 256);
+  btnFile.bgColor := color
+END CustomOnMouseMove;
+
+PROCEDURE CnvSignOnMouseMove(c: S.Widget; x, y: INTEGER; btns: SET);
+VAR color: G.Color;
+  draw: BOOLEAN;
+BEGIN
+  draw := TRUE;
+  IF btns = {1} THEN
+    color := btnFile.bgColor
+  ELSIF btns = {2} THEN
+    G.MakeCol(color, 0, 255, 255)
+  ELSE
+    draw := FALSE
+  END;
+  IF draw THEN
+    G.Target(c(S.Canvas).bmp);
+    G.PutPixel(x, y, color)
+  END
+END CnvSignOnMouseMove;
 
 PROCEDURE InitInterface(): BOOLEAN;
 VAR W, H: INTEGER;
@@ -126,6 +152,10 @@ BEGIN
 
   custom := S.NewWidget(sbxMap, 50, 70, 100, 70);
   S.SetOnPaint(custom, CustomOnPaint);
+  S.SetOnMouseMove(custom, CustomOnMouseMove);
+
+  cnvSign := S.NewCanvas(sbxMap, 170, 40, 50, 50);
+  S.SetOnMouseMove(cnvSign, CnvSignOnMouseMove);
 
   moving := FALSE
 RETURN TRUE END InitInterface;

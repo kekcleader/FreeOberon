@@ -7,7 +7,7 @@ TYPE
   Message* = RECORD END;
   PutMsg* = RECORD(Message) what*: Widget; x*, y*: INTEGER END;
   DrawMsg* = RECORD(Message) x*, y*, w*, h*: INTEGER END;
-  MouseMoveMsg* = RECORD(Message) x*, y*, btn*: INTEGER END;
+  MouseMoveMsg* = RECORD(Message) x*, y*: INTEGER; btns*: SET END;
   MouseDownMsg* = RECORD(Message) x*, y*, btn*: INTEGER END;
   MouseUpMsg* = RECORD(Message) x*, y*, btn*: INTEGER END;
   MouseEnterMsg* = RECORD(Message) END;
@@ -41,7 +41,7 @@ TYPE
     onPaint*: PROCEDURE (c: Widget; x, y, w, h: INTEGER);
     onMouseDown*: PROCEDURE (c: Widget; x, y, btn: INTEGER);
     onMouseUp*: PROCEDURE (c: Widget; x, y, btn: INTEGER);
-    onMouseMove*: PROCEDURE (c: Widget; x, y, btn: INTEGER);
+    onMouseMove*: PROCEDURE (c: Widget; x, y: INTEGER; btns: SET);
     onMouseEnter*: PROCEDURE (c: Widget);
     onMouseLeave*: PROCEDURE (c: Widget);
     onClick*: PROCEDURE (c: Widget);
@@ -95,6 +95,11 @@ TYPE
     scbHoriz*, scbVert*: ScrollBar
   END;
 
+  Canvas* = POINTER TO CanvasDesc;
+  CanvasDesc = RECORD(WidgetDesc)
+    bmp*: G.Bitmap
+  END;
+
 VAR
   Done*: BOOLEAN; (** FALSE after a failed opration and before the next Init *)
   app*: App;
@@ -145,7 +150,7 @@ BEGIN
   c.handle(c, msg)
 END WidgetOnMouseLeave;
 
-PROCEDURE WidgetOnMouseMove*(c: Widget; x, y, btn: INTEGER);
+PROCEDURE WidgetOnMouseMove*(c: Widget; x, y: INTEGER; btns: SET);
 VAR msg: MouseMoveMsg;
 BEGIN
   IF (0 <= x) & (x < c.w) & (0 <= y) & (y < c.h) THEN
@@ -159,23 +164,23 @@ BEGIN
     hoveredWidget := NIL
   END;
 
-  msg.x := x; msg.y := y; msg.btn := btn;
+  msg.x := x; msg.y := y; msg.btns := btns;
   c.handle(c, msg);
 
-  IF c.onMouseMove # NIL THEN c.onMouseMove(c, x, y, btn) END
+  IF c.onMouseMove # NIL THEN c.onMouseMove(c, x, y, btns) END
 END WidgetOnMouseMove;
 
-PROCEDURE WidgetHandleMouseMove*(c: Widget; x, y, btn: INTEGER);
+PROCEDURE WidgetHandleMouseMove*(c: Widget; x, y: INTEGER; btns: SET);
 VAR p: Widget;
 BEGIN
   IF pressedWidget # NIL THEN
-    WidgetOnMouseMove(pressedWidget, x - pressedX, y - pressedY, btn)
+    WidgetOnMouseMove(pressedWidget, x - pressedX, y - pressedY, btns)
   ELSE
     p := FindHoveredInRing(c.body, x, y, FALSE);
     IF p # NIL THEN
-      WidgetHandleMouseMove(p, x - p.x, y - p.y, btn)
+      WidgetHandleMouseMove(p, x - p.x, y - p.y, btns)
     ELSE
-      WidgetOnMouseMove(c, x, y, btn)
+      WidgetOnMouseMove(c, x, y, btns)
     END
   END
 END WidgetHandleMouseMove;
@@ -361,7 +366,7 @@ PROCEDURE SetOnPaint*(c: Widget; proc: PROCEDURE (c: Widget; x, y, w, h: INTEGER
 BEGIN c.onPaint := proc
 END SetOnPaint;
 
-PROCEDURE SetOnMouseMove*(c: Widget; proc: PROCEDURE (c: Widget; x, y, btn: INTEGER));
+PROCEDURE SetOnMouseMove*(c: Widget; proc: PROCEDURE (c: Widget; x, y: INTEGER; btns: SET));
 BEGIN c.onMouseMove := proc
 END SetOnMouseMove;
 
@@ -538,6 +543,7 @@ BEGIN
   IF c.pressed & c.hovered THEN INC(tx); INC(ty) END;
   G.DrawString(c.caption, tx, ty, font, c.fgColor)
 END DrawButton;
+
 PROCEDURE ButtonHandler*(c: Widget; VAR msg: Message);
 VAR b: Button;
 BEGIN b := c(Button);
@@ -934,6 +940,34 @@ VAR c: ScrollBox;
 BEGIN NEW(c); InitScrollBox(c, where, x, y, w, h)
 RETURN c END NewScrollBox;
 
+(** Canvas **)
+
+PROCEDURE CanvasHandler*(c: Widget; VAR msg: Message);
+VAR x, y: INTEGER;
+BEGIN
+  IF msg IS DrawMsg THEN
+    x := msg(DrawMsg).x; y := msg(DrawMsg).y;
+    G.Draw(c(Canvas).bmp, x, y);
+    DrawBody(c, x, y, c.w, c.h)
+  ELSE WidgetHandler(c, msg)
+  END
+END CanvasHandler;
+
+PROCEDURE InitCanvas*(c: Canvas; where: Widget; x, y, w, h: INTEGER);
+VAR wh: G.Color;
+BEGIN InitWidget(c, w, h);
+  c.bmp := G.NewBitmap(w, h);
+  G.MakeCol(wh, 255, 255, 255);
+  G.ClearBitmapToColor(c.bmp, wh);
+  c.handle := CanvasHandler;
+  Put(c, where, x, y)
+END InitCanvas;
+
+PROCEDURE NewCanvas*(where: Widget; x, y, w, h: INTEGER): Canvas;
+VAR c: Canvas;
+BEGIN NEW(c); InitCanvas(c, where, x, y, w, h)
+RETURN c END NewCanvas;
+
 (** General **)
 
 PROCEDURE DrawCursor;
@@ -962,7 +996,7 @@ BEGIN
   mouseX := e.x; mouseY := e.y;
   c := FindHoveredInRing(app.body, e.x, e.y, FALSE);
   IF c # NIL THEN
-    WidgetHandleMouseMove(c, e.x - c.x, e.y - c.y, e.button)
+    WidgetHandleMouseMove(c, e.x - c.x, e.y - c.y, e.buttons)
   END
 END HandleMouseMove;
 
