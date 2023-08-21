@@ -142,8 +142,8 @@ BEGIN
   S.SetOnMouseMove(btnMove, BtnMoveOnMouseMove);
 
   sbxMap := S.NewScrollBox(pnlMap, 4, 104, 300, 200);
-  S.ScrollBoxSetNoBg(sbxMap, TRUE);
-  S.ScrollBoxSetInnerSize(sbxMap, 4096, 4096);
+  S.ScrollBoxSetNoBg(sbxMap, ~TRUE);
+  S.ScrollBoxSetInnerSize(sbxMap, 700, 800);
   G.MakeCol(color, 0, 90, 255);
   S.SetBgColor(sbxMap, color);
   btnFile := S.NewButton(sbxMap, 20, 40, 80, 24, 'Файл');
@@ -154,7 +154,7 @@ BEGIN
   S.SetOnPaint(custom, CustomOnPaint);
   S.SetOnMouseMove(custom, CustomOnMouseMove);
 
-  cnvSign := S.NewCanvas(sbxMap, 170, 40, 50, 50);
+  cnvSign := S.NewCanvas(sbxMap, 210, 80, 150, 250);
   S.SetOnMouseMove(cnvSign, CnvSignOnMouseMove);
 
   moving := FALSE

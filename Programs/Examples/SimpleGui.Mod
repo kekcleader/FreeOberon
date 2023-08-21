@@ -708,10 +708,11 @@ BEGIN
   c.btnSize := bs;
   maxHs := c.w - bs * 2 + 4;
   IF hs > maxHs THEN hs := maxHs END;
+  c.handleSize := hs;
   range := c.max - c.min;
   pos := c.value;
   IF pos < c.min THEN pos := c.min ELSIF pos > c.max THEN pos := c.max END;
-  c.handlePos := bs - 2 + ((maxHs - hs) * pos + range DIV 2) DIV range;
+  c.handlePos := bs - 2 + (pos * (maxHs - hs) + range DIV 2) DIV range;
 
   DrawButtonBox(x, y, bs, c.h, c.bgColor,
       c.parent.bgColor, c.btnPressed = 1, FALSE);
