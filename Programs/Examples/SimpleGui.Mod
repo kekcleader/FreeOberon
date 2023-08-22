@@ -1,6 +1,12 @@
 MODULE SimpleGui;
 IMPORT G := Graph, Strings, Out;
 
+CONST
+  (** Align **)
+  alLeft*   = 0;
+  alCenter* = 1;
+  alRight*  = 2;
+
 TYPE
   Widget* = POINTER TO WidgetDesc;
 
@@ -64,6 +70,12 @@ TYPE
   Button* = POINTER TO ButtonDesc;
   ButtonDesc* = RECORD(WidgetDesc)
     caption*: ARRAY 64 OF CHAR
+  END;
+
+  Label* = POINTER TO LabelDesc;
+  LabelDesc* = RECORD(WidgetDesc)
+    caption*: ARRAY 256 OF CHAR;
+    align*: INTEGER; (** One of {alLeft, alCenter, alRight} *)
   END;
 
   Edit* = POINTER TO EditDesc;
@@ -568,6 +580,58 @@ VAR c: Button;
 BEGIN NEW(c); InitButton(c, where, x, y, w, h, caption)
 RETURN c END NewButton;
 
+(** Label **)
+
+PROCEDURE DrawLabel*(c: Label; x, y, w, h: INTEGER);
+VAR fw, fh, tw, tx, ty: INTEGER;
+BEGIN
+  G.GetMonoFontSize(font, fw, fh);
+  tx := 0;
+  IF c.align # alLeft THEN
+    tw := Strings.Length(c.caption) * fw;
+    IF c.align = alCenter THEN
+      tx := (c.w - tw) DIV 2
+    ELSIF c.align = alRight THEN
+      tx := c.w - tw
+    END
+  END;
+  ty := y + (c.h - fh) DIV 2;
+  G.DrawString(c.caption, tx, ty, font, c.fgColor)
+END DrawLabel;
+
+PROCEDURE LabelHandler*(c: Widget; VAR msg: Message);
+VAR e: Label;
+BEGIN e := c(Label);
+  IF msg IS DrawMsg THEN
+    DrawLabel(e, msg(DrawMsg).x, msg(DrawMsg).y,
+        msg(DrawMsg).w, msg(DrawMsg).h)
+  ELSE WidgetHandler(c, msg)
+  END
+END LabelHandler;
+
+PROCEDURE InitLabel*(c: Label; where: Widget; x, y, w, h: INTEGER;
+    caption: ARRAY OF CHAR);
+BEGIN InitWidget(c, w, h);
+  Strings.Copy(caption, c.caption);
+  c.handle := LabelHandler;
+  c.align := alLeft;
+  Put(c, where, x, y)
+END InitLabel;
+
+PROCEDURE NewLabel*(where: Widget; x, y, w, h: INTEGER;
+    caption: ARRAY OF CHAR): Label;
+VAR c: Label;
+BEGIN NEW(c); InitLabel(c, where, x, y, w, h, caption)
+RETURN c END NewLabel;
+
+PROCEDURE LabelSetCaption*(c: Label; caption: ARRAY OF CHAR);
+BEGIN Strings.Copy(caption, c.caption)
+END LabelSetCaption;
+
+PROCEDURE LabelSetAlign*(c: Label; align: INTEGER);
+BEGIN c.align := align
+END LabelSetAlign;
+
 (** Edit **)
 
 PROCEDURE DrawEdit*(c: Edit; x, y, w, h: INTEGER);
@@ -668,7 +732,7 @@ PROCEDURE InitEdit*(c: Edit; where: Widget; x, y, w, h: INTEGER);
 BEGIN InitWidget(c, w, h);
   c.focusable := TRUE;
   G.MakeCol(c.bgColor, 255, 255, 255);
-  c.text := 'Привет'; c.len := 6; c.pos := 2; c.off := 0;
+  c.text[0] := 0X; c.len := 0; c.pos := 0; c.off := 0;
   c.handle := EditHandler;
   Put(c, where, x, y)
 END InitEdit;
