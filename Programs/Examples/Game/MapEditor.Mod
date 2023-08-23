@@ -1,6 +1,5 @@
 MODULE MapEditor;
-IMPORT G := Graph, S := SimpleGui, Out, Int, Strings;
-
+IMPORT G := Graph, S := SimpleGui, Out, Int, Strings, E := GameEngine;
 CONST window = FALSE;
 VAR
   frmMain: S.Form;
@@ -15,22 +14,39 @@ VAR
   pnlSide: S.Panel;
 
   sbxMap: S.ScrollBox;
-  map: S.Widget;
+  wgtMap: S.Widget;
+  cellX, cellY: INTEGER;
+
+  game: E.Game;
 
 PROCEDURE BtnExitOnClick(c: S.Widget);
 BEGIN
   S.Quit
 END BtnExitOnClick;
 
-PROCEDURE MapOnPaint(c: S.Widget; x, y, w, h: INTEGER);
-VAR color: G.Color;
+PROCEDURE DrawCell(cell: E.Cell; x, y, toX, toY: INTEGER);
+VAR kx, ky: INTEGER;
 BEGIN
-  G.MakeCol(color, 255, 255, 0);
-  G.Line(x, y, x + w - 1, y + h - 1, color);
-  G.Line(x + w - 1, y, x, y + h - 1, color);
-END MapOnPaint;
+  kx := cell.kind MOD E.tilesInRow * E.cellW;
+  ky := cell.kind DIV E.tilesInRow * E.cellH;
+  G.DrawPart(E.tiles, kx, ky, E.cellW, E.cellH, toX, toY);
+END DrawCell;
 
-PROCEDURE SbxMapOnMouseMove(c: S.Widget; x, y: INTEGER; btns: SET);
+PROCEDURE WgtMapOnPaint(c: S.Widget; x, y, w, h: INTEGER);
+VAR X, Y, i, j: INTEGER;
+BEGIN
+  Y := y;
+  FOR i := 0 TO game.map.h - 1 DO
+    X := x;
+    FOR j := 0 TO game.map.w - 1 DO
+      DrawCell(game.map.cells[i, j], i, j, X, Y);
+      INC(X, E.cellW)
+    END;
+    INC(Y, E.cellH)
+  END
+END WgtMapOnPaint;
+
+PROCEDURE WgtMapOnMouseMove(c: S.Widget; x, y: INTEGER; btns: SET);
 VAR color: G.Color;
   draw: BOOLEAN;
 BEGIN
@@ -46,7 +62,13 @@ BEGIN
     G.Target(c(S.Canvas).bmp);
     G.PutPixel(x, y, color)
   END
-END SbxMapOnMouseMove;
+END WgtMapOnMouseMove;
+
+PROCEDURE InitMapWidgetVars;
+BEGIN
+  cellX := -1;
+  cellY := 0
+END InitMapWidgetVars;
 
 PROCEDURE InitInterface(): BOOLEAN;
 VAR W, H: INTEGER;
@@ -80,10 +102,12 @@ BEGIN
       W - pnlSide.w, H - pnlTop.h);
   S.ScrollBoxSetInnerSize(sbxMap, 1024, 1024);
   G.MakeCol(color, 0, 0, 0);
-  S.SetBgColor(sbxMap, color);
-  (*S.ScrollBoxSetNoBg(sbxMap, TRUE);*)
-  (*S.SetOnMouseMove(sbxMap, SbxMapOnMouseMove);*)
+  S.ScrollBoxSetNoBg(sbxMap, TRUE);
 
+  wgtMap := S.NewWidget(sbxMap, 0, 0, 1024, 1024);
+  S.SetOnPaint(wgtMap, WgtMapOnPaint);
+  (*S.SetOnMouseMove(wgtMap, WgtMapOnMouseMove);*)
+  InitMapWidgetVars
 RETURN TRUE END InitInterface;
 
 PROCEDURE Init(): BOOLEAN;
@@ -96,6 +120,8 @@ BEGIN ok := TRUE;
     S.Init;
     IF ~S.Done THEN ok := FALSE END
   END;
+  IF ok & ~E.Init() THEN ok := FALSE END;
+  IF ok THEN E.InitGame(game) END;
   IF ok & ~InitInterface() THEN ok := FALSE END
 RETURN ok END Init;
 

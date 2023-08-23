@@ -35,6 +35,8 @@ TYPE
   WidgetDesc* = RECORD
     x*, y*, w*, h*: INTEGER;
     bgColor*, fgColor*: G.Color;
+    redraw*: BOOLEAN; (** TRUE if widget or it's insides need to be redrawn *)
+    redrawSelf*: BOOLEAN; (** TRUE if widget itself needs to be redrawn *)
     focusable*: BOOLEAN; (** TRUE if widget can get focus *)
     focused*: BOOLEAN; (** TRUE if this widget is globally in focus *)
     hovered*: BOOLEAN; (** TRUE if mouse pointer is over the widget *)
@@ -127,6 +129,18 @@ VAR
 
 (** Widget **)
 
+PROCEDURE Redraw*(c: Widget);
+VAR p: Widget;
+BEGIN
+  c.redraw := TRUE; c.redrawSelf := TRUE;
+  p := c.parent;
+  WHILE p # NIL DO p.redraw := TRUE; p := p.parent END
+END Redraw;
+
+PROCEDURE Drawn*(c: Widget);
+BEGIN c.redraw := FALSE; c.redrawSelf := FALSE
+END Drawn;
+
 PROCEDURE FindHoveredInRing(list: Widget; x, y: INTEGER;
     forMouseDown: BOOLEAN): Widget;
 VAR c: Widget;
@@ -207,14 +221,16 @@ PROCEDURE Focus*(c: Widget);
 VAR get: GetFocusMsg;
   lost: LostFocusMsg;
 BEGIN
-  IF c.focusable THEN
+  IF ((c = NIL) OR c.focusable) & (focusedWidget # c) THEN
     IF focusedWidget # NIL THEN
       focusedWidget.focused := FALSE;
       focusedWidget.handle(focusedWidget, lost)
     END;
-    c.focused := TRUE;
-    focusedWidget := c;
-    focusedWidget.handle(focusedWidget, get)
+    IF c # NIL THEN
+      c.focused := TRUE;
+      focusedWidget := c;
+      focusedWidget.handle(focusedWidget, get)
+    END
   END
 END Focus;
 
@@ -312,19 +328,26 @@ PROCEDURE WidgetHandler*(c: Widget; VAR msg: Message);
 VAR x, y: INTEGER;
 BEGIN
   IF msg IS DrawMsg THEN
-    x := msg(DrawMsg).x; y := msg(DrawMsg).y;
-    IF c.onPaint # NIL THEN
-      c.onPaint(c, x, y, msg(DrawMsg).w, msg(DrawMsg).h)
-    ELSE
-      G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
-      G.Rect(x, y, x + c.w - 1, y + c.h - 1, c.fgColor);
-      G.Rect(x + 2, y + 2, x + c.w - 3, y + c.h - 3, c.fgColor)
+    IF c.redraw THEN
+      IF c.redrawSelf THEN
+        x := msg(DrawMsg).x; y := msg(DrawMsg).y;
+        IF c.onPaint # NIL THEN
+          c.onPaint(c, x, y, msg(DrawMsg).w, msg(DrawMsg).h)
+        ELSE
+          G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
+          G.Rect(x, y, x + c.w - 1, y + c.h - 1, c.fgColor);
+          G.Rect(x + 2, y + 2, x + c.w - 3, y + c.h - 3, c.fgColor)
+        END;
+        Drawn(c)
+      END
     END
   ELSIF msg IS MouseDownMsg THEN
     IF msg(MouseDownMsg).btn = 1 THEN c.pressed := TRUE END
   ELSIF msg IS MouseUpMsg THEN c.pressed := FALSE
   ELSIF msg IS PutMsg THEN
     DirectPut(msg(PutMsg).what, c, msg(PutMsg).x, msg(PutMsg).y)
+  ELSIF msg IS GetFocusMsg THEN Redraw(c)
+  ELSIF msg IS LostFocusMsg THEN Redraw(c)
   END
 END WidgetHandler;
 
@@ -349,17 +372,19 @@ BEGIN
     IF CX < x THEN DEC(CW, x - CX); CX := x END;
     IF CY < y THEN DEC(CH, y - CY); CY := y END;
     REPEAT
-      x2 := x + p.x; y2 := y + p.y;
-      w2 := w - p.x; h2 := h - p.y;
+      IF p.redraw THEN
+        x2 := x + p.x; y2 := y + p.y;
+        w2 := w - p.x; h2 := h - p.y;
 
-      cx := x2; cy := y2; cw := p.w; ch := p.h;
-      IF cx + cw > CX + CW THEN cw := CX + CW - cx END;
-      IF cy + ch > CY + CH THEN ch := CY + CH - cy END;
-      IF cx < CX THEN DEC(cw, CX - cx); cx := CX END;
-      IF cy < CY THEN DEC(ch, CY - cy); cy := CY END;
-      G.SetClip(cx, cy, cw, ch);
+        cx := x2; cy := y2; cw := p.w; ch := p.h;
+        IF cx + cw > CX + CW THEN cw := CX + CW - cx END;
+        IF cy + ch > CY + CH THEN ch := CY + CH - cy END;
+        IF cx < CX THEN DEC(cw, CX - cx); cx := CX END;
+        IF cy < CY THEN DEC(ch, CY - cy); cy := CY END;
+        G.SetClip(cx, cy, cw, ch);
 
-      DrawWidget(p, x2, y2, p.w, p.h);
+        DrawWidget(p, x2, y2, p.w, p.h)
+      END;
       p := p.next
     UNTIL p = c.body;
     G.UnsetClip
@@ -396,6 +421,7 @@ END SetOnClick;
 
 PROCEDURE InitWidget*(c: Widget; w, h: INTEGER);
 BEGIN c.x := 0; c.y := 0; c.w := w; c.h := h;
+  c.redraw := TRUE; c.redrawSelf := TRUE;
   c.focusable := FALSE; c.focused := FALSE;
   c.hovered := FALSE; c.pressed := FALSE;
   G.MakeCol(c.bgColor, 180, 180, 180);
@@ -413,18 +439,21 @@ RETURN c END NewWidget;
 (** Panel **)
 
 PROCEDURE PanelSetNoBg*(c: Panel; noBg: BOOLEAN);
-BEGIN c.noBg := noBg
+BEGIN c.noBg := noBg; Redraw(c)
 END PanelSetNoBg;
 
 PROCEDURE PanelHandler*(c: Widget; VAR msg: Message);
 VAR x, y: INTEGER;
 BEGIN
   IF msg IS DrawMsg THEN
-    x := msg(DrawMsg).x; y := msg(DrawMsg).y;
-    IF ~c(Panel).noBg THEN
-      G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor)
-    END;
-    DrawBody(c, x, y, c.w, c.h)
+    IF c.redraw THEN
+      x := msg(DrawMsg).x; y := msg(DrawMsg).y;
+      IF c.redrawSelf & ~c(Panel).noBg THEN
+        G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor)
+      END;
+      DrawBody(c, x, y, c.w, c.h);
+      Drawn(c)
+    END
   ELSE WidgetHandler(c, msg)
   END
 END PanelHandler;
@@ -459,8 +488,13 @@ RETURN c END NewApp;
 
 PROCEDURE DrawForm*(c: Form);
 BEGIN
-  G.FillRect(c.x, c.y, c.x + c.w - 1, c.y + c.h - 1, c.bgColor);
-  DrawBody(c, c.x, c.y, c.w, c.h)
+  IF c.redraw THEN
+    IF c.redrawSelf THEN
+      G.FillRect(c.x, c.y, c.x + c.w - 1, c.y + c.h - 1, c.bgColor)
+    END;
+    DrawBody(c, c.x, c.y, c.w, c.h);
+    Drawn(c)
+  END
 END DrawForm;
 
 PROCEDURE FormHandler*(c: Widget; VAR msg: Message);
@@ -546,14 +580,17 @@ END DrawButtonBox;
 PROCEDURE DrawButton*(c: Button; x, y, w, h: INTEGER);
 VAR fw, fh, tw, tx, ty: INTEGER;
 BEGIN
-  DrawButtonBox(x, y, c.w, c.h, c.bgColor, c.parent.bgColor,
-      c.pressed & c.hovered, TRUE);
-  G.GetMonoFontSize(font, fw, fh);
-  tw := Strings.Length(c.caption) * fw;
-  tx := x + (c.w - tw) DIV 2;
-  ty := y + (c.h - fh) DIV 2;
-  IF c.pressed & c.hovered THEN INC(tx); INC(ty) END;
-  G.DrawString(c.caption, tx, ty, font, c.fgColor)
+  IF c.redraw THEN
+    DrawButtonBox(x, y, c.w, c.h, c.bgColor, c.parent.bgColor,
+        c.pressed & c.hovered, TRUE);
+    G.GetMonoFontSize(font, fw, fh);
+    tw := Strings.Length(c.caption) * fw;
+    tx := x + (c.w - tw) DIV 2;
+    ty := y + (c.h - fh) DIV 2;
+    IF c.pressed & c.hovered THEN INC(tx); INC(ty) END;
+    G.DrawString(c.caption, tx, ty, font, c.fgColor);
+    Drawn(c)
+  END
 END DrawButton;
 
 PROCEDURE ButtonHandler*(c: Widget; VAR msg: Message);
@@ -561,7 +598,7 @@ VAR b: Button;
 BEGIN b := c(Button);
   IF msg IS DrawMsg THEN
     DrawButton(b, msg(DrawMsg).x, msg(DrawMsg).y,
-        msg(DrawMsg).w, msg(DrawMsg).h)
+        msg(DrawMsg).w, msg(DrawMsg).h);
   ELSE WidgetHandler(c, msg)
   END
 END ButtonHandler;
@@ -585,18 +622,21 @@ RETURN c END NewButton;
 PROCEDURE DrawLabel*(c: Label; x, y, w, h: INTEGER);
 VAR fw, fh, tw, tx, ty: INTEGER;
 BEGIN
-  G.GetMonoFontSize(font, fw, fh);
-  tx := 0;
-  IF c.align # alLeft THEN
-    tw := Strings.Length(c.caption) * fw;
-    IF c.align = alCenter THEN
-      tx := (c.w - tw) DIV 2
-    ELSIF c.align = alRight THEN
-      tx := c.w - tw
-    END
-  END;
-  ty := y + (c.h - fh) DIV 2;
-  G.DrawString(c.caption, tx, ty, font, c.fgColor)
+  IF c.redraw THEN
+    G.GetMonoFontSize(font, fw, fh);
+    tx := 0;
+    IF c.align # alLeft THEN
+      tw := Strings.Length(c.caption) * fw;
+      IF c.align = alCenter THEN
+        tx := (c.w - tw) DIV 2
+      ELSIF c.align = alRight THEN
+        tx := c.w - tw
+      END
+    END;
+    ty := y + (c.h - fh) DIV 2;
+    G.DrawString(c.caption, tx, ty, font, c.fgColor);
+    Drawn(c)
+  END
 END DrawLabel;
 
 PROCEDURE LabelHandler*(c: Widget; VAR msg: Message);
@@ -625,11 +665,11 @@ BEGIN NEW(c); InitLabel(c, where, x, y, w, h, caption)
 RETURN c END NewLabel;
 
 PROCEDURE LabelSetCaption*(c: Label; caption: ARRAY OF CHAR);
-BEGIN Strings.Copy(caption, c.caption)
+BEGIN Strings.Copy(caption, c.caption); Redraw(c)
 END LabelSetCaption;
 
 PROCEDURE LabelSetAlign*(c: Label; align: INTEGER);
-BEGIN c.align := align
+BEGIN c.align := align; Redraw(c)
 END LabelSetAlign;
 
 (** Edit **)
@@ -638,24 +678,27 @@ PROCEDURE DrawEdit*(c: Edit; x, y, w, h: INTEGER);
 VAR fw, fh, tw, tx, ty: INTEGER;
   or, yw: G.Color;
 BEGIN
-  MakeOrAndYw(c.parent.bgColor, or, yw);
+  IF c.redraw THEN
+    MakeOrAndYw(c.parent.bgColor, or, yw);
 
-  G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
-  G.GetMonoFontSize(font, fw, fh);
-  tw := Strings.Length(c.text) * fw;
-  tx := x + 2 - c.off;
-  ty := y + (c.h - fh) DIV 2;
-  G.DrawString(c.text, tx, ty, font, c.fgColor);
-  IF c.focused THEN
-    INC(tx, fw * c.pos - 1);
-    G.VLine(tx, ty, ty + fh - 1, or);
-    G.HLine(tx - 1, ty, tx + 1, or);
-    G.HLine(tx - 1, ty + fh - 1, tx + 1, or)
-  END;
-  G.HLine(x, y, x + c.w - 2, c.fgColor);
-  G.VLine(x, y, y + c.h - 1, c.fgColor);
-  G.HLine(x + 1, y + c.h - 1, x + c.w - 1, or);
-  G.VLine(x + c.w - 1, y, y + c.h - 1, or)
+    G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
+    G.GetMonoFontSize(font, fw, fh);
+    tw := Strings.Length(c.text) * fw;
+    tx := x + 2 - c.off;
+    ty := y + (c.h - fh) DIV 2;
+    G.DrawString(c.text, tx, ty, font, c.fgColor);
+    IF c.focused THEN
+      INC(tx, fw * c.pos - 1);
+      G.VLine(tx, ty, ty + fh - 1, or);
+      G.HLine(tx - 1, ty, tx + 1, or);
+      G.HLine(tx - 1, ty + fh - 1, tx + 1, or)
+    END;
+    G.HLine(x, y, x + c.w - 2, c.fgColor);
+    G.VLine(x, y, y + c.h - 1, c.fgColor);
+    G.HLine(x + 1, y + c.h - 1, x + c.w - 1, or);
+    G.VLine(x + c.w - 1, y, y + c.h - 1, or);
+    Drawn(c)
+  END
 END DrawEdit;
 
 PROCEDURE EditOnMouseDown*(c: Edit; VAR msg: MouseDownMsg);
@@ -667,7 +710,10 @@ BEGIN
     G.GetMonoFontSize(font, fw, fh);
     n := (msg.x - 2 + fw DIV 2) DIV fw;
     IF n < 0 THEN n := 0 ELSIF n > c.len THEN n := c.len END;
-    c.pos := n
+    IF c.pos # n THEN
+      c.pos := n;
+      Redraw(c)
+    END
   END
 END EditOnMouseDown;
 
@@ -713,7 +759,8 @@ BEGIN
     c.text[c.pos] := msg.ch;
     INC(c.len); INC(c.pos)
   END;
-  EditCheckOffset(c)
+  EditCheckOffset(c);
+  Redraw(c)
 END EditOnChar;
 
 PROCEDURE EditHandler*(c: Widget; VAR msg: Message);
@@ -747,7 +794,8 @@ BEGIN
   Strings.Copy(text, c.text);
   c.len := Strings.Length(text);
   c.pos := 0;
-  c.off := 0
+  c.off := 0;
+  Redraw(c)
 END EditSetText;
 
 (** ScrollBar **)
@@ -843,11 +891,12 @@ BEGIN
     DrawVertScrollBar(c, x, y, w, h)
   ELSE
     DrawHorizScrollBar(c, x, y, w, h)
-  END
+  END;
+  Drawn(c)
 END DrawScrollBar;
 
 PROCEDURE ScrollBarSetVertical*(c: ScrollBar; vertical: BOOLEAN);
-BEGIN c.vertical := vertical
+BEGIN c.vertical := vertical; Redraw(c)
 END ScrollBarSetVertical;
 
 PROCEDURE ScrollBarSetValue*(c: ScrollBar; value: INTEGER);
@@ -857,7 +906,8 @@ BEGIN
   END;
   IF c.value # value THEN
     c.value := value;
-    IF c.onScroll # NIL THEN c.onScroll(c, value) END
+    IF c.onScroll # NIL THEN c.onScroll(c, value) END;
+    Redraw(c)
   END
 END ScrollBarSetValue;
 
@@ -944,11 +994,9 @@ BEGIN PanelSetNoBg(c.inner, noBg)
 END ScrollBoxSetNoBg;
 
 PROCEDURE ScrollBoxHandler*(c: Widget; VAR msg: Message);
-VAR x, y: INTEGER;
 BEGIN
   IF msg IS DrawMsg THEN
-    x := msg(DrawMsg).x; y := msg(DrawMsg).y;
-    DrawBody(c, x, y, c.w, c.h)
+    DrawBody(c, msg(DrawMsg).x, msg(DrawMsg).y, c.w, c.h)
   ELSIF msg IS PutMsg THEN
     DirectPut(msg(PutMsg).what, c(ScrollBox).inner,
         msg(PutMsg).x, msg(PutMsg).y)
@@ -960,21 +1008,24 @@ PROCEDURE ScrollBoxSetInnerSize*(c: ScrollBox; w, h: INTEGER);
 BEGIN
   Resize(c.inner, w, h);
   c.scbHoriz.max := w - c.outer.w;
-  c.scbVert.max := h - c.outer.h
+  c.scbVert.max := h - c.outer.h;
+  Redraw(c)
 END ScrollBoxSetInnerSize;
 
 PROCEDURE ScrollBoxOnHorizScroll*(c: ScrollBar; value: INTEGER);
 VAR sbx: ScrollBox;
 BEGIN
   sbx := c.parent(ScrollBox);
-  sbx.inner.x := -value
+  sbx.inner.x := -value;
+  Redraw(c)
 END ScrollBoxOnHorizScroll;
 
 PROCEDURE ScrollBoxOnVertScroll*(c: ScrollBar; value: INTEGER);
 VAR sbx: ScrollBox;
 BEGIN
   sbx := c.parent(ScrollBox);
-  sbx.inner.y := -value
+  sbx.inner.y := -value;
+  Redraw(c)
 END ScrollBoxOnVertScroll;
 
 PROCEDURE InitScrollBox*(c: ScrollBox; where: Widget; x, y, w, h: INTEGER);
@@ -1011,9 +1062,12 @@ PROCEDURE CanvasHandler*(c: Widget; VAR msg: Message);
 VAR x, y: INTEGER;
 BEGIN
   IF msg IS DrawMsg THEN
-    x := msg(DrawMsg).x; y := msg(DrawMsg).y;
-    G.Draw(c(Canvas).bmp, x, y);
-    DrawBody(c, x, y, c.w, c.h)
+    IF c.redraw THEN
+      x := msg(DrawMsg).x; y := msg(DrawMsg).y;
+      IF c.redrawSelf THEN G.Draw(c(Canvas).bmp, x, y) END;
+      DrawBody(c, x, y, c.w, c.h);
+      Drawn(c)
+    END
   ELSE WidgetHandler(c, msg)
   END
 END CanvasHandler;
@@ -1185,6 +1239,7 @@ END InitCursor;
 PROCEDURE Init*;
 BEGIN
   font := G.LoadFont('Data/Fonts/Main');
+  IF font = NIL THEN font := G.LoadFont('../Data/Fonts/Main') END;
   IF font = NIL THEN Out.String('SimpleGui: could not load font.'); Out.Ln END;
   InitCursor;
   Done := font # NIL;
