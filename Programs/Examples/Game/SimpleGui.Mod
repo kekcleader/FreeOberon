@@ -358,7 +358,7 @@ BEGIN
   c.handle(c, M)
 END DrawWidget;
 
-PROCEDURE DrawBody*(c: Widget; x, y, w, h: INTEGER);
+PROCEDURE DrawBody*(c: Widget; x, y, w, h: INTEGER; forced: BOOLEAN);
 VAR p: Widget;
   x2, y2, w2, h2: INTEGER;
   cx, cy, cw, ch: INTEGER;
@@ -372,6 +372,7 @@ BEGIN
     IF CX < x THEN DEC(CW, x - CX); CX := x END;
     IF CY < y THEN DEC(CH, y - CY); CY := y END;
     REPEAT
+      IF forced THEN p.redraw := TRUE; p.redrawSelf := TRUE END;
       IF p.redraw THEN
         x2 := x + p.x; y2 := y + p.y;
         w2 := w - p.x; h2 := h - p.y;
@@ -451,7 +452,7 @@ BEGIN
       IF c.redrawSelf & ~c(Panel).noBg THEN
         G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor)
       END;
-      DrawBody(c, x, y, c.w, c.h);
+      DrawBody(c, x, y, c.w, c.h, c.redrawSelf);
       Drawn(c)
     END
   ELSE WidgetHandler(c, msg)
@@ -492,7 +493,7 @@ BEGIN
     IF c.redrawSelf THEN
       G.FillRect(c.x, c.y, c.x + c.w - 1, c.y + c.h - 1, c.bgColor)
     END;
-    DrawBody(c, c.x, c.y, c.w, c.h);
+    DrawBody(c, c.x, c.y, c.w, c.h, c.redrawSelf);
     Drawn(c)
   END
 END DrawForm;
@@ -937,9 +938,11 @@ BEGIN
   IF x < c.btnSize THEN
     c.btnPressed := 1(*Less btn*);
     ScrollBarSetValue(c, c.value - d);
+    Redraw(c)
   ELSIF x >= size - c.btnSize THEN
     c.btnPressed := 2(*More btn*);
-    ScrollBarSetValue(c, c.value + d)
+    ScrollBarSetValue(c, c.value + d);
+    Redraw(c)
   ELSIF msg.btn = 1 THEN
     IF (c.handlePos <= x) & (x < c.handlePos + c.handleSize) THEN
       c.btnPressed := 3(*Handle*);
@@ -949,11 +952,19 @@ BEGIN
       ScrollBarSetValue(c, c.value - c.bigInc)
     ELSE
       ScrollBarSetValue(c, c.value + c.bigInc)
-    END
+    END;
+    Redraw(c)
   ELSE c.btnPressed := 0(*Nothing*);
   END;
   WidgetHandler(c, msg)
 END HandleScrollBarMouseDown;
+
+PROCEDURE HandleScrollBarMouseUp(c: ScrollBar; VAR msg: MouseUpMsg);
+BEGIN
+  c.handlePressed := FALSE;
+  c.btnPressed := 0(*Nothing*);
+  Redraw(c)
+END HandleScrollBarMouseUp;
 
 PROCEDURE ScrollBarHandler*(c: Widget; VAR msg: Message);
 VAR s: ScrollBar;
@@ -963,7 +974,7 @@ BEGIN s := c(ScrollBar);
         msg(DrawMsg).w, msg(DrawMsg).h)
   ELSIF msg IS MouseMoveMsg THEN HandleScrollBarMouseMove(s, msg(MouseMoveMsg))
   ELSIF msg IS MouseDownMsg THEN HandleScrollBarMouseDown(s, msg(MouseDownMsg))
-  ELSIF msg IS MouseUpMsg THEN s.handlePressed := FALSE; s.btnPressed := 0(*Nothing*)
+  ELSIF msg IS MouseUpMsg THEN HandleScrollBarMouseUp(s, msg(MouseUpMsg))
   ELSE WidgetHandler(c, msg)
   END
 END ScrollBarHandler;
@@ -996,7 +1007,10 @@ END ScrollBoxSetNoBg;
 PROCEDURE ScrollBoxHandler*(c: Widget; VAR msg: Message);
 BEGIN
   IF msg IS DrawMsg THEN
-    DrawBody(c, msg(DrawMsg).x, msg(DrawMsg).y, c.w, c.h)
+    IF c.redraw THEN
+      DrawBody(c, msg(DrawMsg).x, msg(DrawMsg).y, c.w, c.h, c.redrawSelf);
+      Drawn(c)
+    END
   ELSIF msg IS PutMsg THEN
     DirectPut(msg(PutMsg).what, c(ScrollBox).inner,
         msg(PutMsg).x, msg(PutMsg).y)
@@ -1017,7 +1031,7 @@ VAR sbx: ScrollBox;
 BEGIN
   sbx := c.parent(ScrollBox);
   sbx.inner.x := -value;
-  Redraw(c)
+  Redraw(sbx)
 END ScrollBoxOnHorizScroll;
 
 PROCEDURE ScrollBoxOnVertScroll*(c: ScrollBar; value: INTEGER);
@@ -1025,7 +1039,7 @@ VAR sbx: ScrollBox;
 BEGIN
   sbx := c.parent(ScrollBox);
   sbx.inner.y := -value;
-  Redraw(c)
+  Redraw(sbx)
 END ScrollBoxOnVertScroll;
 
 PROCEDURE InitScrollBox*(c: ScrollBox; where: Widget; x, y, w, h: INTEGER);
@@ -1065,7 +1079,7 @@ BEGIN
     IF c.redraw THEN
       x := msg(DrawMsg).x; y := msg(DrawMsg).y;
       IF c.redrawSelf THEN G.Draw(c(Canvas).bmp, x, y) END;
-      DrawBody(c, x, y, c.w, c.h);
+      DrawBody(c, x, y, c.w, c.h, c.redrawSelf);
       Drawn(c)
     END
   ELSE WidgetHandler(c, msg)
