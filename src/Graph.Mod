@@ -1575,6 +1575,7 @@ BEGIN
   IF {fullscreen, window} * opt = {} THEN INCL(opt, fullscreen)
   ELSIF fullscreen IN opt THEN EXCL(opt, window)
   END;
+  IF maximized IN opt THEN INCL(opt, resizable) END;
   IF (wantW <= 0) OR (wantH <= 0) THEN
     IF fullscreen IN opt THEN wantW := -1; wantH := -1
     ELSE wantW := 640; wantH := 400
