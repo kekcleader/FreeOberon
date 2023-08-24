@@ -120,12 +120,10 @@ VAR
   focusedWidget*: Widget; (** The widget with focus = TRUE *)
   font*: G.Font;
   quit: BOOLEAN; (** Main loop in procedure Run ends when TRUE *)
+  forceFlip: BOOLEAN; (** Becomes TRUE on mouse move and FALSE after Flip *)
   hoveredWidget: Widget;
   pressedWidget: Widget;
   pressedX, pressedY: INTEGER;
-
-  mouseCursor: G.Bitmap;
-  mouseX, mouseY: INTEGER;
 
 (** Widget **)
 
@@ -134,7 +132,7 @@ VAR p: Widget;
 BEGIN
   c.redraw := TRUE; c.redrawSelf := TRUE;
   p := c.parent;
-  WHILE p # NIL DO p.redraw := TRUE; p := p.parent END
+  WHILE (p # NIL) & ~p.redraw DO p.redraw := TRUE; p := p.parent END
 END Redraw;
 
 PROCEDURE Drawn*(c: Widget);
@@ -342,8 +340,8 @@ BEGIN
       END
     END
   ELSIF msg IS MouseDownMsg THEN
-    IF msg(MouseDownMsg).btn = 1 THEN c.pressed := TRUE END
-  ELSIF msg IS MouseUpMsg THEN c.pressed := FALSE
+    IF msg(MouseDownMsg).btn = 1 THEN c.pressed := TRUE; Redraw(c) END
+  ELSIF msg IS MouseUpMsg THEN c.pressed := FALSE; Redraw(c)
   ELSIF msg IS PutMsg THEN
     DirectPut(msg(PutMsg).what, c, msg(PutMsg).x, msg(PutMsg).y)
   ELSIF msg IS GetFocusMsg THEN Redraw(c)
@@ -1103,30 +1101,30 @@ RETURN c END NewCanvas;
 
 (** General **)
 
-PROCEDURE DrawCursor;
-BEGIN
-  IF mouseX >= 0 THEN
-    G.Draw(mouseCursor, mouseX, mouseY)
-  END
-END DrawCursor;
-
 PROCEDURE DrawAll;
 VAR c: Widget;
+  updated: BOOLEAN;
 BEGIN
   G.TargetScreen;
+  updated := FALSE;
   c := app.body;
   REPEAT
-    DrawForm(c(Form));
+    IF c.redraw THEN
+      DrawForm(c(Form));
+      updated := TRUE
+    END;
     c := c.next
   UNTIL c = app.body;
-  DrawCursor;
-  G.Flip
+  IF updated OR forceFlip THEN
+    G.Flip;
+    forceFlip := FALSE
+  END
 END DrawAll;
 
 PROCEDURE HandleMouseMove(VAR e: G.Event);
 VAR c: Widget;
 BEGIN
-  mouseX := e.x; mouseY := e.y;
+  forceFlip := TRUE;
   c := FindHoveredInRing(app.body, e.x, e.y, FALSE);
   IF c # NIL THEN
     WidgetHandleMouseMove(c, e.x - c.x, e.y - c.y, e.buttons)
@@ -1213,7 +1211,7 @@ BEGIN
   UNTIL quit
 END Run;
 
-PROCEDURE CreateArrowCursor(): G.Bitmap;
+PROCEDURE InitCursor;
 VAR m: G.Bitmap;
   bl, wh: G.Color;
   i: INTEGER;
@@ -1241,24 +1239,19 @@ BEGIN
   G.HLine(6, 15, 7, bl);
   G.Line(6, 9, 8, 14, bl);
   G.HLine(7, 9, 9, bl);
-RETURN m END CreateArrowCursor;
-
-PROCEDURE InitCursor;
-BEGIN
-  mouseCursor := CreateArrowCursor();
-  mouseX := -1; mouseY := 0;
-  G.ShowMouse(FALSE)
+  G.SetCursor(m)
 END InitCursor;
 
 PROCEDURE Init*;
 BEGIN
   font := G.LoadFont('Data/Fonts/Main');
   IF font = NIL THEN font := G.LoadFont('../Data/Fonts/Main') END;
-  IF font = NIL THEN Out.String('SimpleGui: could not load font.'); Out.Ln END;
+  IF font = NIL THEN Out.String('SimpleGui: Could not load font.'); Out.Ln END;
   InitCursor;
   Done := font # NIL;
   app := NewApp();
   hoveredWidget := NIL; pressedWidget := NIL;
+  forceFlip := TRUE;
   pressedX := 0; pressedY := 0
 END Init;
 
