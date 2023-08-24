@@ -106,7 +106,7 @@ TYPE
   ScrollBoxDesc* = RECORD(WidgetDesc)
     noBg*: BOOLEAN;
     outer*, inner*: Panel;
-    scbHoriz*, scbVert*: ScrollBar
+    scbHorz*, scbVert*: ScrollBar
   END;
 
   Canvas* = POINTER TO CanvasDesc;
@@ -805,26 +805,39 @@ BEGIN
   G.Rect(x, y, x + w - 1, y + h - 1, fg)
 END DrawBox;
 
-PROCEDURE DrawHorizScrollBar(c: ScrollBar; x, y, w, h: INTEGER);
-VAR fw, fh, X, Y, hs, maxHs, pos, range: INTEGER;
-  bs: INTEGER; (** Button size *)
-  grey: G.Color;
+PROCEDURE ScrollBarCalcMetrics(c: ScrollBar; long, wide: INTEGER;
+    VAR hs, bs: INTEGER);
+VAR maxHs, maxBs, pos, range: INTEGER;
 BEGIN
-  G.MakeCol(grey, 80, 80, 80);
+  maxBs := long DIV 2;
+  IF maxBs > 20 THEN maxBs := 20 END;
 
-  DrawButtonBox(x, y, c.w, c.h, c.bgColor, c.parent.bgColor, TRUE, TRUE);
-  hs := c.handleSize;
-  bs := c.h;
-  IF bs > 20 THEN bs := 20 END;
+  bs := wide;
+  IF bs > maxBs THEN bs := maxBs END;
   c.btnSize := bs;
-  maxHs := c.w - bs * 2 + 4;
+
+  maxHs := long - bs * 2 + 4;
+  hs := c.handleSize;
+  IF hs < bs THEN hs := bs END;
   IF hs > maxHs THEN hs := maxHs END;
   c.handleSize := hs;
-  range := c.max - c.min;
+
   pos := c.value;
   IF pos < c.min THEN pos := c.min ELSIF pos > c.max THEN pos := c.max END;
-  c.handlePos := bs - 2 + (pos * (maxHs - hs) + range DIV 2) DIV range;
 
+  range := c.max - c.min;
+  c.handlePos := bs - 2 + (pos * (maxHs - hs) + range DIV 2) DIV range
+END ScrollBarCalcMetrics;
+
+PROCEDURE DrawHorzScrollBar(c: ScrollBar; x, y, w, h: INTEGER);
+VAR fw, fh, X, Y: INTEGER;
+  hs, bs: INTEGER; (* Handle size and button size *)
+  grey: G.Color;
+BEGIN
+  G.MakeCol(grey, 140, 140, 140);
+
+  DrawButtonBox(x, y, c.w, c.h, grey, c.parent.bgColor, TRUE, TRUE);
+  ScrollBarCalcMetrics(c, w, h, hs, bs);
   DrawButtonBox(x, y, bs, c.h, c.bgColor,
       c.parent.bgColor, c.btnPressed = 1, FALSE);
   DrawButtonBox(x + c.w - bs, y, bs, c.h, c.bgColor,
@@ -843,27 +856,17 @@ BEGIN
 
   DrawButtonBox(x + c.handlePos, y, hs, c.h, c.bgColor,
       c.parent.bgColor, c.btnPressed = 3, FALSE)
-END DrawHorizScrollBar;
+END DrawHorzScrollBar;
 
 PROCEDURE DrawVertScrollBar(c: ScrollBar; x, y, w, h: INTEGER);
-VAR fw, fh, X, Y, hs, maxHs, pos, range: INTEGER;
-  bs: INTEGER; (** Button size *)
+VAR fw, fh, X, Y: INTEGER;
+  hs, bs: INTEGER; (* Handle size and button size *)
   grey: G.Color;
 BEGIN
-  G.MakeCol(grey, 80, 80, 80);
+  G.MakeCol(grey, 140, 140, 140);
 
-  DrawButtonBox(x, y, c.w, c.h, c.bgColor, c.parent.bgColor, TRUE, TRUE);
-  hs := c.handleSize;
-  bs := c.w;
-  IF bs > 20 THEN bs := 20 END;
-  c.btnSize := bs;
-  maxHs := c.h - bs * 2 + 4;
-  IF hs > maxHs THEN hs := maxHs END;
-  range := c.max - c.min;
-  pos := c.value;
-  IF pos < c.min THEN pos := c.min ELSIF pos > c.max THEN pos := c.max END;
-  c.handlePos := bs - 2 + ((maxHs - hs) * pos + range DIV 2) DIV range;
-
+  DrawButtonBox(x, y, c.w, c.h, grey, c.parent.bgColor, TRUE, TRUE);
+  ScrollBarCalcMetrics(c, h, w, hs, bs);
   DrawButtonBox(x, y, c.w, bs, c.bgColor,
       c.parent.bgColor, c.btnPressed = 1, FALSE);
   DrawButtonBox(x, y + c.h - bs, c.w, bs, c.bgColor,
@@ -889,7 +892,7 @@ BEGIN
   IF c.vertical THEN
     DrawVertScrollBar(c, x, y, w, h)
   ELSE
-    DrawHorizScrollBar(c, x, y, w, h)
+    DrawHorzScrollBar(c, x, y, w, h)
   END;
   Drawn(c)
 END DrawScrollBar;
@@ -897,6 +900,10 @@ END DrawScrollBar;
 PROCEDURE ScrollBarSetVertical*(c: ScrollBar; vertical: BOOLEAN);
 BEGIN c.vertical := vertical; Redraw(c)
 END ScrollBarSetVertical;
+
+PROCEDURE ScrollBarSetHandleSize*(c: ScrollBar; size: INTEGER);
+BEGIN c.handleSize := size; Redraw(c)
+END ScrollBarSetHandleSize;
 
 PROCEDURE ScrollBarSetValue*(c: ScrollBar; value: INTEGER);
 BEGIN
@@ -982,7 +989,7 @@ PROCEDURE InitScrollBar*(c: ScrollBar; where: Widget;
 BEGIN InitWidget(c, w, h);
   c.handle := ScrollBarHandler;
   c.value := 0; c.min := 0; c.max := 100; c.inc := 5; c.bigInc := 20;
-  c.handlePos := 0; c.handleSize := 24; c.btnSize := 0;
+  c.handlePos := 0; c.handleSize := 0; c.btnSize := 0;
   c.btnPressed := 0(*Nothing*);
   Put(c, where, x, y)
 END InitScrollBar;
@@ -1019,18 +1026,24 @@ END ScrollBoxHandler;
 PROCEDURE ScrollBoxSetInnerSize*(c: ScrollBox; w, h: INTEGER);
 BEGIN
   Resize(c.inner, w, h);
-  c.scbHoriz.max := w - c.outer.w;
+  c.scbHorz.max := w - c.outer.w;
   c.scbVert.max := h - c.outer.h;
+  IF w # 0 THEN
+    ScrollBarSetHandleSize(c.scbHorz, c.outer.w * (c.outer.w - 32) DIV w)
+  END;
+  IF h # 0 THEN
+    ScrollBarSetHandleSize(c.scbVert, c.outer.h * (c.outer.h - 32) DIV h)
+  END;
   Redraw(c)
 END ScrollBoxSetInnerSize;
 
-PROCEDURE ScrollBoxOnHorizScroll*(c: ScrollBar; value: INTEGER);
+PROCEDURE ScrollBoxOnHorzScroll*(c: ScrollBar; value: INTEGER);
 VAR sbx: ScrollBox;
 BEGIN
   sbx := c.parent(ScrollBox);
   sbx.inner.x := -value;
   Redraw(sbx)
-END ScrollBoxOnHorizScroll;
+END ScrollBoxOnHorzScroll;
 
 PROCEDURE ScrollBoxOnVertScroll*(c: ScrollBar; value: INTEGER);
 VAR sbx: ScrollBox;
@@ -1044,9 +1057,9 @@ PROCEDURE InitScrollBox*(c: ScrollBox; where: Widget; x, y, w, h: INTEGER);
 BEGIN InitWidget(c, w, h);
   c.handle := ScrollBoxHandler;
 
-  c.scbHoriz := NewScrollBar(NIL, 0, 0, w - 16, 16);
-  DirectPut(c.scbHoriz, c, 0, h - 16);
-  ScrollBarSetOnScroll(c.scbHoriz, ScrollBoxOnHorizScroll);
+  c.scbHorz := NewScrollBar(NIL, 0, 0, w - 16, 16);
+  DirectPut(c.scbHorz, c, 0, h - 16);
+  ScrollBarSetOnScroll(c.scbHorz, ScrollBoxOnHorzScroll);
 
   c.scbVert := NewScrollBar(NIL, 0, 0, 16, h - 16);
   ScrollBarSetVertical(c.scbVert, TRUE);

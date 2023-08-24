@@ -12,6 +12,7 @@ VAR
   btnExit: S.Button;
 
   pnlSide: S.Panel;
+  scbVert: S.ScrollBar;
 
   sbxMap: S.ScrollBox;
   wgtMap: S.Widget;
@@ -97,6 +98,10 @@ BEGIN
   pnlSide := S.NewPanel(frmMain, 0, pnlTop.h, 180, H - pnlTop.h);
   G.MakeCol(color, 40, 150, 40);
   S.SetBgColor(pnlSide, color);
+
+  scbVert := S.NewScrollBar(pnlSide, 20, 20, 16, 150);
+  S.ScrollBarSetVertical(scbVert, TRUE);
+  scbVert.max := 8;
 
   sbxMap := S.NewScrollBox(frmMain, pnlSide.w, pnlTop.h,
       W - pnlSide.w, H - pnlTop.h);
