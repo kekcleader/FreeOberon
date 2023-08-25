@@ -37,6 +37,8 @@ TYPE
     bgColor*, fgColor*: G.Color;
     redraw*: BOOLEAN; (** TRUE if widget or it's insides need to be redrawn *)
     redrawSelf*: BOOLEAN; (** TRUE if widget itself needs to be redrawn *)
+    visible*: BOOLEAN;
+    enabled*: BOOLEAN;
     focusable*: BOOLEAN; (** TRUE if widget can get focus *)
     focused*: BOOLEAN; (** TRUE if this widget is globally in focus *)
     hovered*: BOOLEAN; (** TRUE if mouse pointer is over the widget *)
@@ -421,6 +423,7 @@ END SetOnClick;
 PROCEDURE InitWidget*(c: Widget; w, h: INTEGER);
 BEGIN c.x := 0; c.y := 0; c.w := w; c.h := h;
   c.redraw := TRUE; c.redrawSelf := TRUE;
+  c.visible := TRUE; c.enabled := TRUE;
   c.focusable := FALSE; c.focused := FALSE;
   c.hovered := FALSE; c.pressed := FALSE;
   G.MakeCol(c.bgColor, 180, 180, 180);
@@ -1131,6 +1134,7 @@ BEGIN
   IF updated OR forceFlip THEN
     G.Flip;
     forceFlip := FALSE
+  ELSE G.Delay(4)
   END
 END DrawAll;
 

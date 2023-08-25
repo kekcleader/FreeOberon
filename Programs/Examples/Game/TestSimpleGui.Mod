@@ -11,7 +11,7 @@ VAR
   btn2: S.Button;
   btnMove: S.Button;
   edtText: S.Edit;
-  scbHoriz, scbHoriz2: S.ScrollBar;
+  scbHorz, scbHorz2: S.ScrollBar;
   scbVert: S.ScrollBar;
   sbxMap: S.ScrollBox;
   btnFile: S.Button;
@@ -62,18 +62,18 @@ END BtnMoveOnMouseMove;
 PROCEDURE OnScroll(c: S.ScrollBar; value: INTEGER);
 VAR s: ARRAY 32 OF CHAR;
 BEGIN
-  S.ScrollBarSetValue(scbHoriz2, value);
+  S.ScrollBarSetValue(scbHorz2, value);
 
-  Int.Str(scbHoriz.value, s);
+  Int.Str(scbHorz.value, s);
   Strings.Append(':', s);
   Int.Append(scbVert.value, s);
   S.EditSetText(edtText, s)
 END OnScroll;
 
-PROCEDURE ScbHoriz2OnScroll(c: S.ScrollBar; value: INTEGER);
+PROCEDURE ScbHorz2OnScroll(c: S.ScrollBar; value: INTEGER);
 BEGIN
   S.ScrollBarSetValue(scbVert, value)
-END ScbHoriz2OnScroll;
+END ScbHorz2OnScroll;
 
 PROCEDURE CustomOnPaint(c: S.Widget; x, y, w, h: INTEGER);
 VAR color: G.Color;
@@ -123,10 +123,10 @@ BEGIN
   S.SetOnClick(btnExit, BtnExitOnClick);
   S.SetOnMouseMove(btnExit, BtnExitOnMouseMove);
   edtText := S.NewEdit(pnlSide, 4, 60, 96, 20);
-  scbHoriz := S.NewScrollBar(pnlSide, 4, 84, 96, 16);
-  S.ScrollBarSetOnScroll(scbHoriz, OnScroll);
-  scbHoriz2 := S.NewScrollBar(pnlSide, 24, 104, 76, 50);
-  S.ScrollBarSetOnScroll(scbHoriz2, ScbHoriz2OnScroll);
+  scbHorz := S.NewScrollBar(pnlSide, 4, 84, 96, 16);
+  S.ScrollBarSetOnScroll(scbHorz, OnScroll);
+  scbHorz2 := S.NewScrollBar(pnlSide, 24, 104, 76, 50);
+  S.ScrollBarSetOnScroll(scbHorz2, ScbHorz2OnScroll);
   scbVert := S.NewScrollBar(pnlSide, 4, 104, 16, 140);
   S.ScrollBarSetVertical(scbVert, TRUE);
   S.ScrollBarSetOnScroll(scbVert, OnScroll);
