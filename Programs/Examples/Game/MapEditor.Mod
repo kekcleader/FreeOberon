@@ -1,6 +1,6 @@
 MODULE MapEditor;
 IMPORT G := Graph, S := SimpleGui, Out, Int, Strings, E := GameEngine;
-CONST window = ~FALSE;
+CONST window = FALSE;
 VAR
   frmMain: S.Form;
 
@@ -118,7 +118,7 @@ RETURN TRUE END InitInterface;
 PROCEDURE Init(): BOOLEAN;
 VAR ok: BOOLEAN;
 BEGIN ok := TRUE;
-  IF window THEN G.Settings(640, 480, {G.window, G.maximized}) END;
+  IF window THEN G.Settings(640, 480, {G.window(*, G.maximized*)}) END;
   G.Init;
   IF ~G.Done THEN ok := FALSE END;
   IF ok THEN

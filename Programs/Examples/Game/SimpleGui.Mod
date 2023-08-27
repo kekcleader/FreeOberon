@@ -1133,6 +1133,7 @@ BEGIN
   UNTIL c = app.body;
   IF updated OR forceFlip THEN
     G.Flip;
+    G.Delay(4);
     forceFlip := FALSE
   ELSE G.Delay(4)
   END
@@ -1256,7 +1257,7 @@ BEGIN
   G.HLine(6, 15, 7, bl);
   G.Line(6, 9, 8, 14, bl);
   G.HLine(7, 9, 9, bl);
-  G.SetCursor(m)
+  G.SetNewCursor(m, 0, 0)
 END InitCursor;
 
 PROCEDURE Init*;
