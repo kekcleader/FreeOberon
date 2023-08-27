@@ -141,6 +141,28 @@ CONST
   eventDisplayConnected*      = 60;
   eventDisplayDisconnected*   = 61;
 
+  (** System Mouse Cursors **)
+  curNone*        =  0;
+  curDefault*     =  1;
+  curArrow*       =  2;
+  curBusy*        =  3;
+  curQuestion*    =  4;
+  curEdit*        =  5;
+  curMove*        =  6;
+  curResizeN*     =  7;
+  curResizeW*     =  8;
+  curResizeS*     =  9;
+  curResizeE*     = 10;
+  curResizeNW*    = 11;
+  curResizeSW*    = 12;
+  curResizeSE*    = 13;
+  curResizeNE*    = 14;
+  curProgress*    = 15;
+  curPrecision*   = 16;
+  curLink*        = 17;
+  curAltSelect*   = 18;
+  curUnavailable* = 19;
+
   (** Flip flags for al_draw_bitmap **)
   flipHorizontal* = 1;
   flipVertical* = 2;

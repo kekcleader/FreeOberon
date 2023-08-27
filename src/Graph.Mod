@@ -41,6 +41,28 @@ CONST
   intZoom  = 1; (** The zoom value is an integer: 2x, 3x etc. *)
   realZoom = 2; (** The zoom value is not an integer, i.e. 2.5x *)
 
+  (** System Mouse Cursors **)
+  curNone*        =  0;
+  curDefault*     =  1;
+  curArrow*       =  2;
+  curBusy*        =  3;
+  curQuestion*    =  4;
+  curEdit*        =  5;
+  curMove*        =  6;
+  curResizeN*     =  7;
+  curResizeW*     =  8;
+  curResizeS*     =  9;
+  curResizeE*     = 10;
+  curResizeNW*    = 11;
+  curResizeSW*    = 12;
+  curResizeSE*    = 13;
+  curResizeNE*    = 14;
+  curProgress*    = 15;
+  curPrecision*   = 16;
+  curLink*        = 17;
+  curAltSelect*   = 18;
+  curUnavailable* = 19;
+
   (** Flip flags for DrawFlip, DrawEx etc. **)
   flipHor*  = 0;
   flipVert* = 1;
@@ -602,6 +624,14 @@ BEGIN W.cursor := cursor;
   END
 END SetWindowCursor;
 
+PROCEDURE SetWindowSystemCursor*(W: Window; cursorId: INTEGER);
+BEGIN
+  IF cursorId = curNone THEN ShowWindowMouse(W, FALSE)
+  ELSE ShowWindowMouse(W, TRUE);
+    IF Al.set_system_mouse_cursor(W.display, cursorId) THEN END
+  END
+END SetWindowSystemCursor;
+
 PROCEDURE SetWindowNewCursor*(W: Window; bmp: Bitmap; focusX, focusY: INTEGER);
 BEGIN
   IF bmp = NIL THEN SetWindowCursor(W, NIL)
@@ -612,6 +642,10 @@ END SetWindowNewCursor;
 PROCEDURE SetCursor*(cursor: Cursor);
 BEGIN IF screen # NIL THEN SetWindowCursor(screen, cursor) END
 END SetCursor;
+
+PROCEDURE SetSystemCursor*(cursorId: INTEGER);
+BEGIN IF screen # NIL THEN SetWindowSystemCursor(screen, cursorId) END
+END SetSystemCursor;
 
 PROCEDURE SetNewCursor*(bmp: Bitmap; focusX, focusY: INTEGER);
 BEGIN IF screen # NIL THEN SetWindowNewCursor(screen, bmp, focusX, focusY) END
