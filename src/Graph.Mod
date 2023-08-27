@@ -205,6 +205,14 @@ TYPE
     w*, h*: INTEGER
   END;
 
+  Cursor* = POINTER TO CursorDesc;
+  CursorDesc* = RECORD
+    cursor: Al.MouseCursor;
+    bmp: Bitmap;
+    w*, h*: INTEGER;
+    focusX*, focusY*: INTEGER
+  END;
+
   Window* = POINTER TO WindowDesc;
   WindowDesc* = RECORD(BitmapDesc) (** This is a window. *)
     display: Al.Display; (** Allegro Display *)
@@ -228,7 +236,7 @@ TYPE
     title: ARRAY 256 OF CHAR;
     resized: BOOLEAN; (** TRUE if fullscreen mode has been toggled for window *)
     showMouse: BOOLEAN;
-    cursor: Bitmap;
+    cursor: Cursor;
     cursorPatch: Bitmap;
     icons: ARRAY 64 OF Al.Bitmap;
     noficons: INTEGER;
@@ -572,16 +580,42 @@ PROCEDURE ShowMouse*(show: BOOLEAN);
 BEGIN IF screen # NIL THEN ShowWindowMouse(screen, show) END
 END ShowMouse;
 
-PROCEDURE SetWindowCursor*(W: Window; bmp: Bitmap);
-BEGIN W.cursor := bmp; ShowWindowMouse(W, bmp = NIL);
-  IF bmp # NIL THEN
-    W.cursorPatch := NewBitmap(W.cursor.w, W.cursor.h)
+PROCEDURE NewCursor*(bmp: Bitmap; focusX, focusY: INTEGER): Cursor;
+VAR c: Cursor;
+BEGIN NEW(c); c.bmp := bmp; c.w := bmp.w; c.h := bmp.h;
+  c.focusX := focusX; c.focusY := focusY;
+  c.cursor := Al.create_mouse_cursor(bmp.bmp, focusX, focusY)
+RETURN c END NewCursor;
+
+PROCEDURE SetWindowCursor*(W: Window; cursor: Cursor);
+BEGIN W.cursor := cursor;
+  IF cursor = NIL THEN ShowWindowMouse(W, FALSE)
+  ELSE 
+    W.cursorPatch := NewBitmap(W.cursor.w, W.cursor.h);
+    IF (cursor.cursor = NIL) OR (W.zoom # noZoom) THEN
+      ShowWindowMouse(W, FALSE);
+    ELSE
+      ShowWindowMouse(W, TRUE);
+      IF Al.set_mouse_cursor(W.display, cursor.cursor) THEN END
+      (*;IF Al.set_system_mouse_cursor(W.display, 3) THEN END*)
+    END
   END
 END SetWindowCursor;
 
-PROCEDURE SetCursor*(bmp: Bitmap);
-BEGIN IF screen # NIL THEN SetWindowCursor(screen, bmp) END
+PROCEDURE SetWindowNewCursor*(W: Window; bmp: Bitmap; focusX, focusY: INTEGER);
+BEGIN
+  IF bmp = NIL THEN SetWindowCursor(W, NIL)
+  ELSE SetWindowCursor(W, NewCursor(bmp, focusX, focusY))
+  END
+END SetWindowNewCursor;
+
+PROCEDURE SetCursor*(cursor: Cursor);
+BEGIN IF screen # NIL THEN SetWindowCursor(screen, cursor) END
 END SetCursor;
+
+PROCEDURE SetNewCursor*(bmp: Bitmap; focusX, focusY: INTEGER);
+BEGIN IF screen # NIL THEN SetWindowNewCursor(screen, bmp, focusX, focusY) END
+END SetNewCursor;
 
 PROCEDURE SetWindowOption*(W: Window; key: INTEGER; on: BOOLEAN);
 BEGIN IF on THEN INCL(W.options, key) ELSE EXCL(W.options, key) END
@@ -630,6 +664,7 @@ VAR tmp: Al.Bitmap;
   W: Window;
   T: Al.Transform;
   x, y, w, h, patchX, patchY: REAL;
+  mouseDrawn: BOOLEAN;
 BEGIN
   IF ((target = NIL) OR ~(target IS Window)) & (screen # NIL) THEN
     Target(screen)
@@ -640,30 +675,20 @@ BEGIN
     IF target.bmp # NIL THEN
 
       (* Draw mouse cursor *)
-      IF (W.cursor # NIL) & (W.lastX >= 0) THEN
-        IF W.zoom = intZoom THEN
-          x := W.flipX + FLT(W.lastX * W.izoom);
-          y := W.flipY + FLT(W.lastY * W.izoom);
-          w := FLT(W.cursor.w * W.izoom);
-          h := FLT(W.cursor.h * W.izoom)
-        ELSIF W.zoom = realZoom THEN
-          x := W.flipX + FLT(W.lastX) * W.rzoom;
-          y := W.flipY + FLT(W.lastY) * W.rzoom;
-          w := FLT(W.cursor.w) * W.rzoom;
-          h := FLT(W.cursor.h) * W.rzoom;
-          IF W.scaleOn THEN x := x * W.scaleX; y := y * W.scaleY END
-        ELSE (* noZoom *)
-          x := W.flipX + FLT(W.lastX); y := W.flipY + FLT(W.lastY);
-          w := FLT(W.cursor.w); h := FLT(W.cursor.h)
-        END;
-
+      IF (W.cursor # NIL) &
+         ((W.cursor.cursor = NIL) OR (W.zoom # noZoom)) &
+         (W.lastX >= 0)
+      THEN
         Al.set_target_bitmap(W.cursorPatch.bmp);
-        Al.draw_bitmap_region(W.bmp, FLT(W.lastX), FLT(W.lastY),
+        patchX := FLT(W.lastX - W.cursor.focusX);
+        patchY := FLT(W.lastY - W.cursor.focusY);
+        Al.draw_bitmap_region(W.bmp, patchX, patchY,
           FLT(W.cursor.w), FLT(W.cursor.h), 0.0, 0.0, {});
 
         Al.set_target_bitmap(W.bmp);
-        patchX := FLT(W.lastX); patchY := FLT(W.lastY);
-        Al.draw_bitmap(W.cursor.bmp, patchX, patchY, {})
+        Al.draw_bitmap(W.cursor.bmp.bmp, patchX, patchY, {});
+        mouseDrawn := TRUE
+      ELSE mouseDrawn := FALSE
       END;
 
       (* Draw buffer to screen *)
@@ -674,7 +699,7 @@ BEGIN
       Al.draw_scaled_bitmap(W.bmp, 0.0, 0.0, FLT(W.w), FLT(W.h),
         W.flipX, W.flipY, W.flipW, W.flipH, {});
 
-      IF (W.cursor # NIL) & (W.lastX >= 0) THEN
+      IF mouseDrawn THEN
         Al.set_target_bitmap(W.bmp);
         Al.draw_bitmap(W.cursorPatch.bmp, patchX, patchY, {})
       END

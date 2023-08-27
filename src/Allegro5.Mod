@@ -350,6 +350,7 @@ TYPE
 
   Display* = POINTER [1] TO RECORD [1] END;
   Bitmap* = POINTER [1] TO RECORD [1] END;
+  MouseCursor* = POINTER [1] TO RECORD [1] END;
   Timer* = POINTER [1] TO RECORD [1] END;
   EventQueue* = POINTER [1] TO RECORD [1] END;
   EventSource* = RECORD [1] pad: ARRAY 32 OF INTEGER END;
@@ -482,8 +483,15 @@ PROCEDURE get_display_height* ["al_get_display_height"] (display: Display): INTE
 PROCEDURE destroy_display* ["al_destroy_display"] (display: Display);
 PROCEDURE set_display_icon* ["al_set_display_icon"] (display: Display; icon: Bitmap);
 PROCEDURE set_display_icons* ["al_set_display_icons"] (display: Display; numIcons: INTEGER; icons: ARRAY OF Bitmap);
-PROCEDURE show_mouse_cursor* ["al_show_mouse_cursor"] (display: Display): BOOLEAN;
+
+PROCEDURE create_mouse_cursor* ["al_create_mouse_cursor"] (bmp: Bitmap; xFocus, yFocus: INTEGER): MouseCursor;
+PROCEDURE destroy_mouse_cursor* ["al_destroy_mouse_cursor"] (cursor: MouseCursor);
+PROCEDURE set_mouse_cursor* ["al_set_mouse_cursor"] (display: Display; cursor: MouseCursor): BOOLEAN;
+PROCEDURE set_system_mouse_cursor* ["al_set_system_mouse_cursor"] (display: Display; cursorId: INTEGER): BOOLEAN;
+PROCEDURE can_get_mouse_cursor_position* ["al_can_get_mouse_cursor_position"] (): BOOLEAN;
+PROCEDURE get_mouse_cursor_position* ["al_get_mouse_cursor_position"] (VAR x, y: INTEGER): BOOLEAN;
 PROCEDURE hide_mouse_cursor* ["al_hide_mouse_cursor"] (display: Display): BOOLEAN;
+PROCEDURE show_mouse_cursor* ["al_show_mouse_cursor"] (display: Display): BOOLEAN;
 
 PROCEDURE create_bitmap* ["al_create_bitmap"] (w, h: INTEGER): Bitmap;
 PROCEDURE destroy_bitmap* ["al_destroy_bitmap"] (bmp: Bitmap);
