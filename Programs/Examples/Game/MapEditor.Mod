@@ -8,6 +8,11 @@ TYPE
     curX, curY: INTEGER
   END;
 
+  TilesetWidget = POINTER TO TilesetWidgetDesc;
+  TilesetWidgetDesc = RECORD(S.ScrollBox)
+    curTile: INTEGER
+  END;
+
 VAR
   frmMain: S.Form;
 
@@ -19,10 +24,10 @@ VAR
   btnExit: S.Button;
 
   pnlSide: S.Panel;
-  scbVert: S.ScrollBar;
 
   sbxMap: S.ScrollBox;
   wgtMap: MapWidget;
+  wgtTileset: TilesetWidget;
 
   game: E.Game;
 
@@ -55,10 +60,6 @@ BEGIN
   INC(cy, E.cellW * 2);
   DEC(cw, E.cellW * 4);
   DEC(ch, E.cellW * 4); *)
-(*  INC(cx, 1);
-  INC(cy, 1);
-  DEC(cw, 2);
-  DEC(ch, 2);*)
 
   x0 := (cx - msg.x) DIV E.cellW;
   IF x0 < 0 THEN x0 := 0 END;
@@ -91,10 +92,32 @@ BEGIN
     X := msg.x + m.curX * E.cellW;
     Y := msg.y + m.curY * E.cellH;
     G.Rect(X - 1, Y - 1, X + E.cellW, Y + E.cellH, col);
-  END;
-  ;G.MakeCol(col, 0, 0, 0);
-  G.Rect(cx - 2, cy - 2, cx + cw + 1, cy + ch + 1, col);
+  END
 END MapWidgetHandleDraw;
+
+(** (x; y) in cells *)
+PROCEDURE OnMapMouseDown(x, y: INTEGER);
+  PROCEDURE P(VAR cell: E.Cell);
+  BEGIN
+    IF cell.kind # wgtTileset.curTile THEN
+      cell.kind := wgtTileset.curTile;
+      S.Redraw(wgtMap)
+    END
+  END P;
+BEGIN P(game.map.cells[y, x])
+END OnMapMouseDown;
+
+PROCEDURE MapWidgetHandleMouseDown(c: S.Widget; VAR msg: S.MouseDownMsg);
+VAR m: MapWidget;
+  x, y: INTEGER;
+BEGIN
+  m := c(MapWidget);
+  x := Limit(msg.x DIV E.cellW, 0, game.map.w - 1);
+  y := Limit(msg.y DIV E.cellH, 0, game.map.h - 1);
+  IF msg.btn = 1 THEN
+    OnMapMouseDown(x, y)
+  END
+END MapWidgetHandleMouseDown;
 
 PROCEDURE MapWidgetHandleMouseMove(c: S.Widget; VAR msg: S.MouseMoveMsg);
 VAR m: MapWidget;
@@ -105,6 +128,9 @@ BEGIN
   y := Limit(msg.y DIV E.cellH, 0, game.map.h - 1);
   IF (x # m.curX) OR (y # m.curY) THEN
     m.curX := x; m.curY := y;
+    IF 1 IN msg.btns THEN
+      OnMapMouseDown(x, y)
+    END;
     S.Redraw(c)
   END
 END MapWidgetHandleMouseMove;
@@ -115,6 +141,8 @@ BEGIN
     MapWidgetHandleMouseMove(c, msg(S.MouseMoveMsg))
   ELSIF msg IS S.MouseLeaveMsg THEN
     c(MapWidget).curX := -1; S.Redraw(c)
+  ELSIF msg IS S.MouseDownMsg THEN
+    MapWidgetHandleMouseDown(c, msg(S.MouseDownMsg))
   ELSIF msg IS S.DrawMsg THEN
     MapWidgetHandleDraw(c, msg(S.DrawMsg))
   ELSE
@@ -130,6 +158,54 @@ BEGIN
   c.handle := MapWidgetHandler;
   S.Put(c, where, x, y)
 RETURN c END NewMapWidget;
+
+(** Tileset Widget **)
+
+PROCEDURE TilesetWidgetOnInnerPaint(c: S.Widget; x, y, w, h: INTEGER);
+VAR col: G.Color;
+  n, X, Y: INTEGER;
+  t: TilesetWidget;
+BEGIN
+  t := c.parent.parent(TilesetWidget);
+  G.Draw(E.tiles, x, y);
+
+  G.MakeCol(col, 0, 110, 240);
+  X := x + t.curTile MOD E.tilesInRow * E.cellW;
+  Y := y + t.curTile DIV E.tilesInRow * E.cellH;
+  G.Rect(X, Y, X + E.cellW - 1, Y + E.cellH - 1, col)
+END TilesetWidgetOnInnerPaint;
+
+PROCEDURE TilesetWidgetOnMouseDown(c: S.Widget; x, y, btn: INTEGER);
+VAR t: TilesetWidget;
+  n: INTEGER;
+BEGIN t := c.parent.parent(TilesetWidget);
+  IF btn = 1 THEN
+    IF x < 0 THEN x := 0 ELSIF x >= c.w THEN x := c.w - 1 END;
+    IF y < 0 THEN y := 0 ELSIF y >= c.h THEN y := c.h - 1 END;
+
+    n := y DIV E.cellH * E.tilesInRow + x DIV E.cellW;
+    IF t.curTile # n THEN
+      t.curTile := n;
+      S.Redraw(c)
+    END
+  END
+END TilesetWidgetOnMouseDown;
+
+PROCEDURE TilesetWidgetOnMouseMove(c: S.Widget; x, y: INTEGER; btns: SET);
+BEGIN IF 1 IN btns THEN TilesetWidgetOnMouseDown(c, x, y, 1) END
+END TilesetWidgetOnMouseMove;
+
+PROCEDURE NewTilesetWidget(where: S.Widget; x, y, w, h: INTEGER): TilesetWidget;
+VAR c: TilesetWidget;
+BEGIN
+  NEW(c); S.InitScrollBox(c, where, x, y, w, h);
+  S.ScrollBoxSetInnerSize(c, E.tiles.w, E.tiles.h);
+  S.SetOnPaint(c.inner, TilesetWidgetOnInnerPaint);
+  S.SetOnMouseMove(c.inner, TilesetWidgetOnMouseMove);
+  S.SetOnMouseDown(c.inner, TilesetWidgetOnMouseDown);
+  c.curTile := 0
+RETURN c END NewTilesetWidget;
+
 (** - **)
 
 PROCEDURE BtnExitOnClick(c: S.Widget);
@@ -138,7 +214,7 @@ BEGIN
 END BtnExitOnClick;
 
 PROCEDURE InitInterface(): BOOLEAN;
-VAR W, H: INTEGER;
+VAR W, H, w, h: INTEGER;
   color: G.Color;
 BEGIN
   G.GetScreenSize(W, H);
@@ -161,21 +237,20 @@ BEGIN
   btnExit := S.NewButton(pnlTop, W - 68, 8, 60, 24, 'Выход');
   S.SetOnClick(btnExit, BtnExitOnClick);
 
-  pnlSide := S.NewPanel(frmMain, 0, pnlTop.h, 180, H - pnlTop.h);
+  pnlSide := S.NewPanel(frmMain, 0, pnlTop.h, 144, H - pnlTop.h);
   G.MakeCol(color, 40, 150, 40);
   S.SetBgColor(pnlSide, color);
 
-  scbVert := S.NewScrollBar(pnlSide, 20, 20, 16, 150);
-  S.ScrollBarSetVertical(scbVert, TRUE);
-  scbVert.max := 8;
+  wgtTileset := NewTilesetWidget(pnlSide, 0, 0, pnlSide.w, 200);
 
   sbxMap := S.NewScrollBox(frmMain, pnlSide.w, pnlTop.h,
       W - pnlSide.w, H - pnlTop.h);
-  S.ScrollBoxSetInnerSize(sbxMap, 1024, 1024);
-  G.MakeCol(color, 0, 0, 0);
-  S.ScrollBoxSetNoBg(sbxMap, TRUE);
+  w := game.map.w * E.cellW;
+  h := game.map.h * E.cellH;
+  S.ScrollBoxSetInnerSize(sbxMap, w, h);
+  (*S.ScrollBoxSetNoBg(sbxMap, TRUE);*)
 
-  wgtMap := NewMapWidget(sbxMap, 0, 0, 1024, 1024)
+  wgtMap := NewMapWidget(sbxMap, 0, 0, w, h)
 RETURN TRUE END InitInterface;
 
 PROCEDURE Init(): BOOLEAN;

@@ -331,9 +331,7 @@ BEGIN
     IF c.redraw THEN
       IF c.redrawSelf THEN
         x := msg(DrawMsg).x; y := msg(DrawMsg).y;
-        IF c.onPaint # NIL THEN
-          c.onPaint(c, x, y, msg(DrawMsg).w, msg(DrawMsg).h)
-        ELSE
+        IF c.onPaint = NIL THEN
           G.FillRect(x, y, x + c.w - 1, y + c.h - 1, c.bgColor);
           G.Rect(x, y, x + c.w - 1, y + c.h - 1, c.fgColor);
           G.Rect(x + 2, y + 2, x + c.w - 3, y + c.h - 3, c.fgColor)
@@ -355,7 +353,10 @@ PROCEDURE DrawWidget*(c: Widget; x, y, w, h: INTEGER);
 VAR M: DrawMsg;
 BEGIN
   M.x := x; M.y := y; M.w := w; M.h := h;
-  c.handle(c, M)
+  c.handle(c, M);
+  IF c.onPaint # NIL THEN
+    c.onPaint(c, x, y, w, h);
+  END
 END DrawWidget;
 
 PROCEDURE DrawBody*(c: Widget; x, y, w, h: INTEGER; forced: BOOLEAN);
@@ -373,7 +374,7 @@ BEGIN
     IF CY < y THEN DEC(CH, y - CY); CY := y END;
     REPEAT
       IF forced THEN p.redraw := TRUE; p.redrawSelf := TRUE END;
-      IF p.redraw THEN
+      IF p.redraw & p.visible THEN
         x2 := x + p.x; y2 := y + p.y;
         w2 := w - p.x; h2 := h - p.y;
 
@@ -399,6 +400,14 @@ END SetBgColor;
 PROCEDURE SetFgColor*(c: Widget; color: G.Color);
 BEGIN c.fgColor := color
 END SetFgColor;
+
+PROCEDURE SetVisible*(c: Widget; visible: BOOLEAN);
+BEGIN c.visible := visible
+END SetVisible;
+
+PROCEDURE SetEnabled*(c: Widget; enabled: BOOLEAN);
+BEGIN c.enabled := enabled
+END SetEnabled;
 
 PROCEDURE SetOnPaint*(c: Widget; proc: PROCEDURE (c: Widget; x, y, w, h: INTEGER));
 BEGIN c.onPaint := proc
@@ -554,13 +563,13 @@ BEGIN
   G.HLine(x + 2, y, X - 1, bl);
   G.HLine(x, Y - 1, X - 4, bl);
   G.VLine(x, y + 2, Y - 1, bl);
-  G.VLine(X - 1, y + 1, Y - 4, bl);
+  G.VLine(X - 1, y + 1, Y - 3, bl);
 
   IF ~down THEN
     G.HLine(x + 3, y + 1, X - 2, wh);
     G.HLine(x + 2, Y - 2, X - 4, g1);
     G.VLine(x + 1, y + 3, Y - 2, wh);
-    G.VLine(X - 2, y + 2, Y - 4, g1);
+    G.VLine(X - 2, y + 2, Y - 3, g1);
     G.PutPixel(X - 3, Y - 3, g1);
     G.Line(X - 4, Y - 3, X - 3, Y - 4, g1);
     G.PutPixel(x + 2, y + 2, wh)
@@ -829,7 +838,10 @@ BEGIN
   IF pos < c.min THEN pos := c.min ELSIF pos > c.max THEN pos := c.max END;
 
   range := c.max - c.min;
-  c.handlePos := bs - 2 + (pos * (maxHs - hs) + range DIV 2) DIV range
+  c.handlePos := bs - 2;
+  IF range # 0 THEN
+    INC(c.handlePos, (pos * (maxHs - hs) + range DIV 2) DIV range)
+  END
 END ScrollBarCalcMetrics;
 
 PROCEDURE DrawHorzScrollBar(c: ScrollBar; x, y, w, h: INTEGER);
@@ -910,7 +922,7 @@ END ScrollBarSetHandleSize;
 
 PROCEDURE ScrollBarSetValue*(c: ScrollBar; value: INTEGER);
 BEGIN
-  IF value < c.min THEN value := c.min
+  IF (value < c.min) OR (c.min >= c.max) THEN value := c.min
   ELSIF value > c.max THEN value := c.max
   END;
   IF c.value # value THEN
@@ -928,10 +940,11 @@ BEGIN
     ELSE x := msg.x; size := c.w
     END;
 
-    w := size - c.btnSize * 2 - c.handleSize;
-    n := x - c.handlePressPos - c.btnSize;
-    n := (n * (c.max - c.min) + w DIV 2) DIV w + c.min;
-
+    w := size - c.btnSize * 2 - c.handleSize + 4;
+    IF w = 0 THEN n := c.min
+    ELSE n := x - c.handlePressPos - c.btnSize + 2;
+      n := (n * (c.max - c.min) + w DIV 2) DIV w + c.min;
+    END;
     ScrollBarSetValue(c, n)
   END
 END HandleScrollBarMouseMove;
@@ -1029,14 +1042,34 @@ END ScrollBoxHandler;
 PROCEDURE ScrollBoxSetInnerSize*(c: ScrollBox; w, h: INTEGER);
 BEGIN
   Resize(c.inner, w, h);
-  c.scbHorz.max := w - c.outer.w;
-  c.scbVert.max := h - c.outer.h;
-  IF w # 0 THEN
-    ScrollBarSetHandleSize(c.scbHorz, c.outer.w * (c.outer.w - 32) DIV w)
+  c.scbHorz.max := w - c.w - 16;
+  c.scbVert.max := h - c.h - 16;
+
+  IF (c.scbHorz.max > 0) & (w > 0) THEN
+    SetVisible(c.scbHorz, TRUE);
+    c.outer.h := c.h - c.scbHorz.h
+  ELSE
+    SetVisible(c.scbHorz, FALSE);
+    c.outer.h := c.h
   END;
-  IF h # 0 THEN
-    ScrollBarSetHandleSize(c.scbVert, c.outer.h * (c.outer.h - 32) DIV h)
+  c.scbVert.h := c.outer.h;
+
+  IF (c.scbVert.max > 0) & (h > 0) THEN
+    SetVisible(c.scbVert, TRUE);
+    c.outer.w := c.w - c.scbVert.w
+  ELSE
+    SetVisible(c.scbVert, FALSE);
+    c.outer.w := c.w
   END;
+  c.scbHorz.w := c.outer.w;
+
+  IF w > 0 THEN
+    ScrollBarSetHandleSize(c.scbHorz, c.outer.w * (c.outer.w - 28) DIV w)
+  END;
+  IF h > 0 THEN
+    ScrollBarSetHandleSize(c.scbVert, c.outer.h * (c.outer.h - 28) DIV h)
+  END;
+
   Redraw(c)
 END ScrollBoxSetInnerSize;
 
@@ -1074,7 +1107,7 @@ BEGIN InitWidget(c, w, h);
   PanelSetNoBg(c.outer, TRUE);
 
   c.inner := NewPanel(c.outer, 0, 0, 1, 1);
-  ScrollBoxSetInnerSize(c, w * 2, h * 3);
+  ScrollBoxSetInnerSize(c, c.outer.w, c.outer.h);
 
   Put(c, where, x, y)
 END InitScrollBox;
