@@ -33,7 +33,7 @@ BEGIN
   map.w := w; map.h := h;
   FOR y := 0 TO h - 1 DO
     FOR x := 0 TO w - 1 DO
-      map.cells[y, x].kind := Random.Int(4)
+      map.cells[y, x].kind := 0 (*Random.Int(4)*)
     END
   END
 END MakeRandomMap;
@@ -68,7 +68,7 @@ RETURN bmp END LoadBitmap;
 
 PROCEDURE InitGame*(VAR game: Game);
 BEGIN
-  MakeRandomMap(game.map, 96, 96)
+  MakeRandomMap(game.map, 128, 128)
 END InitGame;
 
 PROCEDURE Init*(): BOOLEAN;

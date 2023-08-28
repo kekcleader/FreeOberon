@@ -1042,8 +1042,8 @@ END ScrollBoxHandler;
 PROCEDURE ScrollBoxSetInnerSize*(c: ScrollBox; w, h: INTEGER);
 BEGIN
   Resize(c.inner, w, h);
-  c.scbHorz.max := w - c.w - 16;
-  c.scbVert.max := h - c.h - 16;
+  c.scbHorz.max := w - c.w + 16;
+  c.scbVert.max := h - c.h + 16;
 
   IF (c.scbHorz.max > 0) & (w > 0) THEN
     SetVisible(c.scbHorz, TRUE);
@@ -1064,10 +1064,10 @@ BEGIN
   c.scbHorz.w := c.outer.w;
 
   IF w > 0 THEN
-    ScrollBarSetHandleSize(c.scbHorz, c.outer.w * (c.outer.w - 28) DIV w)
+    ScrollBarSetHandleSize(c.scbHorz, c.outer.w * (c.outer.w - 30) DIV w)
   END;
   IF h > 0 THEN
-    ScrollBarSetHandleSize(c.scbVert, c.outer.h * (c.outer.h - 28) DIV h)
+    ScrollBarSetHandleSize(c.scbVert, c.outer.h * (c.outer.h - 30) DIV h)
   END;
 
   Redraw(c)

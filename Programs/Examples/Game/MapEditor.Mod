@@ -256,6 +256,7 @@ RETURN TRUE END InitInterface;
 PROCEDURE Init(): BOOLEAN;
 VAR ok: BOOLEAN;
 BEGIN ok := TRUE;
+  (*G.Settings(320, 200, {});*)
   IF window THEN G.Settings(640, 480, {G.window(*, G.maximized*)}) END;
   G.Init;
   IF ~G.Done THEN ok := FALSE END;
