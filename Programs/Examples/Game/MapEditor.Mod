@@ -1,6 +1,13 @@
 MODULE MapEditor;
 IMPORT G := Graph, S := SimpleGui, Out, Int, Strings, E := GameEngine;
 CONST window = FALSE;
+
+TYPE
+  MapWidget = POINTER TO MapWidgetDesc;
+  MapWidgetDesc = RECORD(S.WidgetDesc)
+    curX, curY: INTEGER
+  END;
+
 VAR
   frmMain: S.Form;
 
@@ -15,61 +22,120 @@ VAR
   scbVert: S.ScrollBar;
 
   sbxMap: S.ScrollBox;
-  wgtMap: S.Widget;
-  cellX, cellY: INTEGER;
+  wgtMap: MapWidget;
 
   game: E.Game;
 
-PROCEDURE BtnExitOnClick(c: S.Widget);
+PROCEDURE Limit(x, min, max: INTEGER): INTEGER;
 BEGIN
-  S.Quit
-END BtnExitOnClick;
+  IF x < min THEN x := min ELSIF x > max THEN x := max END
+RETURN x END Limit;
+
+(** Map Widget **)
 
 PROCEDURE DrawCell(cell: E.Cell; x, y, toX, toY: INTEGER);
 VAR kx, ky: INTEGER;
 BEGIN
   kx := cell.kind MOD E.tilesInRow * E.cellW;
   ky := cell.kind DIV E.tilesInRow * E.cellH;
-  G.DrawPart(E.tiles, kx, ky, E.cellW, E.cellH, toX, toY);
+  G.DrawPart(E.tiles, kx, ky, E.cellW, E.cellH, toX, toY)
 END DrawCell;
 
-PROCEDURE WgtMapOnPaint(c: S.Widget; x, y, w, h: INTEGER);
-VAR X, Y, i, j: INTEGER;
+PROCEDURE MapWidgetHandleDraw(c: S.Widget; VAR msg: S.DrawMsg);
+VAR x: INTEGER;
+  X, Y, i, j: INTEGER;
+  cx, cy, cw, ch: INTEGER;
+  x0, y0, x1, y1: INTEGER;
+  col: G.Color;
+  m: MapWidget;
 BEGIN
-  Y := y;
-  FOR i := 0 TO game.map.h - 1 DO
+  m := c(MapWidget);
+  G.GetClip(cx, cy, cw, ch);
+(*  INC(cx, E.cellW * 2);
+  INC(cy, E.cellW * 2);
+  DEC(cw, E.cellW * 4);
+  DEC(ch, E.cellW * 4); *)
+(*  INC(cx, 1);
+  INC(cy, 1);
+  DEC(cw, 2);
+  DEC(ch, 2);*)
+
+  x0 := (cx - msg.x) DIV E.cellW;
+  IF x0 < 0 THEN x0 := 0 END;
+
+  y0 := (cy - msg.y) DIV E.cellH;
+  IF y0 < 0 THEN y0 := 0 END;
+
+  x1 := (cx - msg.x + cw - 1) DIV E.cellW;
+  IF x1 >= game.map.w THEN x1 := game.map.w - 1 END;
+
+  y1 := (cy - msg.y + ch - 1) DIV E.cellH;
+  IF y1 >= game.map.h THEN y1 := game.map.h - 1 END;
+
+  G.MakeCol(col, 255, 0, 128);
+  G.FillRect(0, 0, 2000, 2000, col);
+
+  x := msg.x + x0 * E.cellW;
+  Y := msg.y + y0 * E.cellH;
+  FOR i := y0 TO y1 DO
     X := x;
-    FOR j := 0 TO game.map.w - 1 DO
+    FOR j := x0 TO x1 DO
       DrawCell(game.map.cells[i, j], i, j, X, Y);
       INC(X, E.cellW)
     END;
     INC(Y, E.cellH)
-  END
-END WgtMapOnPaint;
-
-PROCEDURE WgtMapOnMouseMove(c: S.Widget; x, y: INTEGER; btns: SET);
-VAR color: G.Color;
-  draw: BOOLEAN;
-BEGIN
-  draw := TRUE;
-  IF btns = {1} THEN
-    G.MakeCol(color, 0, 0, 0)
-  ELSIF btns = {2} THEN
-    G.MakeCol(color, 0, 255, 255)
-  ELSE
-    draw := FALSE
   END;
-  IF draw THEN
-    G.Target(c(S.Canvas).bmp);
-    G.PutPixel(x, y, color)
-  END
-END WgtMapOnMouseMove;
 
-PROCEDURE InitMapWidgetVars;
+  IF m.curX >= 0 THEN
+    G.MakeCol(col, 240, 0, 0);
+    X := msg.x + m.curX * E.cellW;
+    Y := msg.y + m.curY * E.cellH;
+    G.Rect(X - 1, Y - 1, X + E.cellW, Y + E.cellH, col);
+  END;
+  ;G.MakeCol(col, 0, 0, 0);
+  G.Rect(cx - 2, cy - 2, cx + cw + 1, cy + ch + 1, col);
+END MapWidgetHandleDraw;
+
+PROCEDURE MapWidgetHandleMouseMove(c: S.Widget; VAR msg: S.MouseMoveMsg);
+VAR m: MapWidget;
+  x, y: INTEGER;
 BEGIN
-  cellX := -1;
-  cellY := 0
-END InitMapWidgetVars;
+  m := c(MapWidget);
+  x := Limit(msg.x DIV E.cellW, 0, game.map.w - 1);
+  y := Limit(msg.y DIV E.cellH, 0, game.map.h - 1);
+  IF (x # m.curX) OR (y # m.curY) THEN
+    m.curX := x; m.curY := y;
+    S.Redraw(c)
+  END
+END MapWidgetHandleMouseMove;
+
+PROCEDURE MapWidgetHandler(c: S.Widget; VAR msg: S.Message);
+BEGIN
+  IF msg IS S.MouseMoveMsg THEN
+    MapWidgetHandleMouseMove(c, msg(S.MouseMoveMsg))
+  ELSIF msg IS S.MouseLeaveMsg THEN
+    c(MapWidget).curX := -1; S.Redraw(c)
+  ELSIF msg IS S.DrawMsg THEN
+    MapWidgetHandleDraw(c, msg(S.DrawMsg))
+  ELSE
+    S.WidgetHandler(c, msg)
+  END
+END MapWidgetHandler;
+
+PROCEDURE NewMapWidget(where: S.Widget; x, y, w, h: INTEGER): MapWidget;
+VAR c: MapWidget;
+BEGIN
+  NEW(c); S.InitWidget(c, w, h);
+  c.curX := -1; c.curY := 0;
+  c.handle := MapWidgetHandler;
+  S.Put(c, where, x, y)
+RETURN c END NewMapWidget;
+(** - **)
+
+PROCEDURE BtnExitOnClick(c: S.Widget);
+BEGIN
+  S.Quit
+END BtnExitOnClick;
 
 PROCEDURE InitInterface(): BOOLEAN;
 VAR W, H: INTEGER;
@@ -109,10 +175,7 @@ BEGIN
   G.MakeCol(color, 0, 0, 0);
   S.ScrollBoxSetNoBg(sbxMap, TRUE);
 
-  wgtMap := S.NewWidget(sbxMap, 0, 0, 1024, 1024);
-  S.SetOnPaint(wgtMap, WgtMapOnPaint);
-  (*S.SetOnMouseMove(wgtMap, WgtMapOnMouseMove);*)
-  InitMapWidgetVars
+  wgtMap := NewMapWidget(sbxMap, 0, 0, 1024, 1024)
 RETURN TRUE END InitInterface;
 
 PROCEDURE Init(): BOOLEAN;
