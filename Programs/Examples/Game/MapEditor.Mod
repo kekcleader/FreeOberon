@@ -1,7 +1,6 @@
 MODULE MapEditor;
 IMPORT G := Graph, S := SimpleGui, Out, Int, Strings, E := GameEngine;
 CONST window = FALSE;
-
 TYPE
   MapWidget = POINTER TO MapWidgetDesc;
   MapWidgetDesc = RECORD(S.WidgetDesc)
@@ -41,8 +40,8 @@ RETURN x END Limit;
 PROCEDURE DrawCell(cell: E.Cell; x, y, toX, toY: INTEGER);
 VAR kx, ky: INTEGER;
 BEGIN
-  kx := cell.kind MOD E.tilesInRow * E.cellW;
-  ky := cell.kind DIV E.tilesInRow * E.cellH;
+  kx := cell.tile MOD E.tilesInRow * E.cellW;
+  ky := cell.tile DIV E.tilesInRow * E.cellH;
   G.DrawPart(E.tiles, kx, ky, E.cellW, E.cellH, toX, toY)
 END DrawCell;
 
@@ -56,10 +55,10 @@ VAR x: INTEGER;
 BEGIN
   m := c(MapWidget);
   G.GetClip(cx, cy, cw, ch);
-(*  INC(cx, E.cellW * 2);
+  (*INC(cx, E.cellW * 2);
   INC(cy, E.cellW * 2);
   DEC(cw, E.cellW * 4);
-  DEC(ch, E.cellW * 4); *)
+  DEC(ch, E.cellW * 4);*)
 
   x0 := (cx - msg.x) DIV E.cellW;
   IF x0 < 0 THEN x0 := 0 END;
@@ -97,14 +96,9 @@ END MapWidgetHandleDraw;
 
 (** (x; y) in cells *)
 PROCEDURE OnMapMouseDown(x, y: INTEGER);
-  PROCEDURE P(VAR cell: E.Cell);
-  BEGIN
-    IF cell.kind # wgtTileset.curTile THEN
-      cell.kind := wgtTileset.curTile;
-      S.Redraw(wgtMap)
-    END
-  END P;
-BEGIN P(game.map.cells[y, x])
+BEGIN
+  E.SetCell(game.map, x, y, wgtTileset.curTile);
+  S.Redraw(wgtMap)
 END OnMapMouseDown;
 
 PROCEDURE MapWidgetHandleMouseDown(c: S.Widget; VAR msg: S.MouseDownMsg);
@@ -222,26 +216,26 @@ BEGIN
 
   pnlTop := S.NewPanel(frmMain, 0, 0, W, 40);
 
-  lblMapName := S.NewLabel(pnlTop, 8, 9, 120, 22, 'Имя файла:');
+  lblMapName := S.NewLabel(pnlTop, 8, 9, 88, 22, 'Имя файла:');
   S.LabelSetAlign(lblMapName, S.alRight);
 
   edtMapName := S.NewEdit(pnlTop, lblMapName.x + lblMapName.w + 8,
-      9, 120, 22);
+      9, 40, 22);
 
   btnOpen := S.NewButton(pnlTop, edtMapName.x + edtMapName.w + 8,
-      8, 96, 24, 'Открыть');
+      8, 70, 24, 'Открыть');
 
   btnSave := S.NewButton(pnlTop, btnOpen.x + btnOpen.w + 8,
-      8, 96, 24, 'Сохранить');
+      8, 80, 24, 'Сохранить');
 
-  btnExit := S.NewButton(pnlTop, W - 68, 8, 60, 24, 'Выход');
+  btnExit := S.NewButton(pnlTop, W - 68, 8, 52, 24, 'Выход');
   S.SetOnClick(btnExit, BtnExitOnClick);
 
   pnlSide := S.NewPanel(frmMain, 0, pnlTop.h, 144, H - pnlTop.h);
   G.MakeCol(color, 40, 150, 40);
   S.SetBgColor(pnlSide, color);
 
-  wgtTileset := NewTilesetWidget(pnlSide, 0, 0, pnlSide.w, 200);
+  wgtTileset := NewTilesetWidget(pnlSide, 0, 0, pnlSide.w, pnlSide.h);
 
   sbxMap := S.NewScrollBox(frmMain, pnlSide.w, pnlTop.h,
       W - pnlSide.w, H - pnlTop.h);
@@ -256,8 +250,8 @@ RETURN TRUE END InitInterface;
 PROCEDURE Init(): BOOLEAN;
 VAR ok: BOOLEAN;
 BEGIN ok := TRUE;
-  (*G.Settings(320, 200, {});*)
-  IF window THEN G.Settings(640, 480, {G.window(*, G.maximized*)}) END;
+  G.Settings(320, 200, {});
+  IF window THEN G.Settings(1240, 780, {G.window(*, G.maximized*)}) END;
   G.Init;
   IF ~G.Done THEN ok := FALSE END;
   IF ok THEN
