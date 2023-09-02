@@ -29,7 +29,8 @@ TYPE
     kind*: INTEGER; (** What is saved in a file *)
     tile*: INTEGER; (** What is displayed on screen *)
     corners*: SET; (** Set of upRight, upLeft, downRight, downLeft *)
-    dirs*: SET (** Set of up, right, down, left *)
+    dirs*: SET; (** Set of up, right, down, left *)
+    bush: SET (** Set of up, right, down, left *)
   END;
 
   Map* = RECORD
@@ -45,7 +46,7 @@ VAR
   tiles*: G.Bitmap;
 
 PROCEDURE DrawCell*(cell: Cell; x, y, toX, toY: INTEGER);
-VAR kx, ky: INTEGER;
+VAR kx, ky, k: INTEGER;
   PROCEDURE DrawCorner(tile, offX, offY, toX, toY: INTEGER);
   BEGIN G.DrawPart(tiles,
         tile MOD tilesInRow * cellW + offX,
@@ -57,8 +58,7 @@ BEGIN
   ky := cell.tile DIV tilesInRow * cellH;
   G.DrawPart(tiles, kx, ky, cellW, cellH, toX, toY);
   IF cell.corners * allCorners # {} THEN
-    IF ({up, left, down, right} - cell.corners = {}) &
-       ({upRight, downLeft} - cell.corners = {}) &
+    IF ({up, left, down, right, upRight, downLeft} - cell.corners = {}) &
        ~(upLeft IN cell.corners)
     THEN
       DrawCorner(cell.kind + tilesInRow * 3 + 4, 0, 0, toX, toY)
@@ -69,8 +69,7 @@ BEGIN
       DrawCorner(cell.kind + tilesInRow * 3 + 4, 0, 0, toX, toY)
     END;
 
-    IF ({up, left, down, right} - cell.corners = {}) &
-       ({upLeft, downRight} - cell.corners = {}) &
+    IF ({up, left, down, right, upLeft, downRight} - cell.corners = {}) &
        ~(upRight IN cell.corners)
     THEN
       DrawCorner(cell.kind + tilesInRow * 3 + 4, cellW DIV 2, 0, toX, toY)
@@ -81,8 +80,7 @@ BEGIN
       DrawCorner(cell.kind + tilesInRow * 3 + 4, cellW DIV 2, 0, toX, toY)
     END;
 
-    IF ({up, left, down, right} - cell.corners = {}) &
-       ({upLeft, downRight} - cell.corners = {}) &
+    IF ({up, left, down, right, upLeft, downRight} - cell.corners = {}) &
        ~(downLeft IN cell.corners)
     THEN
       DrawCorner(cell.kind + tilesInRow * 3 + 4, 0, cellH DIV 2, toX, toY)
@@ -93,8 +91,7 @@ BEGIN
       DrawCorner(cell.kind + tilesInRow * 3 + 4, 0, cellH DIV 2, toX, toY)
     END;
 
-    IF ({up, left, down, right} - cell.corners = {}) &
-       ({upRight, downLeft} - cell.corners = {}) &
+    IF ({up, left, down, right, upRight, downLeft} - cell.corners = {}) &
        ~(downRight IN cell.corners)
     THEN
       DrawCorner(cell.kind + tilesInRow * 3 + 4, cellW DIV 2, cellH DIV 2, toX, toY)
@@ -104,6 +101,12 @@ BEGIN
           ({upRight, right, down} - cell.corners = {}) & ~(left IN cell.corners) THEN
       DrawCorner(cell.kind + tilesInRow * 3 + 4, cellW DIV 2, cellH DIV 2, toX, toY)
     END
+  END;
+  IF cell.bush # {} THEN
+    k := ORD(cell.bush) + 16;
+    kx := k MOD tilesInRow * cellW;
+    ky := k DIV tilesInRow * cellH;
+    G.DrawPart(tiles, kx, ky, cellW, cellH, toX, toY)
   END
 END DrawCell;
 
@@ -181,7 +184,12 @@ BEGIN
   END;
   map.cells[y, x].tile := tile;
   map.cells[y, x].corners := corners;
-  map.cells[y, x].dirs := dirs
+  map.cells[y, x].dirs := dirs;
+  IF kind # 32 THEN
+    map.cells[y, x].bush := CheckNeighbours(map, x, y, 32) * allSides
+  ELSE
+    map.cells[y, x].bush := {}
+  END
 END UpdateMapTile;
 
 PROCEDURE UpdateMapTiles*(VAR map: Map);
@@ -251,6 +259,7 @@ END SaveMap;
 PROCEDURE LoadBitmap(name: ARRAY OF CHAR; VAR ok: BOOLEAN): G.Bitmap;
 VAR bmp: G.Bitmap;
   s: ARRAY 256 OF CHAR;
+  key: G.Color;
 BEGIN
   s := 'Data/Graph/';
   Strings.Append(name, s);
@@ -260,6 +269,9 @@ BEGIN
     ok := FALSE;
     Out.String('Error: Could not load bitmap "');
     Out.String(s); Out.String('".'); Out.Ln
+  ELSE
+    G.MakeCol(key, 255, 0, 128);
+    G.ApplyMaskColor(bmp, key)
   END
 RETURN bmp END LoadBitmap;
 
