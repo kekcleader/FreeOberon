@@ -543,6 +543,7 @@ PROCEDURE unlock_bitmap* ["al_unlock_bitmap"] (bmp: Bitmap);
 PROCEDURE convert_bitmap* ["al_convert_bitmap"] (bmp: Bitmap);
 PROCEDURE convert_memory_bitmaps* ["al_convert_memory_bitmaps"];
 PROCEDURE is_compatible_bitmap* ["al_is_compatible_bitmap"] (bmp: Bitmap): BOOLEAN;
+PROCEDURE convert_mask_to_alpha* ["al_convert_mask_to_alpha"] (bmp: Bitmap; maskColor: Color);
 
 PROCEDURE set_new_bitmap_flags* ["al_set_new_bitmap_flags"] (flags: SET);
 PROCEDURE add_new_bitmap_flag* ["al_add_new_bitmap_flag"] (flags: SET);

@@ -693,6 +693,10 @@ BEGIN Al.set_new_bitmap_flags({Al.convertBitmap});
   END
 RETURN B END LoadBitmap;
 
+PROCEDURE ApplyMaskColor*(bmp: Bitmap; VAR mask: Color);
+BEGIN Al.convert_mask_to_alpha(bmp.bmp, SYSTEM.VAL(Al.Color, mask))
+END ApplyMaskColor;
+
 PROCEDURE Flip*;
 VAR tmp: Al.Bitmap;
   W: Window;
