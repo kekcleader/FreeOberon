@@ -20,11 +20,16 @@ CONST
   downRight = 6;
   downLeft  = 7;
 
+  (** Sets of directions **)
+  allCorners = {upRight, upLeft, downRight, downLeft};
+  allSides = {up, right, down, left};
+
 TYPE
   Cell* = RECORD (** A single cell of the map *)
     kind*: INTEGER; (** What is saved in a file *)
     tile*: INTEGER; (** What is displayed on screen *)
-    corners*: SET (** Set of upRight, upLeft, downRight, downLeft *)
+    corners*: SET; (** Set of upRight, upLeft, downRight, downLeft *)
+    dirs*: SET (** Set of up, right, down, left *)
   END;
 
   Map* = RECORD
@@ -51,18 +56,53 @@ BEGIN
   kx := cell.tile MOD tilesInRow * cellW;
   ky := cell.tile DIV tilesInRow * cellH;
   G.DrawPart(tiles, kx, ky, cellW, cellH, toX, toY);
-  IF cell.corners # {} THEN
-    IF upLeft IN cell.corners THEN
+  IF cell.corners * allCorners # {} THEN
+    IF ({up, left, down, right} - cell.corners = {}) &
+       ({upRight, downLeft} - cell.corners = {}) &
+       ~(upLeft IN cell.corners)
+    THEN
+      DrawCorner(cell.kind + tilesInRow * 3 + 4, 0, 0, toX, toY)
+    ELSIF upLeft IN cell.corners THEN
       DrawCorner(cell.kind + tilesInRow + 5, 0, 0, toX, toY)
+    ELSIF ({upRight, up, left} - cell.corners = {}) & ~(down IN cell.corners) OR
+          ({downLeft, left, up} - cell.corners = {}) & ~(right IN cell.corners) THEN
+      DrawCorner(cell.kind + tilesInRow * 3 + 4, 0, 0, toX, toY)
     END;
-    IF upRight IN cell.corners THEN
+
+    IF ({up, left, down, right} - cell.corners = {}) &
+       ({upLeft, downRight} - cell.corners = {}) &
+       ~(upRight IN cell.corners)
+    THEN
+      DrawCorner(cell.kind + tilesInRow * 3 + 4, cellW DIV 2, 0, toX, toY)
+    ELSIF upRight IN cell.corners THEN
       DrawCorner(cell.kind + tilesInRow + 4, cellW DIV 2, 0, toX, toY)
+    ELSIF ({upLeft, up, right} - cell.corners = {}) & ~(down IN cell.corners) OR
+          ({downRight, right, up} - cell.corners = {}) & ~(left IN cell.corners) THEN
+      DrawCorner(cell.kind + tilesInRow * 3 + 4, cellW DIV 2, 0, toX, toY)
     END;
-    IF downLeft IN cell.corners THEN
+
+    IF ({up, left, down, right} - cell.corners = {}) &
+       ({upLeft, downRight} - cell.corners = {}) &
+       ~(downLeft IN cell.corners)
+    THEN
+      DrawCorner(cell.kind + tilesInRow * 3 + 4, 0, cellH DIV 2, toX, toY)
+    ELSIF downLeft IN cell.corners THEN
       DrawCorner(cell.kind + 5, 0, cellH DIV 2, toX, toY)
+    ELSIF ({downRight, down, left} - cell.corners = {}) & ~(up IN cell.corners) OR
+          ({upLeft, left, down} - cell.corners = {}) & ~(right IN cell.corners) THEN
+      DrawCorner(cell.kind + tilesInRow * 3 + 4, 0, cellH DIV 2, toX, toY)
     END;
-    IF downRight IN cell.corners THEN
+
+    IF ({up, left, down, right} - cell.corners = {}) &
+       ({upRight, downLeft} - cell.corners = {}) &
+       ~(downRight IN cell.corners)
+    THEN
+      DrawCorner(cell.kind + tilesInRow * 3 + 4, cellW DIV 2, cellH DIV 2, toX, toY)
+    ELSIF downRight IN cell.corners THEN
       DrawCorner(cell.kind + 4, cellW DIV 2, cellH DIV 2, toX, toY)
+    ELSIF ({downLeft, down, right} - cell.corners = {}) & ~(up IN cell.corners) OR
+          ({upRight, right, down} - cell.corners = {}) & ~(left IN cell.corners) THEN
+      DrawCorner(cell.kind + tilesInRow * 3 + 4, cellW DIV 2, cellH DIV 2, toX, toY)
     END
   END
 END DrawCell;
@@ -102,15 +142,19 @@ BEGIN
     xx := 3; yy := 3;
     IF up IN dirs THEN
       IF {left, right, down} - dirs = {} THEN
-        IF    ~(upLeft    IN dirs) THEN xx := 5; yy := 1
+        IF    ~(upLeft    IN dirs) & ~(downLeft  IN dirs) THEN xx := 0; yy := 1
+        ELSIF ~(upLeft    IN dirs) & ~(upRight   IN dirs) THEN xx := 1; yy := 0
+        ELSIF ~(upRight   IN dirs) & ~(downRight IN dirs) THEN xx := 2; yy := 1
+        ELSIF ~(downLeft  IN dirs) & ~(downRight IN dirs) THEN xx := 1; yy := 2
+        ELSIF ~(upLeft    IN dirs) THEN xx := 5; yy := 1
         ELSIF ~(upRight   IN dirs) THEN xx := 4; yy := 1
         ELSIF ~(downLeft  IN dirs) THEN xx := 5; yy := 0
         ELSIF ~(downRight IN dirs) THEN xx := 4; yy := 0
         ELSE xx := 1; yy := 1
         END
-      ELSIF {left , right}   - dirs = {} THEN xx := 1; yy := 2
-      ELSIF {left , down }   - dirs = {} THEN xx := 2; yy := 1
-      ELSIF {right, down }   - dirs = {} THEN xx := 0; yy := 1
+      ELSIF {left , right} - dirs = {} THEN xx := 1; yy := 2
+      ELSIF {left , down } - dirs = {} THEN xx := 2; yy := 1
+      ELSIF {right, down } - dirs = {} THEN xx := 0; yy := 1
       ELSIF left  IN dirs THEN xx := 2; yy := 2
       ELSIF right IN dirs THEN xx := 0; yy := 2
       ELSIF down  IN dirs THEN xx := 3; yy := 1
@@ -132,10 +176,12 @@ BEGIN
     IF {up, left, upLeft} - dirs = {upLeft} THEN INCL(corners, upLeft) END;
     IF {up, right, upRight} - dirs = {upRight} THEN INCL(corners, upRight) END;
     IF {down, left, downLeft} - dirs = {downLeft} THEN INCL(corners, downLeft) END;
-    IF {down, right, downRight} - dirs = {downRight} THEN INCL(corners, downRight) END
+    IF {down, right, downRight} - dirs = {downRight} THEN INCL(corners, downRight) END;
+    corners := corners + dirs * allSides
   END;
   map.cells[y, x].tile := tile;
-  map.cells[y, x].corners := corners
+  map.cells[y, x].corners := corners;
+  map.cells[y, x].dirs := dirs
 END UpdateMapTile;
 
 PROCEDURE UpdateMapTiles*(VAR map: Map);
