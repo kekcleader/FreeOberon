@@ -22,8 +22,9 @@ CONST
 
 TYPE
   Cell* = RECORD (** A single cell of the map *)
-    kind*: INTEGER;
-    tile*: INTEGER
+    kind*: INTEGER; (** What is saved in a file *)
+    tile*: INTEGER; (** What is displayed on screen *)
+    corners*: SET (** Set of upRight, upLeft, downRight, downLeft *)
   END;
 
   Map* = RECORD
@@ -37,6 +38,34 @@ TYPE
 
 VAR
   tiles*: G.Bitmap;
+
+PROCEDURE DrawCell*(cell: Cell; x, y, toX, toY: INTEGER);
+VAR kx, ky: INTEGER;
+  PROCEDURE DrawCorner(tile, offX, offY, toX, toY: INTEGER);
+  BEGIN G.DrawPart(tiles,
+        tile MOD tilesInRow * cellW + offX,
+        tile DIV tilesInRow * cellH + offY,
+        cellW DIV 2, cellH DIV 2, toX + offX, toY + offY)
+  END DrawCorner;
+BEGIN
+  kx := cell.tile MOD tilesInRow * cellW;
+  ky := cell.tile DIV tilesInRow * cellH;
+  G.DrawPart(tiles, kx, ky, cellW, cellH, toX, toY);
+  IF cell.corners # {} THEN
+    IF upLeft IN cell.corners THEN
+      DrawCorner(cell.kind + tilesInRow + 5, 0, 0, toX, toY)
+    END;
+    IF upRight IN cell.corners THEN
+      DrawCorner(cell.kind + tilesInRow + 4, cellW DIV 2, 0, toX, toY)
+    END;
+    IF downLeft IN cell.corners THEN
+      DrawCorner(cell.kind + 5, 0, cellH DIV 2, toX, toY)
+    END;
+    IF downRight IN cell.corners THEN
+      DrawCorner(cell.kind + 4, cellW DIV 2, cellH DIV 2, toX, toY)
+    END
+  END
+END DrawCell;
 
 PROCEDURE CheckNeighbours(VAR map: Map; x, y, kind: INTEGER): SET;
 VAR s: SET;
@@ -63,10 +92,12 @@ RETURN s END CheckNeighbours;
 PROCEDURE UpdateMapTile*(VAR map: Map; x, y: INTEGER);
 VAR kind, tile, xx, yy: INTEGER;
   dirs: SET; (* Set of directions of neighbours where kind is the same *)
+  corners: SET;
 BEGIN
   kind := map.cells[y, x].kind;
   tile := kind;
-  IF (kind = 64) OR (kind = 96) THEN
+  corners := {};
+  IF (kind >= 32) & (kind MOD 32 = 0) THEN
     dirs := CheckNeighbours(map, x, y, kind);
     xx := 3; yy := 3;
     IF up IN dirs THEN
@@ -97,9 +128,14 @@ BEGIN
       END
     ELSIF right IN dirs THEN xx := 0; yy := 3
     END;
-    tile := kind + xx + yy * tilesInRow
+    tile := kind + xx + yy * tilesInRow;
+    IF {up, left, upLeft} - dirs = {upLeft} THEN INCL(corners, upLeft) END;
+    IF {up, right, upRight} - dirs = {upRight} THEN INCL(corners, upRight) END;
+    IF {down, left, downLeft} - dirs = {downLeft} THEN INCL(corners, downLeft) END;
+    IF {down, right, downRight} - dirs = {downRight} THEN INCL(corners, downRight) END
   END;
-  map.cells[y, x].tile := tile
+  map.cells[y, x].tile := tile;
+  map.cells[y, x].corners := corners
 END UpdateMapTile;
 
 PROCEDURE UpdateMapTiles*(VAR map: Map);

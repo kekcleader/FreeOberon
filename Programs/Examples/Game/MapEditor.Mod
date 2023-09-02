@@ -37,14 +37,6 @@ RETURN x END Limit;
 
 (** Map Widget **)
 
-PROCEDURE DrawCell(cell: E.Cell; x, y, toX, toY: INTEGER);
-VAR kx, ky: INTEGER;
-BEGIN
-  kx := cell.tile MOD E.tilesInRow * E.cellW;
-  ky := cell.tile DIV E.tilesInRow * E.cellH;
-  G.DrawPart(E.tiles, kx, ky, E.cellW, E.cellH, toX, toY)
-END DrawCell;
-
 PROCEDURE MapWidgetHandleDraw(c: S.Widget; VAR msg: S.DrawMsg);
 VAR x: INTEGER;
   X, Y, i, j: INTEGER;
@@ -80,7 +72,7 @@ BEGIN
   FOR i := y0 TO y1 DO
     X := x;
     FOR j := x0 TO x1 DO
-      DrawCell(game.map.cells[i, j], i, j, X, Y);
+      E.DrawCell(game.map.cells[i, j], i, j, X, Y);
       INC(X, E.cellW)
     END;
     INC(Y, E.cellH)
@@ -250,7 +242,7 @@ RETURN TRUE END InitInterface;
 PROCEDURE Init(): BOOLEAN;
 VAR ok: BOOLEAN;
 BEGIN ok := TRUE;
-  G.Settings(320, 200, {});
+  (*G.Settings(320, 200, {});*)
   IF window THEN G.Settings(1240, 780, {G.window(*, G.maximized*)}) END;
   G.Init;
   IF ~G.Done THEN ok := FALSE END;
