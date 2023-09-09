@@ -194,6 +194,27 @@ RETURN c END NewTilesetWidget;
 
 (** - **)
 
+PROCEDURE BtnOpenOnClick(c: S.Widget);
+VAR s: ARRAY 256 OF CHAR;
+BEGIN
+  S.EditGetText(edtMapName, s);
+  IF s[0] # 0X THEN
+    Strings.Append('.gam', s);
+    IF E.LoadGame(game, s) THEN END;
+    S.Redraw(wgtMap)
+  END
+END BtnOpenOnClick;
+
+PROCEDURE BtnSaveOnClick(c: S.Widget);
+VAR s: ARRAY 256 OF CHAR;
+BEGIN
+  S.EditGetText(edtMapName, s);
+  IF s[0] # 0X THEN
+    Strings.Append('.gam', s);
+    E.SaveGame(game, s)
+  END
+END BtnSaveOnClick;
+
 PROCEDURE BtnExitOnClick(c: S.Widget);
 BEGIN
   S.Quit
@@ -216,9 +237,11 @@ BEGIN
 
   btnOpen := S.NewButton(pnlTop, edtMapName.x + edtMapName.w + 8,
       8, 70, 24, 'Открыть');
+  S.SetOnClick(btnOpen, BtnOpenOnClick);
 
   btnSave := S.NewButton(pnlTop, btnOpen.x + btnOpen.w + 8,
       8, 80, 24, 'Сохранить');
+  S.SetOnClick(btnSave, BtnSaveOnClick);
 
   btnExit := S.NewButton(pnlTop, W - 68, 8, 52, 24, 'Выход');
   S.SetOnClick(btnExit, BtnExitOnClick);

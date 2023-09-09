@@ -809,6 +809,10 @@ BEGIN
   Redraw(c)
 END EditSetText;
 
+PROCEDURE EditGetText*(c: Edit; VAR text: ARRAY OF CHAR);
+BEGIN Strings.Copy(c.text, text)
+END EditGetText;
+
 (** ScrollBar **)
 
 PROCEDURE DrawBox(x, y, w, h: INTEGER; bg, fg: G.Color);

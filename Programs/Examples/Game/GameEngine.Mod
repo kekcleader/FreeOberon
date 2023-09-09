@@ -1,5 +1,5 @@
 MODULE GameEngine;
-IMPORT G := Graph, Random, Out, Strings;
+IMPORT G := Graph, Random, Out, Strings, Files;
 
 CONST
   maxMapW* = 128;
@@ -29,7 +29,6 @@ TYPE
     kind*: INTEGER; (** What is saved in a file *)
     tile*: INTEGER; (** What is displayed on screen *)
     corners*: SET; (** Set of upRight, upLeft, downRight, downLeft *)
-    dirs*: SET; (** Set of up, right, down, left *)
     bush: SET (** Set of up, right, down, left *)
   END;
 
@@ -184,7 +183,6 @@ BEGIN
   END;
   map.cells[y, x].tile := tile;
   map.cells[y, x].corners := corners;
-  map.cells[y, x].dirs := dirs;
   IF kind # 32 THEN
     map.cells[y, x].bush := CheckNeighbours(map, x, y, 32) * allSides
   ELSE
@@ -243,15 +241,67 @@ BEGIN
   UpdateMapTiles(map)
 END MakeRandomMap;
 
-PROCEDURE LoadMap*(VAR map: Map; fname: ARRAY OF CHAR): BOOLEAN;
+PROCEDURE ReadCell(VAR r: Files.Rider; VAR cell: Cell);
 BEGIN
+  Files.ReadInt(r, cell.kind)
+END ReadCell;
 
-RETURN TRUE END LoadMap;
-
-PROCEDURE SaveMap*(VAR map: Map; fname: ARRAY OF CHAR);
+PROCEDURE ReadMap(VAR r: Files.Rider; VAR map: Map): BOOLEAN;
+VAR x, y: INTEGER;
 BEGIN
+  Files.ReadInt(r, map.w);
+  Files.ReadInt(r, map.h);
+  FOR y := 0 TO map.h - 1 DO
+    FOR x := 0 TO map.w - 1 DO
+      ReadCell(r, map.cells[y, x])
+    END
+  END;
+  UpdateMapTiles(map)
+RETURN TRUE END ReadMap;
 
-END SaveMap;
+PROCEDURE WriteCell(VAR r: Files.Rider; cell: Cell);
+BEGIN
+  Files.WriteInt(r, cell.kind)
+END WriteCell;
+
+PROCEDURE WriteMap(VAR r: Files.Rider; map: Map);
+VAR x, y: INTEGER;
+BEGIN
+  Files.WriteInt(r, map.w);
+  Files.WriteInt(r, map.h);
+  FOR y := 0 TO map.h - 1 DO
+    FOR x := 0 TO map.w - 1 DO
+      WriteCell(r, map.cells[y, x])
+    END
+  END
+END WriteMap;
+
+PROCEDURE LoadGame*(VAR game: Game; fname: ARRAY OF CHAR): BOOLEAN;
+VAR F: Files.File;
+  r: Files.Rider;
+  ok: BOOLEAN;
+BEGIN
+  ok := FALSE;
+  F := Files.Old(fname);
+  IF F # NIL THEN
+    Files.Set(r, F, 0);
+    ok := ReadMap(r, game.map);
+    Files.Close(F)
+  END
+RETURN ok END LoadGame;
+
+PROCEDURE SaveGame*(VAR game: Game; fname: ARRAY OF CHAR);
+VAR F: Files.File;
+  r: Files.Rider;
+BEGIN
+  F := Files.New(fname);
+  IF F # NIL THEN
+    Files.Set(r, F, 0);
+    WriteMap(r, game.map);
+    Files.Register(F);
+    Files.Close(F)
+  END
+END SaveGame;
 
 (** Returns a bitmap with the given name (appends strings to make a file name).
     On error sets ok to FALSE and ouputs an error message.
