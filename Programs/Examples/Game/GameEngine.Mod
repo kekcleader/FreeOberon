@@ -109,26 +109,32 @@ BEGIN
   END
 END DrawCell;
 
-PROCEDURE CheckNeighbours(VAR map: Map; x, y, kind: INTEGER): SET;
+PROCEDURE CheckNeighbours(VAR map: Map; x, y, kind: INTEGER;
+    forBush: BOOLEAN): SET;
 VAR s: SET;
-  PROCEDURE P(VAR map: Map; x, y, dir: INTEGER; VAR s: SET);
+  PROCEDURE P(VAR map: Map; kind, x, y, dir: INTEGER;
+      forBush: BOOLEAN; VAR s: SET);
+  VAR k: INTEGER;
   BEGIN
-    IF (0 <= x) & (x < map.w) & (0 <= y) & (y < map.h) &
-       ((map.cells[y, x].kind = kind) OR
-        (kind = 64) & (map.cells[y, x].kind = 96))
-    THEN INCL(s, dir)
+    IF (0 <= x) & (x < map.w) & (0 <= y) & (y < map.h) THEN
+      k := map.cells[y, x].kind;
+      IF (k = kind) OR
+         (k = 32) & (kind = 64) OR
+         ~forBush & (k = 96) & ((kind = 32) OR (kind = 64))
+      THEN INCL(s, dir)
+      END
     END
   END P;
 BEGIN
   s := {};
-  P(map, x    , y - 1, up       , s);
-  P(map, x + 1, y    , right    , s);
-  P(map, x    , y + 1, down     , s);
-  P(map, x - 1, y    , left     , s);
-  P(map, x - 1, y - 1, upLeft   , s);
-  P(map, x + 1, y - 1, upRight  , s);
-  P(map, x - 1, y + 1, downLeft , s);
-  P(map, x + 1, y + 1, downRight, s)
+  P(map, kind, x    , y - 1, up       , forBush, s);
+  P(map, kind, x + 1, y    , right    , forBush, s);
+  P(map, kind, x    , y + 1, down     , forBush, s);
+  P(map, kind, x - 1, y    , left     , forBush, s);
+  P(map, kind, x - 1, y - 1, upLeft   , forBush, s);
+  P(map, kind, x + 1, y - 1, upRight  , forBush, s);
+  P(map, kind, x - 1, y + 1, downLeft , forBush, s);
+  P(map, kind, x + 1, y + 1, downRight, forBush, s)
 RETURN s END CheckNeighbours;
 
 PROCEDURE UpdateMapTile*(VAR map: Map; x, y: INTEGER);
@@ -140,7 +146,7 @@ BEGIN
   tile := kind;
   corners := {};
   IF (kind >= 32) & (kind MOD 32 = 0) THEN
-    dirs := CheckNeighbours(map, x, y, kind);
+    dirs := CheckNeighbours(map, x, y, kind, FALSE);
     xx := 3; yy := 3;
     IF up IN dirs THEN
       IF {left, right, down} - dirs = {} THEN
@@ -183,8 +189,8 @@ BEGIN
   END;
   map.cells[y, x].tile := tile;
   map.cells[y, x].corners := corners;
-  IF kind # 32 THEN
-    map.cells[y, x].bush := CheckNeighbours(map, x, y, 32) * allSides
+  IF (kind # 32) & (kind # 96) THEN
+    map.cells[y, x].bush := CheckNeighbours(map, x, y, 32, TRUE) * allSides
   ELSE
     map.cells[y, x].bush := {}
   END
