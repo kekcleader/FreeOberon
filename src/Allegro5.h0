@@ -1,0 +1,6 @@
+#ifndef Allegro5__h0
+#define Allegro5__h0
+
+extern Allegro5_Color al_get_pixel(Allegro5_Bitmap bmp, int x, int y);
+
+#endif

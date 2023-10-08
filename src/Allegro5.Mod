@@ -38,6 +38,14 @@ CONST
   videoBitmap*          = 10;
   convertBitmap*        = 12;
 
+  (** Allegro pixel format **)
+  formatAny* = 0;
+
+  (** Flags in al_lock_bitmap **)
+  lockReadWrite* = 0;
+  lockReadOnly*  = 1;
+  lockWriteOnly* = 2;
+
   (** Values of parameter option in al_set_new_display_option **)
   redSize*               = 0;
   greenSize*             = 1;
@@ -72,7 +80,7 @@ CONST
   supportSeparateAlpha*  = 30;
   autoConvertBitmaps*    = 31;
   supportedOrientations* = 32;
-    openglMajorVersion*    = 33;
+  openglMajorVersion*    = 33;
   openglMinorVersion*    = 34;
   displayOptionsCount*   = 35;
 
@@ -455,6 +463,8 @@ TYPE
     x1*, y1*, x2*, y2*: INTEGER
   END;
 
+PROCEDURE -AAIncludeAllegro5h0* '#include "Allegro5.h0"';
+
 PROCEDURE get_allegro_version* ["al_get_allegro_version"] (): INTEGER;
 PROCEDURE install_system* ["al_install_system"] (version, atexit: ADRINT): BOOLEAN;
 PROCEDURE uninstall_system* ["al_uninstall_system"] ();
@@ -618,5 +628,7 @@ PROCEDURE reset_clipping_rectangle* ["al_reset_clipping_rectangle"];
 
 PROCEDURE free_with_context* ["al_free_with_context"] (ptr: ADRINT; line: INTEGER; file, func: ARRAY OF SHORTCHAR);
 PROCEDURE get_time* ["al_get_time"] (): LONGREAL;
+
+PROCEDURE- get_pixel* (bmp: Bitmap; x, y: INTEGER; VAR color: Color) "*color = al_get_pixel(bmp, x, y)";
 
 END Allegro5.

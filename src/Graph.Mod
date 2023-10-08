@@ -768,6 +768,23 @@ PROCEDURE PutPixel*(x, y: INTEGER; c: Color);
 BEGIN Al.draw_pixel(FLT(x) + 0.5, FLT(y) + 0.5, SYSTEM.VAL(Al.Color, c))
 END PutPixel;
 
+PROCEDURE LockBitmapReadOnly*(bmp: Bitmap);
+BEGIN IF Al.lock_bitmap(bmp.bmp, Al.formatAny, Al.lockReadOnly) = NIL THEN END
+END LockBitmapReadOnly;
+
+PROCEDURE LockBitmap*(bmp: Bitmap);
+BEGIN IF Al.lock_bitmap(bmp.bmp, Al.formatAny, Al.lockReadWrite) = NIL THEN END
+END LockBitmap;
+
+PROCEDURE UnlockBitmap*(bmp: Bitmap);
+BEGIN Al.unlock_bitmap(bmp.bmp)
+END UnlockBitmap;
+
+PROCEDURE GetPixel*(bmp: Bitmap; x, y: INTEGER; VAR color: Color);
+BEGIN 
+  Al.get_pixel(bmp.bmp, x, y, SYSTEM.VAL(Al.Color, color))
+END GetPixel;
+
 PROCEDURE ThickLineF*(x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
 BEGIN Al.draw_line(x1, y1, x2, y2, SYSTEM.VAL(Al.Color, color), thickness)
 END ThickLineF;
