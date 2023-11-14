@@ -555,6 +555,8 @@ BEGIN mod.foreign := FALSE; res := 401; NEW(top); top.next := NIL; p := top;
           END
         END;
         findLinkInfo := NIL
+      ELSE Debug.StrVal('Read name is: ', s);
+        Debug.StrVal('Mod name is: ', mod.s)
       END
     ELSE Debug.StrVal('GetImportedModules: First symbol is: ', s)
     END

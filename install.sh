@@ -12,14 +12,14 @@ echo "README.md file."
 echo
 echo "On OS Debian / Ubuntu / Linux Mint and so on:"
 echo "  sudo apt-get update"
-echo "  sudo apt-get install -y git gcc libc-dev liballegro5-dev"
-echo "or:"
+echo "  sudo apt-get install -y git gcc libc-dev liballegro5-dev liballegro-image5-dev liballegro-audio5-dev liballegro-acodec5-dev"
+echo "or, if sudo is not installed on Debian:"
 echo "  su"
 echo "  apt-get update"
-echo "  apt-get install -y git gcc libc-dev liballegro5-dev"
+echo "  apt-get install -y git gcc libc-dev liballegro5-dev liballegro-image5-dev liballegro-audio5-dev liballegro-acodec5-dev"
 echo
 echo "On OS Fedora:"
-echo "  sudo dnf install -y git gcc glibc-devel allegro5-devel allegro5-addon-image allegro5-addon-audio allegro5-addon-acodec allegro5-addon-dialog allegro5-devel allegro5-addon-image-devel allegro5-addon-audio-devel allegro5-addon-acodec-devel allegro5-addon-dialog-devel argro5-addon-dialog-devel"
+echo "  sudo dnf install -y git gcc glibc-devel allegro5-devel allegro5-addon-image allegro5-addon-audio allegro5-addon-acodec allegro5-devel allegro5-addon-image-devel allegro5-addon-audio-devel allegro5-addon-acodec-devel"
 echo
 echo "On Arch Linux:"
 echo "  sudo pacman -Sy git gcc pkgconf glibc allegro"

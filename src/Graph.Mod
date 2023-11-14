@@ -781,7 +781,7 @@ BEGIN Al.unlock_bitmap(bmp.bmp)
 END UnlockBitmap;
 
 PROCEDURE GetPixel*(bmp: Bitmap; x, y: INTEGER; VAR color: Color);
-BEGIN 
+BEGIN
   Al.get_pixel(bmp.bmp, x, y, SYSTEM.VAL(Al.Color, color))
 END GetPixel;
 
