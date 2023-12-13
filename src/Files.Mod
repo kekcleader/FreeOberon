@@ -1033,10 +1033,12 @@ BEGIN FlipBytes(SYSTEM.THISARR(SYSTEM.ADR(x), 8), b);
   WriteBytes(R, b, 8)
 END WriteLReal;
 
-(** Writes string `x` consising of a 1-byte characters to a file.
+(** Writes string `x` consising of a 1-byte characters to a file,
+    including the 0X character at the end.
      The rider `r` must have been set to a file using Set.
      The file is not immediately written on a storage media.
-%RU Записывает в файл строку `x`, состоящую из 1-байтовых литер.
+%RU Записывает в файл строку `x`, состоящую из 1-байтовых литер,
+    включая и литеру 0X на конце.
      Бегунок `r` должен быть установлен на файл с помощью Set.
      Файл не записывается на носитель сразу. *)
 PROCEDURE WriteShortString*(VAR R: Rider; IN x: ARRAY OF SHORTCHAR);
@@ -1045,10 +1047,12 @@ BEGIN i := 0; WHILE x[i] # 0X DO INC(i) END;
   WriteBytes(R, SYSTEM.THISARR(SYSTEM.ADR(x), LEN(x)), i + 1)
 END WriteShortString;
 
-(** Writes string `x` to a file in UTF-8 format.
+(** Writes string `x` to a file in UTF-8 format, including
+    the 0X character at the end.
      The rider `r` must have been set to a file using Set.
      The file is not immediately written on a storage media.
-%RU Записывает в файл строку `x` в формате UTF-8.
+%RU Записывает в файл строку `x` в формате UTF-8, включая и
+    литеру 0X на конце.
      Бегунок `r` должен быть установлен на файл с помощью Set.
      Файл не записывается на носитель сразу. *)
 PROCEDURE WriteString*(VAR R: Rider; IN x: ARRAY OF CHAR);
