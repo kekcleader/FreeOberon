@@ -120,7 +120,11 @@ RETURN ok END GetChar;
 (** Puts in `x` the byte at the current position
 %RU Помещает в `x` байт в текущей позиции *)
 PROCEDURE Byte*(VAR x: BYTE);
-BEGIN x := SYSTEM.VAL(BYTE, SHORT(SHORT(GetByte())))
+BEGIN
+  IF readState = eof THEN Done := FALSE; x := 0
+  ELSE x := SYSTEM.VAL(BYTE, SHORT(SHORT(GetByte())));
+    IF readState = eof THEN Done := FALSE END
+  END
 END Byte;
 
 PROCEDURE ReadChar;
