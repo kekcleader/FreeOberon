@@ -357,7 +357,7 @@ END CacheEntry;
 %RU Открывает файл с заданным именем файла, если он существует. Возвращает
     объект, представляющий этот файл. Если файл не существует, возвращает NIL.
      Если вы пишете в файл, открытый с помощью Old, изменения будут сохранены
-     на носителе информации только после вызова Register или Close. *)
+    на носителе информации только после вызова Register или Close. *)
 PROCEDURE Old*(name: ARRAY OF CHAR): File;
 VAR f: File;
   fd: Platform.FileHandle;
@@ -660,7 +660,18 @@ END WriteBytes;
 %RU Усекает файл в позиции `pos`.
     Длина файла будет равна `pos`. *)
 PROCEDURE Truncate*(F: File; pos: INTEGER);
-BEGIN F.len := pos (*!FIXME*)
+VAR error: Platform.ErrorCode;
+  i: INTEGER;
+  buf: Buffer;
+BEGIN (*!FIXME*)
+  error := Platform.TruncateFile(F.fd, pos);
+  F.len := pos;
+  FOR i := 0 TO NumBufs - 1 DO
+    buf := F.bufs[i];
+    IF (buf # NIL) & (buf.org <= pos) & (pos < buf.org + buf.size) THEN
+      buf.size := pos - buf.org
+    END
+  END
 END Truncate;
 
 (** Deletes (deregisters) a file with the given name from the storage media.
