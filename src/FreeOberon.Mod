@@ -999,6 +999,7 @@ END OpenFiles;
 PROCEDURE ParseFileNameArg(VAR s: ARRAY OF CHAR);
 VAR L: INTEGER;
   found: BOOLEAN;
+  s2, s3: ARRAY 256 OF CHAR;
 BEGIN
   (* Replace all \ with / and set L to length of s *)
   L := 0; found := FALSE;
@@ -1006,16 +1007,21 @@ BEGIN
     IF (s[L] = '\') OR (s[L] = '/') THEN s[L] := '/'; found := TRUE END;
     INC(L)
   END;
+  s2 := s$;
 
   IF ~found THEN
     IF (L < 4) OR (Strings.Pos('.Mod', s, L - 4) = -1) THEN
       Strings.Append('.Mod', s)
-    END;
+    END
+  END;
+
+  IF ~Dir.FileExists(s) THEN
+    s3 := s$;
+    Strings.Insert(Config.stdPath, 0, s);
     IF ~Dir.FileExists(s) THEN
-      Strings.Insert(Config.stdPath, 0, s);
+      Strings.Insert(s2 + '/', Strings.Length(Config.stdPath), s);
       IF ~Dir.FileExists(s) THEN
-        Strings.Delete(s, 0, Strings.Length(Config.stdPath));
-        Debug.StrVal('File not found: ', s)
+        Debug.StrVal('File not found: ', s3)
       END
     END
   END
