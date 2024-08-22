@@ -1,6 +1,11 @@
 MODULE Time;
 IMPORT Platform, Int;
 
+TYPE Time* = INTEGER;
+
+PROCEDURE Timestamp*(): Time;
+RETURN Platform.Time() END Timestamp;
+
 PROCEDURE GetClock*(VAR time, date: INTEGER);
 BEGIN
   Platform.GetClock(time, date)
