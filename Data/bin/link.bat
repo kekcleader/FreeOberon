@@ -18,6 +18,11 @@ CD _Build >nul 2>&1
 
 SET ONAME=%~n1
 SET GCCDIR=%DIR%mingw32\bin
+
+
+
+
+
 SET FOBDIR=%DIR%..\..
 SET OFRDIR=%DIR%OfrontPlus
 SET OFRTAR=%OFRDIR%\Target\Win32

@@ -1,5 +1,5 @@
 #!/bin/bash
-### This script is run by Free Oberon on Linux
+### This script is run by Free Oberon on Linux and macOS
 ### to link user programs.
 ### When it is being run, the current directory
 ### must be the root directory of Free Oberon.
@@ -18,9 +18,14 @@ cd _Build
 THENAME="${1%.*}"
 ONAME="${THENAME##*/}"
 
+if [[ "$(uname)" == "Darwin" ]]; then
+  THISOS="macOS"
+else
+  THISOS="Linux_amd64"
+fi
 FOBDIR="$DIR/../.."
 OFRDIR="$DIR/OfrontPlus"
-OFRTAR="$OFRDIR/Target/Linux_amd64"
+OFRTAR="$OFRDIR/Target/$THISOS"
 PATH="$OFRTAR:$PATH"
 CC="gcc"
 
@@ -42,8 +47,12 @@ done
 
 
 
-# FOR DEBUG ADD: -g -fvar-tracking
-$CC -O0 -g -fvar-tracking -fno-exceptions \
+
+
+
+
+
+$CC -O0 -g -fno-exceptions \
   -I $FOBDIR/src \
   -I $OFRDIR/Mod/Lib \
   -I $OFRTAR/Lib/Obj \

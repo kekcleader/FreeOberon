@@ -1,5 +1,5 @@
 #!/bin/bash
-### This script is automatically run by Free Oberon on Linux
+### This script is automatically run by Free Oberon on Linux and macOS
 ### for each compiled module. The initial current directory of
 ### the script is where FreeOberon executable is located.
 ### You are free to edit this file to adjust the process.
@@ -30,7 +30,12 @@ fi
 mkdir -p _Build
 cd _Build
 
-OFRDIR="$DIR/OfrontPlus/Target/Linux_amd64"
+if [[ "$(uname)" == "Darwin" ]]; then
+  THISOS="macOS"
+else
+  THISOS="Linux_amd64"
+fi
+OFRDIR="$DIR/OfrontPlus/Target/$THISOS"
 PATH="$OFRDIR:$PATH"
 export OBERON=".:$DIR/../../src:$OFRDIR/Lib/Sym"
 OFR="ofront+ -s -88 -7w"

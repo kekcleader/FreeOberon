@@ -30,6 +30,11 @@ IF "%FNAME:~1,2%"==":\" GOTO ENDIF2
 IF NOT EXIST _Build MD _Build
 CD _Build || EXIT /b 407
 
+
+
+
+
+
 SET OFRDIR=%DIR%OfrontPlus\Target\Win32
 SET PATH=%OFRDIR%;%PATH%
 SET OBERON=.;%DIR%..\..\src;%OFRDIR%\Lib\Sym
