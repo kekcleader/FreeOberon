@@ -2,7 +2,7 @@
 
 Oberon is a general-purpose programming language–the direct descendant of Pascal and Modula-2. It is both simpler and much more powerful than Pascal and Modula.
 
-Free Oberon is a cross-platform integrated development environment for the Oberon programming language, designed in the classic pseudo-graphic style–the famous blue screen of Pascal.
+Free Oberon is a cross-platform integrated development environment for the Oberon programming language, designed in the classic pseudo-graphic style–the famous blue screen of Pascal. Available for Windows, macOS and Linux.
 
 Fob is a convenient console-based Oberon compiler.
 
@@ -16,7 +16,7 @@ Fob is a convenient console-based Oberon compiler.
 
 Оберон — язык программирования общего назначения, прямой наследник Паскаля и Модулы-2. Он одновременно и проще, и намного мощнее, чем Паскаль и Модула.
 
-Free Oberon представляет собой кроссплатформенную интегрированную среду разработки на языке программирования Оберон, выполненную в классическом псевдографическом стиле — знаменитого синего экрана Паскаля.
+Free Oberon представляет собой кроссплатформенную интегрированную среду разработки на языке программирования Оберон, выполненную в классическом псевдографическом стиле — знаменитого синего экрана Паскаля. Поставляется для Виндоуса, Мак-ОС и Линукса.
 
 Fob — это консольный компилятор языка Оберон.
 
@@ -96,7 +96,7 @@ Fob — это консольный компилятор языка Оберон
 
 Скачайте архив с сайта [free.oberon.org](https://free.oberon.org), распакуйте его в по такому пути, в котором нет не-латинских букв, и запустите `FreeOberon.exe`.
 
-Примечание. Если вы хотите самостоятельно собрать версию Free Oberon под ОС Windows из исходных кодов, обратитесь к приложению A [документации Free Oberon на free.oberon.org](http://free.oberon.org/files/FreeOberon_v1.0.3_ru.pdf).
+Примечание. Если вы хотите самостоятельно собрать версию Free Oberon под ОС Windows из исходных кодов, обратитесь к приложению A [документации Free Oberon на free.oberon.org](http://free.oberon.org/files/FreeOberon_v1.1.0_ru.pdf).
 
 
 # Использование
@@ -193,7 +193,7 @@ ______
 
 Download Free Oberon in a ZIP archive (from [free.oberon.org](https://free.oberon.org/en)), extract it to a path on the disk that does not have any non-latin characters in it, and lauch `FreeOberon.exe`.
 
-Note. If you want to recompile Free Oberon under Windows from the source code, refer to Appendix A of the [Free Oberon documentation on free.oberon.org](https://free.oberon.org/files/FreeOberon_v1.0.3_en.pdf).
+Note. If you want to recompile Free Oberon under Windows from the source code, refer to Appendix A of the [Free Oberon documentation on free.oberon.org](https://free.oberon.org/files/FreeOberon_v1.1.0_en.pdf).
 
 
 # Usage
