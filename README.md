@@ -96,7 +96,7 @@ Fob — это консольный компилятор языка Оберон
 
 Скачайте архив с сайта [free.oberon.org](https://free.oberon.org), распакуйте его в по такому пути, в котором нет не-латинских букв, и запустите `FreeOberon.exe`.
 
-Примечание. Если вы хотите самостоятельно собрать версию Free Oberon под ОС Windows из исходных кодов, обратитесь к приложению A [документации Free Oberon на free.oberon.org](http://free.oberon.org/files/FreeOberon_v1.1.0_ru.pdf).
+Примечание. Если вы хотите самостоятельно собрать версию Free Oberon под ОС Windows из исходных кодов, обратитесь к приложению A [документации Free Oberon на free.oberon.org](http://free.oberon.org/files/FreeOberon_v1.1.0.pdf).
 
 
 # Использование
