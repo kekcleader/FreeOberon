@@ -19,7 +19,7 @@ MODULE Files;
       Нуль-терминированные строки,
       компактные числа по М. Одерскому *)
 
-IMPORT SYSTEM, Platform, Heap, Strings, Out, Utf8;
+IMPORT SYSTEM, Platform, CmdArgs, Heap, Strings, Out, Utf8;
 
 CONST
   PathDelimiter = Platform.PathDelimiter;
@@ -1116,7 +1116,7 @@ END SetSearchPath;
 PROCEDURE Init;
 VAR q: ARRAY 2048 OF SHORTCHAR;
 BEGIN tempno := -1; Heap.FileCount := 0; SearchPath := '';
-  Platform.GetEnv('HOME', q); Utf8.Decode(q, home);
+  CmdArgs.GetEnv('HOME', q); Utf8.Decode(q, home);
 END Init;
 
 BEGIN

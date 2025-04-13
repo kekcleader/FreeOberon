@@ -1,7 +1,7 @@
 MODULE Env;
 (** OS environment variables
 %RU Переменные окружения ОС *)
-IMPORT CmdArgs, Args, Platform, Utf8, Strings, SYSTEM, Out;
+IMPORT CmdArgs, Platform, Utf8, Strings;
 TYPE SHORTCHAR = Utf8.SHORTCHAR;
 
 VAR count: INTEGER;

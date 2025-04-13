@@ -859,8 +859,8 @@ BEGIN G.GetDesktopResolution(dw, dh);
 
   IF (wantScaleX # 0.0) & (wantScaleY # 0.0) THEN
     G.SetScale(wantScaleX, wantScaleY)
-  ELSIF ((fullscreen IN settings) OR (wantZoom >= 6/5 - 0.01)) &
-        ~(sharp IN settings) & (dw >= W * 6/5 - 0.01) THEN
+  ELSIF ((fullscreen IN settings) OR (wantZoom >= 6.0/5.0 - 0.01)) &
+        ~(sharp IN settings) & (FLT(dw) >= FLT(W) * 6.0/5.0 - 0.01) THEN
     G.SetScale(5/6, 1.0)
   END;
 

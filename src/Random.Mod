@@ -46,7 +46,7 @@ RETURN seed MOD range END Int;
 %RU Возвращает случайное вещественное число x, где 0 <= x < 1. *)
 PROCEDURE Uniform*(): REAL;
 BEGIN NextRND
-RETURN (seed - 1) * (1 / (modulo - 1)) END Uniform;
+RETURN FLT(seed - 1) * (1.0 / FLT(modulo - 1)) END Uniform;
 
 (** Initializes the randomization process using current time.
     This procedure is called automatically on module initialization
