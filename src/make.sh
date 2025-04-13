@@ -1,7 +1,12 @@
 #/bin/bash
 PROG1="FreeOberon"
 PROG2="fob"
-OFRDIR="../Data/bin/OfrontPlus/Target/Linux_amd64"
+if [[ "$(uname)" == "Darwin" ]]; then
+  THISOS="macOS"
+else
+  THISOS="Linux_amd64"
+fi
+OFRDIR="../Data/bin/OfrontPlus/Target/$THISOS"
 
 
 PATH="$OFRDIR:$PATH"
@@ -48,9 +53,9 @@ $OFR -7w StrList.Mod &&
 
 $OFR -7w Dir.Mod &&
 
-$OFR -7w Allegro5.Mod &&
+$OFR -Cw Allegro5.Mod &&
 
-$OFR -7w Graph.Mod &&
+$OFR -Cw Graph.Mod &&
 
 $OFR -7w Sound.Mod &&
 
@@ -72,7 +77,7 @@ $OFR -Cwm FreeOberon.Mod &&
 
 $OFR -7wm Fob.Mod &&
 
-
+../Data/bin/patch.sh FreeOberon.c
 
 
 $CCFULL -c Utf8.c &&
@@ -126,7 +131,7 @@ $CCFULL -o ../$PROG1 \
   $(pkg-config \
     allegro_primitives-5 allegro_image-5 allegro_audio-5 \
     allegro_acodec-5 allegro_font-5 allegro_dialog-5 \
-    allegro-5 --libs --cflags) &&
+    allegro_main-5 allegro-5 --libs --cflags) &&
 
 
 $CCFULL -o ../$PROG2 \

@@ -6,8 +6,8 @@ CONST
   stdPath* = 'Programs/';
   startInFullscreen* = TRUE; (** TRUE if Free Oberon should start in full screen *)
 
-  version* = '1.1.0-alpha.7';
-  year* = 2023;
+  version* = '1.1.0-alpha.8';
+  year* = 2025;
 
 VAR
   debug*: BOOLEAN;

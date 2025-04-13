@@ -204,15 +204,13 @@ TYPE
   ADRINT = SYSTEM.ADRINT;
   REAL = SYSTEM.REAL32;
   LONGREAL = SYSTEM.REAL64;
-  LONGINT = SYSTEM.INT64;
-  SHORTCHAR = SYSTEM.CHAR8;
 
   Color* = RECORD
-    r, g, b, a: REAL
+    r*, g*, b*, a*: REAL
   END;
 
   Transform* = RECORD
-    m: ARRAY 4, 4 OF REAL
+    m*: ARRAY 4, 4 OF REAL
   END;
 
   Timer* = POINTER TO TimerDesc;
@@ -222,7 +220,7 @@ TYPE
   END;
 
   Bitmap* = POINTER TO BitmapDesc;
-  BitmapDesc* = RECORD
+  BitmapDesc* = EXTENSIBLE RECORD
     bmp: Al.Bitmap;
     w*, h*: INTEGER
   END;
@@ -267,7 +265,7 @@ TYPE
 
   Event* = RECORD
     type*: INTEGER;
-    time*: REAL;
+    time*: LONGREAL;
     x*, y*, z*, w*, h*: INTEGER;
     dx*, dy*, dz*, dw*: INTEGER;
     button*: INTEGER;
@@ -283,7 +281,7 @@ TYPE
   END;
 
   FontMessage* = POINTER TO FontMessageDesc;
-  FontMessageDesc* = RECORD
+  FontMessageDesc* = EXTENSIBLE RECORD
 
   END;
 
@@ -293,7 +291,7 @@ TYPE
   END;
 
   Font* = POINTER TO FontDesc;
-  FontDesc* = RECORD
+  FontDesc* = EXTENSIBLE RECORD
     fname: ARRAY 256 OF CHAR;
     handle: PROCEDURE (font: Font; VAR msg: FontMessage);
     draw: PROCEDURE (font: Font; VAR msg: FontDrawMsg);
@@ -352,7 +350,7 @@ BEGIN
 END GetDesktopResolution;
 
 PROCEDURE GetScreen*(): Window;
-RETURN screen END GetScreen;
+BEGIN RETURN screen END GetScreen;
 
 PROCEDURE GetScreenSize*(VAR width, height: INTEGER);
 BEGIN
@@ -382,7 +380,7 @@ BEGIN
 END ApplySizeStep;
 
 PROCEDURE GetTarget*(): Bitmap;
-RETURN target END GetTarget;
+BEGIN RETURN target END GetTarget;
 
 PROCEDURE GetTargetSize*(VAR width, height: INTEGER);
 BEGIN
@@ -415,26 +413,26 @@ END TargetScreen;
 
 
 PROCEDURE MakeRGBA*(VAR color: Color; r, g, b, a: INTEGER);
-BEGIN color.r := r / 255; color.g := g / 255;
-  color.b := b / 255; color.a := a / 255
+BEGIN color.r := SHORT(r / 255); color.g := SHORT(g / 255);
+  color.b := SHORT(b / 255); color.a := SHORT(a / 255)
 END MakeRGBA;
 
 PROCEDURE MakeCol*(VAR color: Color; r, g, b: INTEGER);
-BEGIN color.r := r / 255; color.g := g / 255;
-  color.b := b / 255; color.a := 1.0
+BEGIN color.r := SHORT(r / 255); color.g := SHORT(g / 255);
+  color.b := SHORT(b / 255); color.a := SHORT(1.0)
 END MakeCol;
 
 PROCEDURE ColorToRGB*(color: Color; VAR r, g, b: INTEGER);
-BEGIN r := FLOOR(color.r * 255 + 0.1) MOD 256;
-  g := FLOOR(color.g * 255 + 0.1) MOD 256;
-  b := FLOOR(color.b * 255 + 0.1) MOD 256
+BEGIN r := SHORT(ENTIER(color.r * 255 + 0.1) MOD 256);
+  g := SHORT(ENTIER(color.g * 255 + 0.1) MOD 256);
+  b := SHORT(ENTIER(color.b * 255 + 0.1) MOD 256)
 END ColorToRGB;
 
 PROCEDURE ColorToRGBA*(color: Color; VAR r, g, b, a: INTEGER);
-BEGIN r := FLOOR(color.r * 255 + 0.1) MOD 256;
-  g := FLOOR(color.g * 255 + 0.1) MOD 256;
-  b := FLOOR(color.b * 255 + 0.1) MOD 256;
-  a := FLOOR(color.a * 255 + 0.1) MOD 256
+BEGIN r := SHORT(ENTIER(color.r * 255 + 0.1) MOD 256);
+  g := SHORT(ENTIER(color.g * 255 + 0.1) MOD 256);
+  b := SHORT(ENTIER(color.b * 255 + 0.1) MOD 256);
+  a := SHORT(ENTIER(color.a * 255 + 0.1) MOD 256)
 END ColorToRGBA;
 
 PROCEDURE ClearBitmapToColor*(bmp: Bitmap; c: Color);
@@ -465,26 +463,26 @@ BEGIN
   IF W.zoom = intZoom THEN
     w := W.w * W.izoom; h := W.h * W.izoom;
     IF W.scaleOn THEN
-      W.flipW := FLT(FLOOR(FLT(w) * W.scaleX + 0.9));
-      W.flipH := FLT(FLOOR(FLT(h) * W.scaleY + 0.9));
-      W.iFlipX := (W.winW - FLOOR(W.flipW + 0.1)) DIV 2;
-      W.iFlipY := (W.winH - FLOOR(W.flipH + 0.1)) DIV 2
-    ELSE W.flipW := FLT(w); W.flipH := FLT(h);
+      W.flipW := ENTIER(w * W.scaleX + 0.9);
+      W.flipH := ENTIER(h * W.scaleY + 0.9);
+      W.iFlipX := SHORT(W.winW - ENTIER(W.flipW + 0.1)) DIV 2;
+      W.iFlipY := SHORT(W.winH - ENTIER(W.flipH + 0.1)) DIV 2
+    ELSE W.flipW := w; W.flipH := h;
       W.iFlipX := (W.winW - w) DIV 2; W.iFlipY := (W.winH - h) DIV 2
     END
   ELSE
-    W.flipW := FLT(FLOOR(W.w * W.rzoom * W.scaleX + 0.9));
-    W.flipH := FLT(FLOOR(W.h * W.rzoom * W.scaleY + 0.9));
-    W.iFlipX := (W.winW - FLOOR(W.flipW + 0.1)) DIV 2;
-    W.iFlipY := (W.winH - FLOOR(W.flipH + 0.1)) DIV 2
+    W.flipW := ENTIER(W.w * W.rzoom * W.scaleX + 0.9);
+    W.flipH := ENTIER(W.h * W.rzoom * W.scaleY + 0.9);
+    W.iFlipX := SHORT(W.winW - ENTIER(W.flipW + 0.1)) DIV 2;
+    W.iFlipY := SHORT(W.winH - ENTIER(W.flipH + 0.1)) DIV 2
   END;
   IF topleft IN W.options THEN W.iFlipX := 0; W.iFlipY := 0 END;
-  W.flipX := FLT(W.iFlipX); W.flipY := FLT(W.iFlipY);
+  W.flipX := W.iFlipX; W.flipY := W.iFlipY;
   IF ~(exact IN W.options) & (smooth IN W.options) &
      ~(topleft IN W.options) & (W.winW - W.flipX - W.flipW < W.rzoom) &
      (W.winH - W.flipY - W.flipH < W.rzoom) THEN
     W.iFlipX := 0; W.iFlipY := 0; W.flipX := 0.0; W.flipY := 0.0;
-    W.flipW := FLT(W.winW); W.flipH := FLT(W.winH)
+    W.flipW := W.winW; W.flipH := W.winH
   END
 END ResetFlipVars;
 
@@ -503,13 +501,13 @@ BEGIN scaled := FALSE;
     ELSIF (W.zoom = intZoom) & ~W.scaleOn THEN
       w := W.winW DIV W.izoom; h := W.winH DIV W.izoom
     ELSE scaled := TRUE;
-      w := FLOOR(W.winW / W.rzoom / W.scaleX + 0.1);
-      h := FLOOR(W.winH / W.rzoom / W.scaleY + 0.1)
+      w := SHORT(ENTIER(W.winW / W.rzoom / W.scaleX + 0.1));
+      h := SHORT(ENTIER(W.winH / W.rzoom / W.scaleY + 0.1))
     END
   ELSE w := W.w; h := W.h
   END;
   IF W.scaleOn & ~scaled THEN
-    w := FLOOR(w / W.scaleX + 0.1); h := FLOOR(h / W.scaleY + 0.1)
+    w := SHORT(ENTIER(w / W.scaleX + 0.1)); h := SHORT(ENTIER(h / W.scaleY + 0.1))
   END;
 
   ApplySizeStep(W, w, h);
@@ -540,27 +538,27 @@ VAR b: Bitmap;
 BEGIN NEW(b);
   Al.set_new_bitmap_flags({Al.convertBitmap});
   b.bmp := Al.create_bitmap(w, h);
-  IF b.bmp = NIL THEN b := NIL ELSE b.w := w; b.h := h END
+  IF b.bmp = NIL THEN b := NIL ELSE b.w := w; b.h := h END;
 RETURN b END NewBitmap;
 
 PROCEDURE GetWindowOptions*(W: Window): SET;
-RETURN W.options END GetWindowOptions;
+BEGIN RETURN W.options END GetWindowOptions;
 
 PROCEDURE GetWindowZoom*(W: Window): REAL;
-RETURN W.rzoom END GetWindowZoom;
+BEGIN RETURN W.rzoom END GetWindowZoom;
 
 PROCEDURE SetWindowZoomF*(W: Window; zoom: REAL);
 BEGIN W.rzoom := zoom;
   IF zoom = 1.0 THEN W.zoom := noZoom
-  ELSIF FLOOR(zoom + 0.001) * 100 = FLOOR(zoom * 100 + 0.001) THEN
-    W.zoom := intZoom; W.izoom := FLOOR(zoom + 0.001)
+  ELSIF ENTIER(zoom + 0.001) * 100 = ENTIER(zoom * 100 + 0.001) THEN
+    W.zoom := intZoom; W.izoom := SHORT(ENTIER(zoom + 0.001))
   ELSE W.zoom := realZoom
   END;
   ResetWindowBitmap(W)
 END SetWindowZoomF;
 
 PROCEDURE SetWindowZoom*(W: Window; zoom: INTEGER);
-BEGIN W.rzoom := FLT(zoom);
+BEGIN W.rzoom := zoom;
   IF zoom = 1 THEN W.zoom := noZoom
   ELSE W.zoom := intZoom; W.izoom := zoom
   END;
@@ -577,11 +575,11 @@ BEGIN wantZoom := zoom;
 END SetZoomF;
 
 PROCEDURE SetNewWindowZoom*(zoom: INTEGER);
-BEGIN wantZoom := FLT(zoom)
+BEGIN wantZoom := zoom
 END SetNewWindowZoom;
 
 PROCEDURE SetZoom*(zoom: INTEGER);
-BEGIN wantZoom := FLT(zoom);
+BEGIN wantZoom := zoom;
   IF screen # NIL THEN SetWindowZoom(screen, zoom) END
 END SetZoom;
 
@@ -606,7 +604,7 @@ PROCEDURE NewCursor*(bmp: Bitmap; focusX, focusY: INTEGER): Cursor;
 VAR c: Cursor;
 BEGIN NEW(c); c.bmp := bmp; c.w := bmp.w; c.h := bmp.h;
   c.focusX := focusX; c.focusY := focusY;
-  c.cursor := Al.create_mouse_cursor(bmp.bmp, focusX, focusY)
+  c.cursor := Al.create_mouse_cursor(bmp.bmp, focusX, focusY);
 RETURN c END NewCursor;
 
 PROCEDURE SetWindowCursor*(W: Window; cursor: Cursor);
@@ -675,11 +673,11 @@ BEGIN Utf8.Encode(title, q); Al.set_window_title(W.display, q)
 END SetThisWindowTitle;
 
 PROCEDURE SetNewWindowTitle*(title: ARRAY OF CHAR);
-BEGIN wantTitle := title
+BEGIN wantTitle := title$
 END SetNewWindowTitle;
 
 PROCEDURE SetTitle*(title: ARRAY OF CHAR);
-BEGIN wantTitle := title;
+BEGIN wantTitle := title$;
   IF screen # NIL THEN SetThisWindowTitle(screen, title) END
 END SetTitle;
 
@@ -690,7 +688,7 @@ BEGIN Al.set_new_bitmap_flags({Al.convertBitmap});
   NEW(B); Utf8.Encode(fname, q); B.bmp := Al.load_bitmap(q);
   IF B.bmp = NIL THEN B := NIL
   ELSE B.w := Al.get_bitmap_width(B.bmp); B.h := Al.get_bitmap_height(B.bmp)
-  END
+  END;
 RETURN B END LoadBitmap;
 
 PROCEDURE ApplyMaskColor*(bmp: Bitmap; VAR mask: Color);
@@ -718,10 +716,10 @@ BEGIN
          (W.lastX >= 0)
       THEN
         Al.set_target_bitmap(W.cursorPatch.bmp);
-        patchX := FLT(W.lastX - W.cursor.focusX);
-        patchY := FLT(W.lastY - W.cursor.focusY);
+        patchX := W.lastX - W.cursor.focusX;
+        patchY := W.lastY - W.cursor.focusY;
         Al.draw_bitmap_region(W.bmp, patchX, patchY,
-          FLT(W.cursor.w), FLT(W.cursor.h), 0.0, 0.0, {});
+          W.cursor.w, W.cursor.h, 0.0, 0.0, {});
 
         Al.set_target_bitmap(W.bmp);
         Al.draw_bitmap(W.cursor.bmp.bmp, patchX, patchY, {});
@@ -734,16 +732,16 @@ BEGIN
       Al.identity_transform(T);
       Al.use_transform(T);
       Al.clear_to_color(SYSTEM.VAL(Al.Color, black));
-      Al.draw_scaled_bitmap(W.bmp, 0.0, 0.0, FLT(W.w), FLT(W.h),
+      Al.draw_scaled_bitmap(W.bmp, 0.0, 0.0, W.w, W.h,
         W.flipX, W.flipY, W.flipW, W.flipH, {});
 
       IF mouseDrawn THEN
         Al.set_target_bitmap(W.bmp);
         Al.draw_bitmap(W.cursorPatch.bmp, patchX, patchY, {})
       END
-    ELSE w := FLT(W.winW); h := FLT(W.winH);
-      x := FLT(FLOOR(W.flipX + W.flipW + 0.1));
-      y := FLT(FLOOR(W.flipY + W.flipH + 0.1));
+    ELSE w := W.winW; h := W.winH;
+      x := ENTIER(W.flipX + W.flipW + 0.1);
+      y := ENTIER(W.flipY + W.flipH + 0.1);
       Al.set_target_backbuffer(W.display);
       Al.identity_transform(T);
       Al.use_transform(T);
@@ -760,12 +758,12 @@ BEGIN
 END Flip;
 
 PROCEDURE PutPixel2*(x, y: INTEGER; c: Color);
-BEGIN Al.draw_filled_rectangle(FLT(x), FLT(y), FLT(x + 1), FLT(y + 1),
+BEGIN Al.draw_filled_rectangle(x, y, x + 1, y + 1,
   SYSTEM.VAL(Al.Color, c))
 END PutPixel2;
 
 PROCEDURE PutPixel*(x, y: INTEGER; c: Color);
-BEGIN Al.draw_pixel(FLT(x) + 0.5, FLT(y) + 0.5, SYSTEM.VAL(Al.Color, c))
+BEGIN Al.draw_pixel(SHORT(x + 0.5), SHORT(y + 0.5), SYSTEM.VAL(Al.Color, c))
 END PutPixel;
 
 PROCEDURE LockBitmapReadOnly*(bmp: Bitmap);
@@ -792,8 +790,8 @@ END ThickLineF;
 PROCEDURE ThickLine*(x1, y1, x2, y2: INTEGER; color: Color;
     thickness: INTEGER);
 BEGIN
-  Al.draw_line(FLT(x1) + 0.5, FLT(y1) + 0.5, FLT(x2) + 0.5, FLT(y2) + 0.5,
-    SYSTEM.VAL(Al.Color, color), FLT(thickness))
+  Al.draw_line(SHORT(x1 + 0.5), SHORT(y1 + 0.5), SHORT(x2 + 0.5), SHORT(y2 + 0.5),
+    SYSTEM.VAL(Al.Color, color), thickness)
 END ThickLine;
 
 PROCEDURE LineF(x1, y1, x2, y2: REAL; color: Color);
@@ -810,15 +808,15 @@ BEGIN
 END LineF;
 
 PROCEDURE Line*(x1, y1, x2, y2: INTEGER; color: Color);
-BEGIN LineF(FLT(x1), FLT(y1), FLT(x2), FLT(y2), color)
+BEGIN LineF(x1, y1, x2, y2, color)
 END Line;
 
 PROCEDURE HLine*(x1, y, x2: INTEGER; color: Color);
-BEGIN LineF(FLT(x1), FLT(y), FLT(x2), FLT(y), color)
+BEGIN LineF(x1, y, x2, y, color)
 END HLine;
 
 PROCEDURE VLine*(x, y1, y2: INTEGER; color: Color);
-BEGIN LineF(FLT(x), FLT(y1), FLT(x), FLT(y2), color)
+BEGIN LineF(x, y1, x, y2, color)
 END VLine;
 
 PROCEDURE FillTriangleF*(x1, y1, x2, y2, x3, y3: REAL; color: Color);
@@ -827,8 +825,8 @@ END FillTriangleF;
 
 PROCEDURE FillTriangle*(x1, y1, x2, y2, x3, y3: INTEGER; color: Color);
 BEGIN
-  Al.draw_filled_triangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
-    FLT(x2) + 0.5, FLT(y2) + 0.5, FLT(x3) + 0.5, FLT(y3) + 0.5, SYSTEM.VAL(Al.Color, color))
+  Al.draw_filled_triangle(SHORT(x1 + 0.5), SHORT(y1 + 0.5),
+    SHORT(x2 + 0.5), SHORT(y2 + 0.5), SHORT(x3 + 0.5), SHORT(y3 + 0.5), SYSTEM.VAL(Al.Color, color))
 END FillTriangle;
 
 PROCEDURE ThickTriangleF*(x1, y1, x2, y2, x3, y3: REAL; color: Color; thickness: REAL);
@@ -838,9 +836,9 @@ END ThickTriangleF;
 PROCEDURE ThickTriangle*(x1, y1, x2, y2, x3, y3: INTEGER; color: Color;
     thickness: INTEGER);
 BEGIN
-  Al.draw_triangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
-    FLT(x2) + 0.5, FLT(y2) + 0.5, FLT(x3) + 0.5, FLT(y3) + 0.5,
-    SYSTEM.VAL(Al.Color, color), FLT(thickness))
+  Al.draw_triangle(SHORT(x1 + 0.5), SHORT(y1 + 0.5),
+    SHORT(x2 + 0.5), SHORT(y2 + 0.5), SHORT(x3 + 0.5), SHORT(y3 + 0.5),
+    SYSTEM.VAL(Al.Color, color), thickness)
 END ThickTriangle;
 
 PROCEDURE TriangleF*(x1, y1, x2, y2, x3, y3: REAL; color: Color);
@@ -849,8 +847,8 @@ END TriangleF;
 
 PROCEDURE Triangle*(x1, y1, x2, y2, x3, y3: INTEGER; color: Color);
 BEGIN
-  Al.draw_triangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
-    FLT(x2) + 0.5, FLT(y2) + 0.5, FLT(x3) + 0.5, FLT(y3) + 0.5,
+  Al.draw_triangle(SHORT(x1 + 0.5), SHORT(y1 + 0.5),
+    SHORT(x2 + 0.5), SHORT(y2 + 0.5), SHORT(x3 + 0.5), SHORT(y3 + 0.5),
     SYSTEM.VAL(Al.Color, color), 1.0)
 END Triangle;
 
@@ -860,8 +858,8 @@ END FillRectF;
 
 PROCEDURE FillRect*(x1, y1, x2, y2: INTEGER; color: Color);
 BEGIN
-  Al.draw_filled_rectangle(FLT(x1), FLT(y1),
-    FLT(x2 + 1), FLT(y2 + 1), SYSTEM.VAL(Al.Color, color))
+  Al.draw_filled_rectangle(x1, y1,
+    x2 + 1, y2 + 1, SYSTEM.VAL(Al.Color, color))
 END FillRect;
 
 PROCEDURE ThickRectF*(x1, y1, x2, y2: REAL; color: Color; thickness: REAL);
@@ -871,8 +869,8 @@ END ThickRectF;
 PROCEDURE ThickRect*(x1, y1, x2, y2: INTEGER; color: Color;
     thickness: INTEGER);
 BEGIN
-  Al.draw_rectangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
-    FLT(x2) + 0.5, FLT(y2) + 0.5, SYSTEM.VAL(Al.Color, color), FLT(thickness))
+  Al.draw_rectangle(SHORT(x1 + 0.5), SHORT(y1 + 0.5),
+    SHORT(x2 + 0.5), SHORT(y2 + 0.5), SYSTEM.VAL(Al.Color, color), thickness)
 END ThickRect;
 
 PROCEDURE RectF*(x1, y1, x2, y2: REAL; color: Color);
@@ -881,8 +879,8 @@ END RectF;
 
 PROCEDURE Rect*(x1, y1, x2, y2: INTEGER; color: Color);
 BEGIN
-  Al.draw_rectangle(FLT(x1) + 0.5, FLT(y1) + 0.5,
-    FLT(x2) + 0.5, FLT(y2) + 0.5, SYSTEM.VAL(Al.Color, color), 1.0)
+  Al.draw_rectangle(SHORT(x1 + 0.5), SHORT(y1 + 0.5), SHORT(x2 + 0.5), SHORT(y2 + 0.5),
+    SYSTEM.VAL(Al.Color, color), 1.0)
 END Rect;
 
 PROCEDURE CircleF*(x, y, r: REAL; color: Color);
@@ -892,8 +890,7 @@ END CircleF;
 
 PROCEDURE Circle*(x, y, r: INTEGER; color: Color);
 BEGIN
-  Al.draw_circle(FLT(x) + 0.5, FLT(y) + 0.5, FLT(r),
-    SYSTEM.VAL(Al.Color, color), 1.0)
+  Al.draw_circle(SHORT(x + 0.5), SHORT(y + 0.5), r, SYSTEM.VAL(Al.Color, color), 1.0)
 END Circle;
 
 PROCEDURE ThickCircleF*(x, y, r: REAL; color: Color; thickness: REAL);
@@ -903,8 +900,7 @@ END ThickCircleF;
 
 PROCEDURE ThickCircle*(x, y, r: INTEGER; color: Color; thickness: INTEGER);
 BEGIN
-  Al.draw_circle(FLT(x) + 0.5, FLT(y) + 0.5, FLT(r),
-    SYSTEM.VAL(Al.Color, color), FLT(thickness))
+  Al.draw_circle(SHORT(x + 0.5), SHORT(y + 0.5), r, SYSTEM.VAL(Al.Color, color), thickness)
 END ThickCircle;
 
 PROCEDURE FillCircleF*(x, y, r: REAL; color: Color);
@@ -914,21 +910,18 @@ END FillCircleF;
 
 PROCEDURE FillCircle*(x, y, r: INTEGER; color: Color);
 BEGIN
-  Al.draw_filled_circle(FLT(x) + 0.5, FLT(y) + 0.5, FLT(r),
-    SYSTEM.VAL(Al.Color, color))
+  Al.draw_filled_circle(SHORT(x + 0.5), SHORT(y + 0.5), r, SYSTEM.VAL(Al.Color, color))
 END FillCircle;
 
 PROCEDURE DrawPartFlip*(bmp: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER;
     flags: SET);
 BEGIN
-  Al.draw_bitmap_region(bmp.bmp, FLT(sx), FLT(sy), FLT(sw), FLT(sh),
-    FLT(dx), FLT(dy), flags)
+  Al.draw_bitmap_region(bmp.bmp, sx, sy, sw, sh, dx, dy, flags)
 END DrawPartFlip;
 
 PROCEDURE DrawPart*(bmp: Bitmap; sx, sy, sw, sh, dx, dy: INTEGER);
 BEGIN
-  Al.draw_bitmap_region(bmp.bmp, FLT(sx), FLT(sy), FLT(sw), FLT(sh),
-    FLT(dx), FLT(dy), {})
+  Al.draw_bitmap_region(bmp.bmp, sx, sy, sw, sh, dx, dy, {})
 END DrawPart;
 
 PROCEDURE DrawTintedPart*(bmp: Bitmap; color: Color;
@@ -939,36 +932,36 @@ BEGIN
     Al.convert_bitmap(bmp.bmp)
   END;
   Al.draw_tinted_bitmap_region(bmp.bmp, SYSTEM.VAL(Al.Color, color),
-    FLT(sx), FLT(sy), FLT(sw), FLT(sh), FLT(dx), FLT(dy), {})
+    sx, sy, sw, sh, dx, dy, {})
 END DrawTintedPart;
 
 PROCEDURE DrawFlip*(bmp: Bitmap; x, y: INTEGER; flip: SET);
-BEGIN Al.draw_bitmap(bmp.bmp, FLT(x), FLT(y), flip)
+BEGIN Al.draw_bitmap(bmp.bmp, x, y, flip)
 END DrawFlip;
 
 PROCEDURE Draw*(bmp: Bitmap; x, y: INTEGER);
-BEGIN Al.draw_bitmap(bmp.bmp, FLT(x), FLT(y), {})
+BEGIN Al.draw_bitmap(bmp.bmp, x, y, {})
 END Draw;
 
 PROCEDURE DrawEx*(bmp: Bitmap; sx, sy, sw, sh, dx, dy, dw, dh: INTEGER;
     flip: SET);
 BEGIN
-  Al.draw_scaled_bitmap(bmp.bmp, FLT(sx), FLT(sy), FLT(sw), FLT(sh),
-    FLT(dx), FLT(dy), FLT(dw), FLT(dh), flip)
+  Al.draw_scaled_bitmap(bmp.bmp, sx, sy, sw, sh,
+    dx, dy, dw, dh, flip)
 END DrawEx;
 
 PROCEDURE DrawRotated*(bmp: Bitmap; cx, cy, dx, dy: INTEGER;
     angle: REAL; flip: SET);
 BEGIN
-  Al.draw_rotated_bitmap(bmp.bmp, FLT(cx), FLT(cy),
-    FLT(dx), FLT(dy), angle, flip)
+  Al.draw_rotated_bitmap(bmp.bmp, cx, cy,
+    dx, dy, angle, flip)
 END DrawRotated;
 
 PROCEDURE DrawScaledRotated*(bmp: Bitmap; cx, cy, dx, dy: INTEGER;
     xScale, yScale, angle: REAL; flip: SET);
 BEGIN
-  Al.draw_scaled_rotated_bitmap(bmp.bmp, FLT(cx), FLT(cy),
-    FLT(dx), FLT(dy), xScale, yScale, angle, flip)
+  Al.draw_scaled_rotated_bitmap(bmp.bmp, cx, cy,
+    dx, dy, xScale, yScale, angle, flip)
 END DrawScaledRotated;
 
 PROCEDURE GetClip*(VAR x, y, w, h: INTEGER);
@@ -1007,8 +1000,8 @@ BEGIN isCurTarget := target = W;
 
   W.rzoom := W.wantZoom;
   IF W.wantZoom = 1.0 THEN W.zoom := noZoom
-  ELSIF FLOOR(W.wantZoom + 0.001) * 100 = FLOOR(W.wantZoom * 100 + 0.001) THEN
-    W.zoom := intZoom; W.izoom := FLOOR(W.wantZoom + 0.001)
+  ELSIF ENTIER(W.wantZoom + 0.001) * 100 = ENTIER(W.wantZoom * 100 + 0.001) THEN
+    W.zoom := intZoom; W.izoom := SHORT(ENTIER(W.wantZoom + 0.001))
   ELSE W.zoom := realZoom
   END;
 
@@ -1023,8 +1016,8 @@ BEGIN isCurTarget := target = W;
   END;
   (* Al.set_new_display_option(Al.sampleBuffers, n, Al.suggest); *)
   GetDesktopResolution(dw, dh);
-  dw := FLOOR(FLT(dw) / wantScaleX + 0.1);
-  dh := FLOOR(FLT(dh) / wantScaleY + 0.1);
+  dw := SHORT(ENTIER(dw / wantScaleX + 0.1));
+  dh := SHORT(ENTIER(dh / wantScaleY + 0.1));
 
   W.scaleOn := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
   W.scaleX := wantScaleX; W.scaleY := wantScaleY;
@@ -1035,38 +1028,38 @@ BEGIN isCurTarget := target = W;
 
   IF (w < 0) OR (h < 0) THEN
     IF fullscreen IN W.options THEN
-      w := FLOOR(dw / W.wantZoom + 0.1); h := FLOOR(dh / W.wantZoom + 0.1);
+      w := SHORT(ENTIER(dw / W.wantZoom + 0.1)); h := SHORT(ENTIER(dh / W.wantZoom + 0.1));
       ApplySizeStep(W, w, h);
-      sw := FLOOR(w * W.wantZoom + 0.1); sh := FLOOR(h * W.wantZoom + 0.1)
+      sw := SHORT(ENTIER(w * W.wantZoom + 0.1)); sh := SHORT(ENTIER(h * W.wantZoom + 0.1))
     ELSE w := 640; h := 400; W.zoom := noZoom;
       ApplySizeStep(W, w, h); sw := w; sh := h
     END
   ELSIF fullscreen IN W.options THEN
-    IF smooth IN W.options THEN nwf := dw / w; nhf := dh / h;
+    IF smooth IN W.options THEN nwf := SHORT(dw / w); nhf := SHORT(dh / h);
       IF nhf < nwf THEN nwf := nhf END;
       W.zoom := realZoom; W.rzoom := nwf;
       IF exact IN W.options THEN
-        sw := FLOOR(w * nwf + 0.1); sh := FLOOR(h * nwf + 0.1)
+        sw := SHORT(ENTIER(w * nwf + 0.1)); sh := SHORT(ENTIER(h * nwf + 0.1))
       ELSE sw := dw; sh := dh
       END
     ELSE nw := dw DIV w; nh := dh DIV h;
       IF nh < nw THEN nw := nh END;
-      W.zoom := intZoom; W.izoom := nw; W.rzoom := FLT(nw);
+      W.zoom := intZoom; W.izoom := nw; W.rzoom := nw;
       IF exact IN W.options THEN sw := w * nw; sh := h * nw
       ELSE sw := dw DIV nw * nw; sh := dh DIV nw * nw
       END
     END;
 
     IF W.zoom = realZoom THEN
-      w := FLOOR(sw / W.rzoom + 0.1); h := FLOOR(sh / W.rzoom + 0.1)
+      w := SHORT(ENTIER(sw / W.rzoom + 0.1)); h := SHORT(ENTIER(sh / W.rzoom + 0.1))
     ELSIF W.zoom = intZoom THEN w := sw DIV W.izoom; h := sh DIV W.izoom
     ELSE w := sw; h := sh
     END;
     ApplySizeStep(W, w, h); sw := w; sh := h;
     IF alterSize THEN W.initW := w; W.initH := h END
   ELSE ApplySizeStep(W, w, h);
-    sw := FLOOR(w * W.wantZoom * W.scaleX + 0.999);
-    sh := FLOOR(h * W.wantZoom * W.scaleY + 0.999)
+    sw := SHORT(ENTIER(w * W.wantZoom * W.scaleX + 0.999));
+    sh := SHORT(ENTIER(h * W.wantZoom * W.scaleY + 0.999))
   END;
 
   W.lastW := 0; W.lastH := 0;
@@ -1126,7 +1119,7 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1; W.resized := FALSE;
   END;
   W.options := options;
   W.pressedButtons := {};
-  W.title := title;
+  W.title := title$;
   W.wantZoom := wantZoom;
   W.scaleOn := (wantScaleX # 1.0) OR (wantScaleY # 1.0);
   W.scaleX := wantScaleX; W.scaleY := wantScaleY;
@@ -1140,7 +1133,7 @@ BEGIN NEW(W); W.lastX := -1; W.lastY := -1; W.resized := FALSE;
   IF W.display # NIL THEN W.next := windowList; windowList := W
   ELSE Error('Could not create dispaly.'); W := NIL
   END;
-  IF (screen = NIL) & (W # NIL) THEN screen := W; Target(screen) END
+  IF (screen = NIL) & (W # NIL) THEN screen := W; Target(screen) END;
 RETURN W END NewWindow;
 
 PROCEDURE CloseWindow*(W: Window);
@@ -1160,13 +1153,13 @@ RETURN T END NewTimer;
 PROCEDURE GetWindow(d: Al.Display): Window;
 VAR W: Window;
 BEGIN W := windowList;
-  WHILE (W # NIL) & (W.display # d) DO W := W.next END
+  WHILE (W # NIL) & (W.display # d) DO W := W.next END;
 RETURN W END GetWindow;
 
 PROCEDURE GetTimer(a: Al.Timer): Timer;
 VAR t: Timer;
 BEGIN t := timerList;
-  WHILE (t # NIL) & (t.tmr # a) DO t := t.next END
+  WHILE (t # NIL) & (t.tmr # a) DO t := t.next END;
 RETURN t END GetTimer;
 
 PROCEDURE EmitResizeEvent(W: Window);
@@ -1189,7 +1182,7 @@ BEGIN
       w := Al.get_display_width(win.display) / win.rzoom;
       h := Al.get_display_height(win.display) / win.rzoom;
       IF win.scaleOn THEN w := w / win.scaleX; h := h / win.scaleY END;
-      win.initW := FLOOR(w + 0.1); win.initH := FLOOR(h + 0.1);
+      win.initW := SHORT(ENTIER(w + 0.1)); win.initH := SHORT(ENTIER(h + 0.1));
       EXCL(win.options, center);
       Al.get_window_position(win.display, win.initX, win.initY);
       ApplySizeStep(win, win.initW, win.initH)
@@ -1227,11 +1220,11 @@ BEGIN
     IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
     ELSIF W.zoom = intZoom THEN
       x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
-    ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
-      y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
+    ELSE x := SHORT(ENTIER((ME.x - W.flipX) / W.rzoom + 0.1));
+      y := SHORT(ENTIER((ME.y - W.flipY) / W.rzoom + 0.1))
     END;
     IF W.scaleOn THEN
-      x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
+      x := SHORT(ENTIER(x / W.scaleX + 0.1)); y := SHORT(ENTIER(y / W.scaleY + 0.1))
     END;
     IF x < 0 THEN x := 0 ELSIF x >= W.w THEN x := W.w - 1 END;
     IF y < 0 THEN y := 0 ELSIF y >= W.h THEN y := W.h - 1 END;
@@ -1262,11 +1255,11 @@ BEGIN
     IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
     ELSIF W.zoom = intZoom THEN
       x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
-    ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
-      y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
+    ELSE x := SHORT(ENTIER((ME.x - W.flipX) / W.rzoom + 0.1));
+      y := SHORT(ENTIER((ME.y - W.flipY) / W.rzoom + 0.1))
     END;
     IF W.scaleOn THEN
-      x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
+      x := SHORT(ENTIER(x / W.scaleX + 0.1)); y := SHORT(ENTIER(y / W.scaleY + 0.1))
     END;
     event.x := x; event.y := y;
     event.z := ME.z; event.w := ME.w;
@@ -1281,11 +1274,11 @@ BEGIN
     IF W.zoom = noZoom THEN x := ME.x - W.iFlipX; y := ME.y - W.iFlipY
     ELSIF W.zoom = intZoom THEN
       x := (ME.x - W.iFlipX) DIV W.izoom; y := (ME.y - W.iFlipY) DIV W.izoom
-    ELSE x := FLOOR((ME.x - W.flipX) / W.rzoom + 0.1);
-      y := FLOOR((ME.y - W.flipY) / W.rzoom + 0.1)
+    ELSE x := SHORT(ENTIER((ME.x - W.flipX) / W.rzoom + 0.1));
+      y := SHORT(ENTIER((ME.y - W.flipY) / W.rzoom + 0.1))
     END;
     IF W.scaleOn THEN
-      x := FLOOR(x / W.scaleX + 0.1); y := FLOOR(y / W.scaleY + 0.1)
+      x := SHORT(ENTIER(x / W.scaleX + 0.1)); y := SHORT(ENTIER(y / W.scaleY + 0.1))
     END;
     event.x := x; event.y := y;
     event.z := ME.z; event.w := ME.w;
@@ -1334,7 +1327,7 @@ BEGIN
     END;
     fw := W.winW / W.rzoom; fh := W.winH / W.rzoom;
     IF W.scaleOn THEN fw := fw / W.scaleX; fh := fh / W.scaleY END;
-    w := FLOOR(fw + 0.1); h := FLOOR(fh + 0.1);
+    w := SHORT(ENTIER(fw + 0.1)); h := SHORT(ENTIER(fh + 0.1));
     IF E.type = Al.eventDisplayResize THEN
       Al.acknowledge_resize(d);
       ApplySizeStep(W, w, h)
@@ -1369,7 +1362,7 @@ VAR E: Al.Event;
   got: BOOLEAN;
 BEGIN
   got := Al.peek_next_event(queue, E);
-  IF got THEN ParseEvent(E, TRUE, event) END
+  IF got THEN ParseEvent(E, TRUE, event) END;
 RETURN got END PeekAndParseEvent;
 
 PROCEDURE WaitEvent*(VAR event: Event);
@@ -1383,12 +1376,12 @@ BEGIN
   WHILE got & (event.type = noEvent) DO
     IF Al.drop_next_event(queue) THEN END;
     got := PeekAndParseEvent(event)
-  END
+  END;
 RETURN got END PeekEvent;
 
 PROCEDURE HasEvents*(): BOOLEAN;
 VAR e: Event;
-RETURN PeekEvent(e) END HasEvents;
+BEGIN RETURN PeekEvent(e) END HasEvents;
 
 PROCEDURE WaitAndParseKeyEvent;
 VAR e: Event;
@@ -1404,7 +1397,7 @@ END WaitAndParseKeyEvent;
 
 PROCEDURE KeyPressed*(): BOOLEAN;
 BEGIN
-  WHILE ~specialChar & (charRead = 0X) & HasEvents() DO WaitAndParseKeyEvent END
+  WHILE ~specialChar & (charRead = 0X) & HasEvents() DO WaitAndParseKeyEvent END;
 RETURN specialChar OR (charRead # 0X) END KeyPressed;
 
 PROCEDURE ReadKey*(): CHAR;
@@ -1413,7 +1406,7 @@ BEGIN
   WHILE ~specialChar & (charRead = 0X) DO WaitAndParseKeyEvent END;
   IF specialChar THEN c := 0X; specialChar := FALSE
   ELSE c := charRead; charRead := 0X
-  END
+  END;
 RETURN c END ReadKey;
 
 PROCEDURE Pause*;
@@ -1526,7 +1519,7 @@ BEGIN
   WHILE ~r.eof & (ch <= ' ') DO Files.ReadChar(r, ch) END;
 
   n := 0;
-  WHILE ~r.eof & ('0' <= ch) & (ch <= '9') DO
+  WHILE ~r.eof & (LONG('0') <= ch) & (ch <= LONG('9')) DO
     n := n * 10 + ORD(ch) - ORD('0');
     Files.ReadChar(r, ch)
   END
@@ -1546,7 +1539,7 @@ BEGIN f := NIL;
     ELSE mf := NIL
     END;
     f := mf
-  END
+  END;
 RETURN f END ReadFontInfo;
 
 PROCEDURE LoadFontInfo*(fname: ARRAY OF CHAR): Font;
@@ -1555,21 +1548,21 @@ VAR f: Font;
   r: Files.Rider;
   s: ARRAY 4096 OF CHAR;
 BEGIN f := NIL;
-  s := fname; Strings.Append('.ofi', s);
+  s := fname$; Strings.Append('.ofi', s);
   F := Files.Old(s);
   IF F # NIL THEN
-    s := fname; Strings.Append('.png', s);
+    s := fname$; Strings.Append('.png', s);
     IF Dir.FileExists(s) THEN
       Files.Set(r, F, 0);
       f := ReadFontInfo(r);
       IF f # NIL THEN
         f.loaded := FALSE;
-        f.fname := fname;
+        f.fname := fname$;
         f.draw := MonoFontDraw;
         f.handle := MonoFontHandle
       END
     END
-  END
+  END;
 RETURN f END LoadFontInfo;
 
 PROCEDURE LoadFontBitmap*(f: Font);
@@ -1583,7 +1576,7 @@ END LoadFontBitmap;
 PROCEDURE LoadFont*(fname: ARRAY OF CHAR): Font;
 VAR f: Font;
 BEGIN f := LoadFontInfo(fname);
-  IF f # NIL THEN LoadFontBitmap(f) END
+  IF f # NIL THEN LoadFontBitmap(f) END;
 RETURN f END LoadFont;
 
 (** Clipboard **)
@@ -1619,7 +1612,7 @@ END SetClipboardText;
 (** Time **)
 
 PROCEDURE Time*(): REAL;
-RETURN Al.get_time() END Time;
+BEGIN RETURN SHORT(Al.get_time()) (*!FIXME RETURN LONGREAL? *) END Time;
 
 (** Window Icons **)
 
@@ -1660,7 +1653,7 @@ BEGIN
     IF fullscreen IN opt THEN wantW := -1; wantH := -1
     ELSE wantW := 640; wantH := 400
     END
-  END
+  END;
 RETURN NewWindow(-1, -1, wantW, wantH, wantTitle, opt) # NIL END InitScreen;
 
 PROCEDURE Init*;

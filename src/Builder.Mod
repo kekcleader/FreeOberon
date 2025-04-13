@@ -327,8 +327,8 @@ PROCEDURE ResetSysModules*;
     ELSE
       p.libs := '$(pkg-config allegro_primitives-5 allegro_image-5';
       Strings.Append(' allegro_audio-5 allegro_acodec-5', p.libs);
-      Strings.Append(' allegro_font-5 allegro_dialog-5 allegro-5', p.libs);
-      Strings.Append(' --libs --cflags)', p.libs)
+      Strings.Append(' allegro_font-5 allegro_dialog-5', p.libs);
+      Strings.Append(' allegro_main-5 allegro-5 --libs --cflags)', p.libs)
     END
   END AddGraph;
 
