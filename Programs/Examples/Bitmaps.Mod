@@ -23,26 +23,26 @@ BEGIN
 
     G.GetScreenSize(w, h);
     DEC(w, b.w); DEC(h, b.h);
-    x := R.Uniform() * w;
-    y := R.Uniform() * h;
+    x := R.Uniform() * FLT(w);
+    y := R.Uniform() * FLT(h);
     vx := 0.0; vy := 0.0;
     REPEAT
       x := x + vx; y := y + vy;
-      IF x < 0 THEN vx := -vx; x := 0.0
-      ELSIF x >= w THEN vx := -vx; x := FLT(w)
+      IF x < 0.0 THEN vx := -vx; x := 0.0
+      ELSIF x >= FLT(w) THEN vx := -vx; x := FLT(w)
       END;
-      IF y < 0 THEN vy := -vy; y := 0.0
-      ELSIF y >= h THEN vy := -vy; y := FLT(h)
+      IF y < 0.0 THEN vy := -vy; y := 0.0
+      ELSIF y >= FLT(h) THEN vy := -vy; y := FLT(h)
       END;
-      vx := vx + (R.Uniform() - 0.5) * maxSpeed / 10;
-      vy := vy + (R.Uniform() - 0.5) * maxSpeed / 10;
+      vx := vx + (R.Uniform() - 0.5) * maxSpeed / 10.0;
+      vy := vy + (R.Uniform() - 0.5) * maxSpeed / 10.0;
       r := vx * vx + vy * vy;
       IF r > maxSpeed2 THEN
         r := maxSpeed / M.sqrt(r);
         vx := vx * r; vy := vy * r
       END;
       (*G.ClearScreen;*)
-      G.MakeCol(c, Val(FLOOR((x + y) / 4)), Val(FLOOR((x + y + 100) / 2)), 0);
+      G.MakeCol(c, Val(FLOOR((x + y) / 4.0)), Val(FLOOR((x + y + 100.0) / 2.0)), 0);
       (*G.DrawTintedPart(b, c, 0, 0, b.w, b.h, FLOOR(x), FLOOR(y));*)
       G.Draw(b, FLOOR(x), FLOOR(y));
       G.Flip;

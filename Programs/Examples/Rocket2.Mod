@@ -24,31 +24,31 @@ BEGIN
     Out.String('Could not load rocket.png'); Out.Ln; ASSERT(FALSE)
   END;
   FOR i := 0 TO N - 1 DO
-    x[i] := w * Random.Uniform();
-    y[i] := h * Random.Uniform();
-    vx[i] := 0.0; vy[i] := -Random.Uniform() * 5 - 0.3
+    x[i] := FLT(w) * Random.Uniform();
+    y[i] := FLT(h) * Random.Uniform();
+    vx[i] := 0.0; vy[i] := -Random.Uniform() * 5.0 - 0.3
   END;
   t := 0.0;
   REPEAT
-    G.MakeCol(c, 10, 30, 60 + FLOOR(60 * M.cos(t / 40)));
+    G.MakeCol(c, 10, 30, 60 + FLOOR(60.0 * M.cos(t / 40.0)));
     G.ClearToColor(c);
     pw := FLOOR(h * b.w / b.h * (0.65 + 0.05 * M.sin(t)));
-    ph := FLOOR(h * (0.65 + 0.05 * M.cos(t)));
+    ph := FLOOR(FLT(h) * (0.65 + 0.05 * M.cos(t)));
     G.DrawEx(b, 0, 0, b.w, b.h,
       (w - pw) DIV 2,
-      (h - ph) DIV 2 - FLOOR(h * 0.2 * M.sin(t / 40)),
+      (h - ph) DIV 2 - FLOOR(FLT(h) * 0.2 * M.sin(t / 40.0)),
       pw, ph, {});
     FOR i := 0 TO N - 1 DO
       G.Draw(b, FLOOR(x[i]), FLOOR(y[i]));
       x[i] := x[i] + vx[i]; y[i] := y[i] + vy[i];
-      IF x[i] < -b.w THEN x[i] := x[i] + w + b.w
-      ELSIF x[i] > w THEN x[i] := x[i] - w - b.w
+      IF x[i] < -FLT(b.w) THEN x[i] := x[i] + FLT(w + b.w)
+      ELSIF x[i] > FLT(w) THEN x[i] := x[i] - FLT(w - b.w)
       END;
-      IF y[i] < -b.h THEN y[i] := y[i] + h + b.h
-      ELSIF y[i] > h THEN y[i] := y[i] - h - b.h
+      IF y[i] < -FLT(b.h) THEN y[i] := y[i] + FLT(h + b.h)
+      ELSIF y[i] > FLT(h) THEN y[i] := y[i] - FLT(h - b.h)
       END;
-      vx[i] := vx[i] + (Random.Uniform() * 2 - 1) / 50;
-      vy[i] := vy[i] + (Random.Uniform() * 2 - 1) / 50
+      vx[i] := vx[i] + (Random.Uniform() * 2.0 - 1.0) / 50.0;
+      vy[i] := vy[i] + (Random.Uniform() * 2.0 - 1.0) / 50.0
     END;
     G.Flip;
     G.Delay(20);

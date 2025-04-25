@@ -128,7 +128,7 @@ BEGIN
     IF intro # 0 THEN
       DEC(intro);
       Line(2, h - 1, w - 3, h - 1,
-        FLOOR((1 - M.sin(intro * (M.pi / 2) / introLen)) * 63))
+        FLOOR((1.0 - M.sin(FLT(intro) * (M.pi / 2.0) / FLT(introLen))) * 63.0))
     ELSE
       Line(2, h - 1, w - 3, h - 1, heat)
     END;

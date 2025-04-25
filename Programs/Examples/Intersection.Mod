@@ -72,13 +72,13 @@ BEGIN
     G.MakeCol(c, 255, 0, 255);
     G.FillRect(FLOOR(P2.x) - 3, FLOOR(P2.y) - 3, FLOOR(P2.x) + 3, FLOOR(P2.y) + 3, c);
 
-    Int.Str(FLOOR(t1 * 100), ZZ);
+    Int.Str(FLOOR(t1 * 100.0), ZZ);
     G.DrawString(ZZ, 20, H - 50 + YY, f, c);
-    Int.Str(FLOOR(t2 * 100), ZZ);
+    Int.Str(FLOOR(t2 * 100.0), ZZ);
     G.DrawString(ZZ, 150, H - 50 + YY, f, c);
     INC(YY, 16);
 
-    IF (t1 >= 0) & (t1 <= 1) THEN
+    IF (t1 >= 0.0) & (t1 <= 1.0) THEN
       IF t1 < t2 THEN
         E.x := A.s.x + A.v.x;
         E.y := A.s.y + A.v.y;
@@ -90,7 +90,7 @@ BEGIN
         A.v.y := P1.y - A.s.y
       END
     END;
-    IF (t2 >= 0) & (t2 <= 1) THEN
+    IF (t2 >= 0.0) & (t2 <= 1.0) THEN
       IF t1 < t2 THEN
         A.v.x := P2.x - A.s.x;
         A.v.y := P2.y - A.s.y
@@ -114,14 +114,14 @@ BEGIN
   YY := 0;
   G.ClearScreen;
 
-  A.s.x := Random.Uniform() * W;
-  A.s.y := Random.Uniform() * H;
-  B.s.x := Random.Uniform() * W;
-  B.s.y := Random.Uniform() * H;
-  A.v.x := Random.Uniform() * W - A.s.x;
-  A.v.y := Random.Uniform() * H - A.s.y;
-  B.v.x := Random.Uniform() * W - B.s.x;
-  B.v.y := Random.Uniform() * H - B.s.y;
+  A.s.x := Random.Uniform() * FLT(W);
+  A.s.y := Random.Uniform() * FLT(H);
+  B.s.x := Random.Uniform() * FLT(W);
+  B.s.y := Random.Uniform() * FLT(H);
+  A.v.x := Random.Uniform() * FLT(W) - A.s.x;
+  A.v.y := Random.Uniform() * FLT(H) - A.s.y;
+  B.v.x := Random.Uniform() * FLT(W) - B.s.x;
+  B.v.y := Random.Uniform() * FLT(H) - B.s.y;
 
   G.MakeCol(c, 155, 0, 0);
   G.ThickLine(FLOOR(A.s.x), FLOOR(A.s.y), FLOOR(A.s.x + A.v.x), FLOOR(A.s.y + A.v.y), c, 7);

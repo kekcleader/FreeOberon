@@ -10,9 +10,9 @@ VAR col, i: INTEGER;
   re, im, re2: REAL;
 BEGIN re := x; im := y; i := 0;
   REPEAT re2 := re * re - im * im;
-    im := 2 * re * im; re := re2;
+    im := 2.0 * re * im; re := re2;
     re := re + x; im := im + y; INC(i)
-  UNTIL (i = iter) OR (re * re + im * im > 4);
+  UNTIL (i = iter) OR (re * re + im * im > 4.0);
   m[sy, sx] := i
 END Go;
 
@@ -20,12 +20,12 @@ PROCEDURE Draw;
 VAR i, x, y: INTEGER;
   shine: REAL;
   c: G.Color;
-BEGIN shine := (1 - M.cos(angle)) * 1;
+BEGIN shine := 1.0 - M.cos(angle);
   FOR y := 0 TO H - 1 DO
     FOR x := 0 TO W - 1 DO
       i := m[y, x];
       IF i # iter THEN
-        i := FLOOR(i * shine);
+        i := FLOOR(FLT(i) * shine);
         IF i > 255 THEN i := 255 END;
         CASE col OF
           0: G.MakeCol(c, i, 0, 0)
@@ -47,7 +47,7 @@ VAR x, y: INTEGER;
   x0, y0, x1, y1: REAL;
 BEGIN
   x0 := cx - r; x1 := cx + r;
-  y0 := cy + r * H / W; y1 := 2 * cy - y0;
+  y0 := cy + r * FLT(H) / FLT(W); y1 := 2.0 * cy - y0;
   y := 0;
   WHILE (y < H) & ~G.KeyPressed() DO
     FOR x := 0 TO W - 1 DO
@@ -70,7 +70,7 @@ BEGIN G.Settings(320, 200, {G.exact});
       angle := 0.0;
       col := (col + 1) MOD 7;
       G.ClearScreen; G.Flip;
-      r := r / 2;
+      r := r / 2.0;
       Set(x, y, r)
     ELSE G.Flip; G.Delay(10)
     END
