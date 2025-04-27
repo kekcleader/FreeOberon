@@ -13,6 +13,7 @@ else
   THISOS="Linux_amd64"
 fi
 
+clear
 echo
 echo "  This script will install Free Oberon."
 echo
