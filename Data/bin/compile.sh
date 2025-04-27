@@ -41,8 +41,14 @@ export OBERON=".:$DIR/../../src:$OFRDIR/Lib/Sym"
 OFR="ofront+ -s -88 -7w"
 
 
-$OFR $2 $FNAME
+$OFR $2 "$FNAME"
 retcode=$?
+
+echo "AA=[$THISOS], BB=[$2]" >> /tmp/b
+if [[ "$THISOS" == "macOS" && "$2" == "-m" ]]; then
+  CFILE="$(basename "${FNAME/.Mod/}").c"
+  "$DIR/patch.sh" "$CFILE"
+fi
 
 cd ..
 exit $retcode

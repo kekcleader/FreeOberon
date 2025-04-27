@@ -77,7 +77,7 @@ $OFR -Cwm FreeOberon.Mod &&
 
 $OFR -7wm Fob.Mod &&
 
-{ [ "$THISOS" = "macOS" ] && ../Data/bin/patch.sh FreeOberon.c || true; } &&
+{ [[ "$THISOS" == "macOS" ]] && ../Data/bin/patch.sh FreeOberon.c || true; } &&
 
 
 $CCFULL -c Utf8.c &&

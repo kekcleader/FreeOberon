@@ -5,7 +5,7 @@
 TARGET_FILE="$1"
 TEMP_FILE="temp_${TARGET_FILE}"
 
-if [ ! -f "$TARGET_FILE" ]; then
+if [[ ! -f "$TARGET_FILE" ]]; then
     echo "File $TARGET_FILE not found!"
     exit 1
 fi
