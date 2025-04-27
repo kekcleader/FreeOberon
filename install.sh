@@ -6,6 +6,13 @@ MAGENTA="\033[35m"
 TEAL="\033[36m"
 CYAN="\033[96m"
 RESET="\033[0m"
+
+if [[ "$(uname)" == "Darwin" ]]; then
+  THISOS="macOS"
+else
+  THISOS="Linux_amd64"
+fi
+
 echo
 echo "  This script will install Free Oberon."
 echo
@@ -60,7 +67,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   echo -e "${YELLOW}"
   echo -e "  Building Ofront+...${MAGENTA}"
   echo -e "  ~~~~~~~~~~~~~~~~~~~${RESET}"
-  cd Data/bin/OfrontPlus/Target/Linux_amd64/Bin
+  cd Data/bin/OfrontPlus/Target/$THISOS/Bin
   ./build
   cd ../../../../../..
 
@@ -80,6 +87,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo -e "  Add the following line to ${CYAN}~/.bashrc${GREEN} to use the command ${CYAN}fob${GREEN}:"
     echo -e "${CYAN}  export PATH=$PWD:\$PATH${GREEN}"
     echo -e "  To run Free Oberon IDE in a specific language, type ${CYAN}./FreeOberon --lang ru${GREEN}"
+    echo -e "  To run Free Oberon IDE in a a window, type ${CYAN}./FreeOberon --window${GREEN}"
   else
     echo -e "${RED}"
     echo "  An error occurred while setting up Free Oberon."
