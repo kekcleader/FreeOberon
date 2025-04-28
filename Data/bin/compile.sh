@@ -40,14 +40,19 @@ PATH="$OFRDIR:$PATH"
 export OBERON=".:$DIR/../../src:$OFRDIR/Lib/Sym"
 OFR="ofront+ -s -88 -7w"
 
+NEEDPATCH=0
+MAINFLAG=$2
+if [[ "$MAINFLAG" == "-M" ]]; then
+  MAINFLAG=-m
+  NEEDPATCH=1
+fi
 
-$OFR $2 "$FNAME"
+$OFR $MAINFLAG "$FNAME"
 retcode=$?
 
 echo "AA=[$THISOS], BB=[$2]" >> /tmp/b
-if [[ "$THISOS" == "macOS" && "$2" == "-m" ]]; then
-  CFILE="$(basename "${FNAME/.Mod/}").c"
-  "$DIR/patch.sh" "$CFILE"
+if [[ "$THISOS" == "macOS" && "$NEEDPATCH" == "1" ]]; then
+  "$DIR/patch.sh" "$(basename "${FNAME/.Mod/}").c"
 fi
 
 cd ..

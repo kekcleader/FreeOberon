@@ -21,7 +21,7 @@ echo
 git stash
 
 echo ================================
-echo      BEGIN PACK
+echo      BEGIN PACK LINUX
 
 [ -d "$FOLDER" ] && mv $FOLDER $BAKFOLDER
 mkdir -p $FOLDER/_Build

@@ -1,5 +1,5 @@
 MODULE Builder;
-(* Copyright 2017-2023 Arthur Yefimov
+(* Copyright 2017-2025 Arthur Yefimov
 
 This file is part of Free Oberon.
 
@@ -208,7 +208,7 @@ BEGIN
   s[j] := 0X
 END AppendArgument;*)
 
-PROCEDURE RunCommand(IN fname, mod: ARRAY OF CHAR; link, main: BOOLEAN;
+PROCEDURE RunCommand(IN fname, mod: ARRAY OF CHAR; link, main, hasGraph: BOOLEAN;
     list: Module; onError: ErrorHandler): BOOLEAN;
 CONST bufLen = 20480;
 VAR buf: ARRAY bufLen OF SHORTCHAR;
@@ -238,7 +238,10 @@ BEGIN ok := TRUE;
   IF ok THEN
     s := fname$; Func.FixFname(s); Strings.Append(s, cmd);
 
-    IF main THEN Strings.Append(' -m', cmd)
+    IF main THEN
+      IF hasGraph THEN Strings.Append(' -M', cmd)
+      ELSE Strings.Append(' -m', cmd)
+      END
     ELSIF link & (list # NIL) THEN
       p := list;
       WHILE p.next # NIL DO
@@ -282,9 +285,9 @@ BEGIN ok := TRUE;
   END ;
 RETURN success END RunCommand;
 
-PROCEDURE Compile(IN fname, mod: ARRAY OF CHAR; main: BOOLEAN;
+PROCEDURE Compile(IN fname, mod: ARRAY OF CHAR; main, hasGraph: BOOLEAN;
   onError: ErrorHandler): BOOLEAN;
-BEGIN RETURN RunCommand(fname, mod, FALSE, main, NIL, onError)
+BEGIN RETURN RunCommand(fname, mod, FALSE, main, hasGraph, NIL, onError)
 END Compile;
 
 PROCEDURE Link(IN fname, mod: ARRAY OF CHAR;
@@ -293,7 +296,7 @@ PROCEDURE Link(IN fname, mod: ARRAY OF CHAR;
 VAR ok: BOOLEAN;
   s: ARRAY 2048 OF CHAR;
   res: INTEGER;
-BEGIN ok := RunCommand(fname, mod, TRUE, FALSE, list, onError);
+BEGIN ok := RunCommand(fname, mod, TRUE, FALSE, FALSE, list, onError);
   IF ok THEN (* Move executable file if workDir is non-standard *)
     s := mod$; IF Config.isWindows THEN Strings.Append('.exe', s) END;
     exename := '_Build/'; Strings.Append(s, exename);
@@ -483,19 +486,20 @@ PROCEDURE CompileAll*(modules: Module;
     VAR exename: ARRAY OF CHAR; moveToCwd: BOOLEAN;
     onError: ErrorHandler): BOOLEAN;
 VAR p, last: Module;
-  ok: BOOLEAN;
+  ok, hasGraph: BOOLEAN;
 BEGIN exename[0] := 0X;
   IF modules # NIL THEN
-    ok := TRUE; p := modules;
+    ok := TRUE; hasGraph := FALSE; p := modules;
     WHILE ok & (p.next # NIL) DO
       IF ModuleExists(p.fname) THEN
-        IF ~Compile(p.fname, '', FALSE, onError) THEN ok := FALSE END
+        IF ~Compile(p.fname, '', FALSE, FALSE, onError) THEN ok := FALSE END
       ELSIF ~IsSysModule(p.s) THEN ok := FALSE
+      ELSIF p.s = 'Graph' THEN hasGraph := TRUE
       END;
       p := p.next
     END;
     IF ok THEN
-      IF ~ModuleExists(p.fname) OR ~Compile(p.fname, '', TRUE, onError) THEN
+      IF ~ModuleExists(p.fname) OR ~Compile(p.fname, '', TRUE, hasGraph, onError) THEN
         ok := FALSE
       END;
       ok := ok & Link(p.fname, p.s, modules, exename, onError, moveToCwd)

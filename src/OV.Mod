@@ -1,5 +1,5 @@
 MODULE OV;
-(* Copyright 2017-2023 Arthur Yefimov
+(* Copyright 2017-2025 Arthur Yefimov
 
 This file is part of Free Oberon.
 
