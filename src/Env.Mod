@@ -1,7 +1,7 @@
 MODULE Env;
 (** OS environment variables
 %RU Переменные окружения ОС *)
-IMPORT CmdArgs, Platform, Utf8, Strings;
+IMPORT CmdArgs, Platform, PlatformUtils, Utf8, Strings;
 TYPE SHORTCHAR = Utf8.SHORTCHAR;
 
 VAR count: INTEGER;
@@ -168,7 +168,7 @@ BEGIN
     RemoveDoubleSlashes(s);
     RemoveDotDirs(s);
     RemoveBacktracking(s);
-    ResolveSymLinks(s);
+    ResolveSymLinks(s)
   END
 END GetAppDirUnix;
 
@@ -186,7 +186,11 @@ PROCEDURE GetAppDir*(VAR s: ARRAY OF CHAR);
 VAR z: ARRAY 1024 OF SHORTCHAR;
 BEGIN
   IF Platform.Windows THEN Platform.GetAppDir(z); Utf8.Decode(z, s)
-  ELSE GetAppDirUnix(s)
+  ELSE
+    PlatformUtils.GetAppDirMac(z, LEN(z));
+    IF z[0] # 0X THEN Utf8.Decode(z, s)
+    ELSE GetAppDirUnix(s)
+    END
   END
 END GetAppDir;
 

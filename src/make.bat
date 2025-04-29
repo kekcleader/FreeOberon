@@ -36,6 +36,8 @@ ECHO ON
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w Debug.Mod
 @IF ERRORLEVEL 1 GOTO ERR
+%OFR% -Cw PlatformUtils.Mod
+@IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w Args.Mod
 @IF ERRORLEVEL 1 GOTO ERR
 %OFR% -7w Env.Mod
@@ -120,7 +122,8 @@ windres resources.rc resources.o
 
 %CCFULL% -o ..\%PROG1%.exe resources.o ^
   Graph.c Sound.c TermBox.c ^
-  Config.c Func.c Debug.c term\term_win32.c ^
+  Config.c Func.c Debug.c ^
+  Term.c term/term_win32.c platformutils/platformutils.c ^
   Term.c OV.c FoStrings.c EditorText.c Editor.c Builder.c ^
   FreeOberon.c ^
   ..\Data\bin\FreeOberon.a ^
@@ -133,7 +136,7 @@ windres resources.rc resources.o
 
 %CCFULL% -o ..\%PROG2%.exe ^
   FoStrings.c Builder.c ^
-  Term.c term/term_win32.c ^
+  Term.c term/term_win32.c platformutils/platformutils.c ^
   Config.c Func.c Debug.c Fob.c ^
   ..\Data\bin\FreeOberon.a ^
   %OFRDIR%\Lib\Ofront.a ^
