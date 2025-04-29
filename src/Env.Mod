@@ -174,7 +174,7 @@ END GetAppDirUnix;
 
 (** Returns a full path to the application directory. That is the directory
     where the executable file of the currently running program resides.
-     The path ends with delimeter / or \ (in the case of Windows).
+     The path ends with delimiter / or \ (in the case of Windows).
      It might not be logically possible to determine application directory
     in some cases on Linux/Unix systems
 %RU Возвращает полный путь к директории приложения. Это тот каталог, в котором
