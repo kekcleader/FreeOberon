@@ -2,6 +2,11 @@
 
 This is a step by step instruction how to get, compile and run FreeOberon.
 
+<img width="320" alt="Screenshot 2025-05-19 at 14 53 04" src="https://github.com/user-attachments/assets/3178d428-3449-4729-8f67-dec19c4f963a" />
+
+![Screenshot 2025-05-19 at 15 15 37](https://github.com/user-attachments/assets/ac5287bd-4920-40fc-9ad0-fcc8bb0d097e)
+
+
 - FreeOberon (FreeOberon) is a frontend with a text editor like Turbo Pascal for DOS
 - ofront+ (OfrontPlus) is a Oberon to C source code translator
 - OfrontPlus bootstrap (OfrontPlus-bootstrap) - some lowlevel bootstrap code differs for every target machine
