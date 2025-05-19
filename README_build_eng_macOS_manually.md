@@ -548,9 +548,23 @@ Be patient, it will calculate Mandelbrot set afer a few seconds and shows:
 Depending on your graphics you need to adjust it.
 
 Change:
+```
 BEGIN G.Settings(320, 200, {G.exact});
-To: 2048, 1152 for example.
-Or use fullscreen: G.Settings(0, 0, {G.fullscreen});
-Or use windowing monde: G.Settings(640, 480, {G.exact, G.window});
+```
+To 2048, 1152 for example.
 
+Or use fullscreen:
+```
+G.Settings(0, 0, {G.fullscreen});
+```
+Or use windowing monde:
+```
+G.Settings(640, 480, {G.exact, G.window});
+```
+
+<img width="320" alt="Screenshot 2025-05-19 at 14 53 04" src="https://github.com/user-attachments/assets/a3c30d8b-58f5-4896-8170-5bb005697495" />
+
+<img width="320" alt="Screenshot 2025-05-19 at 14 58 39" src="https://github.com/user-attachments/assets/887b8274-4e16-4058-8a21-07e846279302" />
+
+<img width="320" alt="Screenshot 2025-05-19 at 14 58 52" src="https://github.com/user-attachments/assets/cc3a5ec4-7fee-47ac-992a-476129ef60b5" />
 
