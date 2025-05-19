@@ -75,10 +75,10 @@ OfrontPlus-master.zip
 
 
 ## Step 5 - Copy bootstrap unix-88 to FreeOberon
-
+```
 % cp ./OfrontPlus-bootstrap-master/unix-88/*  ./OfrontPlus-master/Target/macOS/Obj
 % cp ./OfrontPlus-bootstrap-master/unix-88/*  ./OfrontPlus-master/Target/macOS/Lib/Obj
-
+```
 
 ## Step 6 - compile libOfront
 
