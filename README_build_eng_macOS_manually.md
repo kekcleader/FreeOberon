@@ -1,6 +1,6 @@
 # How to download, compile and install FreeOberon on macOS
 
-This is a step by stop instruction how to get, compile and run FreeOberon.
+This is a step by step instruction how to get, compile and run FreeOberon.
 
 - FreeOberon (FreeOberon) is a frontend with a text editor like Turbo Pascal for DOS
 - ofront+ (OfrontPlus) is a Oberon to C source code translator
