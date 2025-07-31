@@ -116,16 +116,18 @@ $CCFULL -c Sound.c &&
 
 $CCFULL -c TermBox.c &&
 
+$CCFULL -c platformutils/platformutils.c &&
+
 
 $AR -crs ../Data/bin/libFreeOberon.a \
+  platformutils.o \
   Utf8.o Strings.o Reals.o Int.o Time.o In.o Out.o Args.o Env.o \
   Files.o Texts.o Random.o \
   StrList.o Dir.o Graph.o Sound.o TermBox.o &&
 
 
 $CCFULL -o ../$PROG1 \
-  Graph.c Sound.c TermBox.c \
-  Term.c term/term_linux.c platformutils/platformutils.c \
+  Graph.c Sound.c TermBox.c Term.c term/term_linux.c \
   Config.c Func.c Debug.c OV.c FoStrings.c EditorText.c Editor.c Builder.c \
   FreeOberon.c \
   ../Data/bin/libFreeOberon.a \
@@ -138,7 +140,7 @@ $CCFULL -o ../$PROG1 \
 
 $CCFULL -o ../$PROG2 \
   FoStrings.c Builder.c \
-  Term.c term/term_linux.c platformutils/platformutils.c \
+  Term.c term/term_linux.c \
   Config.c Func.c Debug.c Fob.c \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a

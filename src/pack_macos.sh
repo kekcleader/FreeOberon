@@ -4,6 +4,7 @@ WORKDIR=../../macos_pack
 FOLDER=$WORKDIR/FreeOberon.app
 BAKPOSTFIX=-OLD-$RANDOM$RANDOM
 BAKFOLDER=$FOLDER$BAKPOSTFIX
+RESFOLDER=$FOLDER/Contents/Resources
 PKGFILE=FreeOberon.pkg
 
 echo This script will create a directory named $FOLDER
@@ -31,9 +32,8 @@ cp ../FreeOberon $FOLDER/Contents/MacOS
 #cp ../fob $FOLDER/Contents/MacOS
 cp Info.plist $FOLDER/Contents
 
-cp -r ../Data $FOLDER/Contents/MacOS
-cp -r ../Programs $FOLDER/Contents/MacOS
-#cp ../install.sh $FOLDER/Contents/MacOS
+cp -r ../Data $RESFOLDER
+cp -r ../Programs $RESFOLDER
 cp ../*.{md,sh} $FOLDER/
 cp ../LICENSE $FOLDER/
 
