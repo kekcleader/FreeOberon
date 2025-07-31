@@ -29,3 +29,11 @@ void get_app_dir_mac(char *dir, int size) {
   }
 #endif
 }
+
+unsigned char is_macos() {
+  unsigned char res = 0;
+#if defined(__APPLE__)
+  res = 1;
+#endif
+  return res;
+}

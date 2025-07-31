@@ -9,4 +9,7 @@ TYPE CHAR8* = SHORTCHAR;
 PROCEDURE GetAppDirMac* ["get_app_dir_mac"]
   (VAR buf: ARRAY OF CHAR8; len: INTEGER);
 
+(** Returns TRUE if the current platform is macOS. *)
+PROCEDURE IsMacOS* ["is_macos"] (): BOOLEAN;
+
 END PlatformUtils.

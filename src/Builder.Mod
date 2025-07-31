@@ -17,17 +17,17 @@ You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
 IMPORT Term, FoStrings, Files, Utf8, Config, Func, Strings,
-  Int, Out, Debug, Env, Dir, Kernel;
+  Int, Out, Debug, Env, Dir, PlatformUtils, Kernel;
 (** Free Oberon builder and compiler runner. Builder finds files of the
     compiled program, interrelates them, puts them in order, compiles every
     one of them and links the program. Part of Free Oberon IDE internal code *)
 TYPE
   Module* = POINTER TO ModuleDesc;
   ModuleDesc* = RECORD
-    s*: ARRAY 64 OF CHAR; (* Module name *)
-    fname*: ARRAY 256 OF CHAR; (* Filename of module source *)
-    libs*: ARRAY 4096 OF CHAR; (* String from speical comments *)
-    foreign*: BOOLEAN; (* TRUE for bindings that do not produce a C-file *)
+    s*: ARRAY 64 OF CHAR; (** Module name *)
+    fname*: ARRAY 256 OF CHAR; (** Filename of module source *)
+    libs*: ARRAY 4096 OF CHAR; (** String from speical comments *)
+    foreign*: BOOLEAN; (** TRUE for bindings that do not produce a C-file *)
     system*: BOOLEAN;
     next*: Module
   END;
@@ -37,10 +37,10 @@ TYPE
 
 VAR
   sysModules: Module;
-  target: ARRAY 64 OF CHAR; (* 'LINUX' or 'WIN32' *)
-  wrongLinkTarget: BOOLEAN; (* TRUE if target was given and does not match *)
-  findLinkInfo: Module; (* If not NIL, "%LINK" comments will be saved here *)
-  workDir*: ARRAY 1024 OF CHAR; (* Directory of main file of compiled program *)
+  target: ARRAY 64 OF CHAR; (** 'LINUX', 'WIN32' or 'MACOS' *)
+  wrongLinkTarget: BOOLEAN; (** TRUE if target was given and does not match *)
+  findLinkInfo: Module; (** If not NIL, "%LINK" comments will be saved here *)
+  workDir*: ARRAY 1024 OF CHAR; (** Directory of main file of compiled program *)
 
 PROCEDURE IsSysModule(IN name: ARRAY OF CHAR): BOOLEAN;
 VAR p: Module;
@@ -627,5 +627,11 @@ RETURN L END UsedModuleList;
 
 BEGIN
   ResetSysModules;
-  IF Config.isWindows THEN target := 'WIN32' ELSE target := 'LINUX' END
+  IF Config.isWindows THEN
+    target := 'WIN32'
+  ELSIF PlatformUtils.IsMacOS() THEN
+    target := 'MACOS'
+  ELSE
+    target := 'LINUX'
+  END
 END Builder.
