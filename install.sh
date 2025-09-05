@@ -21,6 +21,7 @@ echo "Free Oberon dependencies are:"
 echo -e " * ${YELLOW}Allegro5${RESET} - for the module Graph and the graphical IDE"
 echo -e " * ${YELLOW}Git${RESET} - to download Ofront+"
 echo -e " * ${YELLOW}GCC${RESET} - to compile the generated C-code"
+echo -e " * ${YELLOW}pkg-config${RESET} - for Allegro, not installed on macOS by default"
 echo
 echo "You can find the information on how to install the dependencies"
 echo "in the README.md file."
@@ -41,6 +42,10 @@ echo "  sudo pacman -Sy git gcc pkgconf glibc allegro"
 echo
 echo -e "${TEAL}openSUSE${RESET}:"
 echo "  sudo zypper install -y git gcc glibc-devel liballegro5_2-devel liballegro_audio5_2-devel liballegro_image5_2-devel liballegro_primitives5_2-devel liballegro_dialog5_2-devel liballegro_acodec5_2-devel liballegro_acodec5_2-devel liballegro_font5_2-devel"
+echo
+echo -e "${TEAL}macOS${RESET}:"
+echo "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+echo "  brew install git gcc pkg-config allegro"
 echo -e "${YELLOW}"
 read -p "  Are the dependencies installed? [y/n] " -n 1 -r
 echo -e "${RESET}"
@@ -85,7 +90,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   if [ -f "./FreeOberon" ]; then
     echo -e "${GREEN}"
     echo -e "  Free Oberon is installed. You can now run: ${CYAN}./FreeOberon${GREEN}"
-    echo -e "  Add the following line to ${CYAN}~/.bashrc${GREEN} to use the command ${CYAN}fob${GREEN}:"
+    echo -e "  Add the following line to ${CYAN}~/.bashrc${GREEN} (or ${CYAN}~/.zprofile${GREEN} etc.) to use the command ${CYAN}fob${GREEN}:"
     echo -e "${CYAN}  export PATH=$PWD:\$PATH${GREEN}"
     echo -e "  To run Free Oberon IDE in a specific language, type ${CYAN}./FreeOberon --lang ru${GREEN}"
     echo -e "  To run Free Oberon IDE in a a window, type ${CYAN}./FreeOberon --window${GREEN}"
