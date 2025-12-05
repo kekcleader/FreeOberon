@@ -694,13 +694,21 @@ BEGIN
   WriteLn('</body></html>')
 END Footer;
 
+(** Reports whether all groups in L are empty. *)
+PROCEDURE IsEmpty(L: P.List): BOOLEAN;
+VAR g: P.Object;
+BEGIN
+  IF L # NIL THEN g := L.first ELSE g := NIL END;
+  WHILE (g # NIL) & (g IS P.Group) & (g(P.Group).first = NIL) DO
+    g := g.next
+  END
+RETURN g = NIL END IsEmpty;
+
 PROCEDURE PrintSection(L: P.List; name: ARRAY OF CHAR; showEmpty: BOOLEAN);
 VAR s: ARRAY 64 OF CHAR;
   empty: BOOLEAN;
 BEGIN
-  empty := ~((L # NIL) & (L.first # NIL) &
-             (~(L.first IS P.Group) OR (L.first(P.Group).first # NIL)));
-
+  empty := IsEmpty(L);
   IF ~empty OR showEmpty THEN
     Write  ('<article class="list-wrap '); Write(name); WriteLn('-list">');
     Lang.Get(name, s); BigTitle(s, name);
