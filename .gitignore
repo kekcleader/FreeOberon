@@ -5,6 +5,7 @@
 Autodoc.exe
 Autodoc
 !Autodoc/
+.DS_Store
 _Build
 /src/*.o
 /src/*.h
