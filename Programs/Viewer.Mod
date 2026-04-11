@@ -116,16 +116,16 @@ BEGIN
   END
 END MoveToBottom;
 
-PROCEDURE HandleKey(VAR v: Viewer; key: INTEGER; VAR done: BOOLEAN);
+PROCEDURE HandleKey(VAR v: Viewer; key: INTEGER; mod: SET; VAR done: BOOLEAN);
 BEGIN
   v.redraw := TRUE;
   IF key = T.kEsc THEN done := TRUE
-  ELSIF key = T.kUp THEN MoveLineUp(v)
-  ELSIF key = T.kDown THEN MoveLineDown(v)
-  ELSIF key = T.kPgUp THEN MoveScreenUp(v)
-  ELSIF key = T.kPgDn THEN MoveScreenDown(v)
-  ELSIF key = T.kHome THEN MoveToTop(v)
-  ELSIF key = T.kEnd THEN MoveToBottom(v)
+  ELSIF (key = T.kUp)   OR (key = T.kBackspace) THEN MoveLineUp(v)
+  ELSIF (key = T.kDown) OR (key = T.kSpace)     THEN MoveLineDown(v)
+  ELSIF (key = T.kPgUp) OR (key = T.kU)         THEN MoveScreenUp(v)
+  ELSIF (key = T.kPgDn) OR (key = T.kEnter)     THEN MoveScreenDown(v)
+  ELSIF (key = T.kHome) OR (key = T.kT)         THEN MoveToTop(v)
+  ELSIF (key = T.kEnd)  OR (key = T.kB)         THEN MoveToBottom(v)
   ELSE v.redraw := FALSE
   END
 END HandleKey;
@@ -139,8 +139,8 @@ BEGIN
     INC(x)
   END;
   T.Print(X, Y + H, W,
-    'Двигайтесь клавишами со стрелками, а также Home, End, PageUp, PageDown',
-    bg, border)
+    'Стрелки или пробел/забой, Home/T, End/B, PageUp/U, PageDown/Enter. Выход - Esc',
+    0, border)
 END DrawLine;
 
 PROCEDURE InitialDraw(VAR v: Viewer);
@@ -185,6 +185,7 @@ VAR e: T.Event;
 BEGIN
   InitialDraw(v);
   v.redraw := TRUE;
+  done := FALSE;
   REPEAT
     IF v.redraw THEN
       Draw(v);
@@ -192,7 +193,7 @@ BEGIN
     END;
     T.WaitEvent(e);
     IF e.type = T.quit THEN done := TRUE
-    ELSIF e.type = T.key THEN HandleKey(v, e.key, done)
+    ELSIF e.type = T.key THEN HandleKey(v, e.key, e.mod, done)
     END
   UNTIL done;
 END Run;
