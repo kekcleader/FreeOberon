@@ -16,10 +16,10 @@ VAR t, d: INTEGER;
 BEGIN
   GetClock(t, d);
   Y := ASR(d, 9) MOD 100;
-  M := (ASR(d, 5) - 1) MOD 12 + 1;
+  M := ASR(d, 5) MOD 10H;
   D := d MOD 20H;
 
-  h := ASR(t, 12) MOD 10H;
+  h := ASR(t, 12) MOD 20H;
   m := ASR(t, 6) MOD 40H;
   s := t MOD 40H
 END GetDateTime;
