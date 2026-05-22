@@ -783,6 +783,7 @@ BEGIN
         errcode := Platform.OldRW(q, f.fd);
         IF errcode = 0 THEN f.workName := f.registerName;
           f.registerName := ''; f.tempFile := FALSE;
+          f.pos := 0;
           RETURN
         END
       END
