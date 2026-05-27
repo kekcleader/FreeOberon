@@ -425,7 +425,7 @@ BEGIN sysModules := NIL;
   Add('Modules');  Add('Platform');  Add('Oberon');  Add('Reals');
   Add('VT100');    AddGraph;         Add('Sound');   Add('TermBox');
   Add('Term');     Add('Allegro5');  Add('Dir');     Add('Int');
-  Add('Random')
+  Add('Random');   Add('Utf8')
 END ResetSysModules;
 
 PROCEDURE GetWord(IN s: ARRAY OF CHAR; VAR i: INTEGER; OUT w: ARRAY OF CHAR);

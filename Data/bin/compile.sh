@@ -37,7 +37,7 @@ else
 fi
 OFRDIR="$DIR/OfrontPlus/Target/$THISOS"
 PATH="$OFRDIR:$PATH"
-export OBERON=".:$DIR/../../src:$OFRDIR/Lib/Sym"
+export OBERON="$DIR/../../src:.:$OFRDIR/Lib/Sym"
 OFR="ofront+ -s -88 -7w"
 
 NEEDPATCH=0
