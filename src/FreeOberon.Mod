@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 *)
-IMPORT T := TermBox, Files, Args, Utf8, Builder, Env, Debug, Graph,
+IMPORT T := TermBox, Files, Args, Utf8, Builder, Env, Debug,
        OV, Editor, Term, FoStrings, Config, Strings, Int, Out, Dir, Kernel;
 (** Free Oberon IDE and Compiler. Part of Free Oberon IDE internal code *)
 CONST
@@ -340,7 +340,7 @@ BEGIN
     quit := TRUE
   ELSE
     CASE E.key OF
-      T.kEnter, T.kEnterPad:
+      T.kEnter:
       Ln;
       WriteToProcess(inputBuf, inputBufLen);
       inputBufLen := 0; buf[0] := 0AX;
@@ -391,8 +391,16 @@ BEGIN dir := prg$; curX := 0; curY := 0; curFg := 7; curBg := 0;
   i := 0; WHILE dir[i] # 0X DO INC(i) END;
   WHILE (i # -1) & (dir[i] # '/') & (dir[i] # '\') DO DEC(i) END;
   INC(i); dir[i] := 0X; Utf8.Encode(prg, s); Utf8.Encode(dir, d);
-  IF Term.StartProcessIn(s, d) THEN programFinished := FALSE; RunTerminal
-  ELSE FoStrings.GetErrorStr(423, err); ShowError(err)
+  T.Close; (* yield the terminal to the child *)
+  IF ~Term.StartProcessInPassthrough(s, d) THEN
+    (* PTY unavailable (e.g. stdin is a pipe): fall back to pipe mode *)
+    T.Init; T.RestoreMouse; T.Sync;
+    IF Term.StartProcessIn(s, d) THEN programFinished := FALSE; RunTerminal;
+      T.RestoreMouse
+    ELSE FoStrings.GetErrorStr(423, err); ShowError(err)
+    END
+  ELSE
+    T.Init; T.RestoreMouse; T.Sync
   END
 END RunProgram;
 
@@ -528,6 +536,7 @@ VAR w: OV.Window;
   modules: Builder.Module;
   e: Editor.Editor;
 BEGIN w := c.app.windows;
+  Builder.ClearVariants;
   (* Automatically save the current file before compilation *)
   IF (w # NIL) & (w IS Editor.Editor) THEN
     IF Editor.TextChanged(w(Editor.Editor)) THEN FileSave(c) END
@@ -550,7 +559,7 @@ BEGIN w := c.app.windows;
     IF foreign THEN res := 402 END;
     Debug.IntVal('Result of UserModuleList: ', res);
     IF res = 0 THEN
-      IF Builder.CompileAll(modules, exename, FALSE, BuildErrorCallback)
+      IF Builder.CompileAll(modules, exename, FALSE, BuildErrorCallback, '')
       THEN RunProgram(exename)
       END
     ELSE
@@ -705,7 +714,7 @@ VAR e: Editor.Editor;
   s: ARRAY 50000 OF CHAR;
 BEGIN
   IF (c.app.windows # NIL) & (c.app.windows IS Editor.Editor) THEN
-    Graph.GetClipboardText(T.GetWindow(), s);
+    T.GetClipboardText(s);
     FixClipboardText(s);
     Editor.PasteText(app, s)
   END
@@ -716,7 +725,7 @@ VAR s: ARRAY 50000 OF CHAR;
 BEGIN
   IF (c.app.windows # NIL) & (c.app.windows IS Editor.Editor) THEN
     c.app.windows(Editor.Editor).text.CopySelection(s);
-    Graph.SetClipboardText(T.GetWindow(), s)
+    T.SetClipboardText(s)
   END
 END EditCopyClipboard;
 

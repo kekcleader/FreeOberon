@@ -190,9 +190,11 @@ END InitVars;
 BEGIN
   (*T.Settings(80, 25, {T.window, T.center, T.resizable});*)
   T.Init;
-  T.Size(SW, SH);
-  InitVars;
-  RestartGame;
-  Run;
-  T.Close
+  IF T.Done THEN
+    T.Size(SW, SH);
+    InitVars;
+    RestartGame;
+    Run;
+    T.Close
+  END
 END Tetragon.

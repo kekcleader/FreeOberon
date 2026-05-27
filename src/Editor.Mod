@@ -165,11 +165,22 @@ RETURN (i < LEN(what)) & (j < LEN(where)) & (what[i] = 0X) END Match;
 PROCEDURE FileDialogOkClick*(c: OV.Control);
 VAR w: FileDialog;
   s, full: ARRAY 256 OF CHAR;
+  home: ARRAY 1024 OF CHAR;
   i, L: INTEGER;
   ok: BOOLEAN;
 BEGIN ok := FALSE; w := c.parent(FileDialog); s := w.edtFilename.caption$;
   (* Replace all \ with / and set L to length of s *)
   L := 0; WHILE s[L] # 0X DO IF s[L] = '\' THEN s[L] := '/' END; INC(L) END;
+  (* Expand ~/... to home directory *)
+  IF (s[0] = '~') & (s[1] = '/') THEN
+    Env.GetByName('HOME', home);
+    i := Strings.Length(home);
+    IF (i > 0) & (home[i - 1] # '/') THEN
+      home[i] := '/'; INC(i); home[i] := 0X
+    END;
+    Strings.Delete(s, 0, 2); Strings.Insert(home, 0, s);
+    L := 0; WHILE s[L] # 0X DO INC(L) END
+  END;
   Debug.StrVal('FileDialogOkClick: s = ', s);
   IF L = 0 THEN
     IF w.colFiles.onChange # NIL THEN w.colFiles.onChange(w.colFiles) END
@@ -310,10 +321,10 @@ BEGIN OV.InitWindow(c); c.do := fileDialogMethod; c.type := type;
   c.colFiles.onChange := FileDialogListChange;
   c.colFiles.onDblClick := FileDialogOkClick;
   c.colFiles.do.resize(c.colFiles, 3, 6, c.w - 18, c.h - 8);
+  OV.Add(c, c.colFiles);
   FileDialogUpdateFileList(c);
   OV.EditSetCaption(c.edtFilename, '');
-  OV.Refresh(c.colFiles);
-  OV.Add(c, c.colFiles)
+  OV.Refresh(c.colFiles)
 END InitFileDialog;
 
 PROCEDURE NewFileDialog*(type: INTEGER; IN dir: ARRAY OF CHAR): FileDialog;
@@ -1147,8 +1158,8 @@ BEGIN OV.WindowKeyDown(c, E); HideMsg(c);
     ELSE MoveByPage(c(Editor), TRUE, shiftPressed)
     END
   | T.kBackspace: HandleBackspace(c(Editor))
-  | T.kDel, T.kDelPad:     HandleDelete(c(Editor))
-  | T.kEnter, T.kEnterPad: HandleEnter(c(Editor))
+  | T.kDel:     HandleDelete(c(Editor))
+  | T.kEnter: HandleEnter(c(Editor))
   | T.kTab:                HandleTab(c(Editor), shiftPressed)
   ELSE END
 END EditorKeyDown;
@@ -1158,6 +1169,12 @@ BEGIN
   IF OV.windowMethod.getFocus # NIL THEN OV.windowMethod.getFocus(c) END;
   T.SetCursor(c.x, c.y) (*!FIXME correct?*)
 END EditorGetFocus;
+
+PROCEDURE EditorMouseWheel*(c: OV.Control; x, y, delta: INTEGER);
+BEGIN
+  MoveScreen(c(Editor), delta);
+  PrintText(c(Editor))
+END EditorMouseWheel;
 
 PROCEDURE EditorRefresh(c: OV.Control);
 BEGIN OV.WindowRefresh(c)
@@ -1171,6 +1188,7 @@ BEGIN OV.InitWindowMethod(m);
   m.mouseDown := EditorMouseDown;
   m.mouseUp := EditorMouseUp;
   m.mouseMove := EditorMouseMove;
+  m.mouseWheel := EditorMouseWheel;
   m.keyDown := EditorKeyDown;
   m.textInput := EditorTextInput;
   m.close := EditorClose

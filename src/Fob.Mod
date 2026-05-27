@@ -29,16 +29,12 @@ BEGIN
   Out.String('Fob uses Ofront+ and GCC (MinGW).'); Out.Ln; Out.Ln;
   Out.String('Usage:'); Out.Ln; Args.Get(0, s);
   Out.String('  '); Out.String(s);
-  Out.String(' sourceFile'); Out.Ln;
-
-  Out.String('  '); Out.String(s);
-  Out.String(' --lang ru sourceFile'); Out.Ln; Out.Ln;
-
-  Out.String('Please specify a single file name - the main module source');
-  Out.Ln
-(*Out.String(' [options] MainModuleSourceFile'); Out.Ln; Out.Ln;
+  Out.String(' [options] sourceFile [Module:Variant ...]'); Out.Ln;
+  Out.Ln;
   Out.String('Options:'); Out.Ln;
-  Out.String('  -o file     Name of output executable file'); Out.Ln*)
+  Out.String('  -o file     Name of output executable file'); Out.Ln;
+  Out.String('  --lang xx   Set interface language'); Out.Ln;
+  Out.String('  --debug     Enable debug mode'); Out.Ln
 END Usage;
 
 PROCEDURE BuildErrorCallback(fname: ARRAY OF CHAR; col, line, error: INTEGER;
@@ -54,14 +50,18 @@ BEGIN
   Out.String('error: '); Out.String(msg); Out.Ln
 END BuildErrorCallback;
 
-PROCEDURE ParseArgs(VAR mainFname, lang: ARRAY OF CHAR);
+PROCEDURE ParseArgs(VAR mainFname, lang, outFname: ARRAY OF CHAR);
 VAR i, count: INTEGER;
   s: ARRAY 4096 OF CHAR;
-BEGIN i := 1; count := Args.Count(); lang := 'en';
+BEGIN i := 1; count := Args.Count(); lang := 'en'; outFname[0] := 0X;
+  Builder.ClearVariants;
   WHILE i <= count DO
     Args.Get(i, s);
     IF s = '--lang' THEN Args.Get(i + 1, lang); INC(i)
     ELSIF s = '--debug' THEN Config.SetDebug(TRUE)
+    ELSIF (s = '-o') OR (s = '--output') THEN
+      IF i < count THEN INC(i); Args.Get(i, outFname) END
+    ELSIF Strings.Pos(':', s, 0) > 0 THEN Builder.AddVariant(s)
     ELSE Strings.Copy(s, mainFname)
     END;
     INC(i)
@@ -70,11 +70,11 @@ END ParseArgs;
 
 PROCEDURE Do;
 VAR modules: Builder.Module;
-  mainFname, modname, exename, errFname, lang, s: ARRAY 256 OF CHAR;
+  mainFname, modname, exename, errFname, lang, outFname, s: ARRAY 256 OF CHAR;
   errLine, errCol, res: INTEGER;
   foreign, ok: BOOLEAN;
 BEGIN
-  ParseArgs(mainFname, lang);
+  ParseArgs(mainFname, lang, outFname);
   FoStrings.SetLang(lang);
   Builder.SetWorkDir(mainFname);
   Builder.GetModuleName(mainFname, modname);
@@ -83,10 +83,10 @@ BEGIN
   IF foreign THEN res := 402 END;
   ok := FALSE;
   IF res = 0 THEN
-    IF Builder.CompileAll(modules, exename, TRUE, BuildErrorCallback)
+    IF Builder.CompileAll(modules, exename, TRUE, BuildErrorCallback, outFname)
     THEN ok := TRUE
     END
-  ELSE (*res = 400-bad file, 401-bad module name, or 402-foreign module*)
+  ELSE
     FoStrings.MakeErrorStr(res, s);
     BuildErrorCallback(errFname, -1, -1, 401, s)
   END;

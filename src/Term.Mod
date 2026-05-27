@@ -47,7 +47,14 @@ PROCEDURE -StartProcess*
     starts it from a directory `dir`. Returns TRUE on success *)
 PROCEDURE -StartProcessIn*
   (cmd, dir: ARRAY OF CHAR8): BOOLEAN
-  "StartProcessIn(cmd, dir)";
+  "StartProcessIn((char *)cmd, (char *)dir)";
+
+(** Runs the process in a PTY, forwarding I/O transparently until exit.
+    Falls back gracefully (returns FALSE) if a PTY is unavailable.
+    Returns TRUE on success *)
+PROCEDURE -StartProcessInPassthrough*
+  (cmd, dir: ARRAY OF CHAR8): BOOLEAN
+  "StartProcessInPassthrough((char *)cmd, (char *)dir)";
 
 (** Returns TRUE if the process has finished. In this case puts in `err`
     the exit code of the process *)
@@ -60,7 +67,7 @@ PROCEDURE -ProcessFinished*(VAR err: INTEGER): BOOLEAN
     StartProcessIn *)
 PROCEDURE -WriteToProcess*
   (buf: ARRAY OF CHAR8; len: INTEGER)
-  "WriteToProcess(buf, len)";
+  "WriteToProcess((char *)buf, len)";
 
 (** Reads at most `limit` 1-byte characters (bytes) from the standard output
     pipe of the started process to `buf`, puts in `len` the number of

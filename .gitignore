@@ -6,6 +6,7 @@ Autodoc.exe
 Autodoc
 !Autodoc/
 .DS_Store
+.vscode
 _Build
 /src/*.o
 /src/*.h
@@ -15,6 +16,7 @@ _Build
 /src/term/*.o
 /Data/bin/libFreeOberon.a
 /Data/bin/FreeOberon.a
+/Data/bin/Variants
 !/Data/bin/mingw32/bin/*.dll
 !/Data/bin/mingw32/libexec/gcc/i686-w64-mingw32/6.2.0/*.dll
 .*.swp

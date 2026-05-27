@@ -34,10 +34,23 @@ shift
 
 FILES=
 FLAGS=
+VARIANT_OBJ=
 F=false
+NEXT_VARIANT=false
 
 for arg in "$@"; do
-  if [ "$arg" = "--linker-libs" ]
+  if [ "$NEXT_VARIANT" = true ]
+  then
+    NEXT_VARIANT=false
+    mod="${arg%%:*}"
+    var="${arg#*:}"
+    vobj="$FOBDIR/Data/bin/Variants/$mod/$var/$mod.o"
+    if [ -f "$vobj" ]; then
+      VARIANT_OBJ="$VARIANT_OBJ $vobj"
+    fi
+  elif [ "$arg" = "--variant" ]
+  then NEXT_VARIANT=true
+  elif [ "$arg" = "--linker-libs" ]
   then F=true
   elif [ "$F" = false ]
   then FILES="$FILES $arg"
@@ -58,6 +71,7 @@ $CC -O0 -g -fno-exceptions \
   -I $OFRTAR/Lib/Obj \
   $ONAME.c -o $ONAME \
   $FILES \
+  $VARIANT_OBJ \
   $FOBDIR/Data/bin/libFreeOberon.a \
   $OFRTAR/Lib/libOfront.a $FLAGS
 

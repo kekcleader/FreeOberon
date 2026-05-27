@@ -32,11 +32,19 @@ TYPE
     next*: Module
   END;
 
+  Variant* = POINTER TO VariantDesc;
+  VariantDesc = RECORD
+    modname: ARRAY 64 OF CHAR;
+    variant: ARRAY 64 OF CHAR;
+    next: Variant
+  END;
+
   ErrorHandler* = PROCEDURE (IN fname: ARRAY OF CHAR;
     col, line, error: INTEGER; IN msg: ARRAY OF CHAR);
 
 VAR
   sysModules: Module;
+  variants: Variant;
   target: ARRAY 64 OF CHAR; (** 'LINUX', 'WIN32' or 'MACOS' *)
   wrongLinkTarget: BOOLEAN; (** TRUE if target was given and does not match *)
   findLinkInfo: Module; (** If not NIL, "%LINK" comments will be saved here *)
@@ -54,6 +62,37 @@ BEGIN p := sysModules;
   WHILE (p # NIL) & (p.s # name) DO p := p.next END ;
   IF p # NIL THEN libs := p.libs$ ELSE libs[0] := 0X END
 END GetSysLibs;
+
+(** Clears the list of module variants *)
+PROCEDURE ClearVariants*;
+BEGIN variants := NIL
+END ClearVariants;
+
+(** Adds a module variant spec in "Module:Variant" format *)
+PROCEDURE AddVariant*(IN spec: ARRAY OF CHAR);
+VAR v: Variant;
+  i, j: INTEGER;
+BEGIN NEW(v); i := 0; j := 0;
+  WHILE (spec[i] # 0X) & (spec[i] # ':') DO
+    v.modname[j] := spec[i]; INC(i); INC(j)
+  END;
+  v.modname[j] := 0X;
+  IF spec[i] = ':' THEN INC(i) END;
+  j := 0;
+  WHILE spec[i] # 0X DO
+    v.variant[j] := spec[i]; INC(i); INC(j)
+  END;
+  v.variant[j] := 0X;
+  v.next := variants; variants := v
+END AddVariant;
+
+PROCEDURE GetVariant(IN modname: ARRAY OF CHAR;
+    VAR variant: ARRAY OF CHAR): BOOLEAN;
+VAR v: Variant;
+BEGIN v := variants;
+  WHILE (v # NIL) & (v.modname # modname) DO v := v.next END;
+  IF v # NIL THEN variant := v.variant$ END ;
+RETURN v # NIL END GetVariant;
 
 PROCEDURE ModuleExists(IN fname: ARRAY OF CHAR): BOOLEAN;
 VAR F: Files.File;
@@ -87,14 +126,25 @@ RETURN s[i] # 0X END SplitModName;
 
 PROCEDURE FindModule(IN mod: ARRAY OF CHAR; VAR fname: ARRAY OF CHAR): BOOLEAN;
 VAR ok: BOOLEAN;
-  s, m1, m2: ARRAY 256 OF CHAR;
-BEGIN ok := FALSE; (* Try 'Programs/A/GuiButtons.Mod' *)
-  s := workDir$; Strings.Append(mod, s); Strings.Append('.Mod', s);
-  IF ModuleExists(s) THEN fname := s$; ok := TRUE
-  ELSIF SplitModName(mod, m1, m2) THEN (* Try 'Programs/A/Gui/Buttons.Mod' *)
-    s := workDir$; Strings.Append(m1, s); Strings.Append('/', s);
-    Strings.Append(m2, s); Strings.Append('.Mod', s);
+  s, m1, m2, variant: ARRAY 256 OF CHAR;
+BEGIN ok := FALSE;
+  (* 1. If a variant is requested, try Variants/<mod>/<variant>/<mod>.Mod *)
+  IF GetVariant(mod, variant) THEN
+    s := workDir$; Strings.Append('Variants/', s);
+    Strings.Append(mod, s); Strings.Append('/', s);
+    Strings.Append(variant, s); Strings.Append('/', s);
+    Strings.Append(mod, s); Strings.Append('.Mod', s);
     IF ModuleExists(s) THEN fname := s$; ok := TRUE END
+  END;
+  (* 2. Default: <workDir>/<mod>.Mod *)
+  IF ~ok THEN
+    s := workDir$; Strings.Append(mod, s); Strings.Append('.Mod', s);
+    IF ModuleExists(s) THEN fname := s$; ok := TRUE
+    ELSIF SplitModName(mod, m1, m2) THEN
+      s := workDir$; Strings.Append(m1, s); Strings.Append('/', s);
+      Strings.Append(m2, s); Strings.Append('.Mod', s);
+      IF ModuleExists(s) THEN fname := s$; ok := TRUE END
+    END
   END ;
 RETURN ok END FindModule;
 
@@ -135,8 +185,8 @@ END ReadInt;
 
 PROCEDURE ParseErrors(VAR s: ARRAY OF CHAR; fname: ARRAY OF CHAR;
     VAR line, col, error: INTEGER);
-VAR i, j, st, len, skip: INTEGER; found: BOOLEAN;
-BEGIN fname[0] := 0X; line := 1; col := 1;
+VAR i, j: INTEGER; found, done: BOOLEAN;
+BEGIN fname[0] := 0X; line := 1; col := 1; error := 0;
   StringsFindNext(' translating ', s, 0, found, i);
   IF found THEN INC(i, 13); j := 0; (* Read module name *)
     WHILE (j < LEN(fname) - 1) & (s[i] > ' ') DO
@@ -145,21 +195,39 @@ BEGIN fname[0] := 0X; line := 1; col := 1;
     fname[j] := 0X;
     (* Remove everything up to the following line *)
     WHILE (s[i] # 0X) & (s[i] # 0AX) DO INC(i) END;
-    Strings.Delete(s, 0, i + 1); i := 0;
-    (* Read line and column numbers, i.e. '10:23' *)
-    WHILE (s[i] # 0X) & (s[i] <= ' ') DO INC(i) END;
-    IF ('0' <= s[i]) & (s[i] <= '9') THEN
-      ReadInt(s, i, line);
-      IF s[i] = ':' THEN INC(i) END;
+    IF s[i] = 0AX THEN INC(i) END;
+    Strings.Delete(s, 0, i); i := 0;
+    (* Walk through diagnostic lines, skipping warnings, until 'err' found *)
+    done := FALSE; found := FALSE;
+    WHILE ~done DO
+      (* Skip leading whitespace on the line *)
+      WHILE (s[i] # 0X) & (s[i] # 0AX) & (s[i] <= ' ') DO INC(i) END;
       IF ('0' <= s[i]) & (s[i] <= '9') THEN
-        ReadInt(s, i, col)
-      END;
-      WHILE (s[i] # 0X) & (s[i] # 'e') DO INC(i) END;
-      IF (s[i + 1] = 'r') & (s[i + 2] = 'r') & (s[i + 3] = ' ') THEN
-        INC(i, 4); ReadInt(s, i, error)
-      ELSE error := 0
-      END;
+        ReadInt(s, i, line);
+        IF s[i] = ':' THEN INC(i) END;
+        IF ('0' <= s[i]) & (s[i] <= '9') THEN
+          ReadInt(s, i, col)
+        END;
+        (* Skip whitespace before keyword *)
+        WHILE (s[i] # 0X) & (s[i] # 0AX) & (s[i] <= ' ') DO INC(i) END;
+        IF (s[i] = 'e') & (s[i + 1] = 'r') & (s[i + 2] = 'r')
+            & (s[i + 3] = ' ') THEN
+          INC(i, 4); ReadInt(s, i, error);
+          found := TRUE; done := TRUE
+        ELSE
+          (* warning or unknown - skip rest of this line *)
+          WHILE (s[i] # 0X) & (s[i] # 0AX) DO INC(i) END;
+          IF s[i] = 0AX THEN INC(i)
+          ELSE done := TRUE
+          END
+        END
+      ELSE done := TRUE
+      END
+    END;
+    IF found THEN
       FoStrings.MakeErrorStr(error, s)
+    ELSE
+      line := 1; col := 1; error := 0; s[0] := 0X
     END
   ELSE StringsFindNext('): ', s, 0, found, i); (* In case of gcc error *)
     IF found THEN Strings.Delete(s, 0, i + 3) END;
@@ -212,6 +280,7 @@ PROCEDURE RunCommand(IN fname, mod: ARRAY OF CHAR; link, main, hasGraph: BOOLEAN
     list: Module; onError: ErrorHandler): BOOLEAN;
 CONST bufLen = 20480;
 VAR buf: ARRAY bufLen OF SHORTCHAR;
+  v: Variant;
   p: Module;
   len, err, line, col, error: INTEGER;
   command: ARRAY 32 OF CHAR;
@@ -250,6 +319,17 @@ BEGIN ok := TRUE;
           Strings.Append('.c', cmd)
         END;
         p := p.next
+      END;
+      (* Pass variant arguments for system modules *)
+      v := variants;
+      WHILE v # NIL DO
+        IF IsSysModule(v.modname) THEN
+          Strings.Append(' --variant ', cmd);
+          Strings.Append(v.modname, cmd);
+          Strings.Append(':', cmd);
+          Strings.Append(v.variant, cmd)
+        END;
+        v := v.next
       END;
       Strings.Append(' --linker-libs', cmd);
       p := list;
@@ -292,7 +372,8 @@ END Compile;
 
 PROCEDURE Link(IN fname, mod: ARRAY OF CHAR;
     list: Module; VAR exename: ARRAY OF CHAR;
-    onError: ErrorHandler; moveToCwd: BOOLEAN): BOOLEAN;
+    onError: ErrorHandler; moveToCwd: BOOLEAN;
+    IN outFname: ARRAY OF CHAR): BOOLEAN;
 VAR ok: BOOLEAN;
   s: ARRAY 2048 OF CHAR;
   res: INTEGER;
@@ -300,7 +381,10 @@ BEGIN ok := RunCommand(fname, mod, TRUE, FALSE, FALSE, list, onError);
   IF ok THEN (* Move executable file if workDir is non-standard *)
     s := mod$; IF Config.isWindows THEN Strings.Append('.exe', s) END;
     exename := '_Build/'; Strings.Append(s, exename);
-    IF moveToCwd THEN
+    IF moveToCwd & (outFname[0] # 0X) THEN
+      Files.Rename(exename, outFname, res);
+      IF res = 0 THEN exename := outFname$ END
+    ELSIF moveToCwd THEN
       Files.Rename(exename, s, res);
       IF res = 0 THEN exename := s$ END
     ELSIF workDir # Config.stdPath THEN
@@ -484,7 +568,7 @@ END GetSym;
 
 PROCEDURE CompileAll*(modules: Module;
     VAR exename: ARRAY OF CHAR; moveToCwd: BOOLEAN;
-    onError: ErrorHandler): BOOLEAN;
+    onError: ErrorHandler; IN outFname: ARRAY OF CHAR): BOOLEAN;
 VAR p, last: Module;
   ok, hasGraph: BOOLEAN;
 BEGIN exename[0] := 0X;
@@ -502,7 +586,7 @@ BEGIN exename[0] := 0X;
       IF ~ModuleExists(p.fname) OR ~Compile(p.fname, '', TRUE, hasGraph, onError) THEN
         ok := FALSE
       END;
-      ok := ok & Link(p.fname, p.s, modules, exename, onError, moveToCwd)
+      ok := ok & Link(p.fname, p.s, modules, exename, onError, moveToCwd, outFname)
     END
   ELSE ok := FALSE
   END ;
@@ -541,7 +625,7 @@ BEGIN mod.foreign := FALSE; res := 401; NEW(top); top.next := NIL; p := top;
       IF EqualModuleNames(mod.s, s) THEN
         res := 0; findLinkInfo := mod; GetSym(R, ch, s, line, col);
         IF s = ';' THEN
-          GetSym(R, ch, s, line, col); res := 0; findLinkInfo := NIL;
+          GetSym(R, ch, s, line, col); res := 0;
           IF s = 'IMPORT' THEN GetSym(R, ch, s, line, col); exit := FALSE;
             WHILE ~exit & ('A' <= CAP(s[0])) & (CAP(s[0]) <= 'Z') DO
               m := s; GetSym(R, ch, s, line, col); fname2[0] := 0X;
@@ -593,12 +677,16 @@ PROCEDURE UsedModuleList*(IN modname, fname: ARRAY OF CHAR;
     VAR errFname: ARRAY OF CHAR; VAR errLine, errCol: INTEGER;
     VAR foreign: BOOLEAN; VAR res: INTEGER): Module;
 VAR L, list, list2, p, mod: Module;
+  varStr: ARRAY 64 OF CHAR;
 BEGIN L := NIL; res := 0(*OK*); foreign := FALSE;
   NEW(mod); mod.s := modname$; mod.fname := fname$;
   mod.foreign := FALSE; mod.next := NIL;
   IF IsSysModule(modname) THEN
     NEW(p); p.next := NIL;
-    IF (modname = 'TermBox') OR (modname = 'Sound') THEN p.s := 'Graph'
+    IF modname = 'Sound' THEN p.s := 'Graph'
+    ELSIF (modname = 'TermBox') &
+        GetVariant('TermBox', varStr) & (varStr = 'Graph')
+    THEN p.s := 'Graph'
     ELSE p.s := modname$
     END;
     p.fname[0] := 0X;

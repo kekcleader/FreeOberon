@@ -1,5 +1,5 @@
-MODULE TermSnow;
-(** TermSnow - an example program using TermBox *)
+MODULE TermStars;
+(** TermStars - an example of using TermBox *)
 IMPORT T := TermBox, Out, Random, Kernel;
 
 TYPE
@@ -150,6 +150,7 @@ BEGIN done := FALSE;
       IF e.button # 0 THEN OnMouseDown(e.x, e.y)
       ELSE OnMouseUp(e.x, e.y)
       END
+    ELSIF e.type = T.key THEN done := TRUE
     END
   UNTIL done
 END Run;
@@ -163,20 +164,21 @@ BEGIN
     stars[i].n := Random.Int(2)
   END;
 
-  starChars[0] := 0B7X;
-  starChars[1] := 80X;
-  starChars[2] := 7X;
+  starChars[0] := ' ';
+  starChars[1] := 0B7X;   (* · middle dot *)
+  starChars[2] := 2736X;  (* ✶ six-pointed star *)
   starChars[3] := '*';
-  starChars[4] := 0FX;
+  starChars[4] := 263CX;  (* ☼ white sun with rays — DOS cp437 #15 *)
 
   mouse.down := FALSE
 END InitVars;
 
 BEGIN
-  (*T.Settings(0, 0, {T.window, T.center, T.resizable});*)
   T.Init;
-  T.Size(W, H);
-  InitVars;
-  Run;
-  T.Close
-END TermSnow.
+  IF T.Done THEN
+    T.Size(W, H);
+    InitVars;
+    Run;
+    T.Close
+  END
+END TermStars.

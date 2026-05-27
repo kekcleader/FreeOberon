@@ -610,6 +610,7 @@ TYPE
     mouseMove*: PROCEDURE (c: Control; x, y: INTEGER; button: INTEGER);
     mouseDown*: PROCEDURE (c: Control; x, y, button: INTEGER);
     mouseUp*: PROCEDURE (c: Control; x, y, button: INTEGER);
+    mouseWheel*: PROCEDURE (c: Control; x, y, delta: INTEGER);
     close*: PROCEDURE (c: Control; VAR cancel: BOOLEAN)
   END;
 
@@ -1061,6 +1062,7 @@ BEGIN
   m.mouseMove := ControlMouseMove;
   m.mouseDown := ControlMouseDown;
   m.mouseUp := ControlMouseUp;
+  m.mouseWheel := NIL;
   m.close := NIL
 END InitControlMethod;
 
@@ -2211,8 +2213,19 @@ END WindowMouseDown;
 
 PROCEDURE WindowMouseUp*(c: Control; x, y, button: INTEGER);
 BEGIN
-  IF c.status # normal THEN c.status := normal; NeedRedraw(c.app) END
+  IF c.status # normal THEN
+    c.status := normal; c.app.sync := TRUE; NeedRedraw(c.app)
+  END
 END WindowMouseUp;
+
+PROCEDURE WindowMouseWheel*(c: Control; x, y, delta: INTEGER);
+VAR p: Control;
+BEGIN
+  p := FindChildAt(c, x, y);
+  IF (p # NIL) & (p.do.mouseWheel # NIL) THEN
+    p.do.mouseWheel(p, x - p.x, y - p.y, delta)
+  END
+END WindowMouseWheel;
 
 PROCEDURE WindowMouseMove*(c: Control; x, y: INTEGER; button: INTEGER);
 VAR tW, tH: INTEGER;
@@ -2269,6 +2282,7 @@ BEGIN InitControlMethod(m);
   m.mouseDown := WindowMouseDown;
   m.mouseUp := WindowMouseUp;
   m.mouseMove := WindowMouseMove;
+  m.mouseWheel := WindowMouseWheel;
   m.keyDown := WindowKeyDown;
   m.getFocus := WindowGetFocus
 END InitWindowMethod;
@@ -2482,7 +2496,15 @@ PROCEDURE OnMouse(app: App; VAR E: T.Event);
 VAR c: Control;
   btn: INTEGER;
 BEGIN
-  IF E.button = 0 THEN (* Release mouse *)
+  IF (E.button = T.kWheelUp) OR (E.button = T.kWheelDown) THEN
+    (* Mouse wheel: deliver to the window under cursor *)
+    c := GetWindowAt(app, E.x, E.y);
+    IF c = NIL THEN c := app.windows END; (* topmost window *)
+    IF (c # NIL) & (c.do.mouseWheel # NIL) THEN
+      IF E.button = T.kWheelUp THEN btn := -3 ELSE btn := 3 END;
+      c.do.mouseWheel(c, E.x - c.x, E.y - c.y, btn)
+    END
+  ELSIF E.button = 0 THEN (* Release mouse *)
     btn := app.mouseBtn; app.mouseBtn := 0;
     IF app.dragged # NIL THEN c := app.dragged
     ELSE c := GetControlAt(app, E.x, E.y);

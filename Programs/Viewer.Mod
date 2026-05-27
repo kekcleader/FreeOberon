@@ -194,6 +194,12 @@ BEGIN
     T.WaitEvent(e);
     IF e.type = T.quit THEN done := TRUE
     ELSIF e.type = T.key THEN HandleKey(v, e.key, e.mod, done)
+    ELSIF e.type = T.mouse THEN
+      IF e.button = T.kWheelUp THEN
+        MoveLineUp(v); MoveLineUp(v); MoveLineUp(v); v.redraw := TRUE
+      ELSIF e.button = T.kWheelDown THEN
+        MoveLineDown(v); MoveLineDown(v); MoveLineDown(v); v.redraw := TRUE
+      END
     END
   UNTIL done;
 END Run;
@@ -201,12 +207,16 @@ END Run;
 PROCEDURE View(fname: ARRAY OF CHAR);
 VAR v: Viewer;
 BEGIN
-  T.Init; T.HideCursor; T.HideMouse;
-  T.Size(W, H); DEC(W, 4); DEC(H, 2); X := 2; Y := 1;
-  fg := 3; bg := 1; border := 9; scrollBg := 0; scrollFg := 3;
-  ReadFile(v, fname);
-  Run(v);
-  T.Close
+  T.Init;
+  IF T.Done THEN
+    T.HideCursor;
+    T.Size(W, H); DEC(W, 4); DEC(H, 2); X := 2; Y := 1;
+    fg := 3; bg := 1; border := 9; scrollBg := 0; scrollFg := 3;
+    ReadFile(v, fname);
+    Run(v);
+    T.Close
+  ELSE Out.String('TermBox init failed.'); Out.Ln
+  END
 END View;
 
 PROCEDURE Usage;

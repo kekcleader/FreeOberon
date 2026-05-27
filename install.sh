@@ -78,10 +78,30 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   cd ../../../../../..
 
   echo -e "${YELLOW}"
+  echo "  Choose the terminal mode for the Free Oberon IDE:"
+  echo
+  echo -e "  ${CYAN}1${YELLOW}) Real Terminal ${GREEN}(default)${YELLOW}"
+  echo "     Uses the native terminal. Lightweight, no extra dependencies."
+  echo -e "  ${CYAN}2${YELLOW}) Graphical Terminal Emulator"
+  echo "     Opens a graphical window via Allegro5. Requires Allegro5."
+  echo -e "${YELLOW}"
+  read -p "  Your choice [1/2]: " -n 1 -r TERMCHOICE
+  echo -e "${RESET}"
+  echo
+
+  MAKE_VARIANTS=""
+  if [[ "$TERMCHOICE" == "2" ]]; then
+    MAKE_VARIANTS="TermBox:Graph"
+    echo -e "  ${GREEN}Selected: Graphical Terminal Emulator${RESET}"
+  else
+    echo -e "  ${GREEN}Selected: Real Terminal${RESET}"
+  fi
+
+  echo -e "${YELLOW}"
   echo -e "  Building Free Oberon...${MAGENTA}"
   echo -e "  ~~~~~~~~~~~~~~~~~~~~~~~${RESET}"
   cd src
-  ./make.sh
+  ./make.sh $MAKE_VARIANTS
   cd ..
 
   echo -e "${YELLOW}"

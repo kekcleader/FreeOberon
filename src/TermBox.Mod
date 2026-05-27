@@ -1,34 +1,32 @@
 MODULE TermBox;
-(** Termbox is a module for creating cross-platform text-based interfaces *)
-IMPORT G := Graph, Strings, Int, Out, Platform;
+(** Termbox VT100 backend — works directly in a terminal via escape sequences.
+    Provides the same public interface as the Graph-based TermBoxG. *)
+IMPORT TermVT, Utf8, Out, SYSTEM, Strings;
 
 CONST
   partW = 512;
   partH = 256;
   emptyCh = ' ';
   nofcolors = 16;
-  cursorTickSpeed = 1 / 2;
-  flipSpeed = 1 / 60;
   stdW = 80;
   stdH = 25;
 
-  (** Flags for procedure Settings **)
-  (** The flags only work if TermBox works via module Graph *)
-  fullscreen*  =  1; (** Run in fullscreen if possible *)
-  window*      =  2; (** Run in window if possible *)
-  exact*       =  3; (** Use the exact given pixel size *)
-  sharp*       =  4; (** Use integer multitudes of hardware pixels *)
-  software*    =  5; (** Render graphics in software *)
-  noMouse*     =  6; (** Hide mouse pointer *)
-  center*      =  7; (** Center the window *)
-  resizable*   =  8; (** Make window resizable *)
-  maximized*   =  9; (** Maximize window on startup *)
-  minimized*   = 10; (** Minimize window on startup *)
-  frameless*   = 11; (** Hide window frames *)
+  (** Flags for procedure Settings — no-op in VT100 mode *)
+  fullscreen*  =  1;
+  window*      =  2;
+  exact*       =  3;
+  sharp*       =  4;
+  software*    =  5;
+  noMouse*     =  6;
+  center*      =  7;
+  resizable*   =  8;
+  maximized*   =  9;
+  minimized*   = 10;
+  frameless*   = 11;
 
   (** Event.type possible values **)
   noEvent* =  0; (** No event occurred (used only internally) *)
-  quit*    =  1; (** User closed the window (works only if Graph is used) *)
+  quit*    =  1; (** Quit event (Ctrl+C or equivalent) *)
   key*     =  2; (** Key press *)
   mouse*   =  3; (** Mouse button click, release or drag *)
   resize*  = 11; (** Terminal window changed its size *)
@@ -82,6 +80,7 @@ CONST
   k7Pad*       = 44;
   k8Pad*       = 45;
   k9Pad*       = 46;
+
   kF1*         = 47;
   kF2*         = 48;
   kF3*         = 49;
@@ -155,22 +154,24 @@ CONST
 
   kMax*        = 226; (** Maximum key code *)
 
+  (** Mouse wheel pseudo-buttons used in Event.button *)
+  kWheelUp*   = 4;
+  kWheelDown* = 5;
+
   (** Key Modifiers Set - Event.mod **)
-  (** The set of modifier keys such as Alt or Ctrl *)
   mShift*      =  0; (** SHIFT *)
   mCtrl*       =  1; (** CTRL *)
   mAlt*        =  2; (** ALT *)
-  mLwin*       =  3; (** Left Windows Key *)
-  mRwin*       =  4; (** Right Windows Key *)
-  mMenu*       =  5; (** Menu Key *)
-  mAltGr*      =  6; (** ALT-Graph (Right ALT) *)
-  mCommand*    =  7; (** Command key (on Mac) *)
-  mScrolllock* =  8; (** Scroll Lock *)
-  mNumlock*    =  9; (** Num Lock *)
-  mCapslock*   = 10; (** Caps Lock *)
+  mLwin*       =  3; (** Left Windows Key — never set in VT100 mode *)
+  mRwin*       =  4; (** Right Windows Key — never set in VT100 mode *)
+  mMenu*       =  5; (** Menu Key — never set in VT100 mode *)
+  mAltGr*      =  6; (** ALT-Graph — never set in VT100 mode *)
+  mCommand*    =  7; (** Command key — never set in VT100 mode *)
+  mScrolllock* =  8; (** Scroll Lock — never set in VT100 mode *)
+  mNumlock*    =  9; (** Num Lock — never set in VT100 mode *)
+  mCapslock*   = 10; (** Caps Lock — never set in VT100 mode *)
 
   (** Characters **)
-  (** Useful constants for pseudo-graphical box drawing *)
   lineHor*         = 2500X;
   lineVert*        = 2502X;
 
@@ -219,17 +220,17 @@ CONST
   mediumShade*     = 2592X;
   darkShade*       = 2593X;
 
-  triangleUp*    = 1EX (*25B2X*);
-  triangleDown*  = 1FX (*25BCX*);
-  triangleRight* = 10X (*25BAX*);
-  triangleLeft*  = 11X (*25C4X*);
+  triangleUp*    = 1EX;
+  triangleDown*  = 1FX;
+  triangleRight* = 10X;
+  triangleLeft*  = 11X;
 
-  arrowUp*        = 18X (*2191X*);
-  arrowDown*      = 19X (*2193X*);
-  arrowRight*     = 1AX (*2192X*);
-  arrowLeft*      = 1BX (*2190X*);
-  arrowLeftRight* = 1DX (*2194X*);
-  arrowUpDown*    = 12X (*2195X*);
+  arrowUp*        = 18X;
+  arrowDown*      = 19X;
+  arrowRight*     = 1AX;
+  arrowLeft*      = 1BX;
+  arrowLeftRight* = 1DX;
+  arrowUpDown*    = 12X;
 
   blackSquare*    = 25A0X;
   upperHalfBlock* = 2580X;
@@ -238,66 +239,248 @@ CONST
   leftHalfBlock*  = 258CX;
   rightHalfBlock* = 2590X;
 
+  (* Output buffer size *)
+  outBufSize = 65536;
+
+  (* Input buffer size *)
+  inBufSize = 256;
+
 TYPE
-  Event* = RECORD (** Record that holds information on the event occurred *)
-    type*: INTEGER;   (** One of Event.type constants (see above) *)
-    x*, y*: INTEGER;  (** For mouse presses, releases and drags *)
-    w*, h*: INTEGER;  (** Size of screen in cells on resize *)
-    button*: INTEGER; (** Mouse button that is pressed, 0 means release *)
-    key*: INTEGER;    (** Physical key code of the key pressed or released *)
-    ch*: CHAR;        (** The typed character on key press *)
-    mod*: SET         (** Key modifiers set (see above) *)
+  SHORTCHAR = Utf8.SHORTCHAR;
+
+  Event* = RECORD
+    type*: INTEGER;
+    x*, y*: INTEGER;
+    w*, h*: INTEGER;
+    button*: INTEGER;
+    key*: INTEGER;
+    ch*: CHAR;
+    mod*: SET
   END;
 
   Cell = RECORD
     ch, oldCh: CHAR;
     fg, oldFg: INTEGER;
     bg, oldBg: INTEGER;
-    updated: INTEGER (** >0 means need to redraw, 2 means redraw in any case *)
+    updated: INTEGER
   END;
 
-  Part = POINTER TO PartDesc; (** Part of screen buffer *)
+  Part = POINTER TO PartDesc;
   PartDesc = RECORD
     cells: ARRAY partH, partW OF Cell;
-    w, h: INTEGER;   (** Actually used sizes of array *)
-    redraw: BOOLEAN; (** TRUE if any cell needs to be redrawn *)
+    w, h: INTEGER;
+    redraw: BOOLEAN;
     down, right: Part
   END;
 
-  Buffer = RECORD (** Screen buffer *)
+  Buffer = RECORD
     first: Part;
     w, h: INTEGER;
     redrawAll: BOOLEAN
   END;
 
 VAR
-  t0, t1: REAL;
-
-  wantTitle: ARRAY 256 OF CHAR; (** Assigned in procedure SetTitle *)
-  wantZoom: REAL;
   wantW, wantH: INTEGER;
-  wantScaleX, wantScaleY: REAL;
   settings: SET;
   buffer: Buffer;
-  iconFile, fontFile: ARRAY 256 OF CHAR;
+  wantTitle: ARRAY 256 OF CHAR;
 
-  processingEvent: BOOLEAN;
-  skipEnter: BOOLEAN; (** If TRUE, skip the G.char event with key = enter *)
-  mouseDown: BOOLEAN;
   mouseShown: BOOLEAN;
+  mouseDown: BOOLEAN;
   mouseX, mouseY, mouseButton: INTEGER;
-  curX, curY: INTEGER; (** Text cursor position *)
-  cursorShown: BOOLEAN; (** TRUE if text cursor is show while it is blinking *)
-  cursorTimer: G.Timer; (** Text cursor tick timer *)
-  flipTimer: G.Timer; (** Frame change timer *)
-  userTimer: G.Timer; (** User timer set by StartTimer *)
+  curX, curY: INTEGER;
+  cursorVisible: BOOLEAN;
 
-  needFlip: INTEGER;
-  screen: G.Window;
-  font: G.MonoFont;
-  colors: ARRAY nofcolors OF G.Color;
+  userTimerInterval: INTEGER; (** User timer interval in ms, 0 = off *)
 
-  Done*: BOOLEAN; (** TRUE on successful initialization, FALSE on error *)
+  (* Output buffer *)
+  outBuf: ARRAY outBufSize OF SHORTCHAR;
+  outLen: INTEGER;
+
+  (* Input buffer *)
+  inBuf: ARRAY inBufSize OF SHORTCHAR;
+  inLen, inPos: INTEGER;
+
+  (* ANSI SGR code tables *)
+  ansiFg: ARRAY nofcolors OF INTEGER;
+  ansiBg: ARRAY nofcolors OF INTEGER;
+
+  (* Track current output state to minimize escape sequences *)
+  lastFg, lastBg: INTEGER;
+
+  Done*: BOOLEAN;
+
+(* ====================== Output buffer ====================== *)
+
+PROCEDURE FlushOut;
+VAR n: INTEGER;
+BEGIN
+  IF outLen > 0 THEN
+    n := TermVT.Write(outBuf, outLen);
+    outLen := 0
+  END
+END FlushOut;
+
+PROCEDURE PutByte(b: INTEGER);
+BEGIN
+  IF outLen >= outBufSize THEN FlushOut END;
+  outBuf[outLen] := Utf8.ShortChr(b); INC(outLen)
+END PutByte;
+
+PROCEDURE PutCh(ch: CHAR);
+BEGIN PutByte(ORD(ch))
+END PutCh;
+
+PROCEDURE PutStr(s: ARRAY OF CHAR);
+VAR i: INTEGER;
+BEGIN i := 0;
+  WHILE s[i] # 0X DO PutByte(ORD(s[i])); INC(i) END
+END PutStr;
+
+PROCEDURE PutInt(n: INTEGER);
+VAR buf: ARRAY 12 OF INTEGER;
+  i, j, k, tmp: INTEGER;
+BEGIN
+  IF n # 0 THEN
+    IF n < 0 THEN PutCh('-'); n := -n END;
+    i := 0;
+    WHILE n > 0 DO
+      buf[i] := n MOD 10 + ORD('0'); INC(i); n := n DIV 10
+    END;
+    (* Reverse *)
+    j := 0; k := i - 1;
+    WHILE j < k DO
+      tmp := buf[j]; buf[j] := buf[k]; buf[k] := tmp; INC(j); DEC(k)
+    END;
+    (* Write *)
+    FOR j := 0 TO i - 1 DO PutByte(buf[j]) END
+  ELSE PutCh('0')
+  END
+END PutInt;
+
+PROCEDURE PutCSI(s: ARRAY OF CHAR);
+BEGIN PutByte(1BH); PutCh('['); PutStr(s)
+END PutCSI;
+
+(** Encode a UTF-16 CHAR as UTF-8 bytes and write to output buffer *)
+PROCEDURE PutChar(ch: CHAR);
+VAR s: ARRAY 4 OF SHORTCHAR;
+  len, i: INTEGER;
+BEGIN
+  (* Map CP437 graphics characters in the C0 control range to Unicode.
+     In the CP437 font these codepoints are visible glyphs, but in a VT100
+     terminal they are non-printing control codes and do not advance the
+     cursor — causing corrupt output and wrong cursor-position tracking.
+     Note: arrowLeft = 1BX = ESC is especially dangerous as it starts a
+     spurious escape sequence. *)
+  IF    ch = 001X THEN ch := 0263AX  (* ☺ *)
+  ELSIF ch = 002X THEN ch := 0263BX  (* ☻ *)
+  ELSIF ch = 003X THEN ch := 02665X  (* ♥ *)
+  ELSIF ch = 004X THEN ch := 02666X  (* ♦ *)
+  ELSIF ch = 005X THEN ch := 02663X  (* ♣ *)
+  ELSIF ch = 006X THEN ch := 02660X  (* ♠ *)
+  ELSIF ch = 007X THEN ch := 02022X  (* • *)
+  ELSIF ch = 008X THEN ch := 025D8X  (* ◘ *)
+  ELSIF ch = 009X THEN ch := 025CBX  (* ○ *)
+  ELSIF ch = 00AX THEN ch := 025D9X  (* ◙ *)
+  ELSIF ch = 00BX THEN ch := 02642X  (* ♂ *)
+  ELSIF ch = 00CX THEN ch := 02640X  (* ♀ *)
+  ELSIF ch = 00DX THEN ch := 0266AX  (* ♪ *)
+  ELSIF ch = 00EX THEN ch := 0266BX  (* ♫ *)
+  ELSIF ch = 00FX THEN ch := 0263CX  (* ☼ *)
+  ELSIF ch = 010X THEN ch := 025BAX  (* ► triangleRight *)
+  ELSIF ch = 011X THEN ch := 025C4X  (* ◄ triangleLeft *)
+  ELSIF ch = 012X THEN ch := 02195X  (* ↕ arrowUpDown *)
+  ELSIF ch = 013X THEN ch := 0203CX  (* ‼ *)
+  ELSIF ch = 014X THEN ch := 000B6X  (* ¶ *)
+  ELSIF ch = 015X THEN ch := 000A7X  (* § *)
+  ELSIF ch = 016X THEN ch := 025ACX  (* ▬ *)
+  ELSIF ch = 017X THEN ch := 021A8X  (* ↨ *)
+  ELSIF ch = 018X THEN ch := 02191X  (* ↑ arrowUp / triangleUp old *)
+  ELSIF ch = 019X THEN ch := 02193X  (* ↓ arrowDown / triangleDown old *)
+  ELSIF ch = 01AX THEN ch := 02192X  (* → arrowRight *)
+  ELSIF ch = 01BX THEN ch := 02190X  (* ← arrowLeft  !!! was ESC byte *)
+  ELSIF ch = 01CX THEN ch := 0221FX  (* ∟ *)
+  ELSIF ch = 01DX THEN ch := 02194X  (* ↔ arrowLeftRight *)
+  ELSIF ch = 01EX THEN ch := 025B2X  (* ▲ triangleUp *)
+  ELSIF ch = 01FX THEN ch := 025BCX  (* ▼ triangleDown *)
+  END;
+  Utf8.EncodeChar(ch, s, len);
+  FOR i := 0 TO len - 1 DO PutByte(ORD(s[i])) END
+END PutChar;
+
+(* ====================== Cursor positioning ====================== *)
+
+PROCEDURE MoveTo(col, row: INTEGER);
+BEGIN
+  PutByte(1BH); PutCh('[');
+  PutInt(row + 1); PutCh(';'); PutInt(col + 1); PutCh('H')
+END MoveTo;
+
+PROCEDURE HideCursorSys;
+BEGIN PutCSI('?25l')
+END HideCursorSys;
+
+PROCEDURE ShowCursorSys;
+BEGIN PutCSI('?25h')
+END ShowCursorSys;
+
+(** Begin synchronized output: suppress terminal rendering until EndSync.
+    Terminals that do not support mode 2026 simply ignore the sequence. *)
+PROCEDURE BeginSync;
+BEGIN PutCSI('?2026h')
+END BeginSync;
+
+PROCEDURE EndSync;
+BEGIN PutCSI('?2026l')
+END EndSync;
+
+(* ====================== Colors ====================== *)
+
+PROCEDURE SetSGR(fg, bg: INTEGER);
+BEGIN
+  fg := fg MOD nofcolors; bg := bg MOD nofcolors;
+  IF (fg # lastFg) OR (bg # lastBg) THEN
+    PutByte(1BH); PutCh('[');
+    PutInt(ansiFg[fg]); PutCh(';');
+    PutInt(ansiBg[bg]); PutCh('m');
+    lastFg := fg; lastBg := bg
+  END
+END SetSGR;
+
+PROCEDURE ResetSGR;
+BEGIN PutCSI('0m'); lastFg := -1; lastBg := -1
+END ResetSGR;
+
+(* ====================== Screen management ====================== *)
+
+PROCEDURE EnterAltScreen;
+BEGIN PutCSI('?1049h')
+END EnterAltScreen;
+
+PROCEDURE ExitAltScreen;
+BEGIN PutCSI('?1049l')
+END ExitAltScreen;
+
+PROCEDURE ClearScreen;
+BEGIN PutCSI('2J'); PutCSI('H')
+END ClearScreen;
+
+PROCEDURE EnableMouse;
+BEGIN
+  PutCSI('?1000h'); (* Enable mouse tracking *)
+  PutCSI('?1002h'); (* Enable button-event tracking (drag) *)
+  PutCSI('?1006h')  (* Enable SGR extended mouse mode *)
+END EnableMouse;
+
+PROCEDURE DisableMouse;
+BEGIN
+  PutCSI('?1006l');
+  PutCSI('?1002l');
+  PutCSI('?1000l')
+END DisableMouse;
+
+(* ====================== Cell buffer ====================== *)
 
 PROCEDURE SetPartCellUpdated(p: Part; VAR cell: Cell);
 BEGIN
@@ -370,8 +553,7 @@ BEGIN l := buffer.first;
   END
 END ClearTo;
 
-(** Clears the internal back buffer with a grey foreground and a
-    black background *)
+(** Clears the internal back buffer with grey foreground and black background *)
 PROCEDURE Clear*;
 BEGIN ClearTo(7, 0)
 END Clear;
@@ -380,47 +562,24 @@ PROCEDURE InvertColor(color: INTEGER): INTEGER;
 BEGIN IF color >= 8 THEN color := 15 - color ELSE color := 7 - color END
 RETURN color END InvertColor;
 
-PROCEDURE DrawCell(x, y: INTEGER; cell: Cell);
-VAR X, Y, w, h, fg, bg: INTEGER;
-BEGIN
-  IF ~mouseShown OR (x # mouseX) OR (y # mouseY) THEN
-    fg := cell.fg; bg := cell.bg
-  ELSE fg := InvertColor(cell.fg); bg := InvertColor(cell.bg)
-  END;
-  w := font.charW; h := font.charH; X := x * w; Y := y * h;
-  G.FillRect(X, Y, X + w - 1, Y + h - 1, colors[bg MOD nofcolors]);
-  G.DrawChar(cell.ch, X, Y, font, colors[fg MOD nofcolors]);
-  IF cursorShown & (x = curX) & (y = curY) THEN
-    G.FillRect(X, Y + h - 3, X + w - 1, Y + h - 2, colors[fg MOD nofcolors])
-  END
-END DrawCell;
-
-PROCEDURE GetMousePos(e: G.Event; VAR x, y: INTEGER);
-BEGIN
-  x := e.x DIV font.charW; y := e.y DIV font.charH;
-  IF x < 0 THEN x := 0 ELSIF x >= buffer.w THEN x := buffer.w - 1 END;
-  IF y < 0 THEN y := 0 ELSIF y >= buffer.h THEN y := buffer.h - 1 END
-END GetMousePos;
-
 PROCEDURE UpdateCell(x, y: INTEGER);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN p.cells[y, x].updated := 2; p.redraw := TRUE END
 END UpdateCell;
 
-PROCEDURE Flip(forse: BOOLEAN);
-BEGIN
-  IF ~G.HasEvents() OR forse THEN G.Flip; needFlip := 0
-  ELSE INC(needFlip)
-  END
-END Flip;
-
-(** Synchronizes the internal back buffer with the terminal.
-     Nothing will change on the screen until Flush or Sync is called *)
+(** Synchronizes the internal back buffer with the terminal *)
 PROCEDURE Flush*;
 VAR x, y, X, Y: INTEGER;
   l, p: Part;
+  cell: Cell;
+  fg, bg: INTEGER;
+  penX, penY: INTEGER; (* tracks where the terminal cursor currently is *)
 BEGIN
+  BeginSync;
+  HideCursorSys;
+  lastFg := -1; lastBg := -1;
+  penX := -1; penY := -1;
   l := buffer.first; Y := 0;
   WHILE l # NIL DO p := l; X := 0;
     WHILE p # NIL DO
@@ -428,8 +587,27 @@ BEGIN
         FOR y := 0 TO p.h - 1 DO
           FOR x := 0 TO p.w - 1 DO
             IF buffer.redrawAll OR (p.cells[y, x].updated # 0) THEN
-              DrawCell(X + x, Y + y, p.cells[y, x]);
-              ClearUpdated(p.cells[y, x])
+              cell := p.cells[y, x];
+              IF mouseShown & (X + x = mouseX) & (Y + y = mouseY) THEN
+                fg := InvertColor(cell.fg); bg := InvertColor(cell.bg)
+              ELSE
+                fg := cell.fg; bg := cell.bg
+              END;
+              (* Skip MoveTo if cursor is already at the right position.
+                 Avoid relying on auto-wrap at the last column. *)
+              IF (penX # X + x) OR (penY # Y + y) THEN
+                MoveTo(X + x, Y + y)
+              END;
+              SetSGR(fg, bg);
+              PutChar(cell.ch);
+              ClearUpdated(p.cells[y, x]);
+              (* After writing a char the terminal cursor advances by one.
+                 Don't track auto-wrap (last column edge case). *)
+              IF X + x < buffer.w - 1 THEN
+                penX := X + x + 1; penY := Y + y
+              ELSE
+                penX := -1; penY := -1
+              END
             END
           END
         END;
@@ -439,15 +617,17 @@ BEGIN
     END;
     INC(Y, l.h); l := l.down
   END;
-  IF buffer.redrawAll THEN Flip(TRUE); buffer.redrawAll := FALSE
-  ELSE Flip(FALSE)
-  END
+  buffer.redrawAll := FALSE;
+  IF cursorVisible & (curX >= 0) & (curY >= 0) THEN
+    MoveTo(curX, curY);
+    ShowCursorSys
+  END;
+  ResetSGR;
+  EndSync;
+  FlushOut
 END Flush;
 
-(** Sync comes handy when something causes desync between TermBox's
-    understanding of a terminal buffer and the reality. Such as a third party
-    process. Sync forces a complete resync between TermBox and the terminal,
-    it may not be visually pretty though. *)
+(** Forces a complete resync *)
 PROCEDURE Sync*;
 BEGIN
   buffer.redrawAll := TRUE;
@@ -461,33 +641,16 @@ BEGIN
   IF mouseShown THEN UpdateCell(x, y); Flush END
 END MoveMouse;
 
-PROCEDURE ToggleFS;
-BEGIN
-  IF ~(G.window IN G.GetWindowOptions(screen)) THEN
-    IF wantZoom >= 6/5 - 0.01 THEN G.SetNewWindowScale(5/6, 1.0)
-    ELSE G.SetNewWindowScale(1.0, 1.0)
-    END;
-    G.SetWindowOption(screen, G.topleft, TRUE)
-  ELSE G.SetNewWindowScale(5/6, 1.0);
-    G.SetWindowOption(screen, G.topleft, FALSE)
-  END;
-  G.ToggleFS(screen);
-  Sync
-END ToggleFS;
-
-(** Returns TRUE if fullscreen mode is currently used *)
+(** Returns TRUE if fullscreen — always FALSE in VT100 mode *)
 PROCEDURE IsFS*(): BOOLEAN;
-RETURN ~(G.window IN G.GetWindowOptions(screen))
-END IsFS;
+RETURN FALSE END IsFS;
 
-(** Switch to window mode *)
+(** Switch to window mode — no-op in VT100 mode *)
 PROCEDURE SwitchToWindow*;
-BEGIN IF IsFS() THEN ToggleFS END
 END SwitchToWindow;
 
-(** Switch to fullscreen mode *)
+(** Switch to fullscreen mode — no-op in VT100 mode *)
 PROCEDURE SwitchToFS*;
-BEGIN IF ~IsFS() THEN ToggleFS END
 END SwitchToFS;
 
 PROCEDURE ResetCell(VAR cell: Cell);
@@ -525,124 +688,481 @@ BEGIN p.redraw := TRUE;
 END ResizePart;
 
 PROCEDURE InitBuffer;
-VAR W, H: INTEGER;
-BEGIN G.GetScreenSize(W, H);
-  buffer.w := W DIV font.charW; buffer.h := H DIV font.charH;
-  IF buffer.w > partW THEN buffer.w := partW END; (*!FIXME*)
+VAR cols, rows, n: INTEGER;
+BEGIN
+  n := TermVT.Size(cols, rows);
+  IF n < 0 THEN cols := stdW; rows := stdH END;
+  buffer.w := cols; buffer.h := rows;
+  IF buffer.w > partW THEN buffer.w := partW END;
   IF buffer.h > partH THEN buffer.h := partH END;
   buffer.first := NewPart(buffer.w, buffer.h);
   curX := -1; curY := -1; buffer.redrawAll := TRUE
 END InitBuffer;
 
 PROCEDURE ResizeBuffer;
-VAR W, H, nw, nh: INTEGER;
-BEGIN G.GetScreenSize(W, H);
-  nw := W DIV font.charW; nh := H DIV font.charH;
-  IF nw > partW THEN nw := partW END; (*!FIXME*)
-  IF nh > partH THEN nh := partH END;
-  IF (nw # buffer.w) OR (nh # buffer.h) THEN
-    buffer.w := nw; buffer.h := nh;
-    ResizePart(buffer.first, nw, nh)
+VAR cols, rows, nw, nh, n: INTEGER;
+BEGIN
+  n := TermVT.Size(cols, rows);
+  IF n >= 0 THEN
+    nw := cols; nh := rows;
+    IF nw > partW THEN nw := partW END;
+    IF nh > partH THEN nh := partH END;
+    IF (nw # buffer.w) OR (nh # buffer.h) THEN
+      buffer.w := nw; buffer.h := nh;
+      ResizePart(buffer.first, nw, nh)
+    END
   END
 END ResizeBuffer;
 
-PROCEDURE ParseEvent(e: G.Event; VAR event: Event);
-VAR fw, fh: INTEGER;
+(* ====================== Input parsing ====================== *)
+
+PROCEDURE ReadMoreInput;
+VAR n, i: INTEGER;
 BEGIN
-  processingEvent := TRUE;
-  IF e.type = G.mouseMove THEN GetMousePos(e, event.x, event.y);
-    event.type := noEvent;
-    IF (event.x # mouseX) OR (event.y # mouseY) THEN
-      IF mouseDown THEN event.type := mouse;
-        event.button := mouseButton
-      END;
-      MoveMouse(event.x, event.y)
+  IF inPos > 0 THEN
+    i := 0;
+    WHILE inPos + i < inLen DO
+      inBuf[i] := inBuf[inPos + i]; INC(i)
+    END;
+    inLen := i; inPos := 0
+  END;
+  n := TermVT.Read(inBuf, inLen, inBufSize);
+  IF n > 0 THEN INC(inLen, n) END
+END ReadMoreInput;
+
+PROCEDURE Avail(): INTEGER;
+BEGIN
+RETURN inLen - inPos END Avail;
+
+PROCEDURE Peek(offset: INTEGER): CHAR;
+VAR result: CHAR;
+BEGIN
+  IF inPos + offset < inLen THEN result := Utf8.Long(inBuf[inPos + offset])
+  ELSE result := 0X
+  END
+RETURN result END Peek;
+
+PROCEDURE Skip(n: INTEGER);
+BEGIN INC(inPos, n)
+END Skip;
+
+PROCEDURE CharToKey(ch: CHAR; VAR k: INTEGER; VAR mod: SET);
+VAR c: INTEGER;
+BEGIN k := 0; mod := {};
+  c := ORD(ch);
+  IF (c >= ORD('a')) & (c <= ORD('z')) THEN
+    k := kA + (c - ORD('a'))
+  ELSIF (c >= ORD('A')) & (c <= ORD('Z')) THEN
+    k := kA + (c - ORD('A')); INCL(mod, mShift)
+  ELSIF (c >= ORD('0')) & (c <= ORD('9')) THEN
+    k := k0 + (c - ORD('0'))
+  ELSIF ch = ' ' THEN k := kSpace
+  ELSIF ch = 0DX THEN k := kEnter
+  ELSIF ch = 0AX THEN k := kEnter
+  ELSIF ch = 09X THEN k := kTab
+  ELSIF ch = 7FX THEN k := kBackspace
+  ELSIF ch = 08X THEN k := kBackspace
+  ELSIF ch = '~' THEN k := kTilde
+  ELSIF ch = '-' THEN k := kMinus
+  ELSIF ch = '=' THEN k := kEquals
+  ELSIF ch = '[' THEN k := kOpenBrace
+  ELSIF ch = ']' THEN k := kCloseBrace
+  ELSIF ch = ';' THEN k := kColon
+  ELSIF ch = ':' THEN k := kColon; INCL(mod, mShift)
+  ELSIF ch = 27X THEN k := kQuote
+  ELSIF ch = '\' THEN k := kBackslash
+  ELSIF ch = ',' THEN k := kComma
+  ELSIF ch = '.' THEN k := kStop
+  ELSIF ch = '/' THEN k := kSlash
+  END
+END CharToKey;
+
+PROCEDURE ParseCSIParam(VAR i: INTEGER): INTEGER;
+VAR n: INTEGER;
+  c: CHAR;
+  done: BOOLEAN;
+BEGIN n := 0; done := FALSE;
+  WHILE ~done & (inPos + i < inLen) DO
+    c := Utf8.Long(inBuf[inPos + i]);
+    IF (c >= '0') & (c <= '9') THEN
+      n := n * 10 + ORD(c) - ORD('0'); INC(i)
+    ELSE done := TRUE
     END
-  ELSIF e.type = G.timer THEN
-    IF e.timer = flipTimer THEN
-      event.type := noEvent;
-      IF needFlip # 0 THEN G.Flip; needFlip := 0 END
-    ELSIF e.timer = cursorTimer THEN
-      event.type := noEvent;
-      IF curX >= 0 THEN
-        cursorShown := ~cursorShown;
-        UpdateCell(curX, curY);
-        Flush
+  END
+RETURN n END ParseCSIParam;
+
+PROCEDURE DecodeModifier(m: INTEGER): SET;
+VAR s: SET;
+BEGIN s := {};
+  IF m > 1 THEN DEC(m);
+    IF ODD(m) THEN INCL(s, mShift) END;
+    IF ODD(m DIV 2) THEN INCL(s, mAlt) END;
+    IF ODD(m DIV 4) THEN INCL(s, mCtrl) END
+  END
+RETURN s END DecodeModifier;
+
+PROCEDURE ParseCSI(VAR event: Event): BOOLEAN;
+VAR i, p1, p2, p3: INTEGER;
+  c, final: CHAR;
+  ok, result: BOOLEAN;
+BEGIN
+  result := FALSE;
+  ok := TRUE;
+  i := 0;
+  c := Peek(i);
+
+  (* SGR mouse: ESC [ < Cb ; Cx ; Cy M/m *)
+  IF c = '<' THEN INC(i);
+    p1 := ParseCSIParam(i);
+    IF Peek(i) = ';' THEN INC(i) END;
+    p2 := ParseCSIParam(i);
+    IF Peek(i) = ';' THEN INC(i) END;
+    p3 := ParseCSIParam(i);
+    final := Peek(i);
+    IF (final = 'M') OR (final = 'm') THEN INC(i);
+      event.type := mouse;
+      event.x := p2 - 1; event.y := p3 - 1;
+      IF event.x < 0 THEN event.x := 0 END;
+      IF event.y < 0 THEN event.y := 0 END;
+      IF event.x >= buffer.w THEN event.x := buffer.w - 1 END;
+      IF event.y >= buffer.h THEN event.y := buffer.h - 1 END;
+      IF final = 'M' THEN
+        IF p1 = 64 THEN (* Wheel up *)
+          event.button := kWheelUp;
+          MoveMouse(event.x, event.y)
+        ELSIF p1 = 65 THEN (* Wheel down *)
+          event.button := kWheelDown;
+          MoveMouse(event.x, event.y)
+        ELSIF p1 >= 32 THEN (* Motion / drag *)
+          event.button := mouseButton;
+          MoveMouse(event.x, event.y)
+        ELSE
+          event.button := (p1 MOD 4) + 1;
+          mouseDown := TRUE;
+          mouseButton := event.button;
+          MoveMouse(event.x, event.y)
+        END
+      ELSE
+        event.button := 0;
+        mouseDown := FALSE;
+        MoveMouse(event.x, event.y)
+      END;
+      event.mod := {};
+      IF ODD(p1 DIV 4) THEN INCL(event.mod, mShift) END;
+      IF ODD(p1 DIV 8) THEN INCL(event.mod, mAlt) END;
+      IF ODD(p1 DIV 16) THEN INCL(event.mod, mCtrl) END;
+      Skip(i); result := TRUE
+    ELSE ok := FALSE
+    END
+  END;
+
+  IF ok & ~result THEN
+    (* Arrow keys: ESC [ A-D *)
+    IF (c >= 'A') & (c <= 'D') THEN
+      event.type := key; event.ch := 0X; event.mod := {};
+      IF c = 'A' THEN event.key := kUp
+      ELSIF c = 'B' THEN event.key := kDown
+      ELSIF c = 'C' THEN event.key := kRight
+      ELSIF c = 'D' THEN event.key := kLeft
+      END;
+      Skip(1); result := TRUE
+    ELSIF c = 'H' THEN
+      event.type := key; event.key := kHome; event.ch := 0X; event.mod := {};
+      Skip(1); result := TRUE
+    ELSIF c = 'F' THEN
+      event.type := key; event.key := kEnd; event.ch := 0X; event.mod := {};
+      Skip(1); result := TRUE
+    ELSIF c = 'Z' THEN (* Shift+Tab *)
+      event.type := key; event.key := kTab; event.ch := 0X;
+      event.mod := {mShift};
+      Skip(1); result := TRUE
+    ELSIF (c >= '0') & (c <= '9') THEN
+      (* Numeric CSI sequences *)
+      p1 := ParseCSIParam(i);
+      c := Peek(i);
+      IF c = '~' THEN INC(i);
+        event.type := key; event.ch := 0X; event.mod := {};
+        IF p1 = 1 THEN event.key := kHome
+        ELSIF p1 = 2 THEN event.key := kInsert
+        ELSIF p1 = 3 THEN event.key := kDel
+        ELSIF p1 = 4 THEN event.key := kEnd
+        ELSIF p1 = 5 THEN event.key := kPgUp
+        ELSIF p1 = 6 THEN event.key := kPgDn
+        ELSIF p1 = 11 THEN event.key := kF1
+        ELSIF p1 = 12 THEN event.key := kF2
+        ELSIF p1 = 13 THEN event.key := kF3
+        ELSIF p1 = 14 THEN event.key := kF4
+        ELSIF p1 = 15 THEN event.key := kF5
+        ELSIF p1 = 17 THEN event.key := kF6
+        ELSIF p1 = 18 THEN event.key := kF7
+        ELSIF p1 = 19 THEN event.key := kF8
+        ELSIF p1 = 20 THEN event.key := kF9
+        ELSIF p1 = 21 THEN event.key := kF10
+        ELSIF p1 = 23 THEN event.key := kF11
+        ELSIF p1 = 24 THEN event.key := kF12
+        ELSE event.type := noEvent
+        END;
+        Skip(i); result := event.type # noEvent
+      ELSIF c = ';' THEN INC(i);
+        p2 := ParseCSIParam(i);
+        final := Peek(i); INC(i);
+        event.type := key; event.ch := 0X;
+        event.mod := DecodeModifier(p2);
+        IF (final >= 'A') & (final <= 'D') THEN
+          IF final = 'A' THEN event.key := kUp
+          ELSIF final = 'B' THEN event.key := kDown
+          ELSIF final = 'C' THEN event.key := kRight
+          ELSIF final = 'D' THEN event.key := kLeft
+          END
+        ELSIF final = 'H' THEN event.key := kHome
+        ELSIF final = 'F' THEN event.key := kEnd
+        ELSIF final = '~' THEN
+          IF p1 = 2 THEN event.key := kInsert
+          ELSIF p1 = 3 THEN event.key := kDel
+          ELSIF p1 = 5 THEN event.key := kPgUp
+          ELSIF p1 = 6 THEN event.key := kPgDn
+          ELSIF p1 = 11 THEN event.key := kF1
+          ELSIF p1 = 12 THEN event.key := kF2
+          ELSIF p1 = 13 THEN event.key := kF3
+          ELSIF p1 = 14 THEN event.key := kF4
+          ELSIF p1 = 15 THEN event.key := kF5
+          ELSIF p1 = 17 THEN event.key := kF6
+          ELSIF p1 = 18 THEN event.key := kF7
+          ELSIF p1 = 19 THEN event.key := kF8
+          ELSIF p1 = 20 THEN event.key := kF9
+          ELSIF p1 = 21 THEN event.key := kF10
+          ELSIF p1 = 23 THEN event.key := kF11
+          ELSIF p1 = 24 THEN event.key := kF12
+          ELSE event.type := noEvent
+          END
+        ELSIF final = 'P' THEN event.key := kF1
+        ELSIF final = 'Q' THEN event.key := kF2
+        ELSIF final = 'R' THEN event.key := kF3
+        ELSIF final = 'S' THEN event.key := kF4
+        ELSE event.type := noEvent
+        END;
+        Skip(i); result := event.type # noEvent
+      ELSE
+        WHILE (inPos + i < inLen) & ~((c >= '@') & (c <= '~')) DO
+          INC(i); c := Peek(i)
+        END;
+        IF (c >= '@') & (c <= '~') THEN INC(i) END;
+        Skip(i)
       END
     ELSE
-      event.type := timer
+      (* Unknown CSI: skip to final byte *)
+      WHILE (inPos + i < inLen) & ~((c >= '@') & (c <= '~')) DO
+        INC(i); c := Peek(i)
+      END;
+      IF (c >= '@') & (c <= '~') THEN INC(i) END;
+      Skip(i)
     END
-  ELSIF e.type = G.mouseDown THEN event.type := mouse;
-    mouseDown := TRUE; GetMousePos(e, event.x, event.y);
-    MoveMouse(event.x, event.y);
-    mouseButton := e.button; event.button := mouseButton;
-  ELSIF e.type = G.mouseUp THEN event.type := mouse;
-    mouseDown := FALSE; GetMousePos(e, event.x, event.y);
-    MoveMouse(event.x, event.y);
-    event.button := 0; (* 0 means release *)
-  ELSIF e.type = G.char THEN
-    IF (e.key = G.kEnter) & (e.mod * {G.mMenu, G.mAlt, G.mAltGr} # {}) THEN
-      ToggleFS; skipEnter := TRUE
-    ELSE event.type := key;
-      event.key := e.key;
-      event.ch := e.ch;
-      event.mod := e.mod
-    END
-  ELSIF e.type = G.resize THEN
-    event.type := resize;
-    event.w := e.w DIV font.charW; event.h := e.h DIV font.charH;
-    ResizeBuffer;
-    Sync
-  ELSIF e.type = G.quit THEN event.type := quit
-  ELSE event.type := noEvent
-  END;
-  processingEvent := FALSE
-END ParseEvent;
-
-PROCEDURE WaitAndParseEvent(VAR event: Event);
-VAR E: G.Event;
-BEGIN
-  IF (needFlip # 0) & ~G.PeekEvent(E) THEN G.Flip; needFlip := 0 END;
-  G.WaitEvent(E);
-  ParseEvent(E, event)
-END WaitAndParseEvent;
-
-PROCEDURE PeekAndParseEvent(VAR event: Event): BOOLEAN;
-VAR E: G.Event;
-  got: BOOLEAN;
-BEGIN
-  IF G.PeekEvent(E) THEN
-    ParseEvent(E, event); got := TRUE;
-    IF event.type = noEvent THEN G.DropNextEvent END
-  ELSE
-    G.DropNextEvent; got := FALSE
+  ELSIF ~ok THEN Skip(i)
   END
-RETURN got END PeekAndParseEvent;
+RETURN result END ParseCSI;
 
-(** Waits until the next event, copies it in `event`
-    and removes it from the queue *)
+PROCEDURE ParseSS3(VAR event: Event): BOOLEAN;
+VAR c: CHAR;
+  result: BOOLEAN;
+BEGIN result := FALSE;
+  IF Avail() > 0 THEN
+    c := Peek(0);
+    event.type := key; event.ch := 0X; event.mod := {};
+    result := TRUE;
+    IF c = 'P' THEN event.key := kF1
+    ELSIF c = 'Q' THEN event.key := kF2
+    ELSIF c = 'R' THEN event.key := kF3
+    ELSIF c = 'S' THEN event.key := kF4
+    ELSIF c = 'H' THEN event.key := kHome
+    ELSIF c = 'F' THEN event.key := kEnd
+    ELSIF c = 'A' THEN event.key := kUp
+    ELSIF c = 'B' THEN event.key := kDown
+    ELSIF c = 'C' THEN event.key := kRight
+    ELSIF c = 'D' THEN event.key := kLeft
+    ELSE event.type := noEvent; result := FALSE
+    END;
+    IF result THEN Skip(1) END
+  END
+RETURN result END ParseSS3;
+
+PROCEDURE ParseEscape(VAR event: Event): BOOLEAN;
+VAR c: CHAR;
+  result: BOOLEAN;
+BEGIN result := FALSE;
+  IF Avail() > 0 THEN
+    c := Peek(0);
+    IF c = '[' THEN
+      Skip(1);
+      result := ParseCSI(event)
+    ELSIF c = 'O' THEN
+      Skip(1);
+      result := ParseSS3(event)
+    ELSIF c = 1BX THEN (* ESC ESC ... → Alt + escape sequence *)
+      Skip(1);
+      IF Avail() = 0 THEN
+        IF TermVT.Poll(20) > 0 THEN ReadMoreInput END
+      END;
+      result := ParseEscape(event);
+      IF result THEN INCL(event.mod, mAlt) END
+    ELSIF (ORD(c) >= 20H) & (ORD(c) <= 7EH) THEN
+      Skip(1);
+      event.type := key;
+      event.ch := c;
+      CharToKey(event.ch, event.key, event.mod);
+      INCL(event.mod, mAlt);
+      result := TRUE
+    END
+  END
+RETURN result END ParseEscape;
+
+PROCEDURE ParseUtf8(first: CHAR; VAR ch: CHAR): BOOLEAN;
+VAR c, val, needed, i: INTEGER;
+  ok: BOOLEAN;
+BEGIN
+  c := ORD(first);
+  ok := TRUE;
+  IF c < 80H THEN ch := first; needed := 0
+  ELSIF (c >= 0C0H) & (c < 0E0H) THEN needed := 1; val := c - 0C0H
+  ELSIF (c >= 0E0H) & (c < 0F0H) THEN needed := 2; val := c - 0E0H
+  ELSIF (c >= 0F0H) & (c < 0F8H) THEN needed := 3; val := c - 0F0H
+  ELSE ch := '?'; needed := 0
+  END;
+  IF needed > 0 THEN
+    IF Avail() < needed THEN ok := FALSE
+    ELSE
+      i := 0;
+      WHILE ok & (i < needed) DO
+        c := ORD(Peek(i));
+        IF (c < 80H) OR (c >= 0C0H) THEN ch := '?'; Skip(i); needed := 0; ok := TRUE
+        ELSE val := val * 64 + (c - 80H); INC(i)
+        END
+      END;
+      IF ok & (needed > 0) THEN Skip(needed); ch := CHR(val) END
+    END
+  END
+RETURN ok END ParseUtf8;
+
+PROCEDURE ParseInputEvent(VAR event: Event): BOOLEAN;
+VAR c: CHAR;
+  b: INTEGER;
+  ch: CHAR;
+  result: BOOLEAN;
+BEGIN result := FALSE;
+  IF Avail() > 0 THEN
+    event.type := noEvent; event.key := 0; event.ch := 0X;
+    event.mod := {}; event.x := 0; event.y := 0;
+    event.w := 0; event.h := 0; event.button := 0;
+
+    c := Peek(0); Skip(1);
+    b := ORD(c);
+
+    IF c = 1BX THEN
+      IF Avail() = 0 THEN (* Wait briefly for rest of escape sequence (e.g. arrow key) *)
+        IF TermVT.Poll(20) > 0 THEN ReadMoreInput END
+      END;
+      IF Avail() > 0 THEN result := ParseEscape(event) END;
+      IF ~result THEN
+        event.type := key; event.key := kEsc; event.ch := 0X; event.mod := {};
+        result := TRUE
+      END
+    ELSIF (b >= 1) & (b <= 26) THEN
+      event.type := key;
+      event.key := kA + (b - 1);
+      event.ch := 0X;
+      INCL(event.mod, mCtrl);
+      IF b = 9 THEN event.key := kTab; event.ch := 09X; event.mod := {}
+      ELSIF b = 13 THEN event.key := kEnter; event.ch := 0DX; event.mod := {}
+      ELSIF b = 10 THEN event.key := kEnter; event.ch := 0AX; event.mod := {}
+      ELSIF b = 8 THEN event.key := kBackspace; event.ch := 0X; event.mod := {}
+      ELSIF b = 3 THEN event.type := quit
+      END;
+      result := TRUE
+    ELSIF b = 127 THEN
+      event.type := key; event.key := kBackspace; event.ch := 0X; event.mod := {};
+      result := TRUE
+    ELSIF b = 0 THEN
+      event.type := key; event.key := kSpace; event.ch := 0X;
+      INCL(event.mod, mCtrl);
+      result := TRUE
+    ELSIF b >= 20H THEN
+      IF ParseUtf8(c, ch) THEN
+        event.type := key; event.ch := ch;
+        CharToKey(ch, event.key, event.mod);
+        result := TRUE
+      END
+    END
+  END
+RETURN result END ParseInputEvent;
+
+(** Waits for the next event *)
 PROCEDURE WaitEvent*(VAR event: Event);
-BEGIN REPEAT WaitAndParseEvent(event) UNTIL event.type # noEvent
+VAR n, timeout: INTEGER;
+  done: BOOLEAN;
+BEGIN done := FALSE;
+  REPEAT
+    IF ParseInputEvent(event) THEN done := TRUE
+    ELSE
+      IF userTimerInterval > 0 THEN timeout := userTimerInterval
+      ELSE timeout := -1
+      END;
+      n := TermVT.Poll(timeout);
+      IF n = -2 THEN
+        ResizeBuffer;
+        event.type := resize;
+        event.w := buffer.w; event.h := buffer.h;
+        Sync;
+        done := TRUE
+      ELSIF n = 0 THEN
+        IF userTimerInterval > 0 THEN
+          event.type := timer;
+          done := TRUE
+        END
+      ELSIF n > 0 THEN
+        ReadMoreInput
+      END
+    END
+  UNTIL done
 END WaitEvent;
 
-(** Copies the next event in the queue to `event` but does not remove
-    it from the queue. *)
+(** Peeks at the next event without removing it *)
 PROCEDURE PeekEvent*(VAR event: Event): BOOLEAN;
-VAR got: BOOLEAN;
-BEGIN
-  got := PeekAndParseEvent(event);
-  WHILE got & (event.type = noEvent) DO
-    got := PeekAndParseEvent(event)
+VAR n, savedPos, savedLen: INTEGER;
+  result: BOOLEAN;
+BEGIN result := FALSE;
+  IF Avail() > 0 THEN
+    savedPos := inPos; savedLen := inLen;
+    IF ParseInputEvent(event) THEN
+      inPos := savedPos; inLen := savedLen;
+      result := TRUE
+    ELSE
+      inPos := savedPos; inLen := savedLen
+    END
+  END;
+  IF ~result THEN
+    n := TermVT.Poll(0);
+    IF n = -2 THEN
+      ResizeBuffer;
+      event.type := resize;
+      event.w := buffer.w; event.h := buffer.h;
+      Sync;
+      result := TRUE
+    ELSIF n > 0 THEN
+      ReadMoreInput;
+      savedPos := inPos; savedLen := inLen;
+      IF ParseInputEvent(event) THEN
+        inPos := savedPos; inLen := savedLen;
+        result := TRUE
+      ELSE
+        inPos := savedPos; inLen := savedLen
+      END
+    END
   END
-RETURN got END PeekEvent;
+RETURN result END PeekEvent;
 
-(** Returns TRUE if there are events in the events queue *)
+(** Returns TRUE if there are events in the queue *)
 PROCEDURE HasEvents*(): BOOLEAN;
 VAR e: Event;
-  x: BOOLEAN;
-BEGIN
-  IF processingEvent THEN x := FALSE ELSE x := PeekEvent(e) END
-RETURN x END HasEvents;
+RETURN PeekEvent(e) END HasEvents;
 
 (** Moves the text input cursor to cell (x; y) *)
 PROCEDURE SetCursor*(x, y: INTEGER);
@@ -651,16 +1171,14 @@ BEGIN
     UpdateCell(curX, curY);
     IF (0 <= x) & (x < buffer.w) & (0 <= y) & (y < buffer.h) THEN
       curX := x; curY := y;
+      cursorVisible := TRUE;
       UpdateCell(x, y)
-    ELSE curX := -1; curY := -1
-    END;
-    cursorShown := TRUE;
-    G.StopTimer(cursorTimer);
-    G.StartTimer(cursorTimer)
+    ELSE curX := -1; curY := -1; cursorVisible := FALSE
+    END
   END
 END SetCursor;
 
-(** Hides the text input cursor (moves it off the screen) *)
+(** Hides the text input cursor *)
 PROCEDURE HideCursor*;
 BEGIN SetCursor(-1, -1)
 END HideCursor;
@@ -675,31 +1193,28 @@ PROCEDURE HideMouse*;
 BEGIN IF mouseShown THEN mouseShown := FALSE; UpdateCell(mouseX, mouseY) END
 END HideMouse;
 
-(** Sets background color `bg` for the cell at position (x; y) *)
+(** Sets background color *)
 PROCEDURE SetBg*(x, y, bg: INTEGER);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartBg(p, x, y, bg) END
 END SetBg;
 
-(** Sets foreground color `fg` for the cell at position (x; y) *)
+(** Sets foreground color *)
 PROCEDURE SetFg*(x, y, fg: INTEGER);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartFg(p, x, y, fg) END
 END SetFg;
 
-(** Fills the cell at (x; y) with character `ch` and the given
-    foreground (fg) and background (bg) colors *)
+(** Fills the cell at (x; y) *)
 PROCEDURE SetCell*(x, y: INTEGER; ch: CHAR; fg, bg: INTEGER);
 VAR p: Part;
 BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartCell(p, x, y, ch, fg, bg) END
 END SetCell;
 
-(** Fill a rectangular area of characters with `ch` using the foreground (fg)
-    and background (bg) colors. The top-left corner of the area is (x; y),
-    width is `w` and height is `h` *)
+(** Fill a rectangular area *)
 PROCEDURE Fill*(x, y, w, h: INTEGER; ch: CHAR; fg, bg: INTEGER);
 VAR X, Y: INTEGER;
 BEGIN
@@ -710,11 +1225,9 @@ BEGIN
   END
 END Fill;
 
-(** Writes at most `limit` characters of `s` in a line starting at position
-    (x; y) on to the terminal using the given foreground (fg) and
-    background (bg) colors *)
+(** Print a string *)
 PROCEDURE Print*(x, y, limit: INTEGER; s: ARRAY OF CHAR; fg, bg: INTEGER);
-VAR i, w, h: INTEGER;
+VAR i: INTEGER;
 BEGIN i := 0;
   WHILE (s[i] # 0X) & (i # limit) & (x < buffer.w) DO
     SetCell(x, y, s[i], fg, bg); INC(i); INC(x)
@@ -728,13 +1241,12 @@ BEGIN p := GetPart(buffer, x, y);
   IF p # NIL THEN SetPartChar(p, x, y, ch) END
 END SetChar;
 
-(** Returns size of the terminal window in characters *)
+(** Returns size of the terminal in characters *)
 PROCEDURE Size*(VAR width, height: INTEGER);
 BEGIN width := buffer.w; height := buffer.h
 END Size;
 
-(** Given the (x; y) coordinate, returns data of the
-    corresponding terminal cell *)
+(** Returns data of the terminal cell at (x; y) *)
 PROCEDURE GetCell*(x, y: INTEGER; VAR ch: CHAR; VAR fg, bg: INTEGER);
 VAR p: Part;
   cell: Cell;
@@ -747,197 +1259,133 @@ END GetCell;
 
 (** Delay for `ms` milliseconds *)
 PROCEDURE Delay*(ms: INTEGER);
-BEGIN G.Delay(ms)
+VAR n: INTEGER;
+BEGIN n := TermVT.Poll(ms)
 END Delay;
+
+(** Re-enables mouse tracking after a child process may have disabled it *)
+PROCEDURE RestoreMouse*;
+BEGIN
+  IF ~(noMouse IN settings) THEN EnableMouse; FlushOut END
+END RestoreMouse;
 
 (** Closes TermBox *)
 PROCEDURE Close*;
 BEGIN
-  font := NIL;
-  G.Close
+  DisableMouse;
+  ResetSGR;
+  ShowCursorSys;
+  ExitAltScreen;
+  FlushOut;
+  Done := FALSE;
+  IF TermVT.Close() < 0 THEN END
 END Close;
 
-PROCEDURE PreloadFont(): BOOLEAN;
-VAR f: G.Font;
-BEGIN
-  f := G.LoadFontInfo(fontFile);
-  IF f # NIL THEN 
-    IF f IS G.MonoFont THEN font := f(G.MonoFont)
-    ELSE Out.String('TermBox: The font is not monospaced.'); Out.Ln
-    END
-  ELSE Out.String('TermBox: Could not load font "');
-    Out.String(fontFile); Out.String('".'); Out.Ln
-  END
-RETURN font # NIL END PreloadFont;
-
-PROCEDURE ExpandColor(color: INTEGER; VAR r, g, b: INTEGER);
-BEGIN
-  CASE color OF
-     0: b :=   0; g :=   0; r :=   0
-  |  1: b :=  90; g :=   0; r :=   0
-  |  2: b :=   0; g := 176; r :=   0
-  |  3: b := 176; g := 176; r :=   0
-  |  4: b :=   0; g :=   0; r := 176
-  |  5: b := 176; g :=   0; r := 176
-  |  6: b :=   0; g :=  85; r := 176
-  |  7: b := 176; g := 176; r := 176
-  |  8: b :=  85; g :=  85; r :=  85
-  |  9: b := 255; g :=  85; r :=  85
-  | 10: b :=  85; g := 255; r :=  85
-  | 11: b := 255; g := 255; r :=  85
-  | 12: b :=  85; g :=  85; r := 255
-  | 13: b := 255; g :=  85; r := 255
-  | 14: b :=  85; g := 255; r := 255
-  | 15: b := 255; g := 255; r := 255
-  END
-END ExpandColor;
-
-PROCEDURE InitColors;
-VAR i, r, g, b: INTEGER;
-BEGIN
-  FOR i := 0 TO nofcolors - 1 DO
-    ExpandColor(i, r, g, b);
-    G.MakeCol(colors[i], r, g, b)
-  END;
-END InitColors;
-
-(** Sets the title of the window *)
+(** Sets the title — uses xterm OSC title escape *)
 PROCEDURE SetTitle*(title: ARRAY OF CHAR);
-BEGIN wantTitle := title
+VAR s: ARRAY 256 OF SHORTCHAR;
+  i: INTEGER;
+BEGIN
+  wantTitle := title;
+  PutByte(1BH); PutCh(']'); PutCh('0'); PutCh(';');
+  Utf8.Encode(title, s);
+  i := 0; WHILE s[i] # 0X DO PutByte(ORD(s[i])); INC(i) END;
+  PutByte(07H);
+  FlushOut
 END SetTitle;
 
-(** Sets zoom as a real number. *)
+(** SetZoomF — no-op in VT100 mode *)
 PROCEDURE SetZoomF*(zoom: REAL);
-BEGIN wantZoom := zoom; G.SetZoomF(zoom)
 END SetZoomF;
 
-(** Sets zoom as an integer.
-     SetZoom(2) will make virtual pixels two times bigger in size *)
+(** SetZoom — no-op in VT100 mode *)
 PROCEDURE SetZoom*(zoom: INTEGER);
-BEGIN wantZoom := FLT(zoom); G.SetZoom(zoom)
 END SetZoom;
 
-(** Sets horizontal (x) and vertical (y) scale factors.
-     Call SetScale(2.0, 1.0) to two make pixels times wider *)
+(** SetScale — no-op in VT100 mode *)
 PROCEDURE SetScale*(x, y: REAL);
-BEGIN wantScaleX := x; wantScaleY := y; G.SetScale(x, y)
 END SetScale;
 
-PROCEDURE MakeGraphSettings(): SET;
-VAR s: SET;
-BEGIN s := {};
-  IF fullscreen IN settings THEN INCL(s, G.fullscreen)
-  ELSE INCL(s, G.topleft);
-    IF window IN settings THEN INCL(s, G.window) END
-  END;
-  IF exact IN settings THEN INCL(s, G.exact) END;
-  IF ~(sharp IN settings) THEN INCL(s, G.smooth) END;
-  IF software IN settings THEN INCL(s, G.software) END;
-  IF noMouse IN settings THEN INCL(s, G.noMouse) END;
-  IF center IN settings THEN INCL(s, G.center) END;
-  IF resizable IN settings THEN INCL(s, G.resizable) END;
-  IF maximized IN settings THEN INCL(s, G.maximized) END;
-  IF minimized IN settings THEN INCL(s, G.minimized) END;
-  IF frameless IN settings THEN INCL(s, G.frameless) END;
-RETURN s END MakeGraphSettings;
-
-PROCEDURE InitIcon;
-VAR b: G.Bitmap;
-BEGIN
-  b := G.LoadBitmap(iconFile);
-  IF b # NIL THEN G.SetWindowIcon(screen, b) END
-END InitIcon;
-
-(** Returns Graph.Window object of the terminal (only when Graph is used) *)
-PROCEDURE GetWindow*(): G.Window;
-RETURN screen END GetWindow;
-
-PROCEDURE InitScreen;
-VAR W, H, dw, dh: INTEGER;
-BEGIN G.GetDesktopResolution(dw, dh);
-  W := wantW * font.charW; H := wantH * font.charH;
-
-  IF (wantScaleX # 0.0) & (wantScaleY # 0.0) THEN
-    G.SetScale(wantScaleX, wantScaleY)
-  ELSIF ((fullscreen IN settings) OR (wantZoom >= 6.0/5.0 - 0.01)) &
-        ~(sharp IN settings) & (FLT(dw) >= FLT(W) * 6.0/5.0 - 0.01) THEN
-    G.SetScale(5/6, 1.0)
-  END;
-
-  G.SetSizeStep(font.charW, font.charH);
-  screen := G.NewWindow(-1, -1, W, H, wantTitle, MakeGraphSettings());
-  G.ShowMouse(noMouse IN settings);
-  G.SetWindowFullscreenSize(screen, W, H);
-  InitIcon
-END InitScreen;
-
-(** Start TermBox timer. The timer event will be created every `speed`
-    fraction of a second.
-     Call StartTimer(1/30) for 30 timer events every second *)
+(** Start TermBox timer *)
 PROCEDURE StartTimer*(speed: REAL);
 BEGIN
-  userTimer := G.NewTimer(speed);
-  G.StartTimer(userTimer)
+  IF speed > 0.0 THEN
+    userTimerInterval := FLOOR(1000.0 * speed + 0.5);
+    IF userTimerInterval < 1 THEN userTimerInterval := 1 END
+  ELSE
+    userTimerInterval := 0
+  END
 END StartTimer;
 
-PROCEDURE InitTimers;
-BEGIN
-  cursorShown := TRUE;
-  cursorTimer := G.NewTimer(cursorTickSpeed);
-  G.StartTimer(cursorTimer);
-
-  flipTimer := G.NewTimer(flipSpeed);
-  G.StartTimer(flipTimer)
-END InitTimers;
-
-(** Initializes TermBox. Sets Done to TRUE on success, FALSE otherwise *)
+(** Initializes TermBox VT100 backend *)
 PROCEDURE Init*;
-VAR opt: SET;
 BEGIN Done := FALSE;
-  IF noMouse IN settings THEN opt := {G.noMouse} ELSE opt := {} END;
-  G.Settings(-1, -1, opt + {G.manual});
-  G.Init;
-  IF G.Done & PreloadFont() THEN
-    InitScreen;
-    G.LoadFontBitmap(font);
-    IF font.loaded THEN
-      InitColors;
-      InitBuffer;
-      InitTimers;
-      mouseDown := FALSE;
-      mouseShown := ~(noMouse IN settings);
-      skipEnter := FALSE;
-      needFlip := 0;
-      processingEvent := FALSE;
-      Done := TRUE
-    ELSE G.CloseWindow(screen)
-    END
+  outLen := 0; inLen := 0; inPos := 0;
+  lastFg := -1; lastBg := -1;
+  userTimerInterval := 0;
+
+  IF TermVT.Init() >= 0 THEN
+    EnterAltScreen;
+    ClearScreen;
+    HideCursorSys;
+    IF ~(noMouse IN settings) THEN EnableMouse END;
+    FlushOut;
+
+    InitBuffer;
+    mouseDown := FALSE;
+    mouseShown := ~(noMouse IN settings);
+    cursorVisible := FALSE;
+
+    Done := TRUE
   END
 END Init;
 
-(** Sets width and height of graphical window and settings flags (for Graph) *)
+(** Settings — stores width/height/flags for compatibility *)
 PROCEDURE Settings*(w, h: INTEGER; flags: SET);
 BEGIN
   IF w = 0 THEN wantW := stdW ELSE wantW := w END;
   IF h = 0 THEN wantH := stdH ELSE wantH := h END;
-  IF {fullscreen, window} * flags = {} THEN INCL(flags, fullscreen)
-  ELSIF fullscreen IN flags THEN EXCL(flags, window)
-  END;
   settings := flags
 END Settings;
 
-(** Sets the terminal icon file name (if Graph is used) *)
+(** SetIconFile — no-op in VT100 mode *)
 PROCEDURE SetIconFile*(s: ARRAY OF CHAR);
-BEGIN iconFile := s
 END SetIconFile;
 
-(** Sets the font file name for the terminal (if Graph is used) *)
+(** SetFontFile — no-op in VT100 mode *)
 PROCEDURE SetFontFile*(s: ARRAY OF CHAR);
-BEGIN fontFile := s
 END SetFontFile;
 
-BEGIN wantW := stdW; wantH := stdH; wantScaleX := 0.0; wantScaleY := 0.0;
-  settings := {fullscreen}; Done := FALSE;
-  iconFile := '../Data/Images/Icon.png';
-  fontFile := '../Data/Fonts/Main';
+(** GetClipboardText — stub in VT100 mode *)
+PROCEDURE GetClipboardText*(VAR s: ARRAY OF CHAR);
+BEGIN s[0] := 0X
+END GetClipboardText;
+
+(** SetClipboardText — stub in VT100 mode *)
+PROCEDURE SetClipboardText*(s: ARRAY OF CHAR);
+END SetClipboardText;
+
+PROCEDURE InitColors;
+BEGIN
+  ansiFg[ 0] := 30;  ansiBg[ 0] := 40;
+  ansiFg[ 1] := 34;  ansiBg[ 1] := 44;
+  ansiFg[ 2] := 32;  ansiBg[ 2] := 42;
+  ansiFg[ 3] := 36;  ansiBg[ 3] := 46;
+  ansiFg[ 4] := 31;  ansiBg[ 4] := 41;
+  ansiFg[ 5] := 35;  ansiBg[ 5] := 45;
+  ansiFg[ 6] := 33;  ansiBg[ 6] := 43;
+  ansiFg[ 7] := 37;  ansiBg[ 7] := 47;
+  ansiFg[ 8] := 90;  ansiBg[ 8] := 100;
+  ansiFg[ 9] := 94;  ansiBg[ 9] := 104;
+  ansiFg[10] := 92;  ansiBg[10] := 102;
+  ansiFg[11] := 96;  ansiBg[11] := 106;
+  ansiFg[12] := 91;  ansiBg[12] := 101;
+  ansiFg[13] := 95;  ansiBg[13] := 105;
+  ansiFg[14] := 93;  ansiBg[14] := 103;
+  ansiFg[15] := 97;  ansiBg[15] := 107
+END InitColors;
+
+BEGIN wantW := stdW; wantH := stdH;
+  settings := {}; Done := FALSE;
+  InitColors
 END TermBox.

@@ -413,3 +413,8 @@ int MySearchPath(char *filename, char* result, int limit) {
   }
   return success;
 }
+
+/* PTY pass-through is not supported on Windows; fall back to pipe mode */
+int StartProcessInPassthrough(char *process, char *dir) {
+  return 0;
+}

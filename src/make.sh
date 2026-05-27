@@ -8,6 +8,16 @@ else
 fi
 OFRDIR="../Data/bin/OfrontPlus/Target/$THISOS"
 
+# Parse variant arguments (e.g. TermBox:Graph, Graph:SDL2)
+# Stored as VARIANT_<Module>=<Variant>
+for arg in "$@"; do
+  if [[ "$arg" == *:* ]]; then
+    mod="${arg%%:*}"
+    var="${arg#*:}"
+    eval "VARIANT_$mod=\"$var\""
+  fi
+done
+
 
 PATH="$OFRDIR:$PATH"
 export OBERON=.:$OFRDIR/Lib/Sym
@@ -61,6 +71,8 @@ $OFR -Cw Graph.Mod &&
 
 $OFR -7w Sound.Mod &&
 
+$OFR -Cw TermVT.Mod &&
+
 $OFR -7w TermBox.Mod &&
 
 $OFR -Cw Term.Mod &&
@@ -79,7 +91,11 @@ $OFR -Cwm FreeOberon.Mod &&
 
 $OFR -7wm Fob.Mod &&
 
-{ [[ "$THISOS" == "macOS" ]] && ../Data/bin/patch.sh FreeOberon.c || true; } &&
+# patch.sh not needed without Allegro5
+# On macOS with TermBox:Graph, patch FreeOberon.c for allegro_main
+if [[ "$VARIANT_TermBox" == "Graph" ]] && [[ "$THISOS" == "macOS" ]]; then
+  ../Data/bin/patch.sh FreeOberon.c
+fi
 
 
 $CCFULL -c Utf8.c &&
@@ -118,24 +134,64 @@ $CCFULL -c TermBox.c &&
 
 $CCFULL -c platformutils/platformutils.c &&
 
+$CCFULL -c term/termvt.c &&
+
 
 $AR -crs ../Data/bin/libFreeOberon.a \
-  platformutils.o \
+  platformutils.o termvt.o \
   Utf8.o Strings.o Reals.o Int.o Time.o In.o Out.o Args.o Env.o \
   Files.o Texts.o Random.o \
   StrList.o Dir.o Graph.o Sound.o TermBox.o &&
 
+# Build TermBox:Graph variant
+# Save default TermBox outputs, compile Graph variant, restore defaults
+cp TermBox.c TermBox.c.default &&
+cp TermBox.Sym TermBox.Sym.default &&
+$OFR -7w TermBox/Graph/TermBox.Mod &&
+$CCFULL -c TermBox.c -o TermBoxGraph.o &&
+mkdir -p ../Data/bin/Variants/TermBox/Graph &&
+cp TermBoxGraph.o ../Data/bin/Variants/TermBox/Graph/TermBox.o &&
+cp TermBox.c.default TermBox.c &&
+cp TermBox.Sym.default TermBox.Sym &&
+rm TermBox.c.default TermBox.Sym.default &&
+
+
+# Determine variant-specific object files and libraries for FreeOberon
+VARIANT_OBJS=""
+VARIANT_LIBS=""
+for arg in "$@"; do
+  if [[ "$arg" == *:* ]]; then
+    mod="${arg%%:*}"
+    var="${arg#*:}"
+    obj="../Data/bin/Variants/$mod/$var/$mod.o"
+    if [[ -f "$obj" ]]; then
+      VARIANT_OBJS="$VARIANT_OBJS $obj"
+      echo "  Using variant $mod:$var"
+    else
+      echo "  WARNING: Variant object not found: $obj"
+    fi
+  fi
+done
+
+# TermBox:Graph needs Allegro5 libraries
+if [[ "$VARIANT_TermBox" == "Graph" ]]; then
+  VARIANT_LIBS="$(pkg-config allegro_primitives-5 allegro_image-5 \
+    allegro_audio-5 allegro_acodec-5 allegro_font-5 allegro_dialog-5 \
+    allegro_main-5 allegro-5 --libs --cflags)"
+  TERMBOX_SRC=""
+else
+  TERMBOX_SRC="TermBox.c"
+fi
+
 
 $CCFULL -o ../$PROG1 \
-  Graph.c Sound.c TermBox.c Term.c term/term_linux.c \
+  $VARIANT_OBJS \
+  $TERMBOX_SRC Term.c term/term_linux.c term/termvt.c \
   Config.c Func.c Debug.c OV.c FoStrings.c EditorText.c Editor.c Builder.c \
   FreeOberon.c \
   ../Data/bin/libFreeOberon.a \
   $OFRDIR/Lib/libOfront.a \
-  $(pkg-config \
-    allegro_primitives-5 allegro_image-5 allegro_audio-5 \
-    allegro_acodec-5 allegro_font-5 allegro_dialog-5 \
-    allegro_main-5 allegro-5 --libs --cflags) &&
+  $VARIANT_LIBS &&
 
 
 $CCFULL -o ../$PROG2 \

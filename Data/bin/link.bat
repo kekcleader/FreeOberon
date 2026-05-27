@@ -30,12 +30,25 @@ SET PATH=%OFRTAR%;%GCCDIR%;%PATH%
 SET CC=gcc
 
 REM Put all args from 2nd upto --linker-libs to FILES, put others in FLAGS
+REM Also handle --variant Module:Variant arguments
 SHIFT
 SET FILES=
+SET VARIANT_OBJ=
 :START
 IF [%1] == [] GOTO FINISH
 IF [%1] == [--linker-libs] GOTO FLAGSLOOP
+IF [%1] == [--variant] GOTO VARIANTARG
 SET FILES=%FILES% %1
+SHIFT
+GOTO START
+:VARIANTARG
+SHIFT
+REM Parse Module:Variant from %1
+FOR /F "tokens=1,2 delims=:" %%A IN ("%1") DO (
+  IF EXIST "%FOBDIR%\Data\bin\Variants\%%A\%%B\%%A.o" (
+    SET VARIANT_OBJ=%VARIANT_OBJ% %FOBDIR%\Data\bin\Variants\%%A\%%B\%%A.o
+  )
+)
 SHIFT
 GOTO START
 :FLAGSLOOP
@@ -58,6 +71,7 @@ ECHO ON
   -I %OFRTAR%\Lib\Obj ^
   %ONAME%.c -o %ONAME%.exe ^
   %FILES% ^
+  %VARIANT_OBJ% ^
   %FOBDIR%\Data\bin\FreeOberon.a ^
   %OFRTAR%\Lib\Ofront.a ^
   -I..\Data\bin\mingw32\include ^
