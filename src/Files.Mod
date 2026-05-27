@@ -783,7 +783,7 @@ BEGIN
         errcode := Platform.OldRW(q, f.fd);
         IF errcode = 0 THEN f.workName := f.registerName;
           f.registerName := ''; f.tempFile := FALSE;
-          (* The just-reopened OS file descriptor has its position at 0.
+          (* !FIXME bug? The just-reopened OS file descriptor has its position at 0.
              Reset f.pos to match, otherwise the next Set will skip a
              needed Platform.Seek (because the stale f.pos happens to
              equal the requested org) and a subsequent ReadBuf will
