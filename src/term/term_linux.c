@@ -22,6 +22,7 @@ along with Free Oberon.  If not, see <http://www.gnu.org/licenses/>.
 //#include <wait.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <termios.h>
 #include <signal.h>
 #include <string.h>

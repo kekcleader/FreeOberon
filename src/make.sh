@@ -146,14 +146,14 @@ $AR -crs ../Data/bin/libFreeOberon.a \
 # Build TermBox:Graph variant
 # Save default TermBox outputs, compile Graph variant, restore defaults
 cp TermBox.c TermBox.c.default &&
-cp TermBox.Sym TermBox.Sym.default &&
+cp TermBox.sym TermBox.sym.default &&
 $OFR -7w TermBox/Graph/TermBox.Mod &&
 $CCFULL -c TermBox.c -o TermBoxGraph.o &&
 mkdir -p ../Data/bin/Variants/TermBox/Graph &&
 cp TermBoxGraph.o ../Data/bin/Variants/TermBox/Graph/TermBox.o &&
 cp TermBox.c.default TermBox.c &&
-cp TermBox.Sym.default TermBox.Sym &&
-rm TermBox.c.default TermBox.Sym.default &&
+cp TermBox.sym.default TermBox.sym &&
+rm TermBox.c.default TermBox.sym.default &&
 
 
 # Determine variant-specific object files and libraries for FreeOberon

@@ -25,9 +25,11 @@ static void sigwinch_handler(int sig) {
 
 /* Emergency cleanup: restore terminal and re-raise the signal */
 static void fatal_signal_handler(int sig) {
+  static const char mouse_off[] = "\033[?1006l\033[?1002l\033[?1000l";
+
   termvt_close();
   /* Reset escape sequences that TermBox may have left active */
-  write(STDOUT_FILENO, "\033[?1006l\033[?1002l\033[?1000l", 30); /* mouse off */
+  write(STDOUT_FILENO, mouse_off, sizeof(mouse_off) - 1); /* mouse off */
   write(STDOUT_FILENO, "\033[0m", 4);      /* reset colors */
   write(STDOUT_FILENO, "\033[?25h", 6);    /* show cursor */
   write(STDOUT_FILENO, "\033[?1049l", 8);  /* exit alt screen */
