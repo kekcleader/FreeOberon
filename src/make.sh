@@ -35,17 +35,17 @@ $OFR -Cw Func.Mod &&
 
 $OFR -Cw Utf8.Mod &&
 
-$OFR -Cw Strings.Mod &&
-
 $OFR -Cw Reals.Mod &&
+
+$OFR -Cw Out.Mod &&
+
+$OFR -Cw Strings.Mod &&
 
 $OFR -Cw Int.Mod &&
 
 $OFR -7w Time.Mod &&
 
 $OFR -Cw In.Mod &&
-
-$OFR -Cw Out.Mod &&
 
 $OFR -7w Debug.Mod &&
 
@@ -100,17 +100,17 @@ fi
 
 $CCFULL -c Utf8.c &&
 
-$CCFULL -c Strings.c &&
-
 $CCFULL -c Reals.c &&
+
+$CCFULL -c Out.c &&
+
+$CCFULL -c Strings.c &&
 
 $CCFULL -c Int.c &&
 
 $CCFULL -c Time.c &&
 
 $CCFULL -c In.c &&
-
-$CCFULL -c Out.c &&
 
 $CCFULL -c Args.c &&
 
