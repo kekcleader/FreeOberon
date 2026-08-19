@@ -1,3 +1,35 @@
+
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=id">Bahasa Indonesia</a>
+        | <a href="https://openaitx.github.io/view.html?user=kekcleader&project=FreeOberon&lang=as">অসমীয়া</
+      </div>
+    </div>
+  </details>
+</div>
+
 # Free Oberon programming environment
 
 » [free.oberon.org](https://free.oberon.org/en)
